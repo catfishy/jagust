@@ -259,15 +259,15 @@ def additionalCalculations(headers, mean_values, size_values):
 
 
 if __name__ == "__main__":
-    output = '/Users/ahorng/Documents/UCBERKELEYAV45_06_04_15.csv'
-    registry = "/Users/ahorng/Documents/registry_clean.csv"
-    meta_pet = "/Users/ahorng/Documents/PET_META_LIST_edited.csv"
-    bl_means = "/Users/ahorng/Documents/AV45_preprocess_output_06_11_15/AV45_BL_means_11-Jun-2015_1066.csv"
-    v2_means = "/Users/ahorng/Documents/AV45_preprocess_output_06_11_15/AV45_V2_means_11-Jun-2015_607.csv"
-    v3_means = "/Users/ahorng/Documents/AV45_preprocess_output_06_11_15/AV45_V3_means_11-Jun-2015_86.csv"
-    bl_sizes = "/Users/ahorng/Documents/AV45_preprocess_output_06_11_15/AV45_BL_roisize_11-Jun-2015_1066.csv"
-    v2_sizes = "/Users/ahorng/Documents/AV45_preprocess_output_06_11_15/AV45_V2_roisize_11-Jun-2015_607.csv"
-    v3_sizes = "/Users/ahorng/Documents/AV45_preprocess_output_06_11_15/AV45_V3_roisize_11-Jun-2015_86.csv"
+    output = '../UCBERKELEYAV45_06_19_15.csv'
+    registry = "../docs/registry_clean.csv"
+    meta_pet = "../docs/PET_META_LIST_edited.csv"
+    bl_means = "../docs/AV45_preprocess_output_06_19_15/AV45_BL_means_18-Jun-2015_1088.csv"
+    v2_means = "../docs/AV45_preprocess_output_06_19_15/AV45_V2_means_18-Jun-2015_607.csv"
+    v3_means = "../docs/AV45_preprocess_output_06_19_15/AV45_V3_means_18-Jun-2015_86.csv"
+    bl_sizes = "../docs/AV45_preprocess_output_06_19_15/AV45_BL_roisize_18-Jun-2015_1088.csv"
+    v2_sizes = "../docs/AV45_preprocess_output_06_19_15/AV45_V2_roisize_18-Jun-2015_607.csv"
+    v3_sizes = "../docs/AV45_preprocess_output_06_19_15/AV45_V3_roisize_18-Jun-2015_86.csv"
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry)
 
 
