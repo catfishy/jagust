@@ -1,3 +1,10 @@
+'''
+Finding time specific PET-MRI stats
+
+Looks for PET visits that also included an MRI within a given n-day window
+'''
+
+
 import csv
 from collections import defaultdict
 from datetime import datetime, timedelta

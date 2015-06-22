@@ -13,6 +13,8 @@ are on a benzo at their baseline visit
 (probably using the baseline amyloid scan date which is in that big excel file in the 
 shared ADNI dropbox folder called FDG_AV45_COGdata), and some way to categorize dosage/frequency info.  
 
+
+try to parse into antihistamines/benzodiazepines, and quantify frequency/dosage
 '''
 
 

@@ -1,9 +1,10 @@
+'''
+Compares MRI and PET metadata files
+'''
+
 import csv
 from collections import defaultdict
 from datetime import datetime, timedelta
-
-
-
 
 def compareDates(mri_file, pet_file):
     mri_reader = csv.DictReader(open(mri_file, 'rU'))
