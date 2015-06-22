@@ -1,6 +1,10 @@
 '''
 
 Pull in the master FDG_AV45_COG DATA
+
+remove null char:
+tr -d '\000' < file1 > file2
+
 '''
 import csv
 from collections import defaultdict
@@ -14,15 +18,16 @@ def parseCSV(file_path):
 
 def importRegistry(registry_file):
     headers, lines = parseCSV(registry_file)
-    registry = defaultdict(dict)
+    registry = defaultdict(list)
     for data in lines:
-        if data['EXAMDATE'] == '' or data['VISCODE'] in set(['sc', 'scmri']) or data['VISCODE2'] in set(['sc', 'scmri']):
+        if data['EXAMDATE'] == '':
             continue
         subj = int(data['RID'])
         date = datetime.strptime(data['EXAMDATE'],'%Y-%m-%d')
-        registry[subj][date] = {'VISCODE': data['VISCODE'].strip().lower(),
-                                'VISCODE2': data['VISCODE2'].strip().lower(),
-                                'update_stamp': data['update_stamp']}
+        registry[subj].append({'VISCODE': data['VISCODE'].strip().lower(),
+                               'VISCODE2': data['VISCODE2'].strip().lower(),
+                               'date': date,
+                               'update_stamp': data['update_stamp']})
     return registry
 
 def dumpCSV(file_path, headers, lines):
@@ -51,14 +56,19 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
             vs2 = line['VISCODE2'].strip().lower()
             subject_registry = registry[subj]
             date = None
-            for k,v in subject_registry.iteritems():
-                if vs == v['VISCODE'] and vs2 == v['VISCODE2']:
-                    date = k
+            for v in subject_registry:
+                item_date = v['date']
+                if vs2 == v['VISCODE2'] and item_date != '' and item_date is not None:
+                    date = item_date
+                    break
             if date == None:
-                raise Exception("Could not find visit in registry: %s, %s, %s" % (subj, vs, vs2))
+                print "Could not find visit in registry: %s, %s, %s" % (subj, vs, vs2)
+                for _ in subject_registry:
+                    print _
         else:
             date = datetime.strptime(date_string,'%Y-%m-%d')
-        mmse_by_subject[subj].append((date,line))
+        if date is not None:
+            mmse_by_subject[subj].append((date,line))
     
     mmse_by_subject = dict(mmse_by_subject)
     for k,v in mmse_by_subject.iteritems():
@@ -74,7 +84,10 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
                 test_score = ''
             else:
                 test_date, test_results = tests[i]
-                test_score = int(test_results['MMSCORE'])
+                if test_results['MMSCORE'] == '':
+                    test_score = ''
+                else:
+                    test_score = int(test_results['MMSCORE'])
             count = i+1
             new_subj_data['MMSE_DATE%s' % count] = test_date
             new_subj_data['MMSCORE.%s' % count] = test_score
@@ -86,8 +99,13 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
     # overwrite old lines
     new_headers = old_headers # no change in headers
     new_lines = []
-    for old_l in old_lines:
-        subj = int(old_l['RID'])
+    for i, old_l in enumerate(old_lines):
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            print "Line %s: Can't convert '%s' to subj" % (i+1, old_l['RID'])
+            continue
+        print "%s: %s" % (subj, new_mmse_columns[subj])
         old_l.update(new_mmse_columns[subj])
         new_lines.append(old_l)
 
@@ -105,7 +123,7 @@ if __name__ == '__main__':
 
     # syncing pipeline
     old_headers, old_lines = parseCSV(master_file)
-    new_headers, new_lines = syncMMSEData(old_headers, old_lines, mmse_file, dump_to=None)
+    new_headers, new_lines = syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
 
     #dumpCSV(output_file, new_headers, new_lines)
 
