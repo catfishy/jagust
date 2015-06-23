@@ -66,7 +66,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
                 for _ in subject_registry:
                     print _
         else:
-            date = datetime.strptime(date_string,'%Y-%m-%d')
+            date = datetime.strptime(date_string,'%m/%d/%y')
         if date is not None:
             mmse_by_subject[subj].append((date,line))
     
@@ -84,31 +84,70 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
                 test_score = ''
             else:
                 test_date, test_results = tests[i]
+                test_date = test_date.strftime("%m/%d/%y")
                 if test_results['MMSCORE'] == '':
                     test_score = ''
                 else:
                     test_score = int(test_results['MMSCORE'])
+
             count = i+1
             new_subj_data['MMSE_DATE%s' % count] = test_date
             new_subj_data['MMSCORE.%s' % count] = test_score
-        # find date of closest av45 scan, and corresponding cog test
-        pass
         # save
         new_mmse_columns[subj] = new_subj_data
 
     # overwrite old lines
     new_headers = old_headers # no change in headers
     new_lines = []
+    new_values = 0
+    total = 0
     for i, old_l in enumerate(old_lines):
         try:
             subj = int(old_l['RID'])
         except Exception as e:
             print "Line %s: Can't convert '%s' to subj" % (i+1, old_l['RID'])
             continue
-        print "%s: %s" % (subj, new_mmse_columns[subj])
+        #print "%s: %s" % (subj, new_mmse_columns[subj])
+
+        # add av45-relative columns
+        bl_date_string = old_l['AV45_Date']
+        date_used = False
+        if bl_date_string != '':
+            date_used = True
+            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
+            closest_mmse_date, closest_results = sorted(mmse_by_subject[subj], key=lambda x: abs(x[0] - bl_av45))[0]
+        else:
+            closest_mmse_date, closest_results = sorted(mmse_by_subject[subj], key=lambda x: x[0] )[0]
+        test_score = closest_results['MMSCORE']
+        if test_score != '':
+            test_score = int(test_score)
+        new_mmse_columns[subj]['MMSEclosest_1'] = closest_mmse_date.strftime('%m/%d/%y')
+        new_mmse_columns[subj]['MMSEclosest_AV45'] = test_score
+        if date_used:
+            date_diff = abs(bl_av45 - closest_mmse_date).days
+            new_mmse_columns[subj]['datediff_MMSE_AV45'] = abs(bl_av45 - closest_mmse_date).days / 365.0
+            new_mmse_columns[subj]['MMSE_3mths_AV45'] = test_score if date_diff < 93 else ''
+        else:
+            new_mmse_columns[subj]['datediff_MMSE_AV45'] = ''
+            new_mmse_columns[subj]['MMSE_3mths_AV45'] = ''
+
+        # do comparison:
+        print "SUBJ: %s" % subj
+        changed = False
+        for k in sorted(new_mmse_columns[subj].keys()):
+            old_value = old_l[k]
+            new_value = new_mmse_columns[subj][k]
+            if 'MMSCORE' in k and old_value == '' and new_value != '':
+                new_values += 1
+                changed = True
+            print "\t%s: %s -> %s" % (k, old_value, new_value)
+        if changed:
+            total += 1
+
         old_l.update(new_mmse_columns[subj])
         new_lines.append(old_l)
 
+    print "%s/%s" % (new_values, total)
     # dump out
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
@@ -125,7 +164,10 @@ if __name__ == '__main__':
     old_headers, old_lines = parseCSV(master_file)
     new_headers, new_lines = syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
 
-    #dumpCSV(output_file, new_headers, new_lines)
+
+
+    #MMSE: 703 new tests, 598 subjects with new tests
+
 
 '''
 ADAS keys:
