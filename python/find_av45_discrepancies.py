@@ -38,6 +38,6 @@ def find_pet_discrepancies(local_csv, pet_meta_csv):
 
 
 if __name__ == "__main__":
-    local_csv = "../UCBERKELEYAV45_06_19_15.csv"
+    local_csv = "../UCBERKELEYAV45_06_22_15.csv"
     pet_meta = "../docs/PET_META_LIST_edited.csv"
     find_pet_discrepancies(local_csv, pet_meta)

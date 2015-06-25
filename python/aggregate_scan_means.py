@@ -102,7 +102,8 @@ def combineMeansAndSize(mean_header, size_header, mean_row, size_row):
             'RIGHT_UNSEGMENTEDWHITEMATTER']
     omit_sizes = ['RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
                   'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
-                  'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 'update_stamp']
+                  'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
+                  'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp']
     mean_values = dict(zip(mean_header, mean_row))
     size_values = dict(zip(size_header, size_row))
     rid = int(mean_values['RID'])
@@ -169,7 +170,8 @@ def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_
     # aggregate and write
     fieldnames = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
                   'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
-                  'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_COMPOSITE_REFNORM','CTX_LH_CAUDALMIDDLEFRONTAL',
+                  'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
+                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
                   'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
                   'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
@@ -236,6 +238,10 @@ def additionalCalculations(headers, mean_values, size_values):
         SUMMARYSUVR_WHOLECEREBNORM
         SUMMARYSUVR_COMPOSITE_REFNORM
         COMPOSITE_REF
+        SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF
+        SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF
+
+
 
         VISCODE
         VISCODE2
@@ -250,8 +256,13 @@ def additionalCalculations(headers, mean_values, size_values):
 
     headers.append('SUMMARYSUVR_WHOLECEREBNORM')
     mean_values['SUMMARYSUVR_WHOLECEREBNORM'] = composite / wholecereb
+    headers.append('SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF')
+    mean_values['SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF'] = 1 if mean_values['SUMMARYSUVR_WHOLECEREBNORM'] >= 1.11 else 0
     headers.append('SUMMARYSUVR_COMPOSITE_REFNORM')
     mean_values['SUMMARYSUVR_COMPOSITE_REFNORM'] = composite / composite_ref
+    headers.append('SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF')
+    mean_values['SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] = 1 if mean_values['SUMMARYSUVR_COMPOSITE_REFNORM'] >= 0.79 else 0
+
     headers.append('COMPOSITE_REF')
     mean_values['COMPOSITE_REF'] = composite_ref
 
@@ -259,15 +270,15 @@ def additionalCalculations(headers, mean_values, size_values):
 
 
 if __name__ == "__main__":
-    output = '../UCBERKELEYAV45_06_19_15.csv'
+    output = '../UCBERKELEYAV45_06_22_15.csv'
     registry = "../docs/registry_clean.csv"
     meta_pet = "../docs/PET_META_LIST_edited.csv"
-    bl_means = "../docs/AV45_preprocess_output_06_19_15/AV45_BL_means_18-Jun-2015_1088.csv"
-    v2_means = "../docs/AV45_preprocess_output_06_19_15/AV45_V2_means_18-Jun-2015_607.csv"
-    v3_means = "../docs/AV45_preprocess_output_06_19_15/AV45_V3_means_18-Jun-2015_86.csv"
-    bl_sizes = "../docs/AV45_preprocess_output_06_19_15/AV45_BL_roisize_18-Jun-2015_1088.csv"
-    v2_sizes = "../docs/AV45_preprocess_output_06_19_15/AV45_V2_roisize_18-Jun-2015_607.csv"
-    v3_sizes = "../docs/AV45_preprocess_output_06_19_15/AV45_V3_roisize_18-Jun-2015_86.csv"
+    bl_means = "../docs/AV45_preprocess_output_06_22_15/AV45_BL_means_24-Jun-2015_1089.csv"
+    v2_means = "../docs/AV45_preprocess_output_06_22_15/AV45_V2_means_24-Jun-2015_619.csv"
+    v3_means = "../docs/AV45_preprocess_output_06_22_15/AV45_V3_means_24-Jun-2015_92.csv"
+    bl_sizes = "../docs/AV45_preprocess_output_06_22_15/AV45_BL_roisize_24-Jun-2015_1089.csv"
+    v2_sizes = "../docs/AV45_preprocess_output_06_22_15/AV45_V2_roisize_24-Jun-2015_619.csv"
+    v3_sizes = "../docs/AV45_preprocess_output_06_22_15/AV45_V3_roisize_24-Jun-2015_92.csv"
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry)
 
 
