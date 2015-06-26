@@ -32,7 +32,8 @@ def importRegistry(registry_file):
     return registry
 
 def dumpCSV(file_path, headers, lines):
-    writer = csv.DictWriter(open(file_path,'rU'), fieldnames=headers)
+    writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
+    writer.writeheader()
     for l in lines:
         writer.writerow(l)
 
@@ -77,79 +78,15 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                                    'TOTSCORE': totscore})
     adas_by_subj = dict(adas_by_subj)
 
-    '''
-    'ADAScog_DATE1'
-    'ADAScog_DATE2'
-    'ADAScog_DATE3'
-    'ADAScog_DATE4'
-    'ADAScog_DATE5'
-    'ADAScog_DATE6'
-    'ADAScog_DATE7'
-    'ADAScog_DATE8'
-    'ADAScog_DATE9'
-    'ADAScog_DATE10'
-    'ADAScog_DATE11'
-    'ADAScog.1'
-    'ADAScog.2'
-    'ADAScog.3'
-    'ADAScog.4'
-    'ADAScog.5'
-    'ADAScog.6'
-    'ADAScog.7'
-    'ADAScog.8'
-    'ADAScog.9'
-    'ADAScog.10'
-    'ADAScog.11'
-    'TIME_ADAS.1'
-    'TIME_ADAS.2'
-    'TIME_ADAS.3'
-    'TIME_ADAS.4'
-    'TIME_ADAS.5'
-    'TIME_ADAS.6'
-    'TIME_ADAS.7'
-    'TIME_ADAS.8'
-    'TIME_ADAS.9'
-    'TIME_ADAS.10'
-    'TIME_ADAS.11'
-    'TIMEreltoAV45_ADAS.1'
-    'TIMEreltoAV45_ADAS.2'
-    'TIMEreltoAV45_ADAS.3'
-    'TIMEreltoAV45_ADAS.4'
-    'TIMEreltoAV45_ADAS.5'
-    'TIMEreltoAV45_ADAS.6'
-    'TIMEreltoAV45_ADAS.7'
-    'TIMEreltoAV45_ADAS.8'
-    'TIMEreltoAV45_ADAS.9'
-    'TIMEreltoAV45_ADAS.10'
-    'TIMEreltoAV45_ADAS.11'
-    'TIMEpostAV45_ADAS.1'
-    'TIMEpostAV45_ADAS.2'
-    'TIMEpostAV45_ADAS.3'
-    'TIMEpostAV45_ADAS.4'
-    'TIMEpostAV45_ADAS.5'
-    'TIMEpostAV45_ADAS.6'
-    'TIMEpostAV45_ADAS.7'
-    'TIMEpostAV45_ADAS.8'
-    'TIMEpostAV45_ADAS.9'
-    'TIMEpostAV45_ADAS.10'
-    'TIMEpostAV45_ADAS.11'
-    'ADAS_3MTH_AV45'
-    'ADAS_3MTHS_AV45DATE'
-    'ADAS_AV45_2_3MTHS'
-    'ADAS_AV45_2_DATE'
-    'ADAS_slope_all'
-    'ADASslope_postAV45'
-    '''
-
     new_headers = old_headers # no change in headers
     new_lines = []
     new_values = 0
     total = 0
-    for i, old_l in enumerate(old_lines):
+    for linenum, old_l in enumerate(old_lines):
         try:
             subj = int(old_l['RID'])
         except Exception as e:
-            print "Line %s: Can't convert '%s' to subj" % (i+1, old_l['RID'])
+            #print "Line %s: Can't convert '%s' to subj" % (linenum+1, old_l['RID'])
             new_lines.append(old_l)
             continue
 
@@ -192,8 +129,8 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                 test_results = tests[i]
                 test_date = test_results['EXAMDATE']
                 test_date_string = test_date.strftime("%m/%d/%y")
-                test_score = float(test_results['TOTSCORE']) # CAST TO INT
-                diff_from_first = (test_date-first_scan_date).days / 365.0
+                test_score = round(float(test_results['TOTSCORE']),2) # CAST TO INT
+                diff_from_first = round((test_date-first_scan_date).days / 365.0, 2)
                 all_values.append(test_score)
                 all_times.append(diff_from_first)
             count = i+1
@@ -201,19 +138,21 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
             new_subj_data['ADAScog.%s' % count] = test_score
             new_subj_data['TIME_ADAS.%s' % count] = diff_from_first
             if bl_av45 is not None and test_date != '':
-                rel_time_days = (test_date - bl_av45).days 
-                rel_time = rel_time_days / 365.0
+                rel_time_days = (test_date - bl_av45).days
+                rel_time = round(rel_time_days / 365.0, 2)
                 new_subj_data['TIMEreltoAV45_ADAS.%s' % count] = rel_time
-                if rel_time >= 0:
+                if abs(rel_time_days) <= 93 and 'ADAS_3MTH_AV45' not in new_subj_data:
+                    new_subj_data['ADAS_3MTH_AV45'] = test_score
+                    new_subj_data['ADAS_3MTHS_AV45DATE'] = test_date_string
+                if rel_time >= (-93.0/365.0):
                     post_values.append(test_score)
                     post_times.append(diff_from_first)
                     new_subj_data['TIMEpostAV45_ADAS.%s' % count] = rel_time
-                    if rel_time_days <= 93 and 'ADAS_3MTH_AV45' not in new_subj_data:
-                        new_subj_data['ADAS_3MTH_AV45'] = test_score
-                        new_subj_data['ADAS_3MTHS_AV45DATE'] = test_date_string
-            if av45_2 is not None and test_date != '' and test_score != '':
+                else:
+                    new_subj_data['TIMEpostAV45_ADAS.%s' % count] = ''
+            if av45_2 is not None and test_date != '':
                 rel_time_days = (test_date - av45_2).days 
-                if rel_time_days >= 0 and rel_time_days <= 93 and 'ADAS_AV45_2_3MTHS' not in new_subj_data:
+                if abs(rel_time_days) <= 93 and 'ADAS_AV45_2_3MTHS' not in new_subj_data:
                     new_subj_data['ADAS_AV45_2_3MTHS'] = test_score
                     new_subj_data['ADAS_AV45_2_DATE'] = test_date_string
         # fill in the blanks
@@ -224,40 +163,46 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         
         # get slopes
         if len(all_values) >= 2:
-            all_times = [float("{0:.2f}".format(_)) for _ in all_times]
             slope, intercept, r, p, stderr = stats.linregress(all_times, all_values)
+            '''
             print "For %s vs %s" % (all_values, all_times)
             print old_l['ADAS_slope_all']
             print slope
-            new_subj_data['ADAS_slope_all'] = slope
+            '''
+            new_subj_data['ADAS_slope_all'] = round(slope,2)
         else:
             new_subj_data['ADAS_slope_all'] = ''
         if len(post_values) >= 2:
-            post_times = [float("{0:.2f}".format(_)) for _ in post_times]
             slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            '''
             print "For %s vs %s" % (post_values, post_times)
             print old_l['ADASslope_postAV45']
             print slope
-            new_subj_data['ADASslope_postAV45'] = slope
+            '''
+            new_subj_data['ADASslope_postAV45'] = round(slope,2)
         else:
             new_subj_data['ADASslope_postAV45'] = ''
 
-        '''
+        
         # do comparison:
         print "SUBJ: %s" % subj
+        print "first: %s, second: %s" % (bl_av45, av45_2)
         changed = False
-        for k in sorted(new_mmse_columns[subj].keys()):
+        for k in sorted(new_subj_data.keys()):
             old_value = old_l[k]
-            new_value = new_mmse_columns[subj][k]
-            if 'MMSCORE' in k and old_value == '' and new_value != '':
+            new_value = new_subj_data[k]
+            if k.startswith('ADAScog.') and old_value == '' and new_value != '':
                 new_values += 1
                 changed = True
             print "\t%s: %s -> %s" % (k, old_value, new_value)
         if changed:
             total += 1
-        '''
+        
         old_l.update(new_subj_data)
         new_lines.append(old_l)
+
+    print "Total subj changed: %s" % total
+    print "Total new tests: %s" % new_values
 
     # dump out
     if dump_to is not None:
@@ -329,7 +274,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         try:
             subj = int(old_l['RID'])
         except Exception as e:
-            print "Line %s: Can't convert '%s' to subj" % (i+1, old_l['RID'])
+            #print "Line %s: Can't convert '%s' to subj" % (i+1, old_l['RID'])
             new_lines.append(old_l)
             continue
         #print "%s: %s" % (subj, new_mmse_columns[subj])
@@ -362,7 +307,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         for k in sorted(new_mmse_columns[subj].keys()):
             old_value = old_l[k]
             new_value = new_mmse_columns[subj][k]
-            if 'MMSCORE' in k and old_value == '' and new_value != '':
+            if k.startswith('MMSCORE') and old_value == '' and new_value != '':
                 new_values += 1
                 changed = True
             #print "\t%s: %s -> %s" % (k, old_value, new_value)
@@ -379,6 +324,191 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
 
     return new_headers, new_lines
 
+def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump_to=None):
+    neurobat_headers, neurobat_lines = parseCSV(neuro_battery_file)
+    registry = importRegistry(registry_file)
+
+    # restructure by subject
+    avlt_by_subj = defaultdict(list)
+    for line in neurobat_lines:
+        subj = int(line['RID'])
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        examdate = line['EXAMDATE']
+        if examdate:
+            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+        else:
+            subj_listings = registry[subj]
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['date']
+                    break
+            if not examdate:
+                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+                continue
+        tots = [line['AVTOT%s' % _ ]for _ in range(1,6)]
+
+        try:
+            score_sum = 0.0
+            for score_str in tots:
+                new_score = float(score_str)
+                if new_score < 0:
+                    raise Exception("Invalid score part")
+                score_sum += new_score
+            test_score = score_sum
+        except Exception as e:
+            print "Invalid scores found for %s (%s, %s): %s" % (subj, viscode, viscode2, tots)
+            continue
+
+        avlt_by_subj[subj].append({'VISCODE': viscode,
+                                   'VISCODE2': viscode2,
+                                   'EXAMDATE': examdate,
+                                   'TOTS': test_score})
+
+    new_headers = old_headers # no change in headers
+    new_lines = []
+    new_values = 0
+    total = 0
+    subj_new_counts = {}
+    for linenum, old_l in enumerate(old_lines):
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            #print "Line %s: Can't convert '%s' to subj" % (linenum+1, old_l['RID'])
+            new_lines.append(old_l)
+            continue
+
+        unsorted_tests = avlt_by_subj.get(subj,[])
+        if len(unsorted_tests) == 0:
+            print "No AVLT tests found for %s" % (subj)
+            new_lines.append(old_l)
+            continue
+
+        tests = sorted(unsorted_tests, key=lambda x : x['EXAMDATE'])
+        dates = [t['EXAMDATE'] for t in tests]
+        if len(set(dates)) != len(dates):
+            print "%s has Dup dates, skipping: %s" % (subj, dates)
+            new_lines.append(old_l)
+            continue
+        first_scan_date = dates[0]
+        # Get AV45 Scan dates
+        if old_l['AV45_Date'] != '':
+            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
+        else:
+            bl_av45 = None
+        if old_l['AV45_2_Date'] != '':
+            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
+        else:
+            av45_2 = None
+
+
+        new_subj_data = {}
+        all_values = []
+        post_values = []
+        all_times = []
+        post_times = []
+        for i in range(11):
+            if i >= len(tests):
+                test_date = ''
+                test_date_string = ''
+                test_score = ''
+                diff_from_first = ''
+            else:
+                test_results = tests[i]
+                test_date = test_results['EXAMDATE']
+                test_date_string = test_date.strftime("%m/%d/%y")
+                test_score = test_results['TOTS']
+                diff_from_first = round((test_date-first_scan_date).days / 365.0, 2)
+                if test_score != '':
+                    all_values.append(test_score) 
+                    all_times.append(diff_from_first)
+            count = i+1
+            new_subj_data['AVLT_DATE.%s' % count] = test_date_string
+            new_subj_data['AVLT.%s' % count] = test_score
+            new_subj_data['TIME_AVLT.%s' % count] = diff_from_first
+            if bl_av45 is not None and test_date != '':
+                rel_time_days = (test_date - bl_av45).days
+                rel_time = round(rel_time_days / 365.0, 2)
+                new_subj_data['TIMEreltoAV45_AVLT.%s' % count] = rel_time
+                if abs(rel_time_days) <= 93 and 'AVLT_3MTHS_AV45' not in new_subj_data:
+                    new_subj_data['AVLT_3MTHS_AV45'] = test_score
+                    new_subj_data['AVLT_3MTHSAV45_Date'] = test_date_string
+                if rel_time >= (-93.0/365.0):
+                    if test_score != '':
+                        post_values.append(test_score)
+                        post_times.append(diff_from_first)
+                    new_subj_data['TIMEpostAV45_AVLT.%s' % count] = rel_time
+                else:
+                    new_subj_data['TIMEpostAV45_AVLT.%s' % count] = ''
+            if av45_2 is not None and test_date != '':
+                rel_time_days = (test_date - av45_2).days 
+                if abs(rel_time_days) <= 93 and 'AVLT_AV45_2_3MTHS' not in new_subj_data:
+                    new_subj_data['AVLT_AV45_2_3MTHS'] = test_score
+                    new_subj_data['AVLT_AV45_2_DATE'] = test_date_string
+        # fill in the blanks
+        fill_in = ['AVLT_3MTHS_AV45', 'AVLT_3MTHSAV45_Date', 'AVLT_AV45_2_3MTHS','AVLT_AV45_2_DATE']
+        for f_key in fill_in:
+            if f_key not in new_subj_data:
+                new_subj_data[f_key] = ''
+
+        # get slopes
+        if len(all_values) >= 2:
+            try:
+                slope, intercept, r, p, stderr = stats.linregress(all_times, all_values)
+            except Exception as e:
+                print "%s vs %s" % (all_times, all_values)
+                raise e
+            '''
+            print "For %s vs %s" % (all_values, all_times)
+            print old_l['AVLT_slope_all']
+            print slope
+            '''
+            new_subj_data['AVLT_slope_all'] = round(slope,2)
+        else:
+            new_subj_data['AVLT_slope_all'] = ''
+        if len(post_values) >= 2:
+            slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            '''
+            print "For %s vs %s" % (post_values, post_times)
+            print old_l['AVLTslope_postAV45']
+            print slope
+            '''
+            new_subj_data['AVLTslope_postAV45'] = round(slope,2)
+        else:
+            new_subj_data['AVLTslope_postAV45'] = ''
+
+        # do comparison:
+        print "SUBJ: %s" % subj
+        print "first: %s, second: %s" % (bl_av45, av45_2)
+        print "first date: %s" % (first_scan_date)
+        changed = False
+        new_for_subj = 0
+        for k in sorted(new_subj_data.keys()):
+            old_value = old_l[k]
+            new_value = new_subj_data[k]
+            if k.startswith('AVLT.') and not bool(old_value) and bool(new_value):
+                new_values += 1
+                new_for_subj += 1
+                changed = True
+            print "\t%s: %s -> %s" % (k, old_value, new_value)
+        if changed:
+            total += 1
+        subj_new_counts[subj] = new_for_subj
+        
+        old_l.update(new_subj_data)
+        new_lines.append(old_l)
+
+    print "Total subj changed: %s" % total
+    print "Total new tests: %s" % new_values
+    #print "New test counts per subj: %s" % sorted(subj_new_counts.items(), key=lambda x: x[1], reverse=True)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+
 if __name__ == '__main__':
     # Input/output/lookup files
     master_file = "../FDG_AV45_COGdata.csv"
@@ -389,14 +519,20 @@ if __name__ == '__main__':
     # ADAS-COG files
     adni1_adas_file = '../cog_tests/ADASSCORES.csv'
     adnigo2_adas_file = '../cog_tests/ADAS_ADNIGO2.csv'
+    # Neuropsychological Battery file
+    neuro_battery_file = '../cog_tests/NEUROBAT.csv'
 
     # syncing pipeline
     old_headers, old_lines = parseCSV(master_file)
     new_headers, new_lines = syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
     new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
-
+    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=output_file)
 
 '''
+for graphing new counts:
+[['Test', 'Subj w/ New Test', 'Total New Tests'], ['MMSE', '598', '703'], ['ADAS-cog', '341', '360'], ['AVLT', '318', '333']]
+
+
 ADAS keys:
 
 'ADAScog_DATE1'
@@ -525,10 +661,5 @@ AVLT keys
 'PostAV45Followup'
 'AVLT_slope_all'
 'AVLTslope_postAV45'
-
-CDR keys
-
-'CDR_sum_boxes'
-
 
 '''

@@ -15,7 +15,7 @@ The following files are neceessary and need to be specified in the main function
     v3_sizes = "/Users/ahorng/Documents/AV45_preprocess_output_06_11_15/AV45_V3_roisize_11-Jun-2015_86.csv"
 
 '''
-
+import os
 import csv
 from itertools import chain, izip, repeat
 import numpy as np
@@ -23,6 +23,60 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import copy
 import codecs
+from glob import glob
+
+ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+                   'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
+                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
+                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
+                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
+                   'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
+                   'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
+                   'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
+                   'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
+                   'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
+                   'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
+                   'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
+                   'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
+                   'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
+                   'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
+                   'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
+                   'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
+                   'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
+                   'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
+                   'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
+                   'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
+                   'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
+                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
+                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
+                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
+DOD_FIELDNAMES = ['RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+                  'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
+                  'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
+                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
+                  'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
+                  'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
+                  'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
+                  'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
+                  'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
+                  'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
+                  'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
+                  'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
+                  'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
+                  'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
+                  'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
+                  'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
+                  'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
+                  'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
+                  'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
+                  'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
+                  'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
+                  'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
+                  'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
+                  'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
+                  'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
+
+
 
 def readHeaderAndLines(csv_file, limit=None):
     bl_lines = []
@@ -106,7 +160,7 @@ def combineMeansAndSize(mean_header, size_header, mean_row, size_row):
                   'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp']
     mean_values = dict(zip(mean_header, mean_row))
     size_values = dict(zip(size_header, size_row))
-    rid = int(mean_values['RID'])
+    rid = int(float(mean_values['RID']))
 
     header_list, mean_values, size_values = additionalCalculations(mean_header, mean_values, size_values)
     all_headers = []
@@ -148,89 +202,118 @@ def arrangePETDates(headers, lines):
             print "%s, %s" % (k, len(dates[k]))
     return dates
 
-def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry):
-    #et_meta_header, pet_meta_lines = readHeaderAndLines(meta_pet)
-    registry = arrangePETRegistry(*readHeaderAndLines(registry))
-    pet_dates = arrangePETDates(*readHeaderAndLines(meta_pet))
+def arrangeDODRegistry(headers, lines):
+    registry = defaultdict(list)
+    for l in lines:
+        data = dict(zip(headers,l))
+        subj = int(data['SCRNO'])
+        viscode = data['VISCODE'].strip().lower()
+        if viscode.startswith('sc'):
+            continue
+        date_string = data['EXAMDATE']
+        if date_string == '':
+            continue
+        date = datetime.strptime(date_string,'%Y-%m-%d')
+        registry[subj].append({'VISCODE': viscode,
+                               'EXAMDATE': date,
+                               'update_stamp': data['update_stamp']})
+    registry = dict(registry)
+    for k in registry.keys():
+        new_val = sorted(registry[k], key=lambda x: x['EXAMDATE'])
+        for v in new_val:
+            v['EXAMDATE'] = datetime.strftime(v['EXAMDATE'],'%m/%d/%y')
+        registry[k] = new_val
 
+        # convert examdate dates to string
+        if len(registry[k]) > 3:
+            print "MORE THAN 3: %s, %s" % (k, len(registry[k]))
+            print registry[k]
+    return registry
+
+def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry):
+    if registry is not None and meta_pet is not None:
+        registry = arrangePETRegistry(*readHeaderAndLines(registry))
+        pet_dates = arrangePETDates(*readHeaderAndLines(meta_pet))
+        agg_type = 'adni'
+    elif registry is not None and meta_pet is None:
+        registry = arrangeDODRegistry(*readHeaderAndLines(registry))
+        agg_type = 'dod'
+    else:
+        raise Exception("Invalid meta files")
     num_bl = int(bl_means.split('_')[-1].replace('.csv',''))
     num_v2 = int(v2_means.split('_')[-1].replace('.csv',''))
-    num_v3 = int(v3_means.split('_')[-1].replace('.csv',''))
     bl_header, bl_lines = readHeaderAndLines(bl_means, limit=num_bl)
     v2_header, v2_lines = readHeaderAndLines(v2_means, limit=num_v2)
-    v3_header, v3_lines = readHeaderAndLines(v3_means, limit=num_v3)
     bl_size_header, bl_size_lines = readHeaderAndLines(bl_sizes, limit=num_bl)
     v2_size_header, v2_size_lines = readHeaderAndLines(v2_sizes, limit=num_v2)
-    v3_size_header, v3_size_lines = readHeaderAndLines(v3_sizes, limit=num_v3)
     print "%s baseline scans" % len(bl_lines)
     print "%s visit 2 scans" % len(v2_lines)
-    print "%s visit 3 scans" % len(v3_lines)
+
+    if v3_means is not None and v3_sizes is not None:
+        num_v3 = int(v3_means.split('_')[-1].replace('.csv',''))
+        v3_header, v3_lines = readHeaderAndLines(v3_means, limit=num_v3)
+        v3_size_header, v3_size_lines = readHeaderAndLines(v3_sizes, limit=num_v3)
+        print "%s visit 3 scans" % len(v3_lines)
+        total_iter_chain = chain(izip(repeat('BL'), zip(bl_lines, bl_size_lines)), 
+                                 izip(repeat('V2'), zip(v2_lines, v2_size_lines)), 
+                                 izip(repeat('V3'), zip(v3_lines, v3_size_lines)))
+    else:
+        total_iter_chain = chain(izip(repeat('BL'), zip(bl_lines, bl_size_lines)), 
+                                 izip(repeat('V2'), zip(v2_lines, v2_size_lines)))
     mean_header = convertHeaderCodes(bl_header) # assuming headers are equivalent across files
     size_header = convertHeaderCodes(bl_size_header)
     # aggregate and write
-    fieldnames = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
-                  'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
-                  'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
-                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
-                  'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
-                  'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
-                  'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
-                  'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
-                  'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
-                  'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
-                  'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
-                  'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
-                  'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
-                  'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
-                  'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
-                  'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
-                  'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
-                  'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
-                  'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
-                  'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
-                  'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
-                  'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
-                  'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
-                  'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
-                  'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
+    if agg_type == 'adni':
+        fieldnames = ADNI_FIELDNAMES
+    elif agg_type == 'dod':
+        fieldnames = DOD_FIELDNAMES
     writer = csv.DictWriter(open(output, 'w'), fieldnames)
     writer.writeheader()
     count = 0
-    for vis, (mean_line, size_line) in chain(izip(repeat('BL'), zip(bl_lines, bl_size_lines)), 
-                                                 izip(repeat('V2'), zip(v2_lines, v2_size_lines)), 
-                                                 izip(repeat('V3'), zip(v3_lines, v3_size_lines))):
+    for vis, (mean_line, size_line) in total_iter_chain:
         rid, all_header, all_values = combineMeansAndSize(copy.copy(mean_header), copy.copy(size_header), mean_line, size_line)
 
         # add on metadata
-        subj_meta_list = pet_dates[rid]
-        date = None
-        if vis == 'BL':
-            date = subj_meta_list[0]
-        elif vis == 'V2':
-            date = subj_meta_list[1]
-        elif vis == 'V3':
-            date = subj_meta_list[2]
-        if date is None:
-            raise Exception("Date not found: %s on %s" % (rid, vis))
+        if agg_type == 'adni':
+            subj_meta_list = pet_dates[rid]
+            date = None
+            if vis == 'BL':
+                date = subj_meta_list[0]
+            elif vis == 'V2':
+                date = subj_meta_list[1]
+            elif vis == 'V3':
+                date = subj_meta_list[2]
+            if date is None:
+                raise Exception("Date not found: %s on %s" % (rid, vis))
 
-        registry_list = registry[rid]
-        cap_date = date+timedelta(days=30)
-        possible_dates = [_ for _ in registry_list.keys() if _ <= cap_date]
-        if len(possible_dates) == 0:
-            raise Exception("No possible dates for %s (%s): %s" % (rid, date, registry_list.keys()))
-        registry_date = sorted(possible_dates, key=lambda x: cap_date-x)[0]
-        metadata = registry_list[registry_date]
-        metadata['EXAMDATE'] = date.strftime('%Y-%m-%d')
+            registry_list = registry[rid]
+            cap_date = date+timedelta(days=30)
+            possible_dates = [_ for _ in registry_list.keys() if _ <= cap_date]
+            if len(possible_dates) == 0:
+                raise Exception("No possible dates for %s (%s): %s" % (rid, date, registry_list.keys()))
+            registry_date = sorted(possible_dates, key=lambda x: cap_date-x)[0]
+            metadata = registry_list[registry_date]
+            metadata['EXAMDATE'] = date.strftime('%Y-%m-%d')
 
-        if (date-registry_date).days > 30:
-            print "%s, %s: %s, %s -> %s (%s days)" % (rid, vis, metadata, date, registry_date, (date-registry_date).days)
-
+            if (date-registry_date).days > 30:
+                print "%s, %s: %s, %s -> %s (%s days)" % (rid, vis, metadata, date, registry_date, (date-registry_date).days)
+        elif agg_type == 'dod':
+            subj_registry = registry[rid]
+            metadata = None
+            if vis == 'BL':
+                metadata = subj_registry[0]
+            elif vis == 'V2':
+                metadata = subj_registry[1]
+            elif vis == 'V3':
+                metadata = subj_registry[2]
+            if metadata is None:
+                raise Exception("Date not found: %s on %s" % (rid, vis))
         # insert viscode, viscode2, update_stamp
         data = dict(zip(all_header, all_values))
         data.update(metadata)
         for k in data.keys():
             if k not in fieldnames:
-                data.pop(k,None)
+                data.pop(k, None)
         writer.writerow(data)
 
 def additionalCalculations(headers, mean_values, size_values):
@@ -269,16 +352,36 @@ def additionalCalculations(headers, mean_values, size_values):
     return (headers, mean_values, size_values)
 
 
+def findPreprocessOutputFiles(folder_name):
+    bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
+    for filename in os.listdir(folder_name):
+        if "BL_means" in filename:
+            bl_means = os.path.join(folder_name, filename)
+        elif "V2_means" in filename:
+            v2_means = os.path.join(folder_name, filename)
+        elif "V3_means" in filename:
+            v3_means = os.path.join(folder_name, filename)
+        elif "BL_roisize" in filename:
+            bl_sizes = os.path.join(folder_name, filename)
+        elif "V2_roisize" in filename:
+            v2_sizes = os.path.join(folder_name, filename)
+        elif "V3_roisize" in filename:
+            v3_sizes = os.path.join(folder_name, filename)
+    return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
+
 if __name__ == "__main__":
-    output = '../UCBERKELEYAV45_06_22_15.csv'
+    output = '../UCBERKELEYAV45_DOD_06_25_15.csv'
+    # for adni av45
+    '''
     registry = "../docs/registry_clean.csv"
     meta_pet = "../docs/PET_META_LIST_edited.csv"
-    bl_means = "../docs/AV45_preprocess_output_06_22_15/AV45_BL_means_24-Jun-2015_1089.csv"
-    v2_means = "../docs/AV45_preprocess_output_06_22_15/AV45_V2_means_24-Jun-2015_619.csv"
-    v3_means = "../docs/AV45_preprocess_output_06_22_15/AV45_V3_means_24-Jun-2015_92.csv"
-    bl_sizes = "../docs/AV45_preprocess_output_06_22_15/AV45_BL_roisize_24-Jun-2015_1089.csv"
-    v2_sizes = "../docs/AV45_preprocess_output_06_22_15/AV45_V2_roisize_24-Jun-2015_619.csv"
-    v3_sizes = "../docs/AV45_preprocess_output_06_22_15/AV45_V3_roisize_24-Jun-2015_92.csv"
+    '''
+    # for adni dod
+    registry = "../docs/DOD_REGISTRY.csv"
+    meta_pet = None
+
+    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_06_25_15'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry)
 
 
