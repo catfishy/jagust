@@ -50,6 +50,8 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         viscode = line['VISCODE'].strip().lower()
         examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
         totscore = float(line['TOTAL11'])
+        if totscore < 0:
+            totscore = ''
         adas_by_subj[subj].append({'VISCODE': viscode,
                                    'VISCODE2': None,
                                    'EXAMDATE': examdate,
@@ -63,6 +65,8 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
             print "%s (%s, %s) has missing totscore" % (subj, viscode, viscode2)
             continue
         totscore = int(raw_totscore)
+        if totscore < 0:
+            totscore = ''
         examdate = None
         subj_listings = registry[subj]
         for listing in subj_listings:
@@ -129,10 +133,13 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                 test_results = tests[i]
                 test_date = test_results['EXAMDATE']
                 test_date_string = test_date.strftime("%m/%d/%y")
-                test_score = round(float(test_results['TOTSCORE']),2) # CAST TO INT
+                test_score = test_results['TOTSCORE']
+                if test_score != '':
+                    test_score = round(float(test_score),2) # CAST TO INT
                 diff_from_first = round((test_date-first_scan_date).days / 365.0, 2)
-                all_values.append(test_score)
-                all_times.append(diff_from_first)
+                if test_score != '':
+                    all_values.append(test_score)
+                    all_times.append(diff_from_first)
             count = i+1
             new_subj_data['ADAScog_DATE%s' % count] = test_date_string
             new_subj_data['ADAScog.%s' % count] = test_score
@@ -145,8 +152,9 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                     new_subj_data['ADAS_3MTH_AV45'] = test_score
                     new_subj_data['ADAS_3MTHS_AV45DATE'] = test_date_string
                 if rel_time >= (-93.0/365.0):
-                    post_values.append(test_score)
-                    post_times.append(diff_from_first)
+                    if test_score != '':
+                        post_values.append(test_score)
+                        post_times.append(diff_from_first)
                     new_subj_data['TIMEpostAV45_ADAS.%s' % count] = rel_time
                 else:
                     new_subj_data['TIMEpostAV45_ADAS.%s' % count] = ''
