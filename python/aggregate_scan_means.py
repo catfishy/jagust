@@ -370,17 +370,21 @@ def findPreprocessOutputFiles(folder_name):
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 if __name__ == "__main__":
-    output = '../UCBERKELEYAV45_DOD_06_25_15.csv'
+    output = '../output/UCBERKELEYAV45_06_25_15.csv'
+    
     # for adni av45
-    '''
     registry = "../docs/registry_clean.csv"
     meta_pet = "../docs/PET_META_LIST_edited.csv"
-    '''
+    
+
     # for adni dod
+    '''
     registry = "../docs/DOD_REGISTRY.csv"
     meta_pet = None
+    '''
 
-    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_06_25_15'
+
+    preprocess_folder =  '../docs/AV45_preprocess_output_06_25_15'
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry)
 

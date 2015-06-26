@@ -266,6 +266,8 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
                     test_score = ''
                 else:
                     test_score = int(test_results['MMSCORE'])
+                    if test_score < 0:
+                        test_score = ''
 
             count = i+1
             new_subj_data['MMSE_DATE%s' % count] = test_date
