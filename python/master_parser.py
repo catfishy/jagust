@@ -7,6 +7,7 @@ tr -d '\000' < file1 > file2
 
 '''
 import csv
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 from scipy import stats
@@ -24,12 +25,63 @@ def importRegistry(registry_file):
         if data['EXAMDATE'] == '':
             continue
         subj = int(data['RID'])
-        date = datetime.strptime(data['EXAMDATE'],'%Y-%m-%d')
+        date = None
+        try:
+            date = datetime.strptime(data['EXAMDATE'],'%Y-%m-%d')
+        except Exception as e:
+            pass
+        try:
+            date = datetime.strptime(data['EXAMDATE'],'%m/%d/%y')
+        except Exception as e:
+            pass
+        if date is None:
+            continue
         registry[subj].append({'VISCODE': data['VISCODE'].strip().lower(),
                                'VISCODE2': data['VISCODE2'].strip().lower(),
                                'date': date,
                                'update_stamp': data['update_stamp']})
     return registry
+
+
+def importARM(arm_file):
+    '''
+        1=NL - (ADNI1 1.5T only)
+        2=LMCI - (ADNI1 1.5T only)
+        3=AD - (ADNI1 1.5T only)
+        4=NL - (ADNI1 PET+1.5T)
+        5=LMCI - (ADNI1 PET+1.5T)
+        6=AD - (ADNI1 PET+1.5T)
+        7=NL - (ADNI1 3T+1.5T)
+        8=LMCI - (ADNI1 3T+1.5T)
+        9=AD - (ADNI1 3T+1.5T)
+        10=EMCI; 
+        11=SMC - (Significant Memory Concern)
+    '''
+    translation = {1: 'N',
+                   2: 'LMCI',
+                   3: 'AD',
+                   4: 'N',
+                   5: 'LMCI',
+                   6: 'AD',
+                   7: 'N',
+                   8: 'LMCI',
+                   9: 'AD',
+                   10: 'EMCI',
+                   11: 'SMC'}
+    headers, lines = parseCSV(arm_file)
+    arms = defaultdict(list)
+    for data in lines:
+        subj = int(data['ID'])
+        status = data['ARM'].strip()
+        if status == '':
+            continue
+        status = int(status)
+        userdate = datetime.strptime(data['USERDATE'],'%Y-%m-%d')
+        # convert status
+        status_str = translation[status]
+        arms[subj].append({'USERDATE': userdate,
+                           'STATUS': status_str})
+    return dict(arms)
 
 def dumpCSV(file_path, headers, lines):
     writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
@@ -172,29 +224,19 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         # get slopes
         if len(all_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(all_times, all_values)
-            '''
-            print "For %s vs %s" % (all_values, all_times)
-            print old_l['ADAS_slope_all']
-            print slope
-            '''
             new_subj_data['ADAS_slope_all'] = round(slope,2)
         else:
             new_subj_data['ADAS_slope_all'] = ''
         if len(post_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
-            '''
-            print "For %s vs %s" % (post_values, post_times)
-            print old_l['ADASslope_postAV45']
-            print slope
-            '''
             new_subj_data['ADASslope_postAV45'] = round(slope,2)
         else:
             new_subj_data['ADASslope_postAV45'] = ''
 
         
         # do comparison:
-        print "SUBJ: %s" % subj
-        print "first: %s, second: %s" % (bl_av45, av45_2)
+        #print "SUBJ: %s" % subj
+        #print "first: %s, second: %s" % (bl_av45, av45_2)
         changed = False
         for k in sorted(new_subj_data.keys()):
             old_value = old_l[k]
@@ -202,7 +244,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
             if k.startswith('ADAScog.') and old_value == '' and new_value != '':
                 new_values += 1
                 changed = True
-            print "\t%s: %s -> %s" % (k, old_value, new_value)
+            #print "\t%s: %s -> %s" % (k, old_value, new_value)
         if changed:
             total += 1
         
@@ -468,29 +510,19 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
             except Exception as e:
                 print "%s vs %s" % (all_times, all_values)
                 raise e
-            '''
-            print "For %s vs %s" % (all_values, all_times)
-            print old_l['AVLT_slope_all']
-            print slope
-            '''
             new_subj_data['AVLT_slope_all'] = round(slope,2)
         else:
             new_subj_data['AVLT_slope_all'] = ''
         if len(post_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
-            '''
-            print "For %s vs %s" % (post_values, post_times)
-            print old_l['AVLTslope_postAV45']
-            print slope
-            '''
             new_subj_data['AVLTslope_postAV45'] = round(slope,2)
         else:
             new_subj_data['AVLTslope_postAV45'] = ''
 
         # do comparison:
-        print "SUBJ: %s" % subj
-        print "first: %s, second: %s" % (bl_av45, av45_2)
-        print "first date: %s" % (first_scan_date)
+        #print "SUBJ: %s" % subj
+        #print "first: %s, second: %s" % (bl_av45, av45_2)
+        #print "first date: %s" % (first_scan_date)
         changed = False
         new_for_subj = 0
         for k in sorted(new_subj_data.keys()):
@@ -500,7 +532,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                 new_values += 1
                 new_for_subj += 1
                 changed = True
-            print "\t%s: %s -> %s" % (k, old_value, new_value)
+            #print "\t%s: %s -> %s" % (k, old_value, new_value)
         if changed:
             total += 1
         subj_new_counts[subj] = new_for_subj
@@ -519,11 +551,284 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
     return (new_headers, new_lines)
 
 
+def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file, dump_to=None):
+    diag_headers, diag_lines = parseCSV(diag_file)
+    registry = importRegistry(registry_file)
+    arm = importARM(arm_file)
+
+    # restructure by subject
+    diag_by_subj = defaultdict(list)
+    for line in diag_lines:
+        subj = int(line['RID'])
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        #if viscode == 'sc' or viscode2 == 'sc':
+        #    continue
+        examdate = line['EXAMDATE']
+        change = line['DXCHANGE'].strip()
+        current = line['DXCURREN'].strip()
+        conv = line['DXCONV'].strip()
+        conv_type = line['DXCONTYP'].replace('-4','').strip()
+        rev_type = line['DXREV'].replace('-4','').strip()
+        if examdate:
+            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+        else:
+            subj_listings = registry[subj]
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['date']
+                    break
+            if not examdate:
+                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+                continue
+
+        '''
+            DXCHANGE: (ADNI2 DIAG CHANGE): 
+                1=Stable: NL to NL; 
+                2=Stable: MCI to MCI; 
+                3=Stable: Dementia to Dementia; 
+                4=Conversion: NL to MCI; 
+                5=Conversion: MCI to Dementia; 
+                6=Conversion: NL to Dementia; 
+                7=Reversion: MCI to NL; 
+                8=Reversion: Dementia to MCI; 
+                9=Reversion: Dementia to NL
+            
+            DXCURREN: (CURRENT DIAGNOSIS): 
+                1=NL;
+                2=MCI;
+                3=AD
+            DXCONV: 
+                1=Yes - Conversion; 
+                2=Yes - Reversion; 
+                0=No
+            DXCONTYP: 
+                1=Normal Control to MCI; 
+                2=Normal Control to AD; 
+                3=MCI to AD
+            DXREV: 
+                1=MCI to Normal Control; 
+                2=AD to MCI; 
+                3=AD to Normal Control
+        '''
+
+        # if adni 1 coding, convert to adni2 coding
+        if change == '' and current != '':
+            if conv == '1':
+                # conversion
+                if conv_type == '1':
+                    change = '4'
+                elif conv_type == '2':
+                    change = '6'
+                elif conv_type == '3':
+                    change = '5'
+            elif conv == '2':
+                # reversion
+                if rev_type == '1':
+                    change = '7'
+                elif rev_type == '2':
+                    change = '8'
+                elif rev_type == '3':
+                    change = '9'
+            elif conv == '0':
+                # stable
+                if current == '1':
+                    change = '1'
+                elif current == '2':
+                    change = '2'
+                elif current == '3':
+                    change = '3'
+
+        if change == '':
+            print "Couldn't convert to adni2 coding: %s, %s, %s" % (subj, viscode, viscode2)
+            continue
+
+        if change in set(['1','7','9']):
+            diag = 'N'
+        elif change in set(['2','4','8']):
+            diag = 'MCI'
+        elif change in set(['3','5','6']):
+            diag = 'AD'
+        else:
+            print "Invalid change code: %s" % change
+            continue
+
+        diag_by_subj[subj].append({'VISCODE': viscode,
+                                   'VISCODE2': viscode2,
+                                   'EXAMDATE': examdate,
+                                   'change': change,
+                                   'diag': diag})
+    diag_by_subj = dict(diag_by_subj)
+
+    new_headers = old_headers 
+    new_lines = []
+    new_values = 0
+    total = 0
+
+    pivot_date = datetime(day=14, month=10, year=2014)
+    pivot_date_closest_diag_key = 'Closest_DX_Jun15'
+    pivot_date_closest_date_key = 'DX_Jun15_closestdate'
+    pivot_diag_regex = re.compile('^Closest_DX_')
+    pivot_date_regex = re.compile('^DX_.*_closestdate$')
+
+    # replace old pivot date keys
+    for i in range(len(new_headers)):
+        if re.search(pivot_diag_regex, new_headers[i]):
+            new_headers[i] = pivot_date_closest_diag_key
+        elif re.search(pivot_date_regex, new_headers[i]):
+            new_headers[i] = pivot_date_closest_date_key
+
+    for linenum, old_l in enumerate(old_lines):
+        # get subject ID
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            new_lines.append(old_l)
+            continue
+
+        # get subject diagnoses
+        subj_diags = diag_by_subj.get(subj,None)
+        if subj_diags is None:
+            print "No diag data found for %s" % subj
+            new_lines.append(old_l)
+            continue
+        else:
+            subj_diags = sorted(subj_diags, key=lambda x: x['EXAMDATE'])
+
+        # Get AV45 Scan dates
+        if old_l['AV45_Date'] != '':
+            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
+        else:
+            bl_av45 = None
+        if old_l['AV45_2_Date'] != '':
+            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
+        else:
+            av45_2 = None
+
+        # check arm for type of MCI
+        mci_type = 'LMCI'
+        # TODO: WHATS THE RIGHT WAY TO DETERMINE MCI TYPE??????
+        '''
+        if subj in arm:
+            sorted_arm = sorted(arm[subj], key=lambda x: x['USERDATE'])
+            init_diags = list(set([_['STATUS'] for _ in sorted_arm]))
+            for init_diag in init_diags:
+                if init_diag in set(['LMCI','EMCI','SMC']):
+                    mci_type = init_diag
+        '''
+
+        # find very first visit date in registry
+        sorted_registry = sorted(registry[subj], key=lambda x: x['date'])
+        baseline_registry = sorted_registry[0]
+
+        # find pivot data point
+        sorted_by_pivot = sorted(subj_diags, key=lambda x: abs(x['EXAMDATE'] - pivot_date))
+        closest_to_pivot = sorted_by_pivot[0]
+
+        '''
+        Baseline: date
+        Init_Diagnosis: N/EMCI/LMCI/AD
+        Diag@AV45_long: N/EMCI/LMCI/AD
+        Diag@AV45_2_long: N/EMCI/LMCI/AD
+        Closest_DX_xxx: N/EMCI/LMCI/AD
+        DX_xxx_closestdate: date
+        MCItoADConv(fromav45): 0/1
+        MCItoADConvDate: date
+        MCItoADconv_: date
+        AV45_MCItoAD_ConvTime: yrs
+        Baseline_MCItoAD_ConvTime: yrs
+        FollowupTimetoDX: yrs
+        '''
+
+        new_data = {'MCItoADConv(fromav45)': '0',
+                    'MCItoADConvDate': '',
+                    'MCItoADconv_': '',
+                    'AV45_MCItoAD_ConvTime': '',
+                    'Baseline_MCItoAD_ConvTime': '',
+                    'Diag@AV45_long': '',
+                    'Diag@AV45_2_long': '',
+                    'FollowupTimetoDX': (pivot_date - baseline_registry['date']).days / 365.0,
+                    'Baseline': baseline_registry['date'],
+                    'Init_Diagnosis': subj_diags[0]['diag'],
+                    pivot_date_closest_diag_key: closest_to_pivot['diag'],
+                    pivot_date_closest_date_key: closest_to_pivot['EXAMDATE']}
+        
+        if bl_av45 is not None:
+            av45_bl_closest = sorted(subj_diags, key=lambda x: abs(bl_av45-x['EXAMDATE']))[0]
+            if abs(bl_av45 - av45_bl_closest['EXAMDATE']).days < 550:
+                new_data['Diag@AV45_long'] = av45_bl_closest['diag']
+        if av45_2 is not None:
+            av45_2_closest = sorted(subj_diags, key=lambda x: abs(av45_2-x['EXAMDATE']))[0]
+            if abs(av45_2 - av45_2_closest['EXAMDATE']).days < 550:
+                new_data['Diag@AV45_2_long'] = av45_2_closest['diag']
+
+        for i, diag_row in enumerate(subj_diags):
+            if diag_row['change'] == '5':
+                new_data['MCItoADConv(fromav45)'] = '1'
+                new_data['MCItoADConvDate'] = new_data['MCItoADconv_'] = diag_row['EXAMDATE']
+                new_data['Baseline_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - new_data['Baseline']).days / 365.0
+                if bl_av45 is not None:
+                    new_data['AV45_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - bl_av45).days / 365.0
+                
+                    
+        # convert datetimes to strings
+        for k in new_data.keys():
+            if isinstance(new_data[k], datetime):
+                new_data[k] = datetime.strftime(new_data[k], '%m/%d/%y')
+            elif isinstance(new_data[k], float):
+                new_data[k] = str(round(new_data[k],2))
+            elif new_data[k] == 'MCI':
+                new_data[k] = mci_type
+            elif new_data[k] is None:
+                new_data[k] = ''
+        # compare
+        print "SUBJ: %s" % subj
+        print 'MCItype: %s' % mci_type
+        print "ARM: %s" % arm.get(subj,[])
+        print "%s, %s : %s" % (bl_av45, av45_2, [(str(_['EXAMDATE']),_['diag']) for _ in subj_diags])
+        changed = False
+        ignore_change = set([pivot_date_closest_diag_key, 
+                             pivot_date_closest_date_key, 
+                             'FollowupTimetoDX', 
+                             'MCItoADConvDate', 
+                             'MCItoADconv_',
+                             'AV45_MCItoAD_ConvTime',
+                             'MCItoADConv(fromav45)',
+                             'Baseline_MCItoAD_ConvTime'])
+        
+        for k in sorted(new_data.keys()):
+            old_value = old_l.get(k)
+            new_value = new_data.get(k)
+            if k not in ignore_change and old_value != new_value:
+                changed = True
+        if changed:
+            for k in sorted(new_data.keys()):
+                if k not in ignore_change:
+                    old_value = old_l.get(k)
+                    new_value = new_data.get(k)
+                    print "\t%s: %s -> %s" % (k, old_value, new_value)
+            new_values += 1
+
+
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    print "Changed: %s" % new_values
+    print "Total: %s" % len(new_lines)
+
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
 if __name__ == '__main__':
     # Input/output/lookup files
     master_file = "../FDG_AV45_COGdata.csv"
     output_file = "../FDG_AV45_COGdata_synced.csv"
     registry_file = "../docs/registry_clean.csv"
+    arm_file = "../docs/ARM.csv"
     # MMSE files
     mmse_file = "../cog_tests/MMSE.csv"
     # ADAS-COG files
@@ -531,145 +836,32 @@ if __name__ == '__main__':
     adnigo2_adas_file = '../cog_tests/ADAS_ADNIGO2.csv'
     # Neuropsychological Battery file
     neuro_battery_file = '../cog_tests/NEUROBAT.csv'
+    # Diagnosis file
+    diagnosis_file = '../docs/DXSUM_PDXCONV_ADNIALL.csv'
+
 
     # syncing pipeline
-    old_headers, old_lines = parseCSV(master_file)
-    new_headers, new_lines = syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
-    new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
-    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=output_file)
+    new_headers, new_lines = parseCSV(master_file)
+    #new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file, dump_to=None)
+    #new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
+    #new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, dump_to=None)
+
 
 '''
 for graphing new counts:
 [['Test', 'Subj w/ New Test', 'Total New Tests'], ['MMSE', '598', '703'], ['ADAS-cog', '341', '360'], ['AVLT', '318', '333']]
 
 
-ADAS keys:
-
-'ADAScog_DATE1'
-'ADAScog_DATE2'
-'ADAScog_DATE3'
-'ADAScog_DATE4'
-'ADAScog_DATE5'
-'ADAScog_DATE6'
-'ADAScog_DATE7'
-'ADAScog_DATE8'
-'ADAScog_DATE9'
-'ADAScog_DATE10'
-'ADAScog_DATE11'
-'ADAScog.1'
-'ADAScog.2'
-'ADAScog.3'
-'ADAScog.4'
-'ADAScog.5'
-'ADAScog.6'
-'ADAScog.7'
-'ADAScog.8'
-'ADAScog.9'
-'ADAScog.10'
-'ADAScog.11'
-'TIME_ADAS.1'
-'TIME_ADAS.2'
-'TIME_ADAS.3'
-'TIME_ADAS.4'
-'TIME_ADAS.5'
-'TIME_ADAS.6'
-'TIME_ADAS.7'
-'TIME_ADAS.8'
-'TIME_ADAS.9'
-'TIME_ADAS.10'
-'TIME_ADAS.11'
-'TIMEreltoAV45_ADAS.1'
-'TIMEreltoAV45_ADAS.2'
-'TIMEreltoAV45_ADAS.3'
-'TIMEreltoAV45_ADAS.4'
-'TIMEreltoAV45_ADAS.5'
-'TIMEreltoAV45_ADAS.6'
-'TIMEreltoAV45_ADAS.7'
-'TIMEreltoAV45_ADAS.8'
-'TIMEreltoAV45_ADAS.9'
-'TIMEreltoAV45_ADAS.10'
-'TIMEreltoAV45_ADAS.11'
-'TIMEpostAV45_ADAS.1'
-'TIMEpostAV45_ADAS.2'
-'TIMEpostAV45_ADAS.3'
-'TIMEpostAV45_ADAS.4'
-'TIMEpostAV45_ADAS.5'
-'TIMEpostAV45_ADAS.6'
-'TIMEpostAV45_ADAS.7'
-'TIMEpostAV45_ADAS.8'
-'TIMEpostAV45_ADAS.9'
-'TIMEpostAV45_ADAS.10'
-'TIMEpostAV45_ADAS.11'
-'ADAS_3MTH_AV45'
-'ADAS_3MTHS_AV45DATE'
-'ADAS_AV45_2_3MTHS'
-'ADAS_AV45_2_DATE'
-'ADAS_slope_all'
-'ADASslope_postAV45'
-
-AVLT keys
-
-'AVLT_DATE.1'
-'AVLT_DATE.2'
-'AVLT_DATE.3'
-'AVLT_DATE.4'
-'AVLT_DATE.5'
-'AVLT_DATE.6'
-'AVLT_DATE.7'
-'AVLT_DATE.8'
-'AVLT_DATE.9'
-'AVLT_DATE.10'
-'AVLT_DATE.11'
-'AVLT.1'
-'AVLT.2'
-'AVLT.3'
-'AVLT.4'
-'AVLT.5'
-'AVLT.6'
-'AVLT.7'
-'AVLT.8'
-'AVLT.9'
-'AVLT.10'
-'AVLT.11'
-'TIME_AVLT.1'
-'TIME_AVLT.2'
-'TIME_AVLT.3'
-'TIME_AVLT.4'
-'TIME_AVLT.5'
-'TIME_AVLT.6'
-'TIME_AVLT.7'
-'TIME_AVLT.8'
-'TIME_AVLT.9'
-'TIME_AVLT.10'
-'TIME_AVLT.11'
-'TIMEreltoAV45_AVLT.1'
-'TIMEreltoAV45_AVLT.2'
-'TIMEreltoAV45_AVLT.3'
-'TIMEreltoAV45_AVLT.4'
-'TIMEreltoAV45_AVLT.5'
-'TIMEreltoAV45_AVLT.6'
-'TIMEreltoAV45_AVLT.7'
-'TIMEreltoAV45_AVLT.8'
-'TIMEreltoAV45_AVLT.9'
-'TIMEreltoAV45_AVLT.10'
-'TIMEreltoAV45_AVLT.11'
-'TIMEpostAV45_AVLT.1'
-'TIMEpostAV45_AVLT.2'
-'TIMEpostAV45_AVLT.3'
-'TIMEpostAV45_AVLT.4'
-'TIMEpostAV45_AVLT.5'
-'TIMEpostAV45_AVLT.6'
-'TIMEpostAV45_AVLT.7'
-'TIMEpostAV45_AVLT.8'
-'TIMEpostAV45_AVLT.9'
-'TIMEpostAV45_AVLT.10'
-'TIMEpostAV45_AVLT.11'
-'AVLT_3MTHS_AV45'
-'AVLT_3MTHSAV45_Date'
-'AVLT_AV45_2_3MTHS'
-'AVLT_AV45_2_DATE'
-'PostAV45Followup'
-'AVLT_slope_all'
-'AVLTslope_postAV45'
+for ARM:
+    1=NL - 1.5T only;
+    2=MCI - 1.5T only;
+    3=AD - 1.5T only;
+    4=NL - PET+1.5T;
+    5=MCI - PET+1.5T;
+    6=AD - PET+1.5T;
+    7=NL - 3T+1.5T;
+    8=MCI - 3T+1.5T;
+    9=AD - 3T+1.5T;
 
 '''
