@@ -42,6 +42,14 @@ def importRegistry(registry_file):
                                'update_stamp': data['update_stamp']})
     return registry
 
+def importPetMETA(pet_meta_file):
+    headers, lines = parseCSV(pet_meta_file)
+    pets = defaultdict(list)
+    for row in lines:
+        subj = int(row['Subject'].split('_')[-1].strip())
+        new_date = datetime.strptime(row['Scan Date'], '%m/%d/%y')
+        pets[subj].append(new_date)
+    return dict(pets)
 
 def importARM(arm_file):
     '''
@@ -71,7 +79,7 @@ def importARM(arm_file):
     headers, lines = parseCSV(arm_file)
     arms = defaultdict(list)
     for data in lines:
-        subj = int(data['ID'])
+        subj = int(data['RID'])
         status = data['ARM'].strip()
         if status == '':
             continue
@@ -87,7 +95,8 @@ def dumpCSV(file_path, headers, lines):
     writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
     writer.writeheader()
     for l in lines:
-        writer.writerow(l)
+        filtered_line = {k:v for k,v in l.iteritems() if k in headers}
+        writer.writerow(filtered_line)
 
 
 def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None):
@@ -409,7 +418,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                 score_sum += new_score
             test_score = score_sum
         except Exception as e:
-            print "Invalid scores found for %s (%s, %s): %s" % (subj, viscode, viscode2, tots)
+            #print "Invalid scores found for %s (%s, %s): %s" % (subj, viscode, viscode2, tots)
             continue
 
         avlt_by_subj[subj].append({'VISCODE': viscode,
@@ -551,10 +560,11 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
     return (new_headers, new_lines)
 
 
-def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file, dump_to=None):
+def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file, pet_meta_file, dump_to=None):
     diag_headers, diag_lines = parseCSV(diag_file)
     registry = importRegistry(registry_file)
     arm = importARM(arm_file)
+    pet_meta = importPetMETA(pet_meta_file)
 
     # restructure by subject
     diag_by_subj = defaultdict(list)
@@ -643,26 +653,16 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
             print "Couldn't convert to adni2 coding: %s, %s, %s" % (subj, viscode, viscode2)
             continue
 
-        if change in set(['1','7','9']):
-            diag = 'N'
-        elif change in set(['2','4','8']):
-            diag = 'MCI'
-        elif change in set(['3','5','6']):
-            diag = 'AD'
-        else:
-            print "Invalid change code: %s" % change
-            continue
-
         diag_by_subj[subj].append({'VISCODE': viscode,
                                    'VISCODE2': viscode2,
                                    'EXAMDATE': examdate,
-                                   'change': change,
-                                   'diag': diag})
+                                   'change': int(change)})
     diag_by_subj = dict(diag_by_subj)
 
     new_headers = old_headers 
     new_lines = []
     new_values = 0
+    new_conversions = 0
     total = 0
 
     pivot_date = datetime(day=14, month=10, year=2014)
@@ -677,6 +677,10 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
             new_headers[i] = pivot_date_closest_diag_key
         elif re.search(pivot_date_regex, new_headers[i]):
             new_headers[i] = pivot_date_closest_date_key
+
+    # add 'Diag@AV45_3_long' header if not there
+    if 'Diag@AV45_3_long' not in new_headers:
+        new_headers.insert(new_headers.index('Diag@AV45_2_long')+1, 'Diag@AV45_3_long')
 
     for linenum, old_l in enumerate(old_lines):
         # get subject ID
@@ -695,30 +699,64 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         else:
             subj_diags = sorted(subj_diags, key=lambda x: x['EXAMDATE'])
 
-        # Get AV45 Scan dates
-        if old_l['AV45_Date'] != '':
-            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
-        else:
-            bl_av45 = None
-        if old_l['AV45_2_Date'] != '':
-            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
-        else:
-            av45_2 = None
-
-        # check arm for type of MCI
-        mci_type = 'LMCI'
-        # TODO: WHATS THE RIGHT WAY TO DETERMINE MCI TYPE??????
-        '''
+        # check arm for init diag
+        init_diag = None
         if subj in arm:
             sorted_arm = sorted(arm[subj], key=lambda x: x['USERDATE'])
             init_diags = list(set([_['STATUS'] for _ in sorted_arm]))
-            for init_diag in init_diags:
-                if init_diag in set(['LMCI','EMCI','SMC']):
-                    mci_type = init_diag
-        '''
+            init_diag = init_diags[-1]
 
-        # find very first visit date in registry
-        sorted_registry = sorted(registry[subj], key=lambda x: x['date'])
+        if init_diag is None:
+            raise Exception("NO INITIAL DIAGNOSIS FOUND FOR %s" % subj)
+
+        # get mci type
+        mci_type = 'LMCI'
+        if init_diag in set(['LMCI', 'EMCI', 'SMC']):
+            mci_type = init_diag
+
+        # convert codes to diagnoses base on init diag
+        for idx in range(len(subj_diags)):
+            if idx == 0:
+                subj_diags[idx]['diag'] = init_diag
+                continue
+            change = subj_diags[idx]['change']
+            if change in set([1,2,3]): # stable
+                subj_diags[idx]['diag'] = subj_diags[idx-1]['diag']
+            elif change in set([5,6]): # conversion to AD
+                subj_diags[idx]['diag'] = 'AD'
+            elif change in set([4]): # conversion to MCI
+                subj_diags[idx]['diag'] = mci_type
+            elif change in set([8]): # reversion to MCI
+                subj_diags[idx]['diag'] = mci_type
+            elif change in set([7,9]): # reversion to normal
+                subj_diags[idx]['diag'] = 'N'
+
+        # Get AV45 Scan dates
+        patient_pets = sorted(pet_meta.get(subj,[]))
+        if old_l['AV45_Date'] != '':
+            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
+        elif len(patient_pets) >= 1:
+            bl_av45 = patient_pets[0]
+        else:
+            bl_av45 = ''
+        if old_l['AV45_2_Date'] != '':
+            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
+        elif len(patient_pets) >= 2:
+            av45_2 = patient_pets[1]
+        else:
+            av45_2 = ''
+        if old_l['AV45_3_Date'] != '':
+            av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
+        elif len(patient_pets) >= 3:
+            av45_3 = patient_pets[2]
+        else:
+            av45_3 = ''
+
+
+        
+        # find very first visit date in registry (excluding scmri)
+        subj_registry = [_ for _ in registry[subj] if _['VISCODE'] != 'scmri' and _['VISCODE2'] != 'scmri']
+        sorted_registry = sorted(subj_registry, key=lambda x: x['date'])
         baseline_registry = sorted_registry[0]
 
         # find pivot data point
@@ -740,34 +778,44 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         FollowupTimetoDX: yrs
         '''
 
-        new_data = {'MCItoADConv(fromav45)': '0',
+        new_data = {'AV45_Date': bl_av45,
+                    'AV45_2_Date': av45_2,
+                    'AV45_3_Date': av45_3,
+                    'MCItoADConv(fromav45)': '0',
                     'MCItoADConvDate': '',
                     'MCItoADconv_': '',
                     'AV45_MCItoAD_ConvTime': '',
                     'Baseline_MCItoAD_ConvTime': '',
                     'Diag@AV45_long': '',
                     'Diag@AV45_2_long': '',
+                    'Diag@AV45_3_long': '',
                     'FollowupTimetoDX': (pivot_date - baseline_registry['date']).days / 365.0,
                     'Baseline': baseline_registry['date'],
-                    'Init_Diagnosis': subj_diags[0]['diag'],
+                    'Init_Diagnosis': init_diag,
                     pivot_date_closest_diag_key: closest_to_pivot['diag'],
                     pivot_date_closest_date_key: closest_to_pivot['EXAMDATE']}
         
-        if bl_av45 is not None:
+        if bl_av45 != '':
             av45_bl_closest = sorted(subj_diags, key=lambda x: abs(bl_av45-x['EXAMDATE']))[0]
             if abs(bl_av45 - av45_bl_closest['EXAMDATE']).days < 550:
                 new_data['Diag@AV45_long'] = av45_bl_closest['diag']
-        if av45_2 is not None:
+        if av45_2 != '':
             av45_2_closest = sorted(subj_diags, key=lambda x: abs(av45_2-x['EXAMDATE']))[0]
             if abs(av45_2 - av45_2_closest['EXAMDATE']).days < 550:
                 new_data['Diag@AV45_2_long'] = av45_2_closest['diag']
+        if av45_3 != '':
+            av45_3_closest = sorted(subj_diags, key=lambda x: abs(av45_3-x['EXAMDATE']))[0]
+            if abs(av45_3 - av45_3_closest['EXAMDATE']).days < 550:
+                new_data['Diag@AV45_3_long'] = av45_3_closest['diag']     
+
 
         for i, diag_row in enumerate(subj_diags):
-            if diag_row['change'] == '5':
+            # parse change based on init diag
+            if diag_row['change'] == 5:
                 new_data['MCItoADConv(fromav45)'] = '1'
                 new_data['MCItoADConvDate'] = new_data['MCItoADconv_'] = diag_row['EXAMDATE']
                 new_data['Baseline_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - new_data['Baseline']).days / 365.0
-                if bl_av45 is not None:
+                if bl_av45 != '':
                     new_data['AV45_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - bl_av45).days / 365.0
                 
                     
@@ -777,15 +825,18 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
                 new_data[k] = datetime.strftime(new_data[k], '%m/%d/%y')
             elif isinstance(new_data[k], float):
                 new_data[k] = str(round(new_data[k],2))
-            elif new_data[k] == 'MCI':
-                new_data[k] = mci_type
             elif new_data[k] is None:
                 new_data[k] = ''
+        
         # compare
+        '''
         print "SUBJ: %s" % subj
-        print 'MCItype: %s' % mci_type
         print "ARM: %s" % arm.get(subj,[])
-        print "%s, %s : %s" % (bl_av45, av45_2, [(str(_['EXAMDATE']),_['diag']) for _ in subj_diags])
+        print "First AV: %s" % bl_av45
+        print "Second AV: %s" % av45_2
+        print "Diags: %s" % ([(str(_['EXAMDATE']),_['change'],_['diag']) for _ in subj_diags])
+        print 'Reg Dates: %s' % sorted_registry
+        '''
         changed = False
         ignore_change = set([pivot_date_closest_diag_key, 
                              pivot_date_closest_date_key, 
@@ -794,19 +845,24 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
                              'MCItoADconv_',
                              'AV45_MCItoAD_ConvTime',
                              'MCItoADConv(fromav45)',
-                             'Baseline_MCItoAD_ConvTime'])
+                             'Baseline_MCItoAD_ConvTime',
+                             'AV45_Date',
+                             'AV45_2_Date'])
         
         for k in sorted(new_data.keys()):
             old_value = old_l.get(k)
             new_value = new_data.get(k)
             if k not in ignore_change and old_value != new_value:
                 changed = True
+            if k == 'MCItoADConv(fromav45)' and old_value == '0' and new_value == '1':
+                new_conversions += 1
+
         if changed:
             for k in sorted(new_data.keys()):
                 if k not in ignore_change:
                     old_value = old_l.get(k)
                     new_value = new_data.get(k)
-                    print "\t%s: %s -> %s" % (k, old_value, new_value)
+                    #print "\t%s: %s -> %s" % (k, old_value, new_value)
             new_values += 1
 
 
@@ -815,6 +871,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
 
     print "Changed: %s" % new_values
     print "Total: %s" % len(new_lines)
+    print "New conversions: %s" % new_conversions
 
 
     # dump out
@@ -829,6 +886,7 @@ if __name__ == '__main__':
     output_file = "../FDG_AV45_COGdata_synced.csv"
     registry_file = "../docs/registry_clean.csv"
     arm_file = "../docs/ARM.csv"
+    pet_meta_file = "../docs/PET_META_LIST_edited.csv"
     # MMSE files
     mmse_file = "../cog_tests/MMSE.csv"
     # ADAS-COG files
@@ -842,10 +900,11 @@ if __name__ == '__main__':
 
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file)
-    #new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file, dump_to=None)
-    #new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
-    #new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
-    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, dump_to=None)
+    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, pet_meta_file, dump_to=None)
+    new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=output_file)
+    
 
 
 '''

@@ -51,6 +51,6 @@ def compareDates(mri_file, pet_file):
 
 
 if __name__ == "__main__":
-    pet_meta = "/Users/ahorng/Documents/PET_META_LIST_edited.csv"
-    mri_meta = "/Users/ahorng/Documents/MPRAGEMETA.csv"
+    pet_meta = "../docs/PET_META_LIST_edited.csv"
+    mri_meta = "../docs/MPRAGEMETA.csv"
     compareDates(mri_meta, pet_meta)
