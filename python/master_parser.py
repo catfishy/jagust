@@ -147,6 +147,20 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
     new_lines = []
     new_values = 0
     total = 0
+
+    # add some new headers
+    if 'ADAS_AV45_3_DATE' not in new_headers or 'ADAS_AV45_3_3MTHS' not in new_headers:
+        if 'ADAS_AV45_3_3MTHS' in new_headers:
+            # remove it
+            new_headers.remove('ADAS_AV45_3_3MTHS')
+        elif 'ADAS_AV45_3_DATE' in new_headers:
+            # remove it
+            new_headers.remove('ADAS_AV45_3_DATE')
+        idx = new_headers.index('ADAS_AV45_2_DATE')
+        new_headers.insert(idx+1, 'ADAS_AV45_3_DATE')
+        new_headers.insert(idx+1, 'ADAS_AV45_3_3MTHS')
+
+
     for linenum, old_l in enumerate(old_lines):
         try:
             subj = int(old_l['RID'])
@@ -168,6 +182,8 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
             new_lines.append(old_l)
             continue
         first_scan_date = dates[0]
+
+
         # Get AV45 Scan dates
         if old_l['AV45_Date'] != '':
             bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
@@ -177,6 +193,10 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
             av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
         else:
             av45_2 = None
+        if old_l['AV45_3_Date'] != '':
+            av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
+        else:
+            av45_3 = None
 
 
         new_subj_data = {}
@@ -224,8 +244,15 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                 if abs(rel_time_days) <= 93 and 'ADAS_AV45_2_3MTHS' not in new_subj_data:
                     new_subj_data['ADAS_AV45_2_3MTHS'] = test_score
                     new_subj_data['ADAS_AV45_2_DATE'] = test_date_string
+            if av45_3 is not None and test_date != '':
+                rel_time_days = (test_date - av45_3).days 
+                if abs(rel_time_days) <= 93 and 'ADAS_AV45_3_3MTHS' not in new_subj_data:
+                    new_subj_data['ADAS_AV45_3_3MTHS'] = test_score
+                    new_subj_data['ADAS_AV45_3_DATE'] = test_date_string
         # fill in the blanks
-        fill_in = ['ADAS_3MTH_AV45', 'ADAS_3MTHS_AV45DATE', 'ADAS_AV45_2_3MTHS','ADAS_AV45_2_DATE']
+        fill_in = ['ADAS_3MTH_AV45', 'ADAS_3MTHS_AV45DATE', 
+                   'ADAS_AV45_2_3MTHS','ADAS_AV45_2_DATE',
+                   'ADAS_AV45_3_3MTHS','ADAS_AV45_3_DATE']
         for f_key in fill_in:
             if f_key not in new_subj_data:
                 new_subj_data[f_key] = ''
