@@ -143,7 +143,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                                    'TOTSCORE': totscore})
     adas_by_subj = dict(adas_by_subj)
 
-    new_headers = old_headers # no change in headers
+    new_headers = old_headers
     new_lines = []
     new_values = 0
     total = 0
@@ -159,14 +159,15 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         idx = new_headers.index('ADAS_AV45_2_DATE')
         new_headers.insert(idx+1, 'ADAS_AV45_3_DATE')
         new_headers.insert(idx+1, 'ADAS_AV45_3_3MTHS')
+    if 'ADAS_post_AV45_followuptime' not in new_headers:
+        idx = new_headers.index('ADAS_3MTH_AV45')
+        new_headers.insert(idx, 'ADAS_post_AV45_followuptime')
 
 
     for linenum, old_l in enumerate(old_lines):
         try:
             subj = int(old_l['RID'])
         except Exception as e:
-            #print "Line %s: Can't convert '%s' to subj" % (linenum+1, old_l['RID'])
-            new_lines.append(old_l)
             continue
 
         unsorted_tests = adas_by_subj.get(subj,[])
@@ -204,6 +205,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         post_values = []
         all_times = []
         post_times = []
+        max_followup_counter = None
         for i in range(11):
             if i >= len(tests):
                 test_date = ''
@@ -237,6 +239,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                         post_values.append(test_score)
                         post_times.append(diff_from_first)
                     new_subj_data['TIMEpostAV45_ADAS.%s' % count] = rel_time
+                    max_followup_counter = rel_time
                 else:
                     new_subj_data['TIMEpostAV45_ADAS.%s' % count] = ''
             if av45_2 is not None and test_date != '':
@@ -249,10 +252,13 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                 if abs(rel_time_days) <= 93 and 'ADAS_AV45_3_3MTHS' not in new_subj_data:
                     new_subj_data['ADAS_AV45_3_3MTHS'] = test_score
                     new_subj_data['ADAS_AV45_3_DATE'] = test_date_string
+        if max_followup_counter is not None:
+            new_subj_data['ADAS_post_AV45_followuptime'] = max(max_followup_counter, 0.0)
         # fill in the blanks
         fill_in = ['ADAS_3MTH_AV45', 'ADAS_3MTHS_AV45DATE', 
                    'ADAS_AV45_2_3MTHS','ADAS_AV45_2_DATE',
-                   'ADAS_AV45_3_3MTHS','ADAS_AV45_3_DATE']
+                   'ADAS_AV45_3_3MTHS','ADAS_AV45_3_DATE',
+                   'ADAS_post_AV45_followuptime']
         for f_key in fill_in:
             if f_key not in new_subj_data:
                 new_subj_data[f_key] = ''
@@ -275,7 +281,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         #print "first: %s, second: %s" % (bl_av45, av45_2)
         changed = False
         for k in sorted(new_subj_data.keys()):
-            old_value = old_l[k]
+            old_value = old_l.get(k, None) # new columns potentially added
             new_value = new_subj_data[k]
             if k.startswith('ADAScog.') and old_value == '' and new_value != '':
                 new_values += 1
@@ -362,8 +368,6 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         try:
             subj = int(old_l['RID'])
         except Exception as e:
-            #print "Line %s: Can't convert '%s' to subj" % (i+1, old_l['RID'])
-            new_lines.append(old_l)
             continue
         #print "%s: %s" % (subj, new_mmse_columns[subj])
 
@@ -454,6 +458,12 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                                    'TOTS': test_score})
 
     new_headers = old_headers # no change in headers
+
+    # add potential new headers
+    if 'AVLT_post_AV45_followuptime' not in new_headers:
+        idx = new_headers.index('AVLT_3MTHS_AV45')
+        new_headers.insert(idx, 'AVLT_post_AV45_followuptime')
+
     new_lines = []
     new_values = 0
     total = 0
@@ -462,8 +472,6 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         try:
             subj = int(old_l['RID'])
         except Exception as e:
-            #print "Line %s: Can't convert '%s' to subj" % (linenum+1, old_l['RID'])
-            new_lines.append(old_l)
             continue
 
         unsorted_tests = avlt_by_subj.get(subj,[])
@@ -495,6 +503,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         post_values = []
         all_times = []
         post_times = []
+        max_followup_counter = None
         for i in range(11):
             if i >= len(tests):
                 test_date = ''
@@ -526,6 +535,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                         post_values.append(test_score)
                         post_times.append(diff_from_first)
                     new_subj_data['TIMEpostAV45_AVLT.%s' % count] = rel_time
+                    max_followup_counter = rel_time
                 else:
                     new_subj_data['TIMEpostAV45_AVLT.%s' % count] = ''
             if av45_2 is not None and test_date != '':
@@ -533,8 +543,13 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                 if abs(rel_time_days) <= 93 and 'AVLT_AV45_2_3MTHS' not in new_subj_data:
                     new_subj_data['AVLT_AV45_2_3MTHS'] = test_score
                     new_subj_data['AVLT_AV45_2_DATE'] = test_date_string
+        if max_followup_counter is not None:
+            new_subj_data['AVLT_post_AV45_followuptime'] = max(max_followup_counter, 0.0)
+
         # fill in the blanks
-        fill_in = ['AVLT_3MTHS_AV45', 'AVLT_3MTHSAV45_Date', 'AVLT_AV45_2_3MTHS','AVLT_AV45_2_DATE']
+        fill_in = ['AVLT_3MTHS_AV45', 'AVLT_3MTHSAV45_Date', 
+                   'AVLT_AV45_2_3MTHS','AVLT_AV45_2_DATE',
+                   'AVLT_post_AV45_followuptime']
         for f_key in fill_in:
             if f_key not in new_subj_data:
                 new_subj_data[f_key] = ''
@@ -562,7 +577,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         changed = False
         new_for_subj = 0
         for k in sorted(new_subj_data.keys()):
-            old_value = old_l[k]
+            old_value = old_l.get(k,None)
             new_value = new_subj_data[k]
             if k.startswith('AVLT.') and not bool(old_value) and bool(new_value):
                 new_values += 1
@@ -714,7 +729,6 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         try:
             subj = int(old_l['RID'])
         except Exception as e:
-            new_lines.append(old_l)
             continue
 
         # get subject diagnoses
@@ -907,6 +921,136 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
 
     return (new_headers, new_lines)
 
+
+def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None):
+    '''
+    This function adds new subject lines to the output
+    '''
+    av45_headers, av45_lines = parseCSV(av45_file)
+    registry = importRegistry(registry_file)
+
+    av45_by_subj = defaultdict(list)
+    for line in av45_lines:
+        subj = int(line.pop('RID',None))
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        examdate = line.get('EXAMDATE',None)
+        if examdate:
+            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+        else:
+            subj_listings = registry[subj]
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['date']
+                    break
+            if not examdate:
+                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+                continue
+        av45_by_subj[subj].append(line)
+
+    new_headers = old_headers
+    new_lines = []
+    old_subjects = set([])
+    for old_l in old_lines:
+        # get subject ID
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            continue
+        old_subjects.add(subj)
+        if subj not in av45_by_subj:
+            print "No AV45 data for %s" % subj
+            new_lines.append(old_l)
+            continue
+
+        new_data = parseAV45Entries(av45_by_subj[subj])
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # find new subjects - in av45 file but not in old master csv file
+    print len(set(av45_by_subj.keys()))
+    print len(old_subjects)
+    new_subjects = list(set(av45_by_subj.keys()) - old_subjects)
+    print new_subjects
+    for ns in new_subjects:
+        new_subj_row = {k: '' for k in new_headers}
+        new_subj_row['RID'] = str(ns)
+        new_columns = parseAV45Entries(av45_by_subj[ns])
+        new_subj_row.update(new_columns)
+        new_lines.append(new_subj_row)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+def parseAV45Entries(subj_av45):
+    pass
+
+
+def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None):
+    tbm_headers, tbm_lines = parseCSV(tbm_file)
+    registry = importRegistry(registry_file)
+
+    tbm_by_subj = defaultdict(list)
+    for line in tbm_lines:
+        subj = int(line.pop('RID',None))
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        examdate = line.get('EXAMDATE',None)
+        if examdate:
+            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+        else:
+            subj_listings = registry[subj]
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['date']
+                    break
+            if not examdate:
+                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+                continue
+        av45_by_subj[subj].append(line)
+
+    new_headers = old_headers
+    new_lines = []
+    for old_l in old_lines:
+        # get subject ID
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            continue
+
+        if subj not in tbm_by_subj:
+            print "No TBM data for %s" % subj
+            new_lines.append(old_l)
+            continue
+
+        new_data = {}
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+
+def eliminateColumns(headers, lines):
+    to_remove = ['LastClinicalVisit',
+                 'DIFF_LastClinicalVisit_AV45',
+                 'ClinicalVisitClosestto_AV45',
+                 'ClinicalVisitClosestto_AV45_2']
+    for tm in to_remove:
+        if tm in headers:
+            headers.remove(tm)
+    new_lines = []
+    for l in lines:
+        for tm in to_remove:
+            l.pop(tm, None)
+        new_lines.append(l)
+    return headers, new_lines
+
+
 if __name__ == '__main__':
     # Input/output/lookup files
     master_file = "../FDG_AV45_COGdata.csv"
@@ -914,6 +1058,8 @@ if __name__ == '__main__':
     registry_file = "../docs/registry_clean.csv"
     arm_file = "../docs/ARM.csv"
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
+    # AV45 File
+    av45_file = "../output/UCBERKELEYAV45_06_25_15.csv"
     # MMSE files
     mmse_file = "../cog_tests/MMSE.csv"
     # ADAS-COG files
@@ -927,6 +1073,8 @@ if __name__ == '__main__':
 
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file)
+    new_headers, new_lines = eliminateColumns(new_headers, new_lines)
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None)
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, pet_meta_file, dump_to=None)
     new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file, dump_to=None)
     new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
