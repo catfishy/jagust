@@ -1,0 +1,464 @@
+from collections import defaultdict
+from datetime import datetime, timedelta
+from tabulate import tabulate
+
+from master_parser import parseCSV, importRegistry, importPetMETA
+
+
+def importMaster(master_file):
+    headers, lines = parseCSV(master_file)
+    data = {}
+    for i, line in enumerate(lines):
+        # get subject ID
+        try:
+            subj = int(line['RID'])
+        except Exception as e:
+            continue
+        data[subj] = line
+    return data
+
+def importBSI(bsi_file):
+    headers, lines = parseCSV(bsi_file)
+    data = defaultdict(list)
+    for i, line in enumerate(lines):
+        if int(line['QC_PASS']) == 0:
+            continue
+        elif line['MRSEQUENCE'] == 'Acc':
+            continue
+        elif line['KMNDBCBBSI'] == '':
+            continue
+        subj = int(line['RID'])
+        vc = line['VISCODE'].strip().lower()
+        vc2 = line['VISCODE2'].strip().lower()
+        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        dbcb_bsi = line['DBCBBSI']
+        kmndbcb_bsi = line['KMNDBCBBSI']
+        v_bsi = line['VBSI']
+        h_bsi_r = line['HBSI_R']
+        h_bsi_l = line['HBSI_L']
+        data[subj].append({'VISCODE': vc,
+                           'VISCODE2': vc2,
+                           'EXAMDATE': examdate,
+                           'VBSI': v_bsi,
+                           'HBSI_R': h_bsi_r,
+                           'HBSI_L': h_bsi_l,
+                           'WB_BSI': dbcb_bsi,
+                           'WB_KNBSI': kmndbcb_bsi})
+    return dict(data)
+
+def importLongitudinalFreesurfer(longfree_file):
+    headers, lines = parseCSV(longfree_file)
+    data = defaultdict(list)
+    for i, line in enumerate(lines):
+        if line['OVERALLQC'] == 'Fail':
+            continue
+        elif line['OVERALLQC'] == 'Partial' and line['VENTQC'] == 'Fail':
+            continue
+        subj = int(line['RID'])
+        vc = line['VISCODE'].strip().lower()
+        vc2 = line['VISCODE2'].strip().lower()
+        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        inner_data = {k: v for k,v in line.iteritems() if k.startswith('ST') and k not in set(['STATUS'])}
+        data[subj].append({'VISCODE': vc,
+                           'VISCODE2': vc2,
+                           'EXAMDATE': examdate,
+                           'inner_data': inner_data})
+    return dict(data)
+
+def importTBMSyn(tbm_file):
+    headers, lines = parseCSV(tbm_file)
+    data = defaultdict(list)
+    for i, line in enumerate(lines):  
+        if line['ACCELERATED'] == 'Yes':
+            continue      
+        subj = int(line['RID'])
+        vc = line['VISCODE'].strip().lower()
+        vc2 = line['VISCODE2'].strip().lower()
+        score = float(line['TBMSYNSCOR'])
+        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        data[subj].append({'VISCODE': vc,
+                           'VISCODE2': vc2,
+                           'EXAMDATE': examdate,
+                           'SCORE': score})
+    return data
+
+def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, master_data):
+    '''
+    Aggregate into one dictionary
+    remove datapoints from before the first av45 scan
+    '''
+    points_by_subj = {}
+    for subj,v in pet_data.iteritems():
+        patient_pets = sorted(v)
+        bl_av45 = patient_pets[0] - timedelta(days=90)
+        subj_points = {}
+        if subj in bsi_data:
+            subj_bsi = sorted(bsi_data[subj], key=lambda x: x['EXAMDATE'])
+        else:
+            subj_bsi = []
+        subj_points['bsi'] = [_['VISCODE2'] for _ in subj_bsi if _['EXAMDATE'] >= bl_av45]
+        if subj in longfree_data:
+            subj_long = sorted(longfree_data[subj], key=lambda x: x['EXAMDATE'])
+        else:
+            subj_long = []
+        subj_points['long'] = [_['VISCODE2'] for _ in subj_long if _['EXAMDATE'] >= bl_av45]
+        if subj in tbm_data:
+            subj_tbm = sorted(tbm_data[subj], key=lambda x: x['EXAMDATE'])
+        else:
+            subj_tbm = []
+        subj_points['tbm'] = [_['VISCODE2'] for _ in subj_tbm if _['EXAMDATE'] >= bl_av45]
+        if len(subj_points['tbm']) == 0 and len(subj_points['long']) == 0 and len(subj_points['bsi']) == 0:
+            continue
+        points_by_subj[subj] = subj_points
+
+    # count
+    tbm_counts = defaultdict(int)
+    long_counts = defaultdict(int)
+    bsi_counts = defaultdict(int)
+    for k,v in points_by_subj.iteritems():
+        print k
+        diag = master_data.get(k,{}).get('Init_Diagnosis','Unknown')
+        for a,b in v.iteritems():
+            print '\t%s: %s' % (a,b)
+            if a == 'long':
+                if len(b) >= 2:
+                    long_counts[(diag,len(b)-1)] += 1
+                else:
+                    long_counts[(diag,0)] += 1
+            elif a == 'tbm':
+                tbm_counts[(diag,len(b))] += 1
+            elif a == 'bsi':
+                bsi_counts[(diag, len(b))] += 1
+
+    print '\n\n'
+
+    print "TBMSyn"
+    tbm_graph = [['Init Diagnosis', 
+                  '=0 followups', 
+                  '=1 followups', 
+                  '=2 followups', 
+                  '=3 followups',
+                  '=4 followups',
+                  '=5 followups',
+                  '=6 followups']]
+    tbm_graph.append(['CN',
+                      tbm_counts.get(('N',0),0),
+                      tbm_counts.get(('N',1),0),
+                      tbm_counts.get(('N',2),0),
+                      tbm_counts.get(('N',3),0),
+                      tbm_counts.get(('N',4),0),
+                      tbm_counts.get(('N',5),0),
+                      tbm_counts.get(('N',6),0)])
+    tbm_graph.append(['SMC',
+                      tbm_counts.get(('SMC',0),0),
+                      tbm_counts.get(('SMC',1),0),
+                      tbm_counts.get(('SMC',2),0),
+                      tbm_counts.get(('SMC',3),0),
+                      tbm_counts.get(('SMC',4),0),
+                      tbm_counts.get(('SMC',5),0),
+                      tbm_counts.get(('SMC',6),0)])
+    tbm_graph.append(['EMCI',
+                      tbm_counts.get(('EMCI',0),0),
+                      tbm_counts.get(('EMCI',1),0),
+                      tbm_counts.get(('EMCI',2),0),
+                      tbm_counts.get(('EMCI',3),0),
+                      tbm_counts.get(('EMCI',4),0),
+                      tbm_counts.get(('EMCI',5),0),
+                      tbm_counts.get(('EMCI',6),0)])
+    tbm_graph.append(['LMCI',
+                      tbm_counts.get(('LMCI',0),0),
+                      tbm_counts.get(('LMCI',1),0),
+                      tbm_counts.get(('LMCI',2),0),
+                      tbm_counts.get(('LMCI',3),0),
+                      tbm_counts.get(('LMCI',4),0),
+                      tbm_counts.get(('LMCI',5),0),
+                      tbm_counts.get(('LMCI',6),0)])
+    tbm_graph.append(['AD',
+                      tbm_counts.get(('AD',0),0),
+                      tbm_counts.get(('AD',1),0),
+                      tbm_counts.get(('AD',2),0),
+                      tbm_counts.get(('AD',3),0),
+                      tbm_counts.get(('AD',4),0),
+                      tbm_counts.get(('AD',5),0),
+                      tbm_counts.get(('AD',6),0)])
+    print tabulate(tbm_graph) + '\n'
+    print "Longitudinal Freesurfer"
+    long_graph = [['Init Diagnosis', 
+                  '=0 followups', 
+                  '=1 followups', 
+                  '=2 followups', 
+                  '=3 followups',
+                  '=4 followups',
+                  '=5 followups',
+                  '=6 followups']]
+    long_graph.append(['CN',
+                      long_counts.get(('N',0),0),
+                      long_counts.get(('N',1),0),
+                      long_counts.get(('N',2),0),
+                      long_counts.get(('N',3),0),
+                      long_counts.get(('N',4),0),
+                      long_counts.get(('N',5),0),
+                      long_counts.get(('N',6),0)])
+    long_graph.append(['SMC',
+                      long_counts.get(('SMC',0),0),
+                      long_counts.get(('SMC',1),0),
+                      long_counts.get(('SMC',2),0),
+                      long_counts.get(('SMC',3),0),
+                      long_counts.get(('SMC',4),0),
+                      long_counts.get(('SMC',5),0),
+                      long_counts.get(('SMC',6),0)])
+    long_graph.append(['EMCI',
+                      long_counts.get(('EMCI',0),0),
+                      long_counts.get(('EMCI',1),0),
+                      long_counts.get(('EMCI',2),0),
+                      long_counts.get(('EMCI',3),0),
+                      long_counts.get(('EMCI',4),0),
+                      long_counts.get(('EMCI',5),0),
+                      long_counts.get(('EMCI',6),0)])
+    long_graph.append(['LMCI',
+                      long_counts.get(('LMCI',0),0),
+                      long_counts.get(('LMCI',1),0),
+                      long_counts.get(('LMCI',2),0),
+                      long_counts.get(('LMCI',3),0),
+                      long_counts.get(('LMCI',4),0),
+                      long_counts.get(('LMCI',5),0),
+                      long_counts.get(('LMCI',6),0)])
+    long_graph.append(['AD',
+                      long_counts.get(('AD',0),0),
+                      long_counts.get(('AD',1),0),
+                      long_counts.get(('AD',2),0),
+                      long_counts.get(('AD',3),0),
+                      long_counts.get(('AD',4),0),
+                      long_counts.get(('AD',5),0),
+                      long_counts.get(('AD',6),0)])
+    print tabulate(long_graph) + '\n'
+    print "BSI"
+    bsi_graph = [['Init Diagnosis', 
+                  '=0 followups', 
+                  '=1 followups', 
+                  '=2 followups', 
+                  '=3 followups',
+                  '=4 followups',
+                  '=5 followups',
+                  '=6 followups']]
+    bsi_graph.append(['CN',
+                      bsi_counts.get(('N',0),0),
+                      bsi_counts.get(('N',1),0),
+                      bsi_counts.get(('N',2),0),
+                      bsi_counts.get(('N',3),0),
+                      bsi_counts.get(('N',4),0),
+                      bsi_counts.get(('N',5),0),
+                      bsi_counts.get(('N',6),0)])
+    bsi_graph.append(['SMC',
+                      bsi_counts.get(('SMC',0),0),
+                      bsi_counts.get(('SMC',1),0),
+                      bsi_counts.get(('SMC',2),0),
+                      bsi_counts.get(('SMC',3),0),
+                      bsi_counts.get(('SMC',4),0),
+                      bsi_counts.get(('SMC',5),0),
+                      bsi_counts.get(('SMC',6),0)])
+    bsi_graph.append(['EMCI',
+                      bsi_counts.get(('EMCI',0),0),
+                      bsi_counts.get(('EMCI',1),0),
+                      bsi_counts.get(('EMCI',2),0),
+                      bsi_counts.get(('EMCI',3),0),
+                      bsi_counts.get(('EMCI',4),0),
+                      bsi_counts.get(('EMCI',5),0),
+                      bsi_counts.get(('EMCI',6),0)])
+    bsi_graph.append(['LMCI',
+                      bsi_counts.get(('LMCI',0),0),
+                      bsi_counts.get(('LMCI',1),0),
+                      bsi_counts.get(('LMCI',2),0),
+                      bsi_counts.get(('LMCI',3),0),
+                      bsi_counts.get(('LMCI',4),0),
+                      bsi_counts.get(('LMCI',5),0),
+                      bsi_counts.get(('LMCI',6),0)])
+    bsi_graph.append(['AD',
+                      bsi_counts.get(('AD',0),0),
+                      bsi_counts.get(('AD',1),0),
+                      bsi_counts.get(('AD',2),0),
+                      bsi_counts.get(('AD',3),0),
+                      bsi_counts.get(('AD',4),0),
+                      bsi_counts.get(('AD',5),0),
+                      bsi_counts.get(('AD',6),0)])
+    print tabulate(bsi_graph) + '\n'
+
+    print '\n\n'
+
+    print "TBMSyn"
+    tbm_graph_morethan = [['Init Diagnosis', 
+                  '>=0 followups', 
+                  '>=1 followups', 
+                  '>=2 followups', 
+                  '>=3 followups',
+                  '>=4 followups',
+                  '>=5 followups',
+                  '>=6 followups']]
+    tbm_graph_morethan.append(['CN',
+                              sum(tbm_graph[1][1:]),
+                              sum(tbm_graph[1][2:]),
+                              sum(tbm_graph[1][3:]),
+                              sum(tbm_graph[1][4:]),
+                              sum(tbm_graph[1][5:]),
+                              sum(tbm_graph[1][6:]),
+                              sum(tbm_graph[1][7:])])
+    tbm_graph_morethan.append(['SMC',
+                              sum(tbm_graph[2][1:]),
+                              sum(tbm_graph[2][2:]),
+                              sum(tbm_graph[2][3:]),
+                              sum(tbm_graph[2][4:]),
+                              sum(tbm_graph[2][5:]),
+                              sum(tbm_graph[2][6:]),
+                              sum(tbm_graph[2][7:])])
+    tbm_graph_morethan.append(['EMCI',
+                              sum(tbm_graph[3][1:]),
+                              sum(tbm_graph[3][2:]),
+                              sum(tbm_graph[3][3:]),
+                              sum(tbm_graph[3][4:]),
+                              sum(tbm_graph[3][5:]),
+                              sum(tbm_graph[3][6:]),
+                              sum(tbm_graph[3][7:])])
+    tbm_graph_morethan.append(['LMCI',
+                              sum(tbm_graph[4][1:]),
+                              sum(tbm_graph[4][2:]),
+                              sum(tbm_graph[4][3:]),
+                              sum(tbm_graph[4][4:]),
+                              sum(tbm_graph[4][5:]),
+                              sum(tbm_graph[4][6:]),
+                              sum(tbm_graph[4][7:])])
+    tbm_graph_morethan.append(['AD',
+                              sum(tbm_graph[5][1:]),
+                              sum(tbm_graph[5][2:]),
+                              sum(tbm_graph[5][3:]),
+                              sum(tbm_graph[5][4:]),
+                              sum(tbm_graph[5][5:]),
+                              sum(tbm_graph[5][6:]),
+                              sum(tbm_graph[5][7:])])
+    print tabulate(tbm_graph_morethan) + '\n'
+    print "Longitudinal Freesurfer"
+    long_graph_morethan = [['Init Diagnosis', 
+                              '>=0 followups', 
+                              '>=1 followups', 
+                              '>=2 followups', 
+                              '>=3 followups',
+                              '>=4 followups',
+                              '>=5 followups',
+                              '>=6 followups']]
+    long_graph_morethan.append(['CN',
+                              sum(long_graph[1][1:]),
+                              sum(long_graph[1][2:]),
+                              sum(long_graph[1][3:]),
+                              sum(long_graph[1][4:]),
+                              sum(long_graph[1][5:]),
+                              sum(long_graph[1][6:]),
+                              sum(long_graph[1][7:])])
+    long_graph_morethan.append(['SMC',
+                              sum(long_graph[2][1:]),
+                              sum(long_graph[2][2:]),
+                              sum(long_graph[2][3:]),
+                              sum(long_graph[2][4:]),
+                              sum(long_graph[2][5:]),
+                              sum(long_graph[2][6:]),
+                              sum(long_graph[2][7:])])
+    long_graph_morethan.append(['EMCI',
+                              sum(long_graph[3][1:]),
+                              sum(long_graph[3][2:]),
+                              sum(long_graph[3][3:]),
+                              sum(long_graph[3][4:]),
+                              sum(long_graph[3][5:]),
+                              sum(long_graph[3][6:]),
+                              sum(long_graph[3][7:])])
+    long_graph_morethan.append(['LMCI',
+                              sum(long_graph[4][1:]),
+                              sum(long_graph[4][2:]),
+                              sum(long_graph[4][3:]),
+                              sum(long_graph[4][4:]),
+                              sum(long_graph[4][5:]),
+                              sum(long_graph[4][6:]),
+                              sum(long_graph[4][7:])])
+    long_graph_morethan.append(['AD',
+                              sum(long_graph[5][1:]),
+                              sum(long_graph[5][2:]),
+                              sum(long_graph[5][3:]),
+                              sum(long_graph[5][4:]),
+                              sum(long_graph[5][5:]),
+                              sum(long_graph[5][6:]),
+                              sum(long_graph[5][7:])])
+    print tabulate(long_graph_morethan) + '\n'
+    print "BSI"
+    bsi_graph_morethan = [['Init Diagnosis', 
+                  '>=0 followups', 
+                  '>=1 followups', 
+                  '>=2 followups', 
+                  '>=3 followups',
+                  '>=4 followups',
+                  '>=5 followups',
+                  '>=6 followups']]
+    bsi_graph_morethan.append(['CN',
+                              sum(bsi_graph[1][1:]),
+                              sum(bsi_graph[1][2:]),
+                              sum(bsi_graph[1][3:]),
+                              sum(bsi_graph[1][4:]),
+                              sum(bsi_graph[1][5:]),
+                              sum(bsi_graph[1][6:]),
+                              sum(bsi_graph[1][7:])])
+    bsi_graph_morethan.append(['SMC',
+                              sum(bsi_graph[2][1:]),
+                              sum(bsi_graph[2][2:]),
+                              sum(bsi_graph[2][3:]),
+                              sum(bsi_graph[2][4:]),
+                              sum(bsi_graph[2][5:]),
+                              sum(bsi_graph[2][6:]),
+                              sum(bsi_graph[2][7:])])
+    bsi_graph_morethan.append(['EMCI',
+                              sum(bsi_graph[3][1:]),
+                              sum(bsi_graph[3][2:]),
+                              sum(bsi_graph[3][3:]),
+                              sum(bsi_graph[3][4:]),
+                              sum(bsi_graph[3][5:]),
+                              sum(bsi_graph[3][6:]),
+                              sum(bsi_graph[3][7:])])
+    bsi_graph_morethan.append(['LMCI',
+                              sum(bsi_graph[4][1:]),
+                              sum(bsi_graph[4][2:]),
+                              sum(bsi_graph[4][3:]),
+                              sum(bsi_graph[4][4:]),
+                              sum(bsi_graph[4][5:]),
+                              sum(bsi_graph[4][6:]),
+                              sum(bsi_graph[4][7:])])
+    bsi_graph_morethan.append(['AD',
+                              sum(bsi_graph[5][1:]),
+                              sum(bsi_graph[5][2:]),
+                              sum(bsi_graph[5][3:]),
+                              sum(bsi_graph[5][4:]),
+                              sum(bsi_graph[5][5:]),
+                              sum(bsi_graph[5][6:]),
+                              sum(bsi_graph[5][7:])])
+    print tabulate(bsi_graph_morethan) + '\n'
+
+
+
+if __name__ == "__main__":
+    # Input/output/lookup files
+    master_file = "../FDG_AV45_COGdata_synced.csv"
+    registry_file = "../docs/registry_clean.csv"
+    pet_meta_file = "../docs/PET_META_LIST_edited.csv"
+    # BSI file
+    bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
+    # long freesurfer file
+    longfree_file = '../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_08_01_14.csv'
+    # TBMsyn file
+    tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
+
+    pet_data = importPetMETA(pet_meta_file)
+    bsi_data = importBSI(bsi_file)
+    longfree_data = importLongitudinalFreesurfer(longfree_file)
+    tbm_data = importTBMSyn(tbm_file)
+    master_data = importMaster(master_file)
+
+    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, master_data)
+
+
+
+
+
