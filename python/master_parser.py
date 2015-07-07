@@ -10,13 +10,28 @@ import csv
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
-from scipy import stats
+from scipy import stats, optimize
 
 def parseCSV(file_path):
     reader = csv.DictReader(open(file_path,'rU'))
     lines = [l for l in reader]
     headers = reader.fieldnames
     return (headers, lines)
+
+def convertToCSVDataType(new_data, decimal_places=2):
+    '''
+    Converts datetimes to mm/dd/yy
+    Rounds floats to strings with 2 decimal places
+    Converts Nones to ''
+    '''
+    for k in new_data.keys():
+        if isinstance(new_data[k], datetime):
+            new_data[k] = datetime.strftime(new_data[k], '%m/%d/%y')
+        elif isinstance(new_data[k], float):
+            new_data[k] = str(round(new_data[k],decimal_places))
+        elif new_data[k] is None:
+            new_data[k] = ''
+    return new_data
 
 def importRegistry(registry_file):
     headers, lines = parseCSV(registry_file)
@@ -41,6 +56,25 @@ def importRegistry(registry_file):
                                'date': date,
                                'update_stamp': data['update_stamp']})
     return registry
+
+def importTBMSyn(tbm_file):
+    headers, lines = parseCSV(tbm_file)
+    data = defaultdict(list)
+    for i, line in enumerate(lines):  
+        if line['ACCELERATED'] == 'Yes':
+            continue      
+        subj = int(line['RID'])
+        vc = line['VISCODE'].strip().lower()
+        vc2 = line['VISCODE2'].strip().lower()
+        bl_examdate = datetime.strptime(line['EXAMDATEBL'],'%Y-%m-%d')
+        score = float(line['TBMSYNSCOR'])
+        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        data[subj].append({'VISCODE': vc,
+                           'VISCODE2': vc2,
+                           'EXAMDATE': examdate,
+                           'BL_EXAMDATE': bl_examdate,
+                           'SCORE': score})
+    return data
 
 def importPetMETA(pet_meta_file):
     headers, lines = parseCSV(pet_meta_file)
@@ -95,7 +129,9 @@ def dumpCSV(file_path, headers, lines):
     writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
     writer.writeheader()
     for l in lines:
-        filtered_line = {k:v for k,v in l.iteritems() if k in headers}
+        filtered_line = {}
+        for k in headers:
+            filtered_line[k] = l[k] if k in l else ''
         writer.writerow(filtered_line)
 
 
@@ -209,22 +245,20 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         for i in range(11):
             if i >= len(tests):
                 test_date = ''
-                test_date_string = ''
                 test_score = ''
                 diff_from_first = ''
             else:
                 test_results = tests[i]
                 test_date = test_results['EXAMDATE']
-                test_date_string = test_date.strftime("%m/%d/%y")
                 test_score = test_results['TOTSCORE']
                 if test_score != '':
-                    test_score = round(float(test_score),2) # CAST TO INT
-                diff_from_first = round((test_date-first_scan_date).days / 365.0, 2)
+                    test_score = float(test_score)
+                diff_from_first = (test_date-first_scan_date).days / 365.0
                 if test_score != '':
                     all_values.append(test_score)
                     all_times.append(diff_from_first)
             count = i+1
-            new_subj_data['ADAScog_DATE%s' % count] = test_date_string
+            new_subj_data['ADAScog_DATE%s' % count] = test_date
             new_subj_data['ADAScog.%s' % count] = test_score
             new_subj_data['TIME_ADAS.%s' % count] = diff_from_first
             if bl_av45 is not None and test_date != '':
@@ -233,7 +267,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                 new_subj_data['TIMEreltoAV45_ADAS.%s' % count] = rel_time
                 if abs(rel_time_days) <= 93 and 'ADAS_3MTH_AV45' not in new_subj_data:
                     new_subj_data['ADAS_3MTH_AV45'] = test_score
-                    new_subj_data['ADAS_3MTHS_AV45DATE'] = test_date_string
+                    new_subj_data['ADAS_3MTHS_AV45DATE'] = test_date
                 if rel_time >= (-93.0/365.0):
                     if test_score != '':
                         post_values.append(test_score)
@@ -246,12 +280,12 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                 rel_time_days = (test_date - av45_2).days 
                 if abs(rel_time_days) <= 93 and 'ADAS_AV45_2_3MTHS' not in new_subj_data:
                     new_subj_data['ADAS_AV45_2_3MTHS'] = test_score
-                    new_subj_data['ADAS_AV45_2_DATE'] = test_date_string
+                    new_subj_data['ADAS_AV45_2_DATE'] = test_date
             if av45_3 is not None and test_date != '':
                 rel_time_days = (test_date - av45_3).days 
                 if abs(rel_time_days) <= 93 and 'ADAS_AV45_3_3MTHS' not in new_subj_data:
                     new_subj_data['ADAS_AV45_3_3MTHS'] = test_score
-                    new_subj_data['ADAS_AV45_3_DATE'] = test_date_string
+                    new_subj_data['ADAS_AV45_3_DATE'] = test_date
         if max_followup_counter is not None:
             new_subj_data['ADAS_post_AV45_followuptime'] = max(max_followup_counter, 0.0)
         # fill in the blanks
@@ -266,12 +300,12 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         # get slopes
         if len(all_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(all_times, all_values)
-            new_subj_data['ADAS_slope_all'] = round(slope,2)
+            new_subj_data['ADAS_slope_all'] = slope
         else:
             new_subj_data['ADAS_slope_all'] = ''
         if len(post_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
-            new_subj_data['ADASslope_postAV45'] = round(slope,2)
+            new_subj_data['ADASslope_postAV45'] = slope
         else:
             new_subj_data['ADASslope_postAV45'] = ''
 
@@ -290,6 +324,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         if changed:
             total += 1
         
+        new_subj_data = convertToCSVDataType(new_subj_data)
         old_l.update(new_subj_data)
         new_lines.append(old_l)
 
@@ -345,7 +380,6 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
                 test_score = ''
             else:
                 test_date, test_results = tests[i]
-                test_date = test_date.strftime("%m/%d/%y")
                 if test_results['MMSCORE'] == '':
                     test_score = ''
                 else:
@@ -383,7 +417,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         test_score = closest_results['MMSCORE']
         if test_score != '':
             test_score = int(test_score)
-        new_mmse_columns[subj]['MMSEclosest_1'] = closest_mmse_date.strftime('%m/%d/%y')
+        new_mmse_columns[subj]['MMSEclosest_1'] = closest_mmse_date
         new_mmse_columns[subj]['MMSEclosest_AV45'] = test_score
         if date_used:
             date_diff = abs(bl_av45 - closest_mmse_date).days
@@ -406,7 +440,8 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         if changed:
             total += 1
 
-        old_l.update(new_mmse_columns[subj])
+        new_data = convertToCSVDataType(new_mmse_columns[subj])
+        old_l.update(new_data)
         new_lines.append(old_l)
 
     print "%s subj with new tests (%s new tests)" % (total, new_values)
@@ -515,7 +550,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                 test_date = test_results['EXAMDATE']
                 test_date_string = test_date.strftime("%m/%d/%y")
                 test_score = test_results['TOTS']
-                diff_from_first = round((test_date-first_scan_date).days / 365.0, 2)
+                diff_from_first = (test_date-first_scan_date).days / 365.0
                 if test_score != '':
                     all_values.append(test_score) 
                     all_times.append(diff_from_first)
@@ -525,7 +560,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
             new_subj_data['TIME_AVLT.%s' % count] = diff_from_first
             if bl_av45 is not None and test_date != '':
                 rel_time_days = (test_date - bl_av45).days
-                rel_time = round(rel_time_days / 365.0, 2)
+                rel_time = rel_time_days / 365.0
                 new_subj_data['TIMEreltoAV45_AVLT.%s' % count] = rel_time
                 if abs(rel_time_days) <= 93 and 'AVLT_3MTHS_AV45' not in new_subj_data:
                     new_subj_data['AVLT_3MTHS_AV45'] = test_score
@@ -561,12 +596,12 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
             except Exception as e:
                 print "%s vs %s" % (all_times, all_values)
                 raise e
-            new_subj_data['AVLT_slope_all'] = round(slope,2)
+            new_subj_data['AVLT_slope_all'] = slope
         else:
             new_subj_data['AVLT_slope_all'] = ''
         if len(post_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
-            new_subj_data['AVLTslope_postAV45'] = round(slope,2)
+            new_subj_data['AVLTslope_postAV45'] = slope
         else:
             new_subj_data['AVLTslope_postAV45'] = ''
 
@@ -588,6 +623,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
             total += 1
         subj_new_counts[subj] = new_for_subj
         
+        new_subj_data = convertToCSVDataType(new_subj_data)
         old_l.update(new_subj_data)
         new_lines.append(old_l)
 
@@ -861,13 +897,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
                 
                     
         # convert datetimes to strings
-        for k in new_data.keys():
-            if isinstance(new_data[k], datetime):
-                new_data[k] = datetime.strftime(new_data[k], '%m/%d/%y')
-            elif isinstance(new_data[k], float):
-                new_data[k] = str(round(new_data[k],2))
-            elif new_data[k] is None:
-                new_data[k] = ''
+        new_data = convertToCSVDataType(new_data)
         
         # compare
         '''
@@ -964,6 +994,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
             continue
 
         new_data = parseAV45Entries(av45_by_subj[subj])
+        new_data = convertToCSVDataType(new_data)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -986,33 +1017,142 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
     return (new_headers, new_lines)
 
 def parseAV45Entries(subj_av45):
-    pass
+    new_data = {'AV45_2_cerbWM/GM' : '',
+                'AV45_cerbWM/GM' : '',
+                'AV45_cerbWM/GM_percchg' : '',
+                'AV45_cerebWM/GM_diff' : '',
+                'ABS_cerbWM/GM_percchg' : '',
+                'ABS_cerbWM/GM_diff' : '',
+                'AV45_WM70/cerebg' : '',
+                'AV45_2_WM70/cerebg' : '',
+                'AV45_WM70/cerebG_percchg' : '',
+                'AV45_WM70/cerebG_diff' : '',
+                'ABS_WM70/cerebG_perchg' : '',
+                'ABS_WM70/cerebG_diff' : '',
+                'Left-Putamen' : '',
+                'Right-Putamen' : '',
+                'Left-Caudate' : '',
+                'Right-Caudate' : '',
+                'Left-Pallidum' : '',
+                'Right-Pallidum' : '',
+                'AV45_WM70/wcerb' : '',
+                'AV45_2_WM70/wcerb' : '',
+                'AV45_BigRef' : '',
+                'AV45_2_BigRef' : '',
+                'AV45_3_BigRef' : '',
+                'AV45_BigRef_BIN.79' : '',
+                'AV42_2_BigRef_BIN.79' : '',
+                'AV45_3_BigRef_BIN.79' : '',
+                'AV45_BigRef_diff' : '',
+                'AV45_BigRef_diff_2yrest' : '',
+                'ABS_AV45_BigRef_Diff' : '',
+                'AV45_BigRef_pchange' : '',
+                'AV45_BigRef_pchange_2yrest' : '',
+                'ABS_AV45_BigRef_Pchange' : '',
+                'AV45_BigRef_Slope_2tmpts' : '',
+                'AV45_BigRef_Slope_3tmpts' : '',
+                'AV45_BigRef_diff_time1time3' : '',
+                'AV45_BigRef_difftime1time3_4yrest' : '',
+                'AV45_BigRef_pchange_time1time3' : '',
+                'AV45_BigRef_pchangetime1time3_4yrest' : '',
+                'AV45_WM70' : '',
+                'AV45_2_WM70' : '',
+                'AV45_3_WM70' : '',
+                'AV45_WM70_BIN.62' : '',
+                'AV45_WM70_2_BIN.62' : '',
+                'AV45_WM70_3_BIN.62' : '',
+                'AV45_WM70_DIFF' : '',
+                'AV45_WM70_diff_2yrest' : '',
+                'ABS_AV45_WM70_DIFF' : '',
+                'AV45_WM70_Pchange' : '',
+                'AV45_WM70_pchange_2yrest' : '',
+                'ABS_AV45_WM70_Pchange' : '',
+                'AV45_WM70_Slope_2tmpts' : '',
+                'AV45_WM70_diff_time1time3' : '',
+                'AV45_WM70_difftime1time3_4yrest' : '',
+                'AV45_WM70_pchange_time1time3' : '',
+                'AV45_WM70_pchangetime1time3_4yrest' : '',
+                'AV45_cerbg' : '',
+                'AV45_2_cerbg' : '',
+                'AV45_3_cerbg' : '',
+                'AV45_gcerb_BIN1.26' : '',
+                'AV45_2_gcerb_BIN1.26' : '',
+                'AV45_3_gcerb_BIN1.26' : '',
+                'AV45_gcerb_diff' : '',
+                'ABS_AV45_gcerb_diff' : '',
+                'AV45_gcerb_pchange' : '',
+                'ABS_AV45_gcerb_pchange' : '',
+                'AV45_wcerb' : '',
+                'AV45_2_wcerb' : '',
+                'AV45_3_wcerb' : '',
+                'AV45_wcerb_BIN1.11' : '',
+                'AV45_wcerb_2_BIN1.11' : '',
+                'AV45_wcerb_3_BIN1.11' : '',
+                'AV45_wcerb_diff' : '',
+                'ABS_AV45_wcerb_diff' : '',
+                'AV45_wcerb_pchange' : '',
+                'ABS_AV45_wcerb_pchange' : '',
+                'AV45_wcereb_Slope_2tmpts' : '',
+                'AV45_wcereb_Slope_3tmpts' : '',
+                'AV45_brainstem' : '',
+                'AV45_2_brainstem' : '',
+                'AV45_3_brainstem' : '',
+                'AV45_brainstem_BIN0.79' : '',
+                'AV45_brainstem_2_BIN0.79' : '',
+                'AV45_brainstem_3_BIN0.79' : '',
+                'AV45_brainstem_diff' : '',
+                'ABS_AV45_brainstem_DIFF' : '',
+                'AV45_brainstem_pchange' : '',
+                'ABS_AV45_brainstem_pchange' : '',
+                'WM70V1/wcerbV1' : '',
+                'SM70V2/wcerbV2' : '',
+                'WMratio_2nd' : '',
+                'WMRatio_Diff' : '',
+                'ABS_WMratio_diff' : '',
+                'WMratio_pchange' : '',
+                'ABS_WMratio_pchange' : '',
+                'WMratio_2nd' : '',
+                'WMratio_Diff' : '',
+                'WMratio_pchange' : '',
+                'ABS_WMratio_diff' : '',
+                'ABS_WMratio_pchange' : '',
+                'frontal_bigref_diff' : '',
+                'frontal_bigref_pchange' : '',
+                'cingulate_bigref_diff' : '',
+                'cingulate_bigref_pchange' : '',
+                'parietal_bigref_diff' : '',
+                'parietal_bigref_pchange' : '',
+                'temporal_bigref_diff' : '',
+                'temporal_bigref_pchange' : ''}
+    # fill in timepoint-specific fields
+    for i in enumerate(3):
+        if i < len(subj_av45):
+            # fill in appropriate values
+
+            scan_datapoint = subj_av45[i]
+            pass
+        else:
+            pass
+    # fill in holistic fields
+
 
 
 def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None):
     tbm_headers, tbm_lines = parseCSV(tbm_file)
-    registry = importRegistry(registry_file)
-
-    tbm_by_subj = defaultdict(list)
-    for line in tbm_lines:
-        subj = int(line.pop('RID',None))
-        viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
-        examdate = line.get('EXAMDATE',None)
-        if examdate:
-            examdate = datetime.strptime(examdate,'%Y-%m-%d')
-        else:
-            subj_listings = registry[subj]
-            for listing in subj_listings:
-                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-                    examdate = listing['date']
-                    break
-            if not examdate:
-                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-                continue
-        av45_by_subj[subj].append(line)
+    tbm_by_subj = importTBMSyn(tbm_file)
 
     new_headers = old_headers
+
+    # add new headers as needed
+    tbm_columns = ['TBMSyn_DATE.%s' % (i+1) for i in range(10)]
+    tbm_columns.extend(['TBMSyn_SCORE.%s' % (i+1) for i in range(10)])
+    tbm_columns.append('TBMSyn_SLOPE')
+    for tc in tbm_columns:
+        if tc in new_headers:
+            new_headers.remove(tc)
+    # slap onto the end
+    new_headers.extend(tbm_columns)
+
     new_lines = []
     for old_l in old_lines:
         # get subject ID
@@ -1022,11 +1162,51 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
             continue
 
         if subj not in tbm_by_subj:
-            print "No TBM data for %s" % subj
+            #print "No TBM data for %s" % subj
+            new_lines.append(old_l)
+            continue
+
+        subj_tbm = sorted(tbm_by_subj[subj], key=lambda x: x['EXAMDATE'])
+        bl_examdate = subj_tbm[0]['BL_EXAMDATE']
+        bl_av45_string = old_l['AV45_Date']
+        if bl_av45_string == '':
+            print "No Baseline AV45 date for %s" % subj
+            new_lines.append(old_l)
+            continue
+        av45_bl = datetime.strptime(bl_av45_string,'%m/%d/%y')
+
+        # check that TBMSyn baseline is within range of AV45 baseline
+        if abs(av45_bl - bl_examdate).days > 210:
+            print "TBM BL and AV45 BL %s days apart for subj %s" % (abs(av45_bl - bl_examdate).days, subj)
             new_lines.append(old_l)
             continue
 
         new_data = {}
+        slope_points = []
+        for i in range(10):
+            if i < len(subj_tbm):
+                datapoint = subj_tbm[i]
+                new_data['TBMSyn_DATE.%s' % (i+1)] = datapoint['EXAMDATE']
+                new_data['TBMSyn_SCORE.%s' % (i+1)] = datapoint['SCORE']
+                slope_points.append((datapoint['EXAMDATE'],datapoint['SCORE']))
+            else:
+                new_data['TBMSyn_DATE.%s' % (i+1)] = ''
+                new_data['TBMSyn_SCORE.%s' % (i+1)] = ''
+
+        # calculate slope
+        if len(slope_points) >= 2:
+            raw_dates = [_[0] for _ in slope_points]
+            raw_scores = [_[1] for _ in slope_points]
+            basedate = raw_dates[0]
+            diff_dates = [0.0] + [(_ - basedate).days / 365.0 for _ in raw_dates]
+            diff_scores = [0.0] + raw_scores
+            #slope, intercept, r, p, stderr = stats.linregress(diff_dates, diff_scores)
+            output = optimize.fmin(lambda b, x, y: ((b*x-y)**2).sum(), x0=0.1, args=(diff_dates, diff_scores))
+            new_data['TBMSyn_SLOPE'] = output[0]
+        else:
+            new_data['TBMSyn_SLOPE'] = ''
+
+        new_data = convertToCSVDataType(new_data, decimal_places=5) # TBMSyn needs more decimal places
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -1034,6 +1214,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
 
+    return (new_headers, new_lines)
 
 def eliminateColumns(headers, lines):
     to_remove = ['LastClinicalVisit',
@@ -1069,15 +1250,25 @@ if __name__ == '__main__':
     neuro_battery_file = '../cog_tests/NEUROBAT.csv'
     # Diagnosis file
     diagnosis_file = '../docs/DXSUM_PDXCONV_ADNIALL.csv'
+    # TBMsyn file
+    tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
 
 
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file)
+    print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None)
-    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, pet_meta_file, dump_to=None)
+    print "\nSYNCING AV45\n"
+    #new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
+    print "\nSYNCING DIAGNOSES\n"
+    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
+    print "\nSYNCING TBMSYN\n"
+    new_headers, new_lines = syncTBMSynData(new_headers, new_lines, tbm_file, registry_file, dump_to=None)
+    print "\nSYNCING MMSE\n"
     new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file, dump_to=None)
+    print "\nSYNCING ADASCOG\n"
     new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
+    print "\nSYNCING AVLT\n"
     new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=output_file)
     
 

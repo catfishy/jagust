@@ -2,7 +2,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from tabulate import tabulate
 
-from master_parser import parseCSV, importRegistry, importPetMETA
+from master_parser import parseCSV, importRegistry, importPetMETA, importTBMSyn
 
 
 def importMaster(master_file):
@@ -65,22 +65,7 @@ def importLongitudinalFreesurfer(longfree_file):
                            'inner_data': inner_data})
     return dict(data)
 
-def importTBMSyn(tbm_file):
-    headers, lines = parseCSV(tbm_file)
-    data = defaultdict(list)
-    for i, line in enumerate(lines):  
-        if line['ACCELERATED'] == 'Yes':
-            continue      
-        subj = int(line['RID'])
-        vc = line['VISCODE'].strip().lower()
-        vc2 = line['VISCODE2'].strip().lower()
-        score = float(line['TBMSYNSCOR'])
-        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
-        data[subj].append({'VISCODE': vc,
-                           'VISCODE2': vc2,
-                           'EXAMDATE': examdate,
-                           'SCORE': score})
-    return data
+
 
 def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, master_data):
     '''
