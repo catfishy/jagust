@@ -1442,8 +1442,6 @@ if __name__ == '__main__':
     REMEMBER TO DELETE ALL OLD AV45 FIELDS BEFORE RUNNING
     '''
 
-
-
     # Input/output/lookup files
     master_file = "../FDG_AV45_COGdata.csv"
     output_file = "../FDG_AV45_COGdata_synced.csv"

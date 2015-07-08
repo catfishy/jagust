@@ -5,6 +5,27 @@ from tabulate import tabulate
 from master_parser import parseCSV, importRegistry, importPetMETA, importTBMSyn
 
 
+def importMRI(mri_file):
+    headers, lines = parseCSV(mri_file)
+    data = defaultdict(list)
+    for i, line in enumerate(lines):
+        # get subject ID
+        try:
+            subj_id_whole = line['SubjectID']
+            subj = int(subj_id_whole.split('_')[-1])
+        except Exception as e:
+            print e
+            continue
+        '''
+        if line['Sequence'] != 'MPRAGE':
+            continue
+        '''
+        new_date = line['ScanDate']
+        new_date = datetime.strptime(new_date, '%Y-%m-%d')
+        data[subj].append({'EXAMDATE' : new_date})
+    return dict(data)
+
+
 def importMaster(master_file):
     headers, lines = parseCSV(master_file)
     data = {}
@@ -67,7 +88,7 @@ def importLongitudinalFreesurfer(longfree_file):
 
 
 
-def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, master_data):
+def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, mri_data, master_data):
     '''
     Aggregate into one dictionary
     remove datapoints from before the first av45 scan
@@ -92,14 +113,19 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, 
         else:
             subj_tbm = []
         subj_points['tbm'] = [_['VISCODE2'] for _ in subj_tbm if _['EXAMDATE'] >= bl_av45]
-        if len(subj_points['tbm']) == 0 and len(subj_points['long']) == 0 and len(subj_points['bsi']) == 0:
-            continue
+        if subj in mri_data:
+            subj_mri = sorted(mri_data[subj], key=lambda x: x['EXAMDATE'])
+        else:
+            subj_mri = []
+        subj_points['mri'] = list(set([_['EXAMDATE'] for _ in subj_mri if _['EXAMDATE'] >= bl_av45]))
+        print "%s: %s -> %s" % (subj, len(subj_mri), len(subj_points['mri']))
         points_by_subj[subj] = subj_points
 
     # count
     tbm_counts = defaultdict(int)
     long_counts = defaultdict(int)
     bsi_counts = defaultdict(int)
+    mri_counts = defaultdict(int)
     for k,v in points_by_subj.iteritems():
         print k
         diag = master_data.get(k,{}).get('Init_Diagnosis','Unknown')
@@ -114,9 +140,69 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, 
                 tbm_counts[(diag,len(b))] += 1
             elif a == 'bsi':
                 bsi_counts[(diag, len(b))] += 1
+            elif a == 'mri':
+                mri_counts[(diag, len(b))] += 1
+
+    for k,v in mri_counts.iteritems():
+        print "%s, %s" % (k,v)
 
     print '\n\n'
-
+    print "MRI"
+    mri_graph = [['Init Diagnosis', 
+                  '=0 followups', 
+                  '=1 followups', 
+                  '=2 followups', 
+                  '=3 followups',
+                  '=4 followups',
+                  '=5 followups',
+                  '=6 followups',
+                  '=7 followups']]
+    mri_graph.append(['CN',
+                      mri_counts.get(('N',0),0),
+                      mri_counts.get(('N',1),0),
+                      mri_counts.get(('N',2),0),
+                      mri_counts.get(('N',3),0),
+                      mri_counts.get(('N',4),0),
+                      mri_counts.get(('N',5),0),
+                      mri_counts.get(('N',6),0),
+                      mri_counts.get(('N',7),0)])
+    mri_graph.append(['SMC',
+                      mri_counts.get(('SMC',0),0),
+                      mri_counts.get(('SMC',1),0),
+                      mri_counts.get(('SMC',2),0),
+                      mri_counts.get(('SMC',3),0),
+                      mri_counts.get(('SMC',4),0),
+                      mri_counts.get(('SMC',5),0),
+                      mri_counts.get(('SMC',6),0),
+                      mri_counts.get(('SMC',7),0)])
+    mri_graph.append(['EMCI',
+                      mri_counts.get(('EMCI',0),0),
+                      mri_counts.get(('EMCI',1),0),
+                      mri_counts.get(('EMCI',2),0),
+                      mri_counts.get(('EMCI',3),0),
+                      mri_counts.get(('EMCI',4),0),
+                      mri_counts.get(('EMCI',5),0),
+                      mri_counts.get(('EMCI',6),0),
+                      mri_counts.get(('EMCI',7),0)])
+    mri_graph.append(['LMCI',
+                      mri_counts.get(('LMCI',0),0),
+                      mri_counts.get(('LMCI',1),0),
+                      mri_counts.get(('LMCI',2),0),
+                      mri_counts.get(('LMCI',3),0),
+                      mri_counts.get(('LMCI',4),0),
+                      mri_counts.get(('LMCI',5),0),
+                      mri_counts.get(('LMCI',6),0),
+                      mri_counts.get(('LMCI',7),0)])
+    mri_graph.append(['AD',
+                      mri_counts.get(('AD',0),0),
+                      mri_counts.get(('AD',1),0),
+                      mri_counts.get(('AD',2),0),
+                      mri_counts.get(('AD',3),0),
+                      mri_counts.get(('AD',4),0),
+                      mri_counts.get(('AD',5),0),
+                      mri_counts.get(('AD',6),0),
+                      mri_counts.get(('AD',7),0)])
+    print tabulate(mri_graph) + '\n'
     print "TBMSyn"
     tbm_graph = [['Init Diagnosis', 
                   '=0 followups', 
@@ -270,6 +356,56 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, 
 
     print '\n\n'
 
+    print "MRI"
+    mri_graph_morethan = [['Init Diagnosis', 
+                          '>=0 followups', 
+                          '>=1 followups', 
+                          '>=2 followups', 
+                          '>=3 followups',
+                          '>=4 followups',
+                          '>=5 followups',
+                          '>=6 followups']]
+    mri_graph_morethan.append(['CN',
+                              sum(mri_graph[1][1:]),
+                              sum(mri_graph[1][2:]),
+                              sum(mri_graph[1][3:]),
+                              sum(mri_graph[1][4:]),
+                              sum(mri_graph[1][5:]),
+                              sum(mri_graph[1][6:]),
+                              sum(mri_graph[1][7:])])
+    mri_graph_morethan.append(['SMC',
+                              sum(mri_graph[2][1:]),
+                              sum(mri_graph[2][2:]),
+                              sum(mri_graph[2][3:]),
+                              sum(mri_graph[2][4:]),
+                              sum(mri_graph[2][5:]),
+                              sum(mri_graph[2][6:]),
+                              sum(mri_graph[2][7:])])
+    mri_graph_morethan.append(['EMCI',
+                              sum(mri_graph[3][1:]),
+                              sum(mri_graph[3][2:]),
+                              sum(mri_graph[3][3:]),
+                              sum(mri_graph[3][4:]),
+                              sum(mri_graph[3][5:]),
+                              sum(mri_graph[3][6:]),
+                              sum(mri_graph[3][7:])])
+    mri_graph_morethan.append(['LMCI',
+                              sum(mri_graph[4][1:]),
+                              sum(mri_graph[4][2:]),
+                              sum(mri_graph[4][3:]),
+                              sum(mri_graph[4][4:]),
+                              sum(mri_graph[4][5:]),
+                              sum(mri_graph[4][6:]),
+                              sum(mri_graph[4][7:])])
+    mri_graph_morethan.append(['AD',
+                              sum(mri_graph[5][1:]),
+                              sum(mri_graph[5][2:]),
+                              sum(mri_graph[5][3:]),
+                              sum(mri_graph[5][4:]),
+                              sum(mri_graph[5][5:]),
+                              sum(mri_graph[5][6:]),
+                              sum(mri_graph[5][7:])])
+    print tabulate(mri_graph_morethan) + '\n'
     print "TBMSyn"
     tbm_graph_morethan = [['Init Diagnosis', 
                   '>=0 followups', 
@@ -428,6 +564,7 @@ if __name__ == "__main__":
     master_file = "../FDG_AV45_COGdata_synced.csv"
     registry_file = "../docs/registry_clean.csv"
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
+    mri_meta_file = "../docs/MPRAGEMETA.csv"
     # BSI file
     bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
     # long freesurfer file
@@ -436,12 +573,18 @@ if __name__ == "__main__":
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
 
     pet_data = importPetMETA(pet_meta_file)
+    print 'PET patients: %s' % len(pet_data)
     bsi_data = importBSI(bsi_file)
+    print 'BSI patients: %s' % len(bsi_data)
     longfree_data = importLongitudinalFreesurfer(longfree_file)
+    print 'Longfree patients: %s' % len(longfree_data)
     tbm_data = importTBMSyn(tbm_file)
+    print 'TBM patients: %s' % len(tbm_data)
+    mri_data = importMRI(mri_meta_file)
+    print 'MRI patients: %s' % len(mri_data)
     master_data = importMaster(master_file)
 
-    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, master_data)
+    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, mri_data, master_data)
 
 
 
