@@ -370,10 +370,55 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
     for k,v in mmse_by_subject.iteritems():
         mmse_by_subject[k] = sorted(v, key=lambda x: x[0])
 
-    # Fill in MMSE columns for each subject
-    new_mmse_columns = {}
-    for subj, tests in mmse_by_subject.iteritems():
+    # overwrite old lines
+    new_headers = old_headers
+
+    # add these new headers, if not present
+    to_fill_in = ['MMSE_post_AV45_followuptime',
+                  'MMSE_AV45_3MTHS',
+                  'MMSE_AV45_DATE',
+                  'MMSE_AV45_2_3MTHS',
+                  'MMSE_AV45_2_DATE',
+                  'MMSE_AV45_3_3MTHS',
+                  'MMSE_AV45_3_DATE',
+                  'MMSEslope_postAV45']
+    add_headers = ['TIMEpostAV45_MMSE.%s' % (i+1) for i in range(11)] + to_fill_in
+
+    for h in add_headers:
+        if h in new_headers:
+            new_headers.remove(h)
+    # put in right after 'MMSCORE.11'
+    idx = new_headers.index('MMSCORE.11') + 1
+    new_headers = new_headers[:idx] + add_headers + new_headers[idx:]
+
+    new_lines = []
+    new_values = 0
+    total = 0
+    for i, old_l in enumerate(old_lines):
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            continue
+
+        # get av45 dates
+        if old_l['AV45_Date'] != '':
+            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
+        else:
+            bl_av45 = ''
+        if old_l['AV45_2_Date'] != '':
+            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
+        else:
+            av45_2 = ''
+        if old_l['AV45_3_Date'] != '':
+            av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
+        else:
+            av45_3 = ''
+
+        # create new subject data
+        tests = mmse_by_subject[subj]
         new_subj_data = {}
+        max_followup_counter = None
+        post_av45_points = []
         for i in range(11):
             if i >= len(tests):
                 test_date = ''
@@ -390,49 +435,57 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
             count = i+1
             new_subj_data['MMSE_DATE%s' % count] = test_date
             new_subj_data['MMSCORE.%s' % count] = test_score
-        # save
-        new_mmse_columns[subj] = new_subj_data
 
-    # overwrite old lines
-    new_headers = old_headers # no change in headers
-    new_lines = []
-    new_values = 0
-    total = 0
-    for i, old_l in enumerate(old_lines):
-        try:
-            subj = int(old_l['RID'])
-        except Exception as e:
-            continue
-        #print "%s: %s" % (subj, new_mmse_columns[subj])
+            # pair up with av45 scan date if possible
+            if bl_av45 != '' and test_date != '':
+                rel_time_days = (test_date - bl_av45).days 
+                if abs(rel_time_days) <= 93 and 'MMSE_AV45_3MTHS' not in new_subj_data:
+                    new_subj_data['MMSE_AV45_3MTHS'] = test_score
+                    new_subj_data['MMSE_AV45_DATE'] = test_date
+                # also try to put value into time post av45 columns
+                if rel_time_days >= -93.0:
+                    annualized_time = rel_time_days / 365.0
+                    new_subj_data['TIMEpostAV45_MMSE.%s' % count] = annualized_time
+                    max_followup_counter = annualized_time
+                    if test_score != '':
+                        post_av45_points.append((annualized_time, test_score))
+            if ('TIMEpostAV45_MMSE.%s' % count) not in new_subj_data:
+                new_subj_data['TIMEpostAV45_MMSE.%s' % count] = ''
+            # pair up with subsequent av45 scans
+            if av45_2 != '' and test_date != '':
+                rel_time_days = (test_date - av45_2).days 
+                if abs(rel_time_days) <= 93 and 'MMSE_AV45_2_3MTHS' not in new_subj_data:
+                    new_subj_data['MMSE_AV45_2_3MTHS'] = test_score
+                    new_subj_data['MMSE_AV45_2_DATE'] = test_date
+            if av45_3 != '' and test_date != '':
+                rel_time_days = (test_date - av45_3).days 
+                if abs(rel_time_days) <= 93 and 'MMSE_AV45_3_3MTHS' not in new_subj_data:
+                    new_subj_data['MMSE_AV45_3_3MTHS'] = test_score
+                    new_subj_data['MMSE_AV45_3_DATE'] = test_date
+        if max_followup_counter is not None:
+            new_subj_data['MMSE_post_AV45_followuptime'] = max(max_followup_counter, 0.0)
 
-        # add av45-relative columns
-        bl_date_string = old_l['AV45_Date']
-        date_used = False
-        if bl_date_string != '':
-            date_used = True
-            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
-            closest_mmse_date, closest_results = sorted(mmse_by_subject[subj], key=lambda x: abs(x[0] - bl_av45))[0]
-        else:
-            closest_mmse_date, closest_results = sorted(mmse_by_subject[subj], key=lambda x: x[0])[0]
-        test_score = closest_results['MMSCORE']
-        if test_score != '':
-            test_score = int(test_score)
-        new_mmse_columns[subj]['MMSEclosest_1'] = closest_mmse_date
-        new_mmse_columns[subj]['MMSEclosest_AV45'] = test_score
-        if date_used:
-            date_diff = abs(bl_av45 - closest_mmse_date).days
-            new_mmse_columns[subj]['datediff_MMSE_AV45'] = abs(bl_av45 - closest_mmse_date).days / 365.25
-            new_mmse_columns[subj]['MMSE_3mths_AV45'] = test_score if date_diff < 93 else ''
-        else:
-            new_mmse_columns[subj]['datediff_MMSE_AV45'] = ''
-            new_mmse_columns[subj]['MMSE_3mths_AV45'] = ''
+        # get post av45 slope
+        if len(post_av45_points) >= 2:
+            post_times = [_[0] for _ in post_av45_points]
+            post_values = [_[1] for _ in post_av45_points]
+            slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            new_subj_data['MMSEslope_postAV45'] = slope
+
+        # fill in the blanks
+        for f_key in to_fill_in:
+            if f_key not in new_subj_data:
+                new_subj_data[f_key] = ''
+
+
+
 
         # do comparison:
         #print "SUBJ: %s" % subj
         changed = False
-        for k in sorted(new_mmse_columns[subj].keys()):
-            old_value = old_l[k]
-            new_value = new_mmse_columns[subj][k]
+        for k in sorted(new_subj_data.keys()):
+            old_value = old_l.get(k,'')
+            new_value = new_subj_data[k]
             if k.startswith('MMSCORE') and old_value == '' and new_value != '':
                 new_values += 1
                 changed = True
@@ -440,11 +493,12 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         if changed:
             total += 1
 
-        new_data = convertToCSVDataType(new_mmse_columns[subj])
+        new_data = convertToCSVDataType(new_subj_data)
         old_l.update(new_data)
         new_lines.append(old_l)
 
     print "%s subj with new tests (%s new tests)" % (total, new_values)
+
     # dump out
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
@@ -829,6 +883,14 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         else:
             av45_3 = ''
 
+        if bl_av45 != '' and av45_2 != '':
+            av45_1_2_diff = (av45_2 - bl_av45).days / 365.0
+        else:
+            av45_1_2_diff = ''
+        if bl_av45 != '' and av45_3 != '':
+            av45_1_3_diff = (av45_3 - bl_av45).days / 365.0
+        else:
+            av45_1_3_diff = ''
 
         
         # find very first visit date in registry (excluding scmri)
@@ -858,6 +920,8 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         new_data = {'AV45_Date': bl_av45,
                     'AV45_2_Date': av45_2,
                     'AV45_3_Date': av45_3,
+                    'AV45_1_2_Diff (Yrs)': av45_1_2_diff,
+                    'AV45_1_3_Diff (yrs)': av45_1_3_diff,
                     'MCItoADConv(fromav45)': '0',
                     'MCItoADConvDate': '',
                     'MCItoADconv_': '',
@@ -976,9 +1040,10 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
             if not examdate:
                 print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
                 continue
+        line['EXAMDATE'] = examdate
         av45_by_subj[subj].append(line)
 
-    new_headers = old_headers
+    new_headers = None
     new_lines = []
     old_subjects = set([])
     for old_l in old_lines:
@@ -993,8 +1058,10 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
             new_lines.append(old_l)
             continue
 
-        new_data = parseAV45Entries(av45_by_subj[subj])
-        new_data = convertToCSVDataType(new_data)
+        updated_headers, new_data = parseAV45Entries(old_headers, av45_by_subj[subj])
+        if new_headers is None:
+            new_headers = updated_headers
+        new_data = convertToCSVDataType(new_data, decimal_places=5)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -1006,7 +1073,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
     for ns in new_subjects:
         new_subj_row = {k: '' for k in new_headers}
         new_subj_row['RID'] = str(ns)
-        new_columns = parseAV45Entries(av45_by_subj[ns])
+        updated_headers, new_columns = parseAV45Entries(old_headers, av45_by_subj[ns])
         new_subj_row.update(new_columns)
         new_lines.append(new_subj_row)
 
@@ -1016,124 +1083,221 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
 
     return (new_headers, new_lines)
 
-def parseAV45Entries(subj_av45):
-    new_data = {'AV45_2_cerbWM/GM' : '',
-                'AV45_cerbWM/GM' : '',
-                'AV45_cerbWM/GM_percchg' : '',
-                'AV45_cerebWM/GM_diff' : '',
-                'ABS_cerbWM/GM_percchg' : '',
-                'ABS_cerbWM/GM_diff' : '',
-                'AV45_WM70/cerebg' : '',
-                'AV45_2_WM70/cerebg' : '',
-                'AV45_WM70/cerebG_percchg' : '',
-                'AV45_WM70/cerebG_diff' : '',
-                'ABS_WM70/cerebG_perchg' : '',
-                'ABS_WM70/cerebG_diff' : '',
-                'Left-Putamen' : '',
-                'Right-Putamen' : '',
-                'Left-Caudate' : '',
-                'Right-Caudate' : '',
-                'Left-Pallidum' : '',
-                'Right-Pallidum' : '',
-                'AV45_WM70/wcerb' : '',
-                'AV45_2_WM70/wcerb' : '',
-                'AV45_BigRef' : '',
-                'AV45_2_BigRef' : '',
-                'AV45_3_BigRef' : '',
-                'AV45_BigRef_BIN.79' : '',
-                'AV42_2_BigRef_BIN.79' : '',
-                'AV45_3_BigRef_BIN.79' : '',
-                'AV45_BigRef_diff' : '',
-                'AV45_BigRef_diff_2yrest' : '',
-                'ABS_AV45_BigRef_Diff' : '',
-                'AV45_BigRef_pchange' : '',
-                'AV45_BigRef_pchange_2yrest' : '',
-                'ABS_AV45_BigRef_Pchange' : '',
-                'AV45_BigRef_Slope_2tmpts' : '',
-                'AV45_BigRef_Slope_3tmpts' : '',
-                'AV45_BigRef_diff_time1time3' : '',
-                'AV45_BigRef_difftime1time3_4yrest' : '',
-                'AV45_BigRef_pchange_time1time3' : '',
-                'AV45_BigRef_pchangetime1time3_4yrest' : '',
-                'AV45_WM70' : '',
-                'AV45_2_WM70' : '',
-                'AV45_3_WM70' : '',
-                'AV45_WM70_BIN.62' : '',
-                'AV45_WM70_2_BIN.62' : '',
-                'AV45_WM70_3_BIN.62' : '',
-                'AV45_WM70_DIFF' : '',
-                'AV45_WM70_diff_2yrest' : '',
-                'ABS_AV45_WM70_DIFF' : '',
-                'AV45_WM70_Pchange' : '',
-                'AV45_WM70_pchange_2yrest' : '',
-                'ABS_AV45_WM70_Pchange' : '',
-                'AV45_WM70_Slope_2tmpts' : '',
-                'AV45_WM70_diff_time1time3' : '',
-                'AV45_WM70_difftime1time3_4yrest' : '',
-                'AV45_WM70_pchange_time1time3' : '',
-                'AV45_WM70_pchangetime1time3_4yrest' : '',
-                'AV45_cerbg' : '',
-                'AV45_2_cerbg' : '',
-                'AV45_3_cerbg' : '',
-                'AV45_gcerb_BIN1.26' : '',
-                'AV45_2_gcerb_BIN1.26' : '',
-                'AV45_3_gcerb_BIN1.26' : '',
-                'AV45_gcerb_diff' : '',
-                'ABS_AV45_gcerb_diff' : '',
-                'AV45_gcerb_pchange' : '',
-                'ABS_AV45_gcerb_pchange' : '',
-                'AV45_wcerb' : '',
-                'AV45_2_wcerb' : '',
-                'AV45_3_wcerb' : '',
-                'AV45_wcerb_BIN1.11' : '',
-                'AV45_wcerb_2_BIN1.11' : '',
-                'AV45_wcerb_3_BIN1.11' : '',
-                'AV45_wcerb_diff' : '',
-                'ABS_AV45_wcerb_diff' : '',
-                'AV45_wcerb_pchange' : '',
-                'ABS_AV45_wcerb_pchange' : '',
-                'AV45_wcereb_Slope_2tmpts' : '',
-                'AV45_wcereb_Slope_3tmpts' : '',
-                'AV45_brainstem' : '',
-                'AV45_2_brainstem' : '',
-                'AV45_3_brainstem' : '',
-                'AV45_brainstem_BIN0.79' : '',
-                'AV45_brainstem_2_BIN0.79' : '',
-                'AV45_brainstem_3_BIN0.79' : '',
-                'AV45_brainstem_diff' : '',
-                'ABS_AV45_brainstem_DIFF' : '',
-                'AV45_brainstem_pchange' : '',
-                'ABS_AV45_brainstem_pchange' : '',
-                'WM70V1/wcerbV1' : '',
-                'SM70V2/wcerbV2' : '',
-                'WMratio_2nd' : '',
-                'WMRatio_Diff' : '',
-                'ABS_WMratio_diff' : '',
-                'WMratio_pchange' : '',
-                'ABS_WMratio_pchange' : '',
-                'WMratio_2nd' : '',
-                'WMratio_Diff' : '',
-                'WMratio_pchange' : '',
-                'ABS_WMratio_diff' : '',
-                'ABS_WMratio_pchange' : '',
-                'frontal_bigref_diff' : '',
-                'frontal_bigref_pchange' : '',
-                'cingulate_bigref_diff' : '',
-                'cingulate_bigref_pchange' : '',
-                'parietal_bigref_diff' : '',
-                'parietal_bigref_pchange' : '',
-                'temporal_bigref_diff' : '',
-                'temporal_bigref_pchange' : ''}
-    # fill in timepoint-specific fields
-    for i in enumerate(3):
-        if i < len(subj_av45):
-            # fill in appropriate values
+def parseAV45Entries(old_headers, subj_av45):
+    subj_av45 = sorted(subj_av45, key=lambda x: x['EXAMDATE'])
+    exam_times = [_['EXAMDATE'] for _ in subj_av45]
+    exam_timedeltas = [(_-exam_times[0]).days / 365.0 for _ in exam_times]
 
-            scan_datapoint = subj_av45[i]
-            pass
-        else:
-            pass
-    # fill in holistic fields
+    cerebWM_GM_keys = ['AV45_cerebWM/GM', 'AV45_2_cerebWM/GM', 'AV45_3_cerebWM/GM']
+    wm70_cerebg_keys = ['AV45_WM70/cerebg', 'AV45_2_WM70/cerebg', 'AV45_3_WM70/cerebg']
+    wm70_wcereb_keys = ['AV45_WM70/wcereb', 'AV45_2_WM70/wcereb', 'AV45_3_WM70/wcereb']
+    unilateral_keys = ['Left-Putamen','Right-Putamen','Left-Caudate','Right-Caudate','Left-Pallidum','Right-Pallidum']
+    bigref_keys = ['AV45_BigRef','AV45_2_BigRef','AV45_3_BigRef'] # assuming composite ROI
+    wm70_keys = ['AV45_WM70','AV45_2_WM70','AV45_3_WM70'] # assuming composite ROI
+    cerebg_keys = ['AV45_cerebg','AV45_2_cerebg','AV45_3_cerebg'] # assuming composite ROI
+    wcereb_keys = ['AV45_wcereb','AV45_2_wcereb','AV45_3_wcereb'] # assuming composite ROI
+    brainstem_keys = ['AV45_brainstem','AV45_2_brainstem','AV45_3_brainstem'] # assuming composite ROI
+    wmratio_keys = ['AV45_WMratio','AV45_2_WMratio','AV45_3_WMratio']
+    frontal_bigref_keys = ['AV45_Frontal/BigRef','AV45_2_Frontal/BigRef','AV45_3_Frontal/BigRef']
+    cingulate_bigref_keys = ['AV45_Cingulate/BigRef','AV45_2_Cingulate/BigRef','AV45_3_Cingulate/BigRef']
+    parietal_bigref_keys = ['AV45_Parietal/BigRef','AV45_2_Parietal/BigRef','AV45_3_Parietal/BigRef']
+    temporal_bigref_keys = ['AV45_Temporal/BigRef','AV45_2_Temporal/BigRef','AV45_3_Temporal/BigRef']
+
+    # generate additional keys and arrange into header list
+    all_cerebWM_GM_keys = cerebWM_GM_keys + \
+                         ["%s_pchange" % _ for _ in cerebWM_GM_keys[1:]] + \
+                         ["%s_pchange_ABS" % _ for _ in cerebWM_GM_keys[1:]] + \
+                         ["%s_diff" % _ for _ in cerebWM_GM_keys[1:]] + \
+                         ["%s_diff_ABS" % _ for _ in cerebWM_GM_keys[1:]]
+    all_wm70_cerebg_keys = wm70_cerebg_keys + \
+                           ["%s_pchange" % _ for _ in wm70_cerebg_keys[1:]] + \
+                           ["%s_pchange_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
+                           ["%s_diff" % _ for _ in wm70_cerebg_keys[1:]] + \
+                           ["%s_diff_ABS" % _ for _ in wm70_cerebg_keys[1:]]
+    all_wm70_wcereb_keys = wm70_wcereb_keys + \
+                           ["%s_pchange" % _ for _ in wm70_wcereb_keys[1:]] + \
+                           ["%s_pchange_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
+                           ["%s_diff" % _ for _ in wm70_wcereb_keys[1:]] + \
+                           ["%s_diff_ABS" % _ for _ in wm70_wcereb_keys[1:]]
+    all_unilateral_keys = unilateral_keys
+    all_bigref_keys = bigref_keys + \
+                      ["%s_pchange" % _ for _ in bigref_keys[1:]] + \
+                      ["%s_pchange_ABS" % _ for _ in bigref_keys[1:]] + \
+                      ["%s_diff" % _ for _ in bigref_keys[1:]] + \
+                      ["%s_diff_ABS" % _ for _ in bigref_keys[1:]] + \
+                      ["%s_BIN.79" % _ for _ in bigref_keys] + \
+                      ['AV45_BigRef_Slope_2pts', 'AV45_BigRef_Slope_3pts']
+    all_wm70_keys = wm70_keys + \
+                    ["%s_pchange" % _ for _ in wm70_keys[1:]] + \
+                    ["%s_pchange_ABS" % _ for _ in wm70_keys[1:]] + \
+                    ["%s_diff" % _ for _ in wm70_keys[1:]] + \
+                    ["%s_diff_ABS" % _ for _ in wm70_keys[1:]] + \
+                    ["%s_BIN.62" % _ for _ in wm70_keys] + \
+                    ['AV45_WM70_Slope_2pts', 'AV45_WM70_Slope_3pts']
+    all_cerebg_keys = cerebg_keys + \
+                    ["%s_pchange" % _ for _ in cerebg_keys[1:]] + \
+                    ["%s_pchange_ABS" % _ for _ in cerebg_keys[1:]] + \
+                    ["%s_diff" % _ for _ in cerebg_keys[1:]] + \
+                    ["%s_diff_ABS" % _ for _ in cerebg_keys[1:]] + \
+                    ["%s_BIN1.26" % _ for _ in cerebg_keys] + \
+                    ['AV45_cerebg_Slope_2pts', 'AV45_cerebg_Slope_3pts']
+    all_wcereb_keys = wcereb_keys + \
+                    ["%s_pchange" % _ for _ in wcereb_keys[1:]] + \
+                    ["%s_pchange_ABS" % _ for _ in wcereb_keys[1:]] + \
+                    ["%s_diff" % _ for _ in wcereb_keys[1:]] + \
+                    ["%s_diff_ABS" % _ for _ in wcereb_keys[1:]] + \
+                    ["%s_BIN1.11" % _ for _ in wcereb_keys] + \
+                    ['AV45_wcereb_Slope_2pts', 'AV45_wcereb_Slope_3pts']
+    all_brainstem_keys = brainstem_keys + \
+                    ["%s_pchange" % _ for _ in brainstem_keys[1:]] + \
+                    ["%s_pchange_ABS" % _ for _ in brainstem_keys[1:]] + \
+                    ["%s_diff" % _ for _ in brainstem_keys[1:]] + \
+                    ["%s_diff_ABS" % _ for _ in brainstem_keys[1:]] + \
+                    ["%s_BIN.79" % _ for _ in brainstem_keys] + \
+                    ['AV45_brainstem_Slope_2pts', 'AV45_brainstem_Slope_3pts']
+    all_wmratio_keys = wmratio_keys + \
+                      ["%s_pchange" % _ for _ in wmratio_keys[1:]] + \
+                      ["%s_pchange_ABS" % _ for _ in wmratio_keys[1:]] + \
+                      ["%s_diff" % _ for _ in wmratio_keys[1:]] + \
+                      ["%s_diff_ABS" % _ for _ in wmratio_keys[1:]]
+    all_frontal_bigref_keys = frontal_bigref_keys + \
+                      ["%s_pchange" % _ for _ in frontal_bigref_keys[1:]] + \
+                      ["%s_diff" % _ for _ in frontal_bigref_keys[1:]]
+    all_cingulate_bigref_keys = cingulate_bigref_keys + \
+                      ["%s_pchange" % _ for _ in cingulate_bigref_keys[1:]] + \
+                      ["%s_diff" % _ for _ in cingulate_bigref_keys[1:]]
+    all_parietal_bigref_keys = parietal_bigref_keys + \
+                      ["%s_pchange" % _ for _ in parietal_bigref_keys[1:]] + \
+                      ["%s_diff" % _ for _ in parietal_bigref_keys[1:]]
+    all_temporal_bigref_keys = temporal_bigref_keys + \
+                      ["%s_pchange" % _ for _ in temporal_bigref_keys[1:]] + \
+                      ["%s_diff" % _ for _ in temporal_bigref_keys[1:]]
+    all_av45_key_lists = [all_cerebWM_GM_keys,
+                          all_wm70_cerebg_keys,
+                          all_wm70_wcereb_keys,
+                          all_unilateral_keys,
+                          all_bigref_keys,
+                          all_wm70_keys,
+                          all_cerebg_keys,
+                          all_wcereb_keys,
+                          all_brainstem_keys,
+                          all_wmratio_keys,
+                          all_frontal_bigref_keys,
+                          all_cingulate_bigref_keys,
+                          all_parietal_bigref_keys,
+                          all_temporal_bigref_keys]
+    pchange_diff_lists = [all_cerebWM_GM_keys,
+                          all_wm70_cerebg_keys,
+                          all_wm70_wcereb_keys,
+                          all_bigref_keys,
+                          all_wm70_keys,
+                          all_cerebg_keys,
+                          all_wcereb_keys,
+                          all_brainstem_keys,
+                          all_wmratio_keys,
+                          all_frontal_bigref_keys,
+                          all_cingulate_bigref_keys,
+                          all_parietal_bigref_keys,
+                          all_temporal_bigref_keys]
+    abs_lists = [all_cerebWM_GM_keys,
+                 all_wm70_cerebg_keys,
+                 all_wm70_wcereb_keys,
+                 all_bigref_keys,
+                 all_wm70_keys,
+                 all_cerebg_keys,
+                 all_wcereb_keys,
+                 all_brainstem_keys,
+                 all_wmratio_keys]
+    all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
+    for h in all_av45_keys:
+        if h in old_headers:
+            old_headers.remove(h)
+    # stick after the 'LastCSFAbeta' key
+    idx = old_headers.index('LastCSFAbeta') + 1
+    new_headers = old_headers[:idx] + all_av45_keys + old_headers[idx:]
+    data = {k:'' for k in all_av45_keys}
+    wm70_0 = None
+    # fill in values
+    for i, point in enumerate(subj_av45):
+        # extract necessary values
+        cerebw = float(point['WHOLECEREBELLUM']) - float(point['CEREBELLUMGREYMATTER'])
+        wcereb = float(point['WHOLECEREBELLUM'])
+        cerebg = float(point['CEREBELLUMGREYMATTER'])
+        compositeroi = float(point['COMPOSITE'])
+        bigref = float(point['COMPOSITE_REF'])
+        wm70 = float(point['ERODED_SUBCORTICALWM'])
+        brainstem = float(point['BRAINSTEM'])
+        cingulate = float(point['CINGULATE'])
+        frontal = float(point['FRONTAL'])
+        parietal = float(point['PARIETAL'])
+        temporal = float(point['TEMPORAL'])
+
+        # fill in basic keys
+        data[cerebWM_GM_keys[i]] = cerebw/cerebg
+        data[wm70_cerebg_keys[i]] = wm70/cerebg
+        data[wm70_wcereb_keys[i]] = wm70/wcereb
+        data[bigref_keys[i]] = compositeroi/bigref
+        data[wm70_keys[i]] = compositeroi/wm70
+        data[cerebg_keys[i]] = compositeroi/cerebg
+        data[wcereb_keys[i]] = compositeroi/wcereb
+        data[brainstem_keys[i]] = compositeroi/brainstem
+        data[frontal_bigref_keys[i]] = frontal/bigref
+        data[cingulate_bigref_keys[i]] = cingulate/bigref
+        data[parietal_bigref_keys[i]] = parietal/bigref
+        data[temporal_bigref_keys[i]] = temporal/bigref
+        data["%s_BIN.79" % bigref_keys[i]] = 1 if (compositeroi/bigref) > 0.79 else 0
+        data["%s_BIN.62" % wm70_keys[i]] = 1 if (compositeroi/wm70) > 0.62 else 0
+        data["%s_BIN1.26" % cerebg_keys[i]] = 1 if (compositeroi/cerebg) > 1.26 else 0
+        data["%s_BIN1.11" % wcereb_keys[i]] = 1 if (compositeroi/wcereb) > 1.11 else 0
+        data["%s_BIN.79" % brainstem_keys[i]] = 1 if (compositeroi/brainstem) > 0.79 else 0
+
+        # fill in derivative keys
+        if i == 0:
+            # fill in unilateral
+            data['Left-Putamen'] = ''
+            data['Right-Putamen'] = ''
+            data['Left-Caudate'] = ''
+            data['Right-Caudate'] = ''
+            data['Left-Pallidum'] = ''
+            data['Right-Pallidum'] = ''
+            data[wmratio_keys[i]] = (compositeroi/wcereb)
+            wm70_0 = wm70
+        elif i == 1 or i == 2:
+            data[wmratio_keys[i]] = (compositeroi/wcereb) / (wm70/wm70_0)
+            for pl in pchange_diff_lists:
+                diff = (data[pl[i]] - data[pl[0]]) / exam_timedeltas[i] # annualized
+                data["%s_pchange" % pl[i]] = diff / data[pl[0]]
+                data["%s_diff" % pl[i]] = diff
+            for al in abs_lists:
+                data["%s_pchange_ABS" % al[i]] = abs(data["%s_pchange" % al[i]])
+                data["%s_diff_ABS" % al[i]] = abs(data["%s_diff" % al[i]])
+            if i == 1:
+                times = exam_timedeltas[:2]
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in bigref_keys[:2]])
+                data['AV45_BigRef_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_keys[:2]])
+                data['AV45_WM70_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in cerebg_keys[:2]])
+                data['AV45_cerebg_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wcereb_keys[:2]])
+                data['AV45_wcereb_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in brainstem_keys[:2]])
+                data['AV45_brainstem_Slope_2pts'] = slope
+            if i == 2:
+                times = exam_timedeltas[:3]
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in bigref_keys[:3]])
+                data['AV45_BigRef_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_keys[:3]])
+                data['AV45_WM70_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in cerebg_keys[:3]])
+                data['AV45_cerebg_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wcereb_keys[:3]])
+                data['AV45_wcereb_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in brainstem_keys[:3]])
+                data['AV45_brainstem_Slope_3pts'] = slope
+
+    return (new_headers, data)
+
 
 
 
@@ -1220,9 +1384,12 @@ def eliminateColumns(headers, lines):
     to_remove = ['LastClinicalVisit',
                  'DIFF_LastClinicalVisit_AV45',
                  'ClinicalVisitClosestto_AV45',
-                 'ClinicalVisitClosestto_AV45_2']
+                 'ClinicalVisitClosestto_AV45_2',
+                 'MMSEclosest_1', 'MMSEclosest_AV45',
+                 'datediff_MMSE_AV45', 'MMSE_3mths_AV45',
+                 'PostAV45Followup']
     for tm in to_remove:
-        if tm in headers:
+        while tm in headers:
             headers.remove(tm)
     new_lines = []
     for l in lines:
@@ -1233,6 +1400,14 @@ def eliminateColumns(headers, lines):
 
 
 if __name__ == '__main__':
+
+
+    '''
+    REMEMBER TO DELETE ALL OLD AV45 FIELDS BEFORE RUNNING
+    '''
+
+
+
     # Input/output/lookup files
     master_file = "../FDG_AV45_COGdata.csv"
     output_file = "../FDG_AV45_COGdata_synced.csv"
@@ -1259,7 +1434,7 @@ if __name__ == '__main__':
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
     print "\nSYNCING AV45\n"
-    #new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING TBMSYN\n"

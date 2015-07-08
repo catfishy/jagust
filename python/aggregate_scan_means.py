@@ -2,7 +2,6 @@
 To be run on the output of the florbetapir preprocessing pipeline
 The following files are neceessary and need to be specified in the main function:
 
-
     output = '/Users/ahorng/Documents/UCBERKELEYAV45_06_04_15.csv' # the aggregated output file
     registry = "/Users/ahorng/Documents/registry_clean.csv" # the registry, with null characters removed so it can be read (used to get viscodes)
     meta_pet = "/Users/ahorng/Documents/PET_META_LIST_edited.csv" # the meta list of pet scans (with irrelevant scans removed, used to get scan dates)
@@ -26,7 +25,7 @@ import codecs
 from glob import glob
 
 ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
-                   'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
+                   'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                    'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                    'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
@@ -51,7 +50,7 @@ ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER',
                    'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                    'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
 DOD_FIELDNAMES = ['RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
-                  'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
+                  'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
@@ -110,7 +109,7 @@ def convertHeaderCodes(header):
               1003: 'CTX_LH_CAUDALMIDDLEFRONTAL',
               5000: 'WHOLECEREBELLUM',
               5001: 'LEFT_UNSEGMENTEDWHITEMATTER',
-              5002: 'RIGHT_UNSEGMENTEDWHITEMATTER',
+              5002: 'RIGHT_UNSEGMENTEDWHITEMATTER',`
               5003: 'CEREBELLUMGREYMATTER',
               4000: 'ERODED_SUBCORTICALWM',
               2032: 'CTX_RH_FRONTALPOLE',
@@ -183,7 +182,7 @@ def arrangePETRegistry(headers, lines):
         if data['EXAMDATE'] == '' or data['VISCODE'] in set(['sc', 'scmri']) or data['VISCODE2'] in set(['sc', 'scmri']):
             continue
         subj = int(data['RID'])
-        date = datetime.strptime(data['EXAMDATE'],'%Y-%m-%d')
+        date = datetime.strptime(data['EXAMDATE'],'%m/%d/%y')
         registry[subj][date] = {'VISCODE': data['VISCODE'],
                                 'VISCODE2': data['VISCODE2'],
                                 'update_stamp': data['update_stamp']}
@@ -323,7 +322,6 @@ def additionalCalculations(headers, mean_values, size_values):
         COMPOSITE_REF
         SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF
         SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF
-
 
 
         VISCODE
