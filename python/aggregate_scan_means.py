@@ -24,9 +24,10 @@ import copy
 import codecs
 from glob import glob
 
-ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAINSTEM','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
+                   'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
                    'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                    'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
                    'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
@@ -94,6 +95,12 @@ def readHeaderAndLines(csv_file, limit=None):
 
 def convertHeaderCodes(header):
     lookup = {0: 'RID',
+              12: 'LEFT-PUTAMEN',
+              51: 'RIGHT-PUTAMEN',
+              11: 'LEFT-CAUDATE',
+              50: 'RIGHT-CAUDATE',
+              13: 'LEFT-PALLIDUM',
+              52: 'RIGHT-PALLIDUM',
               1025: 'CTX_LH_PRECUNEUS',
               1026: 'CTX_LH_ROSTRALANTERIORCINGULATE',
               1027: 'CTX_LH_ROSTRALMIDDLEFRONTAL',
@@ -109,7 +116,7 @@ def convertHeaderCodes(header):
               1003: 'CTX_LH_CAUDALMIDDLEFRONTAL',
               5000: 'WHOLECEREBELLUM',
               5001: 'LEFT_UNSEGMENTEDWHITEMATTER',
-              5002: 'RIGHT_UNSEGMENTEDWHITEMATTER',`
+              5002: 'RIGHT_UNSEGMENTEDWHITEMATTER',
               5003: 'CEREBELLUMGREYMATTER',
               4000: 'ERODED_SUBCORTICALWM',
               2032: 'CTX_RH_FRONTALPOLE',
@@ -156,7 +163,9 @@ def combineMeansAndSize(mean_header, size_header, mean_row, size_row):
     omit_sizes = ['RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
                   'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                   'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
-                  'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp']
+                  'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
+                  'CEREBELLUMWHITEMATTER', 'LEFT-PALLIDUM', 'LEFT-CAUDATE', 'LEFT-PUTAMEN', 
+                  'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
     mean_values = dict(zip(mean_header, mean_row))
     size_values = dict(zip(size_header, size_row))
     rid = int(float(mean_values['RID']))
@@ -323,7 +332,6 @@ def additionalCalculations(headers, mean_values, size_values):
         SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF
         SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF
 
-
         VISCODE
         VISCODE2
         EXAMDATE
@@ -332,9 +340,12 @@ def additionalCalculations(headers, mean_values, size_values):
     '''
     composite = float(mean_values['COMPOSITE'])
     wholecereb = float(mean_values['WHOLECEREBELLUM'])
+    cerebWM = (float(mean_values['LEFT_UNSEGMENTEDWHITEMATTER']) + float(mean_values['RIGHT_UNSEGMENTEDWHITEMATTER']))/2.0 #- float(mean_values['CEREBELLUMGREYMATTER'])
     compref_components = [mean_values['ERODED_SUBCORTICALWM'], mean_values['BRAINSTEM'], mean_values['WHOLECEREBELLUM']]
     composite_ref = np.mean([float(_) for _ in compref_components])
 
+    headers.append('CEREBELLUMWHITEMATTER')
+    mean_values['CEREBELLUMWHITEMATTER'] = cerebWM
     headers.append('SUMMARYSUVR_WHOLECEREBNORM')
     mean_values['SUMMARYSUVR_WHOLECEREBNORM'] = composite / wholecereb
     headers.append('SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF')
@@ -368,8 +379,9 @@ def findPreprocessOutputFiles(folder_name):
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 if __name__ == "__main__":
-    output = '../output/UCBERKELEYAV45_06_25_15.csv'
-    
+    output = '../output/UCBERKELEYAV45_07_08_15_extra.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
+
     # for adni av45
     registry = "../docs/registry_clean.csv"
     meta_pet = "../docs/PET_META_LIST_edited.csv"
@@ -381,8 +393,7 @@ if __name__ == "__main__":
     meta_pet = None
     '''
 
-
-    preprocess_folder =  '../docs/AV45_preprocess_output_06_25_15'
+    
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry)
 

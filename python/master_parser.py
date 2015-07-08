@@ -199,6 +199,11 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         idx = new_headers.index('ADAS_3MTH_AV45')
         new_headers.insert(idx, 'ADAS_post_AV45_followuptime')
 
+    # remove date fields
+    for i in range(11):
+        key = 'ADAScog_DATE%s' % (i+1)
+        if key in new_headers:
+            new_headers.remove(key)
 
     for linenum, old_l in enumerate(old_lines):
         try:
@@ -391,6 +396,14 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
     idx = new_headers.index('MMSCORE.11') + 1
     new_headers = new_headers[:idx] + add_headers + new_headers[idx:]
 
+
+    # remove date fields
+    for i in range(11):
+        key = 'MMSE_DATE%s' % (i+1)
+        if key in new_headers:
+            new_headers.remove(key)
+
+
     new_lines = []
     new_values = 0
     total = 0
@@ -552,6 +565,13 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
     if 'AVLT_post_AV45_followuptime' not in new_headers:
         idx = new_headers.index('AVLT_3MTHS_AV45')
         new_headers.insert(idx, 'AVLT_post_AV45_followuptime')
+
+    # remove date fields
+    for i in range(11):
+        key = 'AVLT_DATE.%s' % (i+1)
+        if key in new_headers:
+            new_headers.remove(key)
+
 
     new_lines = []
     new_values = 0
@@ -1088,10 +1108,12 @@ def parseAV45Entries(old_headers, subj_av45):
     exam_times = [_['EXAMDATE'] for _ in subj_av45]
     exam_timedeltas = [(_-exam_times[0]).days / 365.0 for _ in exam_times]
 
-    cerebWM_GM_keys = ['AV45_cerebWM/GM', 'AV45_2_cerebWM/GM', 'AV45_3_cerebWM/GM']
+    wm70_composite_keys = ['AV45_WM70/composite', 'AV45_2_WM70/composite', 'AV45_3_WM70/composite']
     wm70_cerebg_keys = ['AV45_WM70/cerebg', 'AV45_2_WM70/cerebg', 'AV45_3_WM70/cerebg']
     wm70_wcereb_keys = ['AV45_WM70/wcereb', 'AV45_2_WM70/wcereb', 'AV45_3_WM70/wcereb']
-    unilateral_keys = ['Left-Putamen','Right-Putamen','Left-Caudate','Right-Caudate','Left-Pallidum','Right-Pallidum']
+    unilateral_keys = ['AV45_LeftPutamen/WM70','AV45_RightPutamen/WM70',
+                       'AV45_LeftCaudate/WM70','AV45_RightCaudate/WM70',
+                       'AV45_LeftPallidum/WM70','AV45_RightPallidum/WM70']
     bigref_keys = ['AV45_BigRef','AV45_2_BigRef','AV45_3_BigRef'] # assuming composite ROI
     wm70_keys = ['AV45_WM70','AV45_2_WM70','AV45_3_WM70'] # assuming composite ROI
     cerebg_keys = ['AV45_cerebg','AV45_2_cerebg','AV45_3_cerebg'] # assuming composite ROI
@@ -1104,11 +1126,11 @@ def parseAV45Entries(old_headers, subj_av45):
     temporal_bigref_keys = ['AV45_Temporal/BigRef','AV45_2_Temporal/BigRef','AV45_3_Temporal/BigRef']
 
     # generate additional keys and arrange into header list
-    all_cerebWM_GM_keys = cerebWM_GM_keys + \
-                         ["%s_pchange" % _ for _ in cerebWM_GM_keys[1:]] + \
-                         ["%s_pchange_ABS" % _ for _ in cerebWM_GM_keys[1:]] + \
-                         ["%s_diff" % _ for _ in cerebWM_GM_keys[1:]] + \
-                         ["%s_diff_ABS" % _ for _ in cerebWM_GM_keys[1:]]
+    all_wm70_composite_keys = wm70_composite_keys + \
+                         ["%s_pchange" % _ for _ in wm70_composite_keys[1:]] + \
+                         ["%s_pchange_ABS" % _ for _ in wm70_composite_keys[1:]] + \
+                         ["%s_diff" % _ for _ in wm70_composite_keys[1:]] + \
+                         ["%s_diff_ABS" % _ for _ in wm70_composite_keys[1:]]
     all_wm70_cerebg_keys = wm70_cerebg_keys + \
                            ["%s_pchange" % _ for _ in wm70_cerebg_keys[1:]] + \
                            ["%s_pchange_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
@@ -1172,7 +1194,7 @@ def parseAV45Entries(old_headers, subj_av45):
     all_temporal_bigref_keys = temporal_bigref_keys + \
                       ["%s_pchange" % _ for _ in temporal_bigref_keys[1:]] + \
                       ["%s_diff" % _ for _ in temporal_bigref_keys[1:]]
-    all_av45_key_lists = [all_cerebWM_GM_keys,
+    all_av45_key_lists = [all_wm70_composite_keys,
                           all_wm70_cerebg_keys,
                           all_wm70_wcereb_keys,
                           all_unilateral_keys,
@@ -1186,7 +1208,7 @@ def parseAV45Entries(old_headers, subj_av45):
                           all_cingulate_bigref_keys,
                           all_parietal_bigref_keys,
                           all_temporal_bigref_keys]
-    pchange_diff_lists = [all_cerebWM_GM_keys,
+    pchange_diff_lists = [all_wm70_composite_keys,
                           all_wm70_cerebg_keys,
                           all_wm70_wcereb_keys,
                           all_bigref_keys,
@@ -1199,7 +1221,7 @@ def parseAV45Entries(old_headers, subj_av45):
                           all_cingulate_bigref_keys,
                           all_parietal_bigref_keys,
                           all_temporal_bigref_keys]
-    abs_lists = [all_cerebWM_GM_keys,
+    abs_lists = [all_wm70_composite_keys,
                  all_wm70_cerebg_keys,
                  all_wm70_wcereb_keys,
                  all_bigref_keys,
@@ -1220,7 +1242,7 @@ def parseAV45Entries(old_headers, subj_av45):
     # fill in values
     for i, point in enumerate(subj_av45):
         # extract necessary values
-        cerebw = float(point['WHOLECEREBELLUM']) - float(point['CEREBELLUMGREYMATTER'])
+        cerebw = float(point['CEREBELLUMWHITEMATTER'])
         wcereb = float(point['WHOLECEREBELLUM'])
         cerebg = float(point['CEREBELLUMGREYMATTER'])
         compositeroi = float(point['COMPOSITE'])
@@ -1231,9 +1253,15 @@ def parseAV45Entries(old_headers, subj_av45):
         frontal = float(point['FRONTAL'])
         parietal = float(point['PARIETAL'])
         temporal = float(point['TEMPORAL'])
+        leftputamen = float(point['LEFT-PUTAMEN'])
+        rightputamen = float(point['RIGHT-PUTAMEN'])
+        leftcaudate = float(point['LEFT-CAUDATE'])
+        rightcaudate = float(point['RIGHT-CAUDATE'])
+        leftpallidum = float(point['LEFT-PALLIDUM'])
+        rightpallidum = float(point['RIGHT-PALLIDUM'])
 
         # fill in basic keys
-        data[cerebWM_GM_keys[i]] = cerebw/cerebg
+        data[wm70_composite_keys[i]] = wm70/compositeroi
         data[wm70_cerebg_keys[i]] = wm70/cerebg
         data[wm70_wcereb_keys[i]] = wm70/wcereb
         data[bigref_keys[i]] = compositeroi/bigref
@@ -1254,12 +1282,12 @@ def parseAV45Entries(old_headers, subj_av45):
         # fill in derivative keys
         if i == 0:
             # fill in unilateral
-            data['Left-Putamen'] = ''
-            data['Right-Putamen'] = ''
-            data['Left-Caudate'] = ''
-            data['Right-Caudate'] = ''
-            data['Left-Pallidum'] = ''
-            data['Right-Pallidum'] = ''
+            data['AV45_LeftPutamen/WM70'] = leftputamen/wm70
+            data['AV45_RightPutamen/WM70'] = rightputamen/wm70
+            data['AV45_LeftCaudate/WM70'] = leftcaudate/wm70
+            data['AV45_RightCaudate/WM70'] = rightcaudate/wm70
+            data['AV45_LeftPallidum/WM70'] = leftpallidum/wm70
+            data['AV45_RightPallidum/WM70'] = rightpallidum/wm70
             data[wmratio_keys[i]] = (compositeroi/wcereb)
             wm70_0 = wm70
         elif i == 1 or i == 2:
@@ -1299,8 +1327,6 @@ def parseAV45Entries(old_headers, subj_av45):
     return (new_headers, data)
 
 
-
-
 def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None):
     tbm_headers, tbm_lines = parseCSV(tbm_file)
     tbm_by_subj = importTBMSyn(tbm_file)
@@ -1310,6 +1336,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     # add new headers as needed
     tbm_columns = ['TBMSyn_DATE.%s' % (i+1) for i in range(10)]
     tbm_columns.extend(['TBMSyn_SCORE.%s' % (i+1) for i in range(10)])
+    tbm_columns.append('TBMSyn_count')
     tbm_columns.append('TBMSyn_SLOPE')
     for tc in tbm_columns:
         if tc in new_headers:
@@ -1317,6 +1344,14 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     # slap onto the end
     new_headers.extend(tbm_columns)
 
+    '''
+    # remove date fields
+    for i in range(11):
+        key = 'TBMSyn_DATE.%s' % (i+1)
+        if key in new_headers:
+            new_headers.remove(key)
+    '''
+    
     new_lines = []
     for old_l in old_lines:
         # get subject ID
@@ -1369,6 +1404,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
             new_data['TBMSyn_SLOPE'] = output[0]
         else:
             new_data['TBMSyn_SLOPE'] = ''
+        new_data['TBMSyn_count'] = len(slope_points)
 
         new_data = convertToCSVDataType(new_data, decimal_places=5) # TBMSyn needs more decimal places
         old_l.update(new_data)
@@ -1415,7 +1451,7 @@ if __name__ == '__main__':
     arm_file = "../docs/ARM.csv"
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
     # AV45 File
-    av45_file = "../output/UCBERKELEYAV45_06_25_15.csv"
+    av45_file = "../output/UCBERKELEYAV45_07_08_15_extra.csv"
     # MMSE files
     mmse_file = "../cog_tests/MMSE.csv"
     # ADAS-COG files
