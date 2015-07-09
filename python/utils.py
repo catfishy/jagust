@@ -48,7 +48,7 @@ def importRegistry(registry_file):
     return registry
 
 def importDODRegistry(dod_registry_file):
-	headers, lines = parseCSV(dod_registry_file)
+    headers, lines = parseCSV(dod_registry_file)
     registry = defaultdict(list)
     for data in lines:
         subj = int(data['SCRNO'])
@@ -97,7 +97,7 @@ def importPetMETA(pet_meta_file):
         pets[subj].append(new_date)
     pets = dict(pets)
     for k in pets.keys():
-    	pets[k] = sorted(pets[k])
+        pets[k] = sorted(pets[k])
     return dict(pets)
 
 def importARM(arm_file):
@@ -148,7 +148,12 @@ def importMRI(mri_file):
     for i, line in enumerate(lines):
         # get subject ID
         try:
-            subj_id_whole = line['SubjectID']
+            if 'SubjectID' in line:
+                subj_id_whole = line['SubjectID']
+            elif 'SUBJECT' in line:
+                subj_id_whole = line['SUBJECT']
+            else:
+                raise Exception("No subj column found")
             subj = int(subj_id_whole.split('_')[-1])
         except Exception as e:
             print e
@@ -157,7 +162,10 @@ def importMRI(mri_file):
         if line['Sequence'] != 'MPRAGE':
             continue
         '''
-        seq = line['Sequence'].strip().lower()
+        if 'Sequence' in line:
+            seq = line['Sequence'].strip().lower()
+        elif 'SEQUENCE' in line:
+            seq = line['SEQUENCE'].strip().lower()
         if 'accelerat' in seq:
             bad_sequences.add(seq)
             continue
@@ -166,13 +174,28 @@ def importMRI(mri_file):
         seq = seq.replace('mp-rage', 'mprage')
         seq = seq.replace('mp- rage', 'mprage')
         
+        '''
         if not ('mpr' in seq or 'spgr' in seq or 'n3m' in seq):
             bad_sequences.add(seq)
             continue
-        
-        new_date = line['ScanDate']
-        new_date = datetime.strptime(new_date, '%Y-%m-%d')
-        data[subj].append({'EXAMDATE' : new_date})
+        '''
+        if 'ScanDate' in line:
+            new_date = line['ScanDate']
+        elif 'SCANDATE' in line:
+            new_date = line['SCANDATE']
+
+        date = None
+        try:
+            date = datetime.strptime(new_date,'%Y-%m-%d')
+        except Exception as e:
+            pass
+        try:
+            date = datetime.strptime(new_date,'%m/%d/%y')
+        except Exception as e:
+            pass
+        if date is None:
+            continue
+        data[subj].append({'EXAMDATE' : date})
     print bad_sequences
     return dict(data)
 

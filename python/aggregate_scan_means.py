@@ -90,6 +90,7 @@ def readHeaderAndLines(csv_file, limit=None):
             continue
         elif limit is not None and i > limit:
             break
+        l = map(float, l)
         if len(bl_header) != len(l):
             raise Exception("%s, %s" % (bl_header, l))
         bl_lines.append(l)
@@ -269,6 +270,7 @@ def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_
         for k in data.keys():
             if k not in fieldnames:
                 data.pop(k, None)
+        data = convertToCSVDataType(data, decimal_places=4)
         writer.writerow(data)
 
 def additionalCalculations(headers, mean_values, size_values):
@@ -306,6 +308,7 @@ def additionalCalculations(headers, mean_values, size_values):
     mean_values['COMPOSITE_REF'] = composite_ref
 
     headers.append('PID')
+    mean_values['RID'] = int(mean_values['RID'])
     mean_values['PID'] = mean_values['RID']
     return (headers, mean_values, size_values)
 

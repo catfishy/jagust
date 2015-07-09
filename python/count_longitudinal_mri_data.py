@@ -10,6 +10,14 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, 
     Aggregate into one dictionary
     remove datapoints from before the first av45 scan
     '''
+
+    interesting = [21, 23, 31, 56, 58, 59, 61, 69, 74, 89, 96, 106, 113, 120, 123, 130, 159, 166, 171, 173, 230, 257, 259, 260, 272, 301, 311, 315, 413, 416, 419, 498, 545, 602, 610, 618, 680, 684, 685, 717, 741, 751, 767, 778, 842, 896, 907, 920, 923, 926, 969, 972, 981, 985, 1016, 1098, 1123, 1169, 1190, 1206, 1232, 1261, 1280, 4003, 4014, 4018, 4020, 4021, 4026, 4028, 4032, 4037, 4041, 4043, 4050, 4060, 4075, 4076, 4081, 4082, 4084, 4086, 4090, 4100, 4103, 4105, 4119, 4120, 4121, 4148, 4150, 4151, 4158, 4164, 4173, 4176, 4177, 4179, 4196, 4198, 4200, 4208, 4213, 4218, 4222, 4224, 4225, 4234, 4254, 4255, 4262, 4266, 4269, 4270, 4275, 4278, 4290, 4291, 4292, 4313, 4320, 4339, 4343, 4345, 4349, 4350, 4352, 4357, 4365, 4367, 4369, 4371, 4372, 4376, 4382, 4384, 4385, 4386, 4387, 4388, 4389, 4391, 4393, 4396, 4399, 4400, 4410, 4422, 4427, 4428, 4429, 4441, 4446, 4448, 4453, 4466, 4469, 4482, 4483, 4485, 4491, 4496, 4499, 4503, 4505, 4506, 4516, 4520, 4545, 4552, 4555, 4559, 4560, 4566, 4576, 4579, 4580, 4585, 4586, 4587, 4598, 4599, 4604, 4607, 4612, 4616, 4620, 4632, 4637, 4643, 4645, 4649, 4739, 4762, 4795, 4832, 4835, 4843, 4855, 4872, 4878, 5023]
+    
+    print len(interesting)
+
+    interesting_counts = defaultdict(list)
+
+
     points_by_subj = {}
     for subj,v in pet_data.iteritems():
         patient_pets = sorted(v)
@@ -35,13 +43,32 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, 
         subj_points['tbm'] = [_['VISCODE2'] for _ in subj_tbm if _['EXAMDATE'] >= bl_av45]
 
         if subj in mri_data:
-            subj_mri = sorted(mri_data[subj], key=lambda x: x['EXAMDATE'])
+            subj_mri = sorted(list(set([_['EXAMDATE'] for _ in mri_data[subj]])))
         else:
             subj_mri = []
-        subj_points['mri'] = list(set([_['EXAMDATE'] for _ in subj_mri if _['EXAMDATE'] >= bl_av45]))
-        
+        subj_points['mri'] = [_ for _ in subj_mri if _ >= bl_av45]
         #print "%s: %s -> %s" % (subj, len(subj_mri), len(subj_points['mri']))
         points_by_subj[subj] = subj_points
+
+        if subj in interesting:
+            mritimes = subj_points['mri']
+            
+            if len(mritimes) >= 5:
+                continue
+            
+            print '\n%s' % subj
+            for k,m in subj_points.items():
+                if k == 'tbm':
+                    print "%s: %s" % (k,m)
+                elif k == 'mri':
+                    diffs = [(_-m[0]).days/ 365.0 for _ in m]
+                    print "%s: %s" % (k,diffs) 
+                    interesting_counts[len(diffs)].append(subj)
+
+    interesting_counts = dict(interesting_counts)
+    for a,b in interesting_counts.iteritems():
+        print a
+        print b
 
     # count
     tbm_counts = defaultdict(int)
@@ -68,12 +95,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, 
                     mri_counts[(diag, len(b)-1)] += 1
                 else:
                     mri_counts[(diag, 0)] += 1
-    print tbm_counts.keys()
 
-    '''
-    for k,v in mri_counts.iteritems():
-        print "%s, %s" % (k,v)
-    '''
 
     print '\n\n'
     print "MRI"
@@ -514,7 +536,12 @@ if __name__ == "__main__":
     master_file = "../FDG_AV45_COGdata_synced.csv"
     registry_file = "../docs/registry_clean.csv"
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
-    mri_meta_file = "../docs/MPRAGEMETA.csv"
+    
+
+    #mri_meta_file = "../docs/MPRAGEMETA.csv"
+    mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
+    
+
     # BSI file
     bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
     # long freesurfer file

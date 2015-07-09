@@ -1339,7 +1339,8 @@ if __name__ == '__main__':
     diagnosis_file = '../docs/DXSUM_PDXCONV_ADNIALL.csv'
     # TBMsyn file
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
-
+    # CSF files
+    csf_files = ['UPENNBIOMK5_firstset.csv','UPENNBIOMK6_secondset.csv','UPENNBIOMK7_thirdset.csv','UPENNBIOMK8_fourthset.csv']
 
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file)
@@ -1356,8 +1357,9 @@ if __name__ == '__main__':
     print "\nSYNCING ADASCOG\n"
     new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
     print "\nSYNCING AVLT\n"
-    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=output_file)
-    
+    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
+    print "\nSYNCING CSF\n"
+    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=output_file)
 
 
 '''
