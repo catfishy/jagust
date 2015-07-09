@@ -24,6 +24,8 @@ import copy
 import codecs
 from glob import glob
 
+from utils import *
+
 ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAINSTEM','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
@@ -50,8 +52,9 @@ ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER',
                    'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                    'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                    'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-DOD_FIELDNAMES = ['RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
-                  'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
+
+DOD_FIELDNAMES = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+                  'FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
@@ -74,8 +77,7 @@ DOD_FIELDNAMES = ['RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM',
                   'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
-                  'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-
+                  'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
 
 
 def readHeaderAndLines(csv_file, limit=None):
@@ -160,7 +162,7 @@ def combineMeansAndSize(mean_header, size_header, mean_row, size_row):
             'RIGHT_CEREBELLUM_CORTEX',
             'LEFT_UNSEGMENTEDWHITEMATTER',
             'RIGHT_UNSEGMENTEDWHITEMATTER']
-    omit_sizes = ['RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
+    omit_sizes = ['PID', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
                   'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                   'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                   'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
@@ -183,68 +185,13 @@ def combineMeansAndSize(mean_header, size_header, mean_row, size_row):
             all_values.append(size_values[h])
     return (rid, all_headers, all_values)
 
-
-def arrangePETRegistry(headers, lines):
-    registry = defaultdict(dict)
-    for l in lines:
-        data = dict(zip(headers,l))
-        if data['EXAMDATE'] == '' or data['VISCODE'] in set(['sc', 'scmri']) or data['VISCODE2'] in set(['sc', 'scmri']):
-            continue
-        subj = int(data['RID'])
-        date = datetime.strptime(data['EXAMDATE'],'%m/%d/%y')
-        registry[subj][date] = {'VISCODE': data['VISCODE'],
-                                'VISCODE2': data['VISCODE2'],
-                                'update_stamp': data['update_stamp']}
-    return registry
-
-def arrangePETDates(headers, lines):
-    dates = defaultdict(list)
-    for l in lines:
-        data = dict(zip(headers,l))
-        subj = int(data['Subject'].split("_")[-1])
-        date = datetime.strptime(data['Scan Date'],'%m/%d/%y')
-        dates[subj].append(date)
-    for k in dates.keys():
-        dates[k] = sorted(dates[k])
-        if len(dates[k]) > 3:
-            print "%s, %s" % (k, len(dates[k]))
-    return dates
-
-def arrangeDODRegistry(headers, lines):
-    registry = defaultdict(list)
-    for l in lines:
-        data = dict(zip(headers,l))
-        subj = int(data['SCRNO'])
-        viscode = data['VISCODE'].strip().lower()
-        if viscode.startswith('sc'):
-            continue
-        date_string = data['EXAMDATE']
-        if date_string == '':
-            continue
-        date = datetime.strptime(date_string,'%Y-%m-%d')
-        registry[subj].append({'VISCODE': viscode,
-                               'EXAMDATE': date,
-                               'update_stamp': data['update_stamp']})
-    registry = dict(registry)
-    for k in registry.keys():
-        new_val = sorted(registry[k], key=lambda x: x['EXAMDATE'])
-        for v in new_val:
-            v['EXAMDATE'] = datetime.strftime(v['EXAMDATE'],'%m/%d/%y')
-        registry[k] = new_val
-
-        # convert examdate dates to string
-        if len(registry[k]) > 3:
-            print "MORE THAN 3: %s, %s" % (k, len(registry[k]))
-            print registry[k]
-    return registry
-
 def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry):
     if registry is not None and meta_pet is not None:
-        registry = arrangePETRegistry(*readHeaderAndLines(registry))
-        pet_dates = arrangePETDates(*readHeaderAndLines(meta_pet))
+        registry = importRegistry(registry)
+        pet_dates = importPetMETA(meta_pet)
         agg_type = 'adni'
     elif registry is not None and meta_pet is None:
-        registry = arrangeDODRegistry(*readHeaderAndLines(registry))
+        registry = importDODRegistry(registry)
         agg_type = 'dod'
     else:
         raise Exception("Invalid meta files")
@@ -358,6 +305,8 @@ def additionalCalculations(headers, mean_values, size_values):
     headers.append('COMPOSITE_REF')
     mean_values['COMPOSITE_REF'] = composite_ref
 
+    headers.append('PID')
+    mean_values['PID'] = mean_values['RID']
     return (headers, mean_values, size_values)
 
 
@@ -379,21 +328,23 @@ def findPreprocessOutputFiles(folder_name):
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 if __name__ == "__main__":
-    output = '../output/UCBERKELEYAV45_07_08_15_extra.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
+
 
     # for adni av45
+    '''
+    output = '../output/UCBERKELEYAV45_DOD_07_08_15_extra.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
     registry = "../docs/registry_clean.csv"
     meta_pet = "../docs/PET_META_LIST_edited.csv"
-    
+    '''
 
     # for adni dod
-    '''
+    output = '../output/AV45_DOD_LONI_Landau_UCBerkeley_06.25.15.csv'
+    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_06_25_15'
     registry = "../docs/DOD_REGISTRY.csv"
     meta_pet = None
-    '''
-
     
+
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry)
 
