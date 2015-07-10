@@ -88,6 +88,54 @@ def importTBMSyn(tbm_file):
                            'SCORE': score})
     return data
 
+
+def importCSF(csf_files):
+    data = defaultdict(dict)
+    for csffile in csf_files:
+        print csffile
+        headers, lines = parseCSV(csffile)
+        for i, line in enumerate(lines):
+            print line
+            subj = int(line['RID'])
+            vc = line['VISCODE'].strip().lower()
+            try:
+                vc2 = line['VISCODE2'].strip().lower()
+            except:
+                vc2 = ''
+            rundate = datetime.strptime(line['RUNDATE'],'%m/%d/%y')
+            try:
+                abeta = float(line['ABETA'])
+            except:
+                abeta = None
+            try:
+                tau = float(line['TAU'])
+            except:
+                tau = None
+            try:
+                ptau = float(line['PTAU'])
+            except:
+                ptau = None
+            visitkey = (vc,vc2)
+            newdata = {'rundate': rundate,
+                       'abeta': abeta,
+                       'tau': tau,
+                       'ptau': ptau}
+            if visitkey in data[subj]:
+                data[subj][visitkey].append(newdata)
+            else:
+                data[subj][visitkey] = [newdata]
+    # take the timepoint with the most recent run date for each visit
+    data = dict(data)
+    for k in data.keys():
+        userdata = data[k]
+        flattened = []
+        for (vc, vc2), inners in userdata.iteritems():
+            chosen = sorted(inners, key=lambda x: x['rundate'])[-1]
+            chosen.update({'vc': vc, 'vc2': vc2})
+            flattened.append(chosen)
+        data[k] = flattened
+    return data
+
 def importPetMETA(pet_meta_file):
     headers, lines = parseCSV(pet_meta_file)
     pets = defaultdict(list)

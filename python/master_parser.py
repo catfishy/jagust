@@ -1206,7 +1206,6 @@ def parseAV45Entries(old_headers, subj_av45):
 
 
 def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None):
-    tbm_headers, tbm_lines = parseCSV(tbm_file)
     tbm_by_subj = importTBMSyn(tbm_file)
 
     new_headers = old_headers
@@ -1294,6 +1293,38 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
 
     return (new_headers, new_lines)
 
+def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
+    csf_by_subj = importCSF(csf_files)
+    registry = importRegistry(registry_file)
+
+    new_headers = old_headers
+
+    # add new headers as needed
+    '''
+    tbm_columns = ['TBMSyn_DATE.%s' % (i+1) for i in range(10)]
+    tbm_columns.extend(['TBMSyn_SCORE.%s' % (i+1) for i in range(10)])
+    tbm_columns.append('TBMSyn_count')
+    tbm_columns.append('TBMSyn_SLOPE')
+    for tc in tbm_columns:
+        if tc in new_headers:
+            new_headers.remove(tc)
+    # slap onto the end
+    new_headers.extend(tbm_columns)
+    '''
+
+    
+    new_lines = []
+    for old_l in old_lines:
+        
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+
+
 def eliminateColumns(headers, lines):
     to_remove = ['LastClinicalVisit',
                  'DIFF_LastClinicalVisit_AV45',
@@ -1314,7 +1345,6 @@ def eliminateColumns(headers, lines):
 
 
 if __name__ == '__main__':
-
 
     '''
     REMEMBER TO DELETE ALL OLD AV45 FIELDS BEFORE RUNNING
@@ -1340,12 +1370,13 @@ if __name__ == '__main__':
     # TBMsyn file
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
     # CSF files
-    csf_files = ['UPENNBIOMK5_firstset.csv','UPENNBIOMK6_secondset.csv','UPENNBIOMK7_thirdset.csv','UPENNBIOMK8_fourthset.csv']
+    csf_files = ['../docs/UPENNBIOMK5_firstset.csv','../docs/UPENNBIOMK6_secondset.csv','../docs/UPENNBIOMK7_thirdset.csv','../docs/UPENNBIOMK8_fourthset.csv']
 
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file)
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
+    '''
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
@@ -1358,6 +1389,7 @@ if __name__ == '__main__':
     new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
     print "\nSYNCING AVLT\n"
     new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
+    '''
     print "\nSYNCING CSF\n"
     new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=output_file)
 
