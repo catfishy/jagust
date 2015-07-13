@@ -62,20 +62,10 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
     new_values = 0
     total = 0
 
-    # add some new headers
-    if 'ADAS_AV45_3_DATE' not in new_headers or 'ADAS_AV45_3_3MTHS' not in new_headers:
-        if 'ADAS_AV45_3_3MTHS' in new_headers:
-            # remove it
-            new_headers.remove('ADAS_AV45_3_3MTHS')
-        elif 'ADAS_AV45_3_DATE' in new_headers:
-            # remove it
-            new_headers.remove('ADAS_AV45_3_DATE')
-        idx = new_headers.index('ADAS_AV45_2_DATE')
-        new_headers.insert(idx+1, 'ADAS_AV45_3_DATE')
-        new_headers.insert(idx+1, 'ADAS_AV45_3_3MTHS')
-    if 'ADAS_post_AV45_followuptime' not in new_headers:
-        idx = new_headers.index('ADAS_3MTH_AV45')
-        new_headers.insert(idx, 'ADAS_post_AV45_followuptime')
+    to_add_headers = ['ADAS_AV45_3_3MTHS', 'ADAS_AV45_3_DATE']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='ADAS_AV45_2_DATE')
+    to_add_headers = ['ADAS_post_AV45_followuptime']
+    new_headers = rearrangeHeaders(new_headers, to_add_headers, after='ADAS_3MTH_AV45')
 
     # remove date fields
     for i in range(11):
@@ -208,43 +198,11 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
     return (new_headers, new_lines)
 
 def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None):
-    mmse_headers, mmse_lines = parseCSV(mmse_file)
     registry = importRegistry(registry_file)
-    
-    # restructure mmse lines by subject
-    mmse_by_subject = defaultdict(list)
-    for line in mmse_lines:
-        subj = int(line['RID'])
-        date_string = line['EXAMDATE']
-        if not date_string:
-            # get from registry
-            vs = line['VISCODE'].strip().lower()
-            vs2 = line['VISCODE2'].strip().lower()
-            subject_registry = registry[subj]
-            date = None
-            for v in subject_registry:
-                item_date = v['date']
-                if vs2 == v['VISCODE2'] and item_date != '' and item_date is not None:
-                    date = item_date
-                    break
-            if date == None:
-                print "Could not find visit in registry: %s, %s, %s" % (subj, vs, vs2)
-                for _ in subject_registry:
-                    print _
-        else:
-            date = datetime.strptime(date_string,'%m/%d/%y')
-        if date is not None:
-            mmse_by_subject[subj].append((date,line))
-    
-    mmse_by_subject = dict(mmse_by_subject)
-    for k,v in mmse_by_subject.iteritems():
-        mmse_by_subject[k] = sorted(v, key=lambda x: x[0])
-
-    # overwrite old lines
-    new_headers = old_headers
+    mmse_by_subject = importMMSE(mmse_file, registry=registry)
 
     # add these new headers, if not present
-    to_fill_in = ['MMSE_post_AV45_followuptime',
+    to_add_headers = ['MMSE_post_AV45_followuptime',
                   'MMSE_AV45_3MTHS',
                   'MMSE_AV45_DATE',
                   'MMSE_AV45_2_3MTHS',
@@ -252,22 +210,13 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
                   'MMSE_AV45_3_3MTHS',
                   'MMSE_AV45_3_DATE',
                   'MMSEslope_postAV45']
-    add_headers = ['TIMEpostAV45_MMSE.%s' % (i+1) for i in range(11)] + to_fill_in
-
-    for h in add_headers:
-        if h in new_headers:
-            new_headers.remove(h)
-    # put in right after 'MMSCORE.11'
-    idx = new_headers.index('MMSCORE.11') + 1
-    new_headers = new_headers[:idx] + add_headers + new_headers[idx:]
-
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='MMSCORE.11')
 
     # remove date fields
     for i in range(11):
         key = 'MMSE_DATE%s' % (i+1)
         if key in new_headers:
             new_headers.remove(key)
-
 
     new_lines = []
     new_values = 0
@@ -339,7 +288,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
             new_subj_data['MMSEslope_postAV45'] = slope
 
         # fill in the blanks
-        for f_key in to_fill_in:
+        for f_key in to_add_headers:
             if f_key not in new_subj_data:
                 new_subj_data[f_key] = ''
 
@@ -369,59 +318,18 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
     return new_headers, new_lines
 
 def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump_to=None):
-    neurobat_headers, neurobat_lines = parseCSV(neuro_battery_file)
     registry = importRegistry(registry_file)
+    avlt_by_subj = importAVLT(neuro_battery_file, registry=registry)
 
-    # restructure by subject
-    avlt_by_subj = defaultdict(list)
-    for line in neurobat_lines:
-        subj = int(line['RID'])
-        viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
-        examdate = line['EXAMDATE']
-        if examdate:
-            examdate = datetime.strptime(examdate,'%Y-%m-%d')
-        else:
-            subj_listings = registry[subj]
-            for listing in subj_listings:
-                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-                    examdate = listing['date']
-                    break
-            if not examdate:
-                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-                continue
-        tots = [line['AVTOT%s' % _ ]for _ in range(1,6)]
-
-        try:
-            score_sum = 0.0
-            for score_str in tots:
-                new_score = float(score_str)
-                if new_score < 0:
-                    raise Exception("Invalid score part")
-                score_sum += new_score
-            test_score = score_sum
-        except Exception as e:
-            #print "Invalid scores found for %s (%s, %s): %s" % (subj, viscode, viscode2, tots)
-            continue
-
-        avlt_by_subj[subj].append({'VISCODE': viscode,
-                                   'VISCODE2': viscode2,
-                                   'EXAMDATE': examdate,
-                                   'TOTS': test_score})
-
-    new_headers = old_headers # no change in headers
-
-    # add potential new headers
-    if 'AVLT_post_AV45_followuptime' not in new_headers:
-        idx = new_headers.index('AVLT_3MTHS_AV45')
-        new_headers.insert(idx, 'AVLT_post_AV45_followuptime')
+    # no change in headers
+    to_add_headers = ['AVLT_post_AV45_followuptime']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='AVLT_3MTHS_AV45')
 
     # remove date fields
     for i in range(11):
         key = 'AVLT_DATE.%s' % (i+1)
         if key in new_headers:
             new_headers.remove(key)
-
 
     new_lines = []
     new_values = 0
@@ -1144,18 +1052,12 @@ def parseAV45Entries(old_headers, subj_av45):
 def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None):
     tbm_by_subj = importTBMSyn(tbm_file)
 
-    new_headers = old_headers
-
     # add new headers as needed
     tbm_columns = ['TBMSyn_DATE.%s' % (i+1) for i in range(10)]
     tbm_columns.extend(['TBMSyn_SCORE.%s' % (i+1) for i in range(10)])
     tbm_columns.append('TBMSyn_count')
     tbm_columns.append('TBMSyn_SLOPE')
-    for tc in tbm_columns:
-        if tc in new_headers:
-            new_headers.remove(tc)
-    # slap onto the end
-    new_headers.extend(tbm_columns)
+    new_headers = rearrangeHeaders(old_headers, tbm_columns, after=None)
 
     # remove date fields
     for i in range(11):
@@ -1229,8 +1131,6 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
     csf_by_subj = importCSF(csf_files)
     registry = importRegistry(registry_file)
 
-    new_headers = old_headers
-
     # add new headers as needed
     csf_headers = []
     csf_headers += ['CSF_ABETA.%s' % (i+1) for i in range(7)]
@@ -1257,11 +1157,8 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
                     'CSF_PTAU_closest_AV45_2_BIN_23',
                     'CSF_PTAU_closest_AV45_3_BIN_23']
 
-    for ch in csf_headers:
-        if ch in new_headers:
-            new_headers.remove(ch)
-    # slap onto the end
-    new_headers.extend(csf_headers)
+    new_headers = rearrangeHeaders(old_headers, csf_headers, after=None)
+
     lengths = set()
     new_lines = []
     for old_l in old_lines:
@@ -1581,8 +1478,6 @@ if __name__ == '__main__':
     csf_files = ['../docs/UPENNBIOMK5_firstset.csv','../docs/UPENNBIOMK6_secondset.csv','../docs/UPENNBIOMK7_thirdset.csv','../docs/UPENNBIOMK8_fourthset.csv']
     # WMH file
     wmh_file = '../docs/UCD_ADNI2_WMH_03_12_15.csv'
-
-
 
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file)

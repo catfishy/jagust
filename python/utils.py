@@ -69,6 +69,76 @@ def importDODRegistry(dod_registry_file):
     return registry
 
 
+def importMMSE(mmse_file, registry=None):
+    mmse_headers, mmse_lines = parseCSV(mmse_file)
+    
+    # restructure mmse lines by subject
+    mmse_by_subject = defaultdict(list)
+    for line in mmse_lines:
+        subj = int(line['RID'])
+        date_string = line['EXAMDATE']
+        if not date_string and registry is not None:
+            # get from registry
+            vs = line['VISCODE'].strip().lower()
+            vs2 = line['VISCODE2'].strip().lower()
+            subject_registry = registry.get(subj,[])
+            date = None
+            for v in subject_registry:
+                item_date = v['date']
+                if vs2 == v['VISCODE2']:
+                    date = item_date
+                    break
+            if date is None:
+                print "Could not find visit in registry: %s, %s, %s" % (subj, vs, vs2)
+        else:
+            date = datetime.strptime(date_string,'%m/%d/%y')
+        if date is not None:
+            mmse_by_subject[subj].append((date,line))
+    mmse_by_subject = dict(mmse_by_subject)
+    for k,v in mmse_by_subject.iteritems():
+        mmse_by_subject[k] = sorted(v, key=lambda x: x[0])
+    return mmse_by_subject
+
+
+def importAVLT(avlt_file, registry=None):
+    headers, lines = parseCSV(avlt_file)
+    # restructure by subject
+    avlt_by_subj = defaultdict(list)
+    for line in lines:
+        subj = int(line['RID'])
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        examdate = line['EXAMDATE']
+        if examdate:
+            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+        elif registry is not None:
+            subj_listings = registry.get(subj,[])
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['date']
+                    break
+            if not examdate:
+                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+                continue
+        tots = [line['AVTOT%s' % _ ]for _ in range(1,6)]
+
+        try:
+            score_sum = 0.0
+            for score_str in tots:
+                new_score = float(score_str)
+                if new_score < 0:
+                    raise Exception("Invalid score part")
+                score_sum += new_score
+            test_score = score_sum
+        except Exception as e:
+            continue
+        avlt_by_subj[subj].append({'VISCODE': viscode,
+                                   'VISCODE2': viscode2,
+                                   'EXAMDATE': examdate,
+                                   'TOTS': test_score})
+    return dict(avlt_by_subj)
+
+
 def importTBMSyn(tbm_file):
     headers, lines = parseCSV(tbm_file)
     data = defaultdict(list)
@@ -370,6 +440,7 @@ def importLongitudinalFreesurfer(longfree_file, include_failed = False):
 
 
 def dumpCSV(file_path, headers, lines):
+    print "DUMPING OUTPUT TO %s" % (file_path)
     writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
     writer.writeheader()
     for l in lines:
