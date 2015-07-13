@@ -104,20 +104,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         first_scan_date = dates[0]
 
 
-        # Get AV45 Scan dates
-        if old_l['AV45_Date'] != '':
-            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
-        else:
-            bl_av45 = None
-        if old_l['AV45_2_Date'] != '':
-            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
-        else:
-            av45_2 = None
-        if old_l['AV45_3_Date'] != '':
-            av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
-        else:
-            av45_3 = None
-
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_line, patient_pets=None)
 
         new_subj_data = {}
         all_values = []
@@ -291,19 +278,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         except Exception as e:
             continue
 
-        # get av45 dates
-        if old_l['AV45_Date'] != '':
-            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
-        else:
-            bl_av45 = ''
-        if old_l['AV45_2_Date'] != '':
-            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
-        else:
-            av45_2 = ''
-        if old_l['AV45_3_Date'] != '':
-            av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
-        else:
-            av45_3 = ''
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
 
         # create new subject data
         tests = mmse_by_subject[subj]
@@ -328,7 +303,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
             new_subj_data['MMSCORE.%s' % count] = test_score
 
             # pair up with av45 scan date if possible
-            if bl_av45 != '' and test_date != '':
+            if bl_av45 is not None and test_date != '':
                 rel_time_days = (test_date - bl_av45).days 
                 if abs(rel_time_days) <= 93 and 'MMSE_AV45_3MTHS' not in new_subj_data:
                     new_subj_data['MMSE_AV45_3MTHS'] = test_score
@@ -343,12 +318,12 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
             if ('TIMEpostAV45_MMSE.%s' % count) not in new_subj_data:
                 new_subj_data['TIMEpostAV45_MMSE.%s' % count] = ''
             # pair up with subsequent av45 scans
-            if av45_2 != '' and test_date != '':
+            if av45_2 is not None and test_date != '':
                 rel_time_days = (test_date - av45_2).days 
                 if abs(rel_time_days) <= 93 and 'MMSE_AV45_2_3MTHS' not in new_subj_data:
                     new_subj_data['MMSE_AV45_2_3MTHS'] = test_score
                     new_subj_data['MMSE_AV45_2_DATE'] = test_date
-            if av45_3 != '' and test_date != '':
+            if av45_3 is not None and test_date != '':
                 rel_time_days = (test_date - av45_3).days 
                 if abs(rel_time_days) <= 93 and 'MMSE_AV45_3_3MTHS' not in new_subj_data:
                     new_subj_data['MMSE_AV45_3_3MTHS'] = test_score
@@ -367,9 +342,6 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         for f_key in to_fill_in:
             if f_key not in new_subj_data:
                 new_subj_data[f_key] = ''
-
-
-
 
         # do comparison:
         #print "SUBJ: %s" % subj
@@ -474,16 +446,8 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
             new_lines.append(old_l)
             continue
         first_scan_date = dates[0]
-        # Get AV45 Scan dates
-        if old_l['AV45_Date'] != '':
-            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
-        else:
-            bl_av45 = None
-        if old_l['AV45_2_Date'] != '':
-            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
-        else:
-            av45_2 = None
 
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
 
         new_subj_data = {}
         all_values = []
@@ -762,34 +726,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
 
         # Get AV45 Scan dates
         patient_pets = sorted(pet_meta.get(subj,[]))
-        if old_l['AV45_Date'] != '':
-            bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
-        elif len(patient_pets) >= 1:
-            bl_av45 = patient_pets[0]
-        else:
-            bl_av45 = ''
-        if old_l['AV45_2_Date'] != '':
-            av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
-        elif len(patient_pets) >= 2:
-            av45_2 = patient_pets[1]
-        else:
-            av45_2 = ''
-        if old_l['AV45_3_Date'] != '':
-            av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
-        elif len(patient_pets) >= 3:
-            av45_3 = patient_pets[2]
-        else:
-            av45_3 = ''
-
-        if bl_av45 != '' and av45_2 != '':
-            av45_1_2_diff = (av45_2 - bl_av45).days / 365.0
-        else:
-            av45_1_2_diff = ''
-        if bl_av45 != '' and av45_3 != '':
-            av45_1_3_diff = (av45_3 - bl_av45).days / 365.0
-        else:
-            av45_1_3_diff = ''
-
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
         
         # find very first visit date in registry (excluding scmri)
         subj_registry = [_ for _ in registry[subj] if _['VISCODE'] != 'scmri' and _['VISCODE2'] != 'scmri']
@@ -834,19 +771,13 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
                     pivot_date_closest_diag_key: closest_to_pivot['diag'],
                     pivot_date_closest_date_key: closest_to_pivot['EXAMDATE']}
         
-        if bl_av45 != '':
-            av45_bl_closest = sorted(subj_diags, key=lambda x: abs(bl_av45-x['EXAMDATE']))[0]
-            if abs(bl_av45 - av45_bl_closest['EXAMDATE']).days < 550:
-                new_data['Diag@AV45_long'] = av45_bl_closest['diag']
-        if av45_2 != '':
-            av45_2_closest = sorted(subj_diags, key=lambda x: abs(av45_2-x['EXAMDATE']))[0]
-            if abs(av45_2 - av45_2_closest['EXAMDATE']).days < 550:
-                new_data['Diag@AV45_2_long'] = av45_2_closest['diag']
-        if av45_3 != '':
-            av45_3_closest = sorted(subj_diags, key=lambda x: abs(av45_3-x['EXAMDATE']))[0]
-            if abs(av45_3 - av45_3_closest['EXAMDATE']).days < 550:
-                new_data['Diag@AV45_3_long'] = av45_3_closest['diag']     
-
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_diags, bl_av45, av45_2, av45_3)
+        if av45_bl_closest:
+            new_data['Diag@AV45_long'] = av45_bl_closest['diag']
+        if av45_2_closest:
+            new_data['Diag@AV45_2_long'] = av45_2_closest['diag']
+        if av45_3_closest:
+            new_data['Diag@AV45_3_long'] = av45_3_closest['diag'] 
 
         for i, diag_row in enumerate(subj_diags):
             # parse change based on init diag
@@ -854,7 +785,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
                 new_data['MCItoADConv(fromav45)'] = '1'
                 new_data['MCItoADConvDate'] = new_data['MCItoADconv_'] = diag_row['EXAMDATE']
                 new_data['Baseline_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - new_data['Baseline']).days / 365.0
-                if bl_av45 != '':
+                if bl_av45 is not None:
                     new_data['AV45_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - bl_av45).days / 365.0
                 
                     
@@ -1221,13 +1152,11 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     # slap onto the end
     new_headers.extend(tbm_columns)
 
-    '''
     # remove date fields
     for i in range(11):
         key = 'TBMSyn_DATE.%s' % (i+1)
         if key in new_headers:
             new_headers.remove(key)
-    '''
     
     new_lines = []
     for old_l in old_lines:
@@ -1243,14 +1172,12 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
             continue
 
         subj_tbm = sorted(tbm_by_subj[subj], key=lambda x: x['EXAMDATE'])
+        av45_bl, av45_2, av45_3 = getAV45Dates(old_l)
         bl_examdate = subj_tbm[0]['BL_EXAMDATE']
-        bl_av45_string = old_l['AV45_Date']
-        if bl_av45_string == '':
+        if av45_bl is None:
             print "No Baseline AV45 date for %s" % subj
             new_lines.append(old_l)
             continue
-        av45_bl = datetime.strptime(bl_av45_string,'%m/%d/%y')
-
         # check that TBMSyn baseline is within range of AV45 baseline
         if abs(av45_bl - bl_examdate).days > 210:
             print "TBM BL and AV45 BL %s days apart for subj %s" % (abs(av45_bl - bl_examdate).days, subj)
@@ -1264,7 +1191,8 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
                 datapoint = subj_tbm[i]
                 new_data['TBMSyn_DATE.%s' % (i+1)] = datapoint['EXAMDATE']
                 new_data['TBMSyn_SCORE.%s' % (i+1)] = datapoint['SCORE']
-                slope_points.append((datapoint['EXAMDATE'],datapoint['SCORE']))
+                timediff = (datapoint['EXAMDATE']-datapoint['BL_EXAMDATE']).days / 365.0
+                slope_points.append((timediff,datapoint['SCORE']))
             else:
                 new_data['TBMSyn_DATE.%s' % (i+1)] = ''
                 new_data['TBMSyn_SCORE.%s' % (i+1)] = ''
@@ -1273,8 +1201,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
         if len(slope_points) >= 2:
             raw_dates = [_[0] for _ in slope_points]
             raw_scores = [_[1] for _ in slope_points]
-            basedate = raw_dates[0]
-            diff_dates = [0.0] + [(_ - basedate).days / 365.0 for _ in raw_dates]
+            diff_dates = [0.0] + raw_dates
             diff_scores = [0.0] + raw_scores
             #slope, intercept, r, p, stderr = stats.linregress(diff_dates, diff_scores)
             output = optimize.fmin(lambda b, x, y: ((b*x-y)**2).sum(), x0=0.1, args=(diff_dates, diff_scores))
@@ -1300,22 +1227,125 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
     new_headers = old_headers
 
     # add new headers as needed
-    '''
-    tbm_columns = ['TBMSyn_DATE.%s' % (i+1) for i in range(10)]
-    tbm_columns.extend(['TBMSyn_SCORE.%s' % (i+1) for i in range(10)])
-    tbm_columns.append('TBMSyn_count')
-    tbm_columns.append('TBMSyn_SLOPE')
-    for tc in tbm_columns:
-        if tc in new_headers:
-            new_headers.remove(tc)
-    # slap onto the end
-    new_headers.extend(tbm_columns)
-    '''
+    csf_headers = []
+    csf_headers.append['CSF_ABETA.%s' % (i+1) for i in range(7)]
+    csf_headers.append(['CSF_ABETApostAV45.%s' % (i+1) for i in range(7)])
+    csf_headers.append(['CSF_ABETA_slope', 'CSF_ABETA_closest_AV45', 
+                        'CSF_ABETA_closest_AV45_2', 'CSF_ABETA_closest_AV45_3'])
 
+    csf_headers.append['CSF_TAU.%s' % (i+1) for i in range(7)]
+    csf_headers.append(['CSF_TAUpostAV45.%s' % (i+1) for i in range(7)])
+    csf_headers.append(['CSF_TAU_slope', 'CSF_TAU_closest_AV45', 
+                        'CSF_TAU_closest_AV45_2', 'CSF_TAU_closest_AV45_3'])
+
+    csf_headers.append['CSF_PTAU.%s' % (i+1) for i in range(7)]
+    csf_headers.append(['CSF_PTAUpostAV45.%s' % (i+1) for i in range(7)])
+    csf_headers.append(['CSF_PTAU_slope', 'CSF_PTAU_closest_AV45', 
+                        'CSF_PTAU_closest_AV45_2', 'CSF_PTAU_closest_AV45_3'])
+
+    for ch in csf_headers:
+        if ch in new_headers:
+            new_headers.remove(ch)
+    # slap onto the end
+    new_headers.extend(csf_headers)
     
     new_lines = []
     for old_l in old_lines:
-        
+        # get subject ID
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            continue
+        if subj not in csf_by_subj:
+            #print "No TBM data for %s" % subj
+            new_lines.append(old_l)
+            continue
+
+        subj_csf = csf_by_subj[subj]
+
+        # find the examdate for each point, then sort
+        subj_listings = registry[subj]
+        for i in range(len(subj_csf)):
+            examdate = None
+            viscode = subj_csf[i]['vc']
+            viscode2 = subj_csf[i]['vc2']
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['date']
+                    break
+            if examdate is None:
+                print "No exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+                continue
+            else:
+                subj_csf[i]['EXAMDATE'] = examdate
+
+        # find av45 dates
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
+
+        new_data = {}
+        ptau_slope_points = []
+        abeta_slope_points = []
+        tau_slope_points = []
+        for i in range(7):
+            if i < len(subj_tbm):
+                datapoint = subj_tbm[i]
+                examdate = datapoint['EXAMDATE']
+                timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
+                if timediff <= (90.0/365.0):
+                    timediff = ''
+                new_data['CSF_ABETA.%s' % (i+1)] = float(datapoint['abeta'])
+                new_data['CSF_PTAU.%s' % (i+1)] = float(datapoint['ptau'])
+                new_data['CSF_TAU.%s' % (i+1)] = float(datapoint['tau'])
+                new_data['CSF_ABETApostAV45.%s' % (i+1)] = timediff
+                new_data['CSF_PTAUpostAV45.%s' % (i+1)] = timediff
+                new_data['CSF_TAUpostAV45.%s' % (i+1)] = timediff
+                if timediff:
+                    abeta_slope_points.append((timediff, float(datapoint['abeta'])))
+                    tau_slope_points.append((timediff, float(datapoin['tau'])))
+                    ptau_slope_points.append((timediff, float(datapoint['ptau'])))
+            else:
+                new_data['CSF_ABETA.%s' % (i+1)] = ''
+                new_data['CSF_PTAU.%s' % (i+1)] = ''
+                new_data['CSF_TAU.%s' % (i+1)] = ''
+                new_data['CSF_ABETApostAV45.%s' % (i+1)] = ''
+                new_data['CSF_PTAUpostAV45.%s' % (i+1)] = ''
+                new_data['CSF_TAUpostAV45.%s' % (i+1)] = ''
+
+        # match up with av45 scans
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_csf, bl_av45, av45_2, av45_3)
+        if av45_bl_closest:
+            new_data['CSF_TAU_closest_AV45'] = av45_bl_closest
+            new_data['CSF_PTAU_closest_AV45'] = av45_bl_closest
+            new_data['CSF_ABETA_closest_AV45'] = av45_bl_closest
+        if av45_2_closest:
+            new_data['CSF_TAU_closest_AV45_2'] = av45_2_closest
+            new_data['CSF_PTAU_closest_AV45_2'] = av45_2_closest
+            new_data['CSF_ABETA_closest_AV45_2'] = av45_2_closest
+        if av45_3_closest:
+            new_data['CSF_TAU_closest_AV45_3'] = av45_3_closest
+            new_data['CSF_PTAU_closest_AV45_3'] = av45_3_closest
+            new_data['CSF_ABETA_closest_AV45_3'] = av45_3_closest
+
+        # calculate slope
+        if len(ptau_slope_points) >= 2:
+            raw_dates = [_[0] for _ in ptau_slope_points]
+            raw_scores = [_[1] for _ in ptau_slope_points]
+            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            new_subj_data['CSF_PTAU_slope'] = slope
+        if len(tau_slope_points) >= 2:
+            raw_dates = [_[0] for _ in tau_slope_points]
+            raw_scores = [_[1] for _ in tau_slope_points]
+            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            new_subj_data['CSF_TAU_slope'] = slope
+        if len(abeta_slope_points) >= 2:
+            raw_dates = [_[0] for _ in abeta_slope_points]
+            raw_scores = [_[1] for _ in abeta_slope_points]
+            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            new_subj_data['CSF_ABETA_slope'] = slope
+
+        new_data = convertToCSVDataType(new_data, decimal_places=5) # TBMSyn needs more decimal places
+        old_l.update(new_data)
+        new_lines.append(old_l)
 
     # dump out
     if dump_to is not None:
@@ -1323,7 +1353,22 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
 
     return (new_headers, new_lines)
 
-
+def getClosestToAV45(points, bl_av45, av45_2, av45_3):
+    # match up with av45 scans
+    av45_bl_closest = av45_2_closest = av45_3_closest = None
+    if bl_av45 is not None:
+        cand = sorted(points, key=lambda x: abs(bl_av45-x['EXAMDATE']))[0]
+        if abs(bl_av45 - cand['EXAMDATE']).days < 550:
+            av45_bl_closest = cand
+    if av45_2 is not None:
+        cand = sorted(points, key=lambda x: abs(av45_2-x['EXAMDATE']))[0]
+        if abs(av45_2 - cand['EXAMDATE']).days < 550:
+            av45_2_closest = cand
+    if av45_3 is not None:
+        cand = sorted(points, key=lambda x: abs(av45_3-x['EXAMDATE']))[0]
+        if abs(av45_3 - cand['EXAMDATE']).days < 550:
+            av45_3_closest = cand
+    return av45_bl_closest, av45_2_closest, av45_3_closest
 
 def eliminateColumns(headers, lines):
     to_remove = ['LastClinicalVisit',
@@ -1332,7 +1377,19 @@ def eliminateColumns(headers, lines):
                  'ClinicalVisitClosestto_AV45_2',
                  'MMSEclosest_1', 'MMSEclosest_AV45',
                  'datediff_MMSE_AV45', 'MMSE_3mths_AV45',
-                 'PostAV45Followup']
+                 'PostAV45Followup',
+                 'abeta_closest_AV45',
+                 'abeta_bin192',
+                 'abeta_closest_AV45_2',
+                 'abeta_2_bin192',
+                 'abeta_diff',
+                 'abeta_slope',
+                 'tau_closest_AV45',
+                 'tau_bin93',
+                 'tau_closest_AV45_2',
+                 'ptau_closest_AV45',
+                 'ptau_bin23',
+                 'ptau_closest_2']
     for tm in to_remove:
         while tm in headers:
             headers.remove(tm)
@@ -1342,6 +1399,31 @@ def eliminateColumns(headers, lines):
             l.pop(tm, None)
         new_lines.append(l)
     return headers, new_lines
+
+def getAV45Dates(old_line, patient_pets=None):
+    if patient_pets is None:
+        patient_pets = []
+    # Get AV45 Scan dates
+    patient_pets = sorted(pet_meta.get(subj,[]))
+    if old_l['AV45_Date'] != '':
+        bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 1:
+        bl_av45 = patient_pets[0]
+    else:
+        bl_av45 = None
+    if old_l['AV45_2_Date'] != '':
+        av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 2:
+        av45_2 = patient_pets[1]
+    else:
+        av45_2 = None
+    if old_l['AV45_3_Date'] != '':
+        av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 3:
+        av45_3 = patient_pets[2]
+    else:
+        av45_3 = None
+    return (bl_av45, av45_2, av45_3)
 
 
 if __name__ == '__main__':

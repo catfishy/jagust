@@ -78,11 +78,13 @@ def importTBMSyn(tbm_file):
         subj = int(line['RID'])
         vc = line['VISCODE'].strip().lower()
         vc2 = line['VISCODE2'].strip().lower()
+        vcbl = line['VISCODE2BL'].strip().lower()
         bl_examdate = datetime.strptime(line['EXAMDATEBL'],'%Y-%m-%d')
         score = float(line['TBMSYNSCOR'])
         examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
         data[subj].append({'VISCODE': vc,
                            'VISCODE2': vc2,
+                           'VISCODEBL': vcbl,
                            'EXAMDATE': examdate,
                            'BL_EXAMDATE': bl_examdate,
                            'SCORE': score})
@@ -243,7 +245,13 @@ def importMRI(mri_file):
             pass
         if date is None:
             continue
-        data[subj].append({'EXAMDATE' : date})
+
+        if 'Visit' in line:
+            vc = line['Visit']
+        else:
+            vc = None
+
+        data[subj].append({'EXAMDATE' : date, 'vc': vc})
     print bad_sequences
     return dict(data)
 
@@ -264,7 +272,9 @@ def importBSI(bsi_file, include_failed=False):
     headers, lines = parseCSV(bsi_file)
     data = defaultdict(list)
     failed = 0
+    bl_examdates = {}
     for i, line in enumerate(lines):
+        subj = int(line['RID'])
         if not include_failed and int(line['QC_PASS']) == 0:
             failed += 1
             continue
@@ -272,8 +282,9 @@ def importBSI(bsi_file, include_failed=False):
             continue
         elif line['KMNDBCBBSI'] == '':
             # a baseline scan
+            bl_examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+            bl_examdates[subj] = bl_examdate
             continue
-        subj = int(line['RID'])
         vc = line['VISCODE'].strip().lower()
         vc2 = line['VISCODE2'].strip().lower()
         examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
@@ -285,12 +296,23 @@ def importBSI(bsi_file, include_failed=False):
         data[subj].append({'VISCODE': vc,
                            'VISCODE2': vc2,
                            'EXAMDATE': examdate,
+                           'BL_EXAMDATE': bl_examdates.get(subj,None),
                            'VBSI': v_bsi,
                            'HBSI_R': h_bsi_r,
                            'HBSI_L': h_bsi_l,
                            'WB_BSI': dbcb_bsi,
                            'WB_KNBSI': kmndbcb_bsi})
     print "BSI Failed: %s" % failed
+
+    # fill in baseline times
+    data = dict(data)
+    for subj in data.keys():
+        if subj in bl_examdates:
+            lines = data[subj]
+            for l in lines:
+                l['BL_EXAMDATE'] = bl_examdates[subj]
+            data[subj] = lines
+
     return dict(data)
 
 def importLongitudinalFreesurfer(longfree_file, include_failed = False):

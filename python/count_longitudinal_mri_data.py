@@ -5,51 +5,279 @@ from tabulate import tabulate
 from utils import *
 
 
-def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, mri_data, master_data):
+def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, tbm_data, mri_data, master_data):
     '''
     Aggregate into one dictionary
     remove datapoints from before the first av45 scan
     '''
 
-    interesting = [21, 23, 31, 56, 58, 59, 61, 69, 74, 89, 96, 106, 113, 120, 123, 130, 159, 166, 171, 173, 230, 257, 259, 260, 272, 301, 311, 315, 413, 416, 419, 498, 545, 602, 610, 618, 680, 684, 685, 717, 741, 751, 767, 778, 842, 896, 907, 920, 923, 926, 969, 972, 981, 985, 1016, 1098, 1123, 1169, 1190, 1206, 1232, 1261, 1280, 4003, 4014, 4018, 4020, 4021, 4026, 4028, 4032, 4037, 4041, 4043, 4050, 4060, 4075, 4076, 4081, 4082, 4084, 4086, 4090, 4100, 4103, 4105, 4119, 4120, 4121, 4148, 4150, 4151, 4158, 4164, 4173, 4176, 4177, 4179, 4196, 4198, 4200, 4208, 4213, 4218, 4222, 4224, 4225, 4234, 4254, 4255, 4262, 4266, 4269, 4270, 4275, 4278, 4290, 4291, 4292, 4313, 4320, 4339, 4343, 4345, 4349, 4350, 4352, 4357, 4365, 4367, 4369, 4371, 4372, 4376, 4382, 4384, 4385, 4386, 4387, 4388, 4389, 4391, 4393, 4396, 4399, 4400, 4410, 4422, 4427, 4428, 4429, 4441, 4446, 4448, 4453, 4466, 4469, 4482, 4483, 4485, 4491, 4496, 4499, 4503, 4505, 4506, 4516, 4520, 4545, 4552, 4555, 4559, 4560, 4566, 4576, 4579, 4580, 4585, 4586, 4587, 4598, 4599, 4604, 4607, 4612, 4616, 4620, 4632, 4637, 4643, 4645, 4649, 4739, 4762, 4795, 4832, 4835, 4843, 4855, 4872, 4878, 5023]
-    
+    '''
+    interesting = [21, 23, 31, 56, 58, 59, 61, 69, 74, 89, 96, 106, 113, 120, 
+                   123, 130, 159, 166, 171, 173, 230, 257, 259, 260, 272, 301, 
+                   311, 315, 413, 416, 419, 498, 545, 602, 610, 618, 680, 684, 
+                   685, 717, 741, 751, 767, 778, 842, 896, 907, 920, 923, 926, 
+                   969, 972, 981, 985, 1016, 1098, 1123, 1169, 1190, 1206, 1232, 
+                   1261, 1280, 4003, 4014, 4018, 4020, 4021, 4026, 4028, 4032, 
+                   4037, 4041, 4043, 4050, 4060, 4075, 4076, 4081, 4082, 4084, 
+                   4086, 4090, 4100, 4103, 4105, 4119, 4120, 4121, 4148, 4150, 
+                   4151, 4158, 4164, 4173, 4176, 4177, 4179, 4196, 4198, 4200, 
+                   4208, 4213, 4218, 4222, 4224, 4225, 4234, 4254, 4255, 4262, 
+                   4266, 4269, 4270, 4275, 4278, 4290, 4291, 4292, 4313, 4320, 
+                   4339, 4343, 4345, 4349, 4350, 4352, 4357, 4365, 4367, 4369, 
+                   4371, 4372, 4376, 4382, 4384, 4385, 4386, 4387, 4388, 4389, 
+                   4391, 4393, 4396, 4399, 4400, 4410, 4422, 4427, 4428, 4429, 
+                   4441, 4446, 4448, 4453, 4466, 4469, 4482, 4483, 4485, 4491, 
+                   4496, 4499, 4503, 4505, 4506, 4516, 4520, 4545, 4552, 4555, 
+                   4559, 4560, 4566, 4576, 4579, 4580, 4585, 4586, 4587, 4598, 
+                   4599, 4604, 4607, 4612, 4616, 4620, 4632, 4637, 4643, 4645, 
+                   4649, 4739, 4762, 4795, 4832, 4835, 4843, 4855, 4872, 4878, 
+                   5023]
     print len(interesting)
-
     interesting_counts = defaultdict(list)
+    '''
+
+    adni1_mri_visit_counts = {'N': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'SMC': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'EMCI': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'LMCI': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'AD': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []}}
+    adni2_mri_visit_counts = {'N': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'SMC': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'EMCI': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'LMCI': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'AD': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []}}
+    adni1_tbm_visit_counts = {'N': {"year1": [], "year2": [], "year3": [], "year4": [], "year5": []},
+                              'SMC': {"year1": [], "year2": [], "year3": [], "year4": [], "year5": []},
+                              'EMCI': {"year1": [], "year2": [], "year3": [], "year4": [], "year5": []},
+                              'LMCI': {"year1": [], "year2": [], "year3": [], "year4": [], "year5": []},
+                              'AD': {"year1": [], "year2": [], "year3": [], "year4": [], "year5": []}}
+    adni2_tbm_visit_counts = {'N': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'SMC': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'EMCI': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'LMCI': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'AD': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []}}
+    adni1_long_visit_counts = {'N': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'SMC': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'EMCI': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'LMCI': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
+                              'AD': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []}}
+    adni2_long_visit_counts = {'N': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'SMC': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'EMCI': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'LMCI': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'AD': {"BL": [], "m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []}}
+    adni1_bsi_visit_counts = {'N': {"year1": [], "year2": [], "year3": [], "year4": []},
+                              'SMC': {"year1": [], "year2": [], "year3": [], "year4": []},
+                              'EMCI': {"year1": [], "year2": [], "year3": [], "year4": []},
+                              'LMCI': {"year1": [], "year2": [], "year3": [], "year4": []},
+                              'AD': {"year1": [], "year2": [], "year3": [], "year4": []}}
+    adni2_bsi_visit_counts = {'N': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'SMC': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'EMCI': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'LMCI': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
+                              'AD': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []}}
+
 
 
     points_by_subj = {}
     for subj,v in pet_data.iteritems():
+        print "SUBJECT: %s" % subj
         patient_pets = sorted(v)
-        bl_av45 = patient_pets[0] - timedelta(days=90)
+        bl_av45 = patient_pets[0] - timedelta(days=150)
         subj_points = {}
 
         if subj in bsi_data:
             subj_bsi = sorted(bsi_data[subj], key=lambda x: x['EXAMDATE'])
         else:
             subj_bsi = []
-        subj_points['bsi'] = [_['VISCODE2'] for _ in subj_bsi if _['EXAMDATE'] >= bl_av45]
+        subj_points['bsi'] = [_['VISCODE2'].replace('m0','m') for _ in subj_bsi if _['BL_EXAMDATE'] >= bl_av45]
 
-        if subj in longfree_data:
-            subj_long = sorted(longfree_data[subj], key=lambda x: x['EXAMDATE'])
+        if subj in longfree_data or subj in longfree_data_adni1:
+            all_longfree_data = longfree_data.get(subj,[]) + longfree_data_adni1.get(subj,[])
+            subj_long = sorted(all_longfree_data, key=lambda x: x['EXAMDATE'])
         else:
             subj_long = []
-        subj_points['long'] = [_['VISCODE2'] for _ in subj_long if _['EXAMDATE'] >= bl_av45]
+        subj_points['long'] = [_['VISCODE2'].replace('m0','m') for _ in subj_long if _['EXAMDATE'] >= bl_av45]
 
         if subj in tbm_data:
             subj_tbm = sorted(tbm_data[subj], key=lambda x: x['EXAMDATE'])
+            subj_tbm_bl = tbm_data[subj][0]['VISCODEBL']
         else:
             subj_tbm = []
-        subj_points['tbm'] = [_['VISCODE2'] for _ in subj_tbm if _['EXAMDATE'] >= bl_av45]
+            subj_tbm_bl = None
+        subj_points['tbm'] = [_['VISCODE2'].replace('m0','m') for _ in subj_tbm if _['BL_EXAMDATE'] >= bl_av45]
 
         if subj in mri_data:
-            subj_mri = sorted(list(set([_['EXAMDATE'] for _ in mri_data[subj]])))
+            subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc']) for _ in mri_data[subj]])))
         else:
             subj_mri = []
-        subj_points['mri'] = [_ for _ in subj_mri if _ >= bl_av45]
+        subj_points['mri'] = [_ for _ in subj_mri if _[0] >= bl_av45]
+        if len(subj_points['mri']) > 0:
+            first_mri_time = subj_points['mri'][0][0]
+            mri_diffs = [(a-first_mri_time).days/ 365.0 for a,b in subj_points['mri']]
+            mri_vc = [b for a,b in subj_points['mri']]
+        else:
+            mri_diffs = []
+            mri_vc = []
         #print "%s: %s -> %s" % (subj, len(subj_mri), len(subj_points['mri']))
-        points_by_subj[subj] = subj_points
 
+        points_by_subj[subj] = subj_points
+        diag = master_data.get(subj,{}).get('Init_Diagnosis','Unknown')
+
+        print subj
+        print first_mri_time
+        print subj_tbm_bl
+        for k,v in subj_points.items():
+            print "%s: %s" % (k,v)
+
+        # add to adni1 or adnigo/2 counts
+        chosen_timepoints = []
+        if subj < 2000:
+            print subj
+            years = [0,1,2,3,4]
+
+            # Match MRI by time
+            used = set([])
+            for y in years:
+                year_found = None
+                for mridiff in sorted(mri_diffs, key=lambda x: abs(y-x)):
+                    if abs(y - mridiff) < 0.6 and mridiff not in used:
+                        year_found = y
+                        chosen_timepoints.append((y,mridiff))
+                        break
+                if year_found is not None and year_found not in used:
+                    used.add(mridiff)
+                    if year_found == 0 and "BL" not in used:
+                        adni1_mri_visit_counts[diag]["BL"].append(subj)
+                        used.add("BL")
+                    elif "year%s" % year_found not in used:
+                        adni1_mri_visit_counts[diag]["year%s" % year_found].append(subj)
+                        used.add("year%s" % year_found)
+
+            if len(used)/2 != len(mri_diffs):
+                print "FAILED MRI MATCH"
+            
+            # Match TBM by vc
+            used = set()
+            for vc in subj_points['tbm']:
+                if not vc.startswith('m'):
+                    continue
+                # get month diff 
+                month_diff = int(vc.replace('m','')) - int(subj_tbm_bl.replace('m',''))
+                year_key = "year%s" % int(round(month_diff / 12))
+                if year_key not in used:
+                    adni1_tbm_visit_counts[diag][year_key].append(subj)
+                    used.add(year_key)
+
+            # Match BSI by vc
+            if len(subj_points['bsi']) > 0:
+                raise Exception("Getting BSI data, write code for it")
+                used = set()
+                for vc in subj_points['bsi']:
+                    if not vc.startswith('m'):
+                        continue
+                    if vc not in used:
+                        adni1_bsi_visit_counts[diag][vc].append(subj)
+                        used.add(vc)
+
+            # Match Longfree by vc
+            if len(subj_points['long']) > 0:
+                print subj_points['long']
+                long_bl = subj_points['long'][0].lower().strip()
+                if long_bl == 'bl':
+                    long_bl = 0
+                    print "CHECK: %s" % subj
+                else:
+                    long_bl = int(long_bl.replace('m',''))
+                used = set()
+                for vc in subj_points['long']:
+                    if not vc.startswith('m'):
+                        continue
+                    # get month diff 
+                    month_diff = int(vc.replace('m','')) - long_bl
+                    if month_diff == 0:
+                        year_key = "BL"
+                    else:
+                        year_key = "year%s" % int(round(month_diff / 12))
+                    if year_key not in used:
+                        adni1_long_visit_counts[diag][year_key].append(subj)
+                        used.add(year_key)
+
+        elif subj >= 2000:
+            months = [(0.0,0),(0.25,3),(0.5,6),(1,12),(2,24),(3,36),(4,48)]
+
+            # Match MRI by name, then by time
+            used_months = set([])
+            used_cols = set([])
+            for m_annual, m in months:
+                month_found = None
+                for mridiff, mrivc in sorted(zip(mri_diffs, mri_vc), key=lambda x: abs(m_annual-x[0])):
+                    if mridiff in used_months:
+                        continue
+                    if (("Month %s" % m) in mrivc or ("Year %s" % m_annual) in mrivc) and abs(m_annual - mridiff) <= 0.7: # use time as sanity check
+                        month_found = m
+                        used_months.add(mridiff)
+                        chosen_timepoints.append((m,mridiff))
+                        break
+                if month_found is not None:
+                    used_cols.add("BL")
+                    if month_found == 0 and "BL" not in used_cols:
+                        adni2_mri_visit_counts[diag]["BL"].append(subj)
+                        used_cols.add("BL")
+                    elif "m%s" % month_found not in used_cols:
+                        adni2_mri_visit_counts[diag]["m%s" % month_found].append(subj)
+                        used_cols.add("m%s" % month_found)
+            for m_annual, m in months:
+                month_found = None
+                if m in used_cols:
+                    continue
+                for mridiff, mrivc in sorted(zip(mri_diffs, mri_vc), key=lambda x: abs(m_annual-x[0])):
+                    if mridiff in used_months:
+                        continue
+                    if abs(m_annual - mridiff) < 0.8:
+                        print "MIRACULOUS"
+                        month_found = m
+                        used_months.add(mridiff)
+                        chosen_timepoints.append((m,mridiff))
+                        break
+                if month_found is not None and month_found not in used_cols:
+                    if month_found == 0:
+                        adni2_mri_visit_counts[diag]["BL"].append(subj)
+                    else:
+                        adni2_mri_visit_counts[diag]["m%s" % month_found].append(subj)
+            if len(used_months) != len(mri_diffs):
+                print 'FAILED MRI MATCH'
+
+            # Match TBM by vc
+            used = set()
+            for vc in subj_points['tbm']:
+                if vc not in used:
+                    adni2_tbm_visit_counts[diag][vc].append(subj)
+                    used.add(vc)
+
+            # Match BSI by vc
+            used = set()
+            for vc in subj_points['bsi']:
+                if vc not in used:
+                    adni2_bsi_visit_counts[diag][vc].append(subj)
+                    used.add(vc)
+
+            # Match Longfree by vc
+            used = set()
+            for vc in subj_points['long']:
+                if vc.lower() == 'scmri':
+                    if 'scmri' not in used:
+                        adni2_long_visit_counts[diag]['BL'].append(subj)
+                        used.add('scmri')
+                    continue
+                if not vc.startswith('m'):
+                    continue
+                if vc not in used:
+                    adni2_long_visit_counts[diag][vc].append(subj)
+                    used.add(vc)
+
+
+        '''
         if subj in interesting:
             mritimes = subj_points['mri']
             
@@ -64,11 +292,103 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, 
                     diffs = [(_-m[0]).days/ 365.0 for _ in m]
                     print "%s: %s" % (k,diffs) 
                     interesting_counts[len(diffs)].append(subj)
+        '''
 
+    '''
+    n_m3_mri = adni2_mri_visit_counts['SMC']['m6']
+    n_m3_tbm = adni2_tbm_visit_counts['SMC']['m6']
+    print len(n_m3_tbm)
+    print len(n_m3_mri)
+    print set(n_m3_tbm) - set(n_m3_mri)
+    print set(n_m3_mri) - set(n_m3_tbm)
+
+    print len(set(n_m3_mri) & set(n_m3_tbm))
+    '''
+
+    print '\n\n'
+    print "ADNI1 MRI's"
+    adni1table = [['Init Diagnosis', 'BL', 'Year1', 'Year2', 'Year3', 'Year4']]
+    key_order = ['BL', 'year1', 'year2', 'year3', 'year4']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni1counts = adni1_mri_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
+        adni1table.append(cols)
+    print tabulate(adni1table)
+
+    print "ADNIGO/2 MRI's"
+    adni2table = [['Init Diagnosis', 'BL', 'm3', 'm6', 'm12', 'm24', 'm36', 'm48']]
+    key_order = ['BL', 'm3', 'm6', 'm12', 'm24', 'm36', 'm48']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni2counts = adni2_mri_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
+        adni2table.append(cols)
+    print tabulate(adni2table)
+
+    print '\n\n'
+    print "ADNI1 TBMSyn's"
+    adni1table = [['Init Diagnosis', 'Year1', 'Year2', 'Year3', 'Year4']]
+    key_order = ['year1', 'year2', 'year3', 'year4']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni1counts = adni1_tbm_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
+        adni1table.append(cols)
+    print tabulate(adni1table)
+
+    print "ADNIGO/2 TBMSyn's"
+    adni2table = [['Init Diagnosis', 'm3', 'm6', 'm12', 'm24', 'm36', 'm48']]
+    key_order = ['m3', 'm6', 'm12', 'm24', 'm36', 'm48']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni2counts = adni2_tbm_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
+        adni2table.append(cols)
+    print tabulate(adni2table)
+
+    print '\n\n'
+    print "ADNI1 BSI's"
+    adni1table = [['Init Diagnosis', 'Year1', 'Year2', 'Year3', 'Year4']]
+    key_order = ['year1', 'year2', 'year3', 'year4']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni1counts = adni1_bsi_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
+        adni1table.append(cols)
+    print tabulate(adni1table)
+
+    print "ADNIGO/2 BSI's"
+    adni2table = [['Init Diagnosis', 'm3', 'm6', 'm12', 'm24', 'm36', 'm48']]
+    key_order = ['m3', 'm6', 'm12', 'm24', 'm36', 'm48']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni2counts = adni2_bsi_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
+        adni2table.append(cols)
+    print tabulate(adni2table)
+
+    print '\n\n'
+    print "ADNI1 Longitudinal Freesurfer's"
+    adni1table = [['Init Diagnosis', 'BL', 'Year1', 'Year2', 'Year3', 'Year4']]
+    key_order = ['BL', 'year1', 'year2', 'year3', 'year4']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni1counts = adni1_long_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
+        adni1table.append(cols)
+    print tabulate(adni1table)
+
+    print "ADNIGO/2 Longitudinal Freesurfer's"
+    adni2table = [['Init Diagnosis', 'BL', 'm3', 'm6', 'm12', 'm24', 'm36', 'm48']]
+    key_order = ['BL', 'm3', 'm6', 'm12', 'm24', 'm36', 'm48']
+    for diag_row in ['N', 'SMC', 'EMCI', 'LMCI', 'AD']:
+        adni2counts = adni2_long_visit_counts[diag_row]
+        cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
+        adni2table.append(cols)
+    print tabulate(adni2table)
+
+
+
+    '''
     interesting_counts = dict(interesting_counts)
     for a,b in interesting_counts.iteritems():
         print a
         print b
+    '''
 
     # count
     tbm_counts = defaultdict(int)
@@ -538,14 +858,15 @@ if __name__ == "__main__":
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
     
 
-    #mri_meta_file = "../docs/MPRAGEMETA.csv"
-    mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
+    mri_meta_file = "../docs/MPRAGEMETA.csv"
+    #mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
     
 
     # BSI file
     bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
     # long freesurfer file
     longfree_file = '../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_08_01_14.csv'
+    longfree_adni1_file = "../mr_docs/UCSF/longitudinal/UCSFFSL_05_20_15_ADNI1.csv"
     # TBMsyn file
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
 
@@ -554,6 +875,8 @@ if __name__ == "__main__":
     bsi_data = importBSI(bsi_file, include_failed=include_failed)
     print 'BSI patients: %s' % len(bsi_data)
     longfree_data = importLongitudinalFreesurfer(longfree_file, include_failed=include_failed)
+    longfree_data_adni1 = importLongitudinalFreesurfer(longfree_adni1_file, include_failed=include_failed)
+
     print 'Longfree patients: %s' % len(longfree_data)
     tbm_data = importTBMSyn(tbm_file)
     print 'TBM patients: %s' % len(tbm_data)
@@ -561,7 +884,7 @@ if __name__ == "__main__":
     print 'MRI patients: %s' % len(mri_data)
     master_data = importMaster(master_file)
 
-    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, tbm_data, mri_data, master_data)
+    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, tbm_data, mri_data, master_data)
 
 
 
