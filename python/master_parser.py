@@ -1236,17 +1236,26 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
     csf_headers += ['CSF_ABETA.%s' % (i+1) for i in range(7)]
     csf_headers += ['CSF_ABETApostAV45.%s' % (i+1) for i in range(7)]
     csf_headers += ['CSF_ABETA_slope', 'CSF_ABETA_closest_AV45', 
-                           'CSF_ABETA_closest_AV45_2', 'CSF_ABETA_closest_AV45_3']
+                    'CSF_ABETA_closest_AV45_2', 'CSF_ABETA_closest_AV45_3',
+                    'CSF_ABETA_closest_AV45_BIN_192',
+                    'CSF_ABETA_closest_AV45_2_BIN_192',
+                    'CSF_ABETA_closest_AV45_3_BIN_192']
 
     csf_headers += ['CSF_TAU.%s' % (i+1) for i in range(7)]
     csf_headers += ['CSF_TAUpostAV45.%s' % (i+1) for i in range(7)]
     csf_headers += ['CSF_TAU_slope', 'CSF_TAU_closest_AV45', 
-                    'CSF_TAU_closest_AV45_2', 'CSF_TAU_closest_AV45_3']
+                    'CSF_TAU_closest_AV45_2', 'CSF_TAU_closest_AV45_3',
+                    'CSF_TAU_closest_AV45_BIN_93',
+                    'CSF_TAU_closest_AV45_2_BIN_93',
+                    'CSF_TAU_closest_AV45_3_BIN_93']
 
     csf_headers += ['CSF_PTAU.%s' % (i+1) for i in range(7)]
     csf_headers += ['CSF_PTAUpostAV45.%s' % (i+1) for i in range(7)]
     csf_headers += ['CSF_PTAU_slope', 'CSF_PTAU_closest_AV45', 
-                    'CSF_PTAU_closest_AV45_2', 'CSF_PTAU_closest_AV45_3']
+                    'CSF_PTAU_closest_AV45_2', 'CSF_PTAU_closest_AV45_3',
+                    'CSF_PTAU_closest_AV45_BIN_23',
+                    'CSF_PTAU_closest_AV45_2_BIN_23',
+                    'CSF_PTAU_closest_AV45_3_BIN_23']
 
     for ch in csf_headers:
         if ch in new_headers:
@@ -1305,7 +1314,7 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
                 datapoint = subj_csf[i]
                 examdate = datapoint['EXAMDATE']
                 timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
-                if timediff <= (90.0/365.0):
+                if timediff <= -(90.0/365.0):
                     timediff = ''
                 abeta_val = datapoint['abeta']
                 ptau_val = datapoint['ptau']
@@ -1335,7 +1344,7 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
                 new_data['CSF_TAUpostAV45.%s' % (i+1)] = ''
 
         # match up with av45 scans
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_csf, bl_av45, av45_2, av45_3)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_csf, bl_av45, av45_2, av45_3, day_limit=93)
         if av45_bl_closest:
             tau_val = av45_bl_closest['tau']
             ptau_val = av45_bl_closest['ptau']
@@ -1346,6 +1355,9 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
             new_data['CSF_TAU_closest_AV45'] = tau_val
             new_data['CSF_PTAU_closest_AV45'] = ptau_val
             new_data['CSF_ABETA_closest_AV45'] = abeta_val
+            new_data['CSF_TAU_closest_AV45_BIN_93'] = 1 if tau_val >= 93 else 0
+            new_data['CSF_PTAU_closest_AV45_BIN_23'] = 1 if ptau_val >= 23 else 0
+            new_data['CSF_ABETA_closest_AV45_BIN_192'] = 1 if abeta_val <= 192 else 0
         if av45_2_closest:
             tau_val = av45_2_closest['tau']
             ptau_val = av45_2_closest['ptau']
@@ -1356,6 +1368,9 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
             new_data['CSF_TAU_closest_AV45_2'] = tau_val
             new_data['CSF_PTAU_closest_AV45_2'] = ptau_val
             new_data['CSF_ABETA_closest_AV45_2'] = abeta_val
+            new_data['CSF_TAU_closest_AV45_2_BIN_93'] = 1 if tau_val >= 93 else 0
+            new_data['CSF_PTAU_closest_AV45_2_BIN_23'] = 1 if ptau_val >= 23 else 0
+            new_data['CSF_ABETA_closest_AV45_2_BIN_192'] = 1 if abeta_val <= 192 else 0
         if av45_3_closest:
             tau_val = av45_3_closest['tau']
             ptau_val = av45_3_closest['ptau']
@@ -1366,6 +1381,9 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
             new_data['CSF_TAU_closest_AV45_3'] = tau_val
             new_data['CSF_PTAU_closest_AV45_3'] = ptau_val
             new_data['CSF_ABETA_closest_AV45_3'] = abeta_val
+            new_data['CSF_TAU_closest_AV45_3_BIN_93'] = 1 if tau_val >= 93 else 0
+            new_data['CSF_PTAU_closest_AV45_3_BIN_23'] = 1 if ptau_val >= 23 else 0
+            new_data['CSF_ABETA_closest_AV45_3_BIN_192'] = 1 if abeta_val <= 192 else 0
 
         # calculate slope
         if len(ptau_slope_points) >= 2:
@@ -1394,21 +1412,88 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
 
     return (new_headers, new_lines)
 
-def getClosestToAV45(points, bl_av45, av45_2, av45_3):
+def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
+    wmh_by_subj = importWMH(wmh_file)
+    registry = importRegistry(registry_file)
+
+    to_add_headers = ['WMH_percentOfICV.%s' % (i+1) for i in range(7)]
+    to_add_headers += ['WMH_DATE.%s' % (i+1) for i in range(7)]
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    
+    new_lines = []
+    lengths = set()
+    for old_l in old_lines:
+        # get subject ID
+        try:
+            subj = int(old_l['RID'])
+        except Exception as e:
+            continue
+
+        if subj not in wmh_by_subj:
+            new_lines.append(old_l)
+            continue
+
+        subj_wmh = sorted(wmh_by_subj[subj], key=lambda x: x['EXAMDATE'])
+        # av45_bl, av45_2, av45_3 = getAV45Dates(old_l)
+        lengths.add(len(subj_wmh))
+
+        new_data = {}
+        for i in range(7):
+            if i < len(subj_wmh):
+                datapoint = subj_wmh[i]
+                new_data['WMH_percentOfICV.%s' % (i+1)] = datapoint['wmh_percent']
+                new_data['WMH_DATE.%s' % (i+1)] = datapoint['EXAMDATE']
+            else:
+                new_data['WMH_percentOfICV.%s' % (i+1)] = ''
+                new_data['WMH_DATE.%s' % (i+1)] = ''
+
+        new_data = convertToCSVDataType(new_data, decimal_places=5) # TBMSyn needs more decimal places
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+def rearrangeHeaders(new_headers, to_add, after=None):
+    '''
+    if after is None, then stick in the end of the headers
+    '''
+    for ta in to_add:
+        if ta in new_headers:
+            new_headers.remove(ta)
+    if after is None:
+        new_headers.extend(to_add)
+    else:
+        idx = new_headers.index(after) + 1
+        new_headers = new_headers[:idx] + to_add + new_headers[idx:]
+    return new_headers
+
+
+def getClosestToAV45(points, bl_av45, av45_2, av45_3, day_limit=550):
+    used = set()
     # match up with av45 scans
     av45_bl_closest = av45_2_closest = av45_3_closest = None
     if bl_av45 is not None:
-        cand = sorted(points, key=lambda x: abs(bl_av45-x['EXAMDATE']))[0]
-        if abs(bl_av45 - cand['EXAMDATE']).days < 550:
-            av45_bl_closest = cand
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(bl_av45 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(bl_av45-x['EXAMDATE']))
+        if len(cand) > 0:
+            av45_bl_closest = cand[0]
+            used.add(av45_bl_closest['EXAMDATE'])
     if av45_2 is not None:
-        cand = sorted(points, key=lambda x: abs(av45_2-x['EXAMDATE']))[0]
-        if abs(av45_2 - cand['EXAMDATE']).days < 550:
-            av45_2_closest = cand
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_2 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(av45_2-x['EXAMDATE']))
+        if len(cand) > 0:
+            av45_2_closest = cand[0]
+            used.add(av45_2_closest['EXAMDATE'])
     if av45_3 is not None:
-        cand = sorted(points, key=lambda x: abs(av45_3-x['EXAMDATE']))[0]
-        if abs(av45_3 - cand['EXAMDATE']).days < 550:
-            av45_3_closest = cand
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_3 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(av45_3-x['EXAMDATE']))
+        if len(cand) > 0:
+            av45_3_closest = cand[0]
+            used.add(av45_3_closest['EXAMDATE'])
     return av45_bl_closest, av45_2_closest, av45_3_closest
 
 def eliminateColumns(headers, lines):
@@ -1494,6 +1579,10 @@ if __name__ == '__main__':
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
     # CSF files
     csf_files = ['../docs/UPENNBIOMK5_firstset.csv','../docs/UPENNBIOMK6_secondset.csv','../docs/UPENNBIOMK7_thirdset.csv','../docs/UPENNBIOMK8_fourthset.csv']
+    # WMH file
+    wmh_file = '../docs/UCD_ADNI2_WMH_03_12_15.csv'
+
+
 
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file)
@@ -1512,8 +1601,9 @@ if __name__ == '__main__':
     print "\nSYNCING AVLT\n"
     new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
     print "\nSYNCING CSF\n"
-    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=output_file)
-
+    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=None)
+    print "\nSYNCING WMH\n"
+    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, registry_file, dump_to=output_file)
 
 '''
 for graphing new counts:

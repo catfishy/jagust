@@ -90,6 +90,32 @@ def importTBMSyn(tbm_file):
                            'SCORE': score})
     return data
 
+def importWMH(wmh_file):
+    headers, lines = parseCSV(wmh_file)
+    data = defaultdict(list)
+    for line in lines:
+        # get subject ID
+        try:
+            subj = int(line['RID'])
+        except Exception as e:
+            continue
+        vc = line['VISCODE'].strip().lower()
+        vc2 = line['VISCODE2'].strip().lower()
+        try:
+            examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
+        except:
+            examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        wmh = float(line['WHITMATHYP'])
+        icv = float(line['ICV'])
+        wmh_percent = wmh/icv
+        data[subj].append({'vc': vc,
+                           'vc2': vc2,
+                           'EXAMDATE': examdate,
+                           'wmh': wmh,
+                           'icv': icv,
+                           'wmh_percent': wmh_percent})
+    return dict(data)
+
 
 def importCSF(csf_files):
     data = defaultdict(dict)
