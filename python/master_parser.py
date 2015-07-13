@@ -203,13 +203,13 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
 
     # add these new headers, if not present
     to_add_headers = ['MMSE_post_AV45_followuptime',
-                  'MMSE_AV45_3MTHS',
-                  'MMSE_AV45_DATE',
-                  'MMSE_AV45_2_3MTHS',
-                  'MMSE_AV45_2_DATE',
-                  'MMSE_AV45_3_3MTHS',
-                  'MMSE_AV45_3_DATE',
-                  'MMSEslope_postAV45']
+                      'MMSE_AV45_3MTHS',
+                      'MMSE_AV45_DATE',
+                      'MMSE_AV45_2_3MTHS',
+                      'MMSE_AV45_2_DATE',
+                      'MMSE_AV45_3_3MTHS',
+                      'MMSE_AV45_3_DATE',
+                      'MMSEslope_postAV45']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after='MMSCORE.11')
 
     # remove date fields
@@ -762,28 +762,8 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
     '''
     This function adds new subject lines to the output
     '''
-    av45_headers, av45_lines = parseCSV(av45_file)
     registry = importRegistry(registry_file)
-
-    av45_by_subj = defaultdict(list)
-    for line in av45_lines:
-        subj = int(line.pop('RID',None))
-        viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
-        examdate = line.get('EXAMDATE',None)
-        if examdate:
-            examdate = datetime.strptime(examdate,'%Y-%m-%d')
-        else:
-            subj_listings = registry[subj]
-            for listing in subj_listings:
-                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-                    examdate = listing['date']
-                    break
-            if not examdate:
-                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-                continue
-        line['EXAMDATE'] = examdate
-        av45_by_subj[subj].append(line)
+    av45_by_subj = importAV45(av45_file, registry=registry):
 
     new_headers = None
     new_lines = []
@@ -953,12 +933,8 @@ def parseAV45Entries(old_headers, subj_av45):
                  all_brainstem_keys,
                  all_wmratio_keys]
     all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
-    for h in all_av45_keys:
-        if h in old_headers:
-            old_headers.remove(h)
-    # stick after the 'LastCSFAbeta' key
-    idx = old_headers.index('LastCSFAbeta') + 1
-    new_headers = old_headers[:idx] + all_av45_keys + old_headers[idx:]
+    new_headers = rearrangeHeaders(old_headers, all_av45_keys, after = 'LastCSFAbeta')
+    
     data = {k:'' for k in all_av45_keys}
     wm70_0 = None
     # fill in values
@@ -1353,20 +1329,6 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
         dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
-
-def rearrangeHeaders(new_headers, to_add, after=None):
-    '''
-    if after is None, then stick in the end of the headers
-    '''
-    for ta in to_add:
-        if ta in new_headers:
-            new_headers.remove(ta)
-    if after is None:
-        new_headers.extend(to_add)
-    else:
-        idx = new_headers.index(after) + 1
-        new_headers = new_headers[:idx] + to_add + new_headers[idx:]
-    return new_headers
 
 
 def getClosestToAV45(points, bl_av45, av45_2, av45_3, day_limit=550):

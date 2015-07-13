@@ -27,6 +27,31 @@ from glob import glob
 from utils import *
 
 ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAINSTEM','WHOLECEREBELLUM',
+                   'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
+                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
+                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
+                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
+                   'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
+                   'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
+                   'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
+                   'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
+                   'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
+                   'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
+                   'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
+                   'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
+                   'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
+                   'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
+                   'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
+                   'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
+                   'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
+                   'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
+                   'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
+                   'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
+                   'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
+                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
+                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
+                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
+ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAINSTEM','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                    'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
@@ -52,7 +77,6 @@ ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER',
                    'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                    'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                    'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-
 DOD_FIELDNAMES = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
                   'FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
@@ -78,6 +102,34 @@ DOD_FIELDNAMES = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM',
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
+DOD_FIELDNAMES_EXTRA = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+                  'FRONTAL','CINGULATE','PARIETAL','TEMPORAL','COMPOSITE','COMPOSITE_REF',
+                  'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
+                  'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
+                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
+                  'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
+                  'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
+                  'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
+                  'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
+                  'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
+                  'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
+                  'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
+                  'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
+                  'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
+                  'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
+                  'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
+                  'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
+                  'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
+                  'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
+                  'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
+                  'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
+                  'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
+                  'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
+                  'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
+                  'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
+                  'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
+
+
 
 
 def readHeaderAndLines(csv_file, limit=None):
@@ -98,63 +150,63 @@ def readHeaderAndLines(csv_file, limit=None):
 
 def convertHeaderCodes(header):
     lookup = {0: 'RID',
-              12: 'LEFT-PUTAMEN',
-              51: 'RIGHT-PUTAMEN',
-              11: 'LEFT-CAUDATE',
-              50: 'RIGHT-CAUDATE',
-              13: 'LEFT-PALLIDUM',
-              52: 'RIGHT-PALLIDUM',
-              1025: 'CTX_LH_PRECUNEUS',
-              1026: 'CTX_LH_ROSTRALANTERIORCINGULATE',
-              1027: 'CTX_LH_ROSTRALMIDDLEFRONTAL',
-              1028: 'CTX_LH_SUPERIORFRONTAL',
-              1029: 'CTX_LH_SUPERIORPARIETAL',
-              1030: 'CTX_LH_SUPERIORTEMPORAL',
-              1031: 'CTX_LH_SUPRAMARGINAL',
-              8: 'LEFT_CEREBELLUM_CORTEX',
-              16: 'BRAINSTEM',
-              47: 'RIGHT_CEREBELLUM_CORTEX',
-              1032: 'CTX_LH_FRONTALPOLE',
-              2026: 'CTX_RH_ROSTRALANTERIORCINGULATE',
-              1003: 'CTX_LH_CAUDALMIDDLEFRONTAL',
-              5000: 'WHOLECEREBELLUM',
-              5001: 'LEFT_UNSEGMENTEDWHITEMATTER',
-              5002: 'RIGHT_UNSEGMENTEDWHITEMATTER',
-              5003: 'CEREBELLUMGREYMATTER',
-              4000: 'ERODED_SUBCORTICALWM',
-              2032: 'CTX_RH_FRONTALPOLE',
-              3000: 'FRONTAL',
-              3001: 'CINGULATE',
-              3002: 'PARIETAL',
-              3003: 'TEMPORAL',
-              3004: 'COMPOSITE',
-              2002: 'CTX_RH_CAUDALANTERIORCINGULATE',
-              2003: 'CTX_RH_CAUDALMIDDLEFRONTAL',
-              2008: 'CTX_RH_INFERIORPARIETAL',
-              2010: 'CTX_RH_ISTHMUSCINGULATE',
-              2012: 'CTX_RH_LATERALORBITOFRONTAL',
-              2014: 'CTX_RH_MEDIALORBITOFRONTAL',
-              2015: 'CTX_RH_MIDDLETEMPORAL',
-              2018: 'CTX_RH_PARSOPERCULARIS',
-              2019: 'CTX_RH_PARSORBITALIS',
-              2020: 'CTX_RH_PARSTRIANGULARIS',
-              2023: 'CTX_RH_POSTERIORCINGULATE',
-              2025: 'CTX_RH_PRECUNEUS',
-              1002: 'CTX_LH_CAUDALANTERIORCINGULATE',
-              2027: 'CTX_RH_ROSTRALMIDDLEFRONTAL',
-              2028: 'CTX_RH_SUPERIORFRONTAL',
-              2029: 'CTX_RH_SUPERIORPARIETAL',
-              2030: 'CTX_RH_SUPERIORTEMPORAL',
-              2031: 'CTX_RH_SUPRAMARGINAL',
-              1008: 'CTX_LH_INFERIORPARIETAL',
-              1010: 'CTX_LH_ISTHMUSCINGULATE',
-              1012: 'CTX_LH_LATERALORBITOFRONTAL',
-              1014: 'CTX_LH_MEDIALORBITOFRONTAL',
-              1015: 'CTX_LH_MIDDLETEMPORAL',
-              1018: 'CTX_LH_PARSOPERCULARIS',
-              1019: 'CTX_LH_PARSORBITALIS',
-              1020: 'CTX_LH_PARSTRIANGULARIS',
-              1023: 'CTX_LH_POSTERIORCINGULATE'}
+            12: 'LEFT-PUTAMEN',
+            51: 'RIGHT-PUTAMEN',
+            11: 'LEFT-CAUDATE',
+            50: 'RIGHT-CAUDATE',
+            13: 'LEFT-PALLIDUM',
+            52: 'RIGHT-PALLIDUM',
+            1025: 'CTX_LH_PRECUNEUS',
+            1026: 'CTX_LH_ROSTRALANTERIORCINGULATE',
+            1027: 'CTX_LH_ROSTRALMIDDLEFRONTAL',
+            1028: 'CTX_LH_SUPERIORFRONTAL',
+            1029: 'CTX_LH_SUPERIORPARIETAL',
+            1030: 'CTX_LH_SUPERIORTEMPORAL',
+            1031: 'CTX_LH_SUPRAMARGINAL',
+            8: 'LEFT_CEREBELLUM_CORTEX',
+            16: 'BRAINSTEM',
+            47: 'RIGHT_CEREBELLUM_CORTEX',
+            1032: 'CTX_LH_FRONTALPOLE',
+            2026: 'CTX_RH_ROSTRALANTERIORCINGULATE',
+            1003: 'CTX_LH_CAUDALMIDDLEFRONTAL',
+            5000: 'WHOLECEREBELLUM',
+            5001: 'LEFT_UNSEGMENTEDWHITEMATTER',
+            5002: 'RIGHT_UNSEGMENTEDWHITEMATTER',
+            5003: 'CEREBELLUMGREYMATTER',
+            4000: 'ERODED_SUBCORTICALWM',
+            2032: 'CTX_RH_FRONTALPOLE',
+            3000: 'FRONTAL',
+            3001: 'CINGULATE',
+            3002: 'PARIETAL',
+            3003: 'TEMPORAL',
+            3004: 'COMPOSITE',
+            2002: 'CTX_RH_CAUDALANTERIORCINGULATE',
+            2003: 'CTX_RH_CAUDALMIDDLEFRONTAL',
+            2008: 'CTX_RH_INFERIORPARIETAL',
+            2010: 'CTX_RH_ISTHMUSCINGULATE',
+            2012: 'CTX_RH_LATERALORBITOFRONTAL',
+            2014: 'CTX_RH_MEDIALORBITOFRONTAL',
+            2015: 'CTX_RH_MIDDLETEMPORAL',
+            2018: 'CTX_RH_PARSOPERCULARIS',
+            2019: 'CTX_RH_PARSORBITALIS',
+            2020: 'CTX_RH_PARSTRIANGULARIS',
+            2023: 'CTX_RH_POSTERIORCINGULATE',
+            2025: 'CTX_RH_PRECUNEUS',
+            1002: 'CTX_LH_CAUDALANTERIORCINGULATE',
+            2027: 'CTX_RH_ROSTRALMIDDLEFRONTAL',
+            2028: 'CTX_RH_SUPERIORFRONTAL',
+            2029: 'CTX_RH_SUPERIORPARIETAL',
+            2030: 'CTX_RH_SUPERIORTEMPORAL',
+            2031: 'CTX_RH_SUPRAMARGINAL',
+            1008: 'CTX_LH_INFERIORPARIETAL',
+            1010: 'CTX_LH_ISTHMUSCINGULATE',
+            1012: 'CTX_LH_LATERALORBITOFRONTAL',
+            1014: 'CTX_LH_MEDIALORBITOFRONTAL',
+            1015: 'CTX_LH_MIDDLETEMPORAL',
+            1018: 'CTX_LH_PARSOPERCULARIS',
+            1019: 'CTX_LH_PARSORBITALIS',
+            1020: 'CTX_LH_PARSTRIANGULARIS',
+            1023: 'CTX_LH_POSTERIORCINGULATE'}
     converted = [str(lookup.get(int(h),h)) for h in header]
     return converted
 
@@ -186,16 +238,24 @@ def combineMeansAndSize(mean_header, size_header, mean_row, size_row):
             all_values.append(size_values[h])
     return (rid, all_headers, all_values)
 
-def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry):
-    if registry is not None and meta_pet is not None:
+def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry, agg_type):
+    assert agg_type in set(['adni', 'adni_extra', 'dod', 'dod_extra'])
+
+    if agg_type == 'adni':
         registry = importRegistry(registry)
         pet_dates = importPetMETA(meta_pet)
-        agg_type = 'adni'
-    elif registry is not None and meta_pet is None:
+        fieldnames = ADNI_FIELDNAMES
+    elif agg_type == 'adni_extra':
+        registry = importRegistry(registry)
+        pet_dates = importPetMETA(meta_pet)
+        fieldnames = ADNI_FIELDNAMES_EXTRA
+    elif agg_type == 'dod':
         registry = importDODRegistry(registry)
-        agg_type = 'dod'
-    else:
-        raise Exception("Invalid meta files")
+        fieldnames = DOD_FIELDNAMES
+    elif agg_type == 'dod_extra':
+        registry = importDODRegistry(registry)
+        fieldnames = DOD_FIELDNAMES_EXTRA
+
     num_bl = int(bl_means.split('_')[-1].replace('.csv',''))
     num_v2 = int(v2_means.split('_')[-1].replace('.csv',''))
     bl_header, bl_lines = readHeaderAndLines(bl_means, limit=num_bl)
@@ -218,11 +278,8 @@ def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_
                                  izip(repeat('V2'), zip(v2_lines, v2_size_lines)))
     mean_header = convertHeaderCodes(bl_header) # assuming headers are equivalent across files
     size_header = convertHeaderCodes(bl_size_header)
+
     # aggregate and write
-    if agg_type == 'adni':
-        fieldnames = ADNI_FIELDNAMES
-    elif agg_type == 'dod':
-        fieldnames = DOD_FIELDNAMES
     writer = csv.DictWriter(open(output, 'w'), fieldnames)
     writer.writeheader()
     count = 0
@@ -230,7 +287,7 @@ def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_
         rid, all_header, all_values = combineMeansAndSize(copy.copy(mean_header), copy.copy(size_header), mean_line, size_line)
 
         # add on metadata
-        if agg_type == 'adni':
+        if agg_type in set(['adni', 'adni_extra']):
             subj_meta_list = pet_dates[rid]
             date = None
             if vis == 'BL':
@@ -253,7 +310,7 @@ def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_
 
             if (date-registry_date).days > 30:
                 print "%s, %s: %s, %s -> %s (%s days)" % (rid, vis, metadata, date, registry_date, (date-registry_date).days)
-        elif agg_type == 'dod':
+        elif agg_type in set(['dod', 'dod_extra']):
             subj_registry = registry[rid]
             metadata = None
             if vis == 'BL':
@@ -339,17 +396,18 @@ if __name__ == "__main__":
     preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
     registry = "../docs/registry_clean.csv"
     meta_pet = "../docs/PET_META_LIST_edited.csv"
+    agg_type = 'adni
     '''
 
     # for adni dod
-    output = '../output/AV45_DOD_LONI_Landau_UCBerkeley_06.25.15.csv'
+    output = '../output/AV45_DOD_LONI_07.13.15_extra.csv'
     preprocess_folder =  '../docs/AV45_DOD_preprocess_output_06_25_15'
     registry = "../docs/DOD_REGISTRY.csv"
     meta_pet = None
-    
+    agg_type = 'dod_extra'
 
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry, agg_type)
 
 
 '''

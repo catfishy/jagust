@@ -415,6 +415,30 @@ def importBSI(bsi_file, include_failed=False):
 
     return dict(data)
 
+
+def importAV45(av45_file, registry=None):
+    av45_headers, av45_lines = parseCSV(av45_file)
+    av45_by_subj = defaultdict(list)
+    for line in av45_lines:
+        subj = int(line.pop('RID',None))
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        examdate = line.get('EXAMDATE',None)
+        if examdate:
+            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+        elif registry is not None:
+            subj_listings = registry[subj]
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['date']
+                    break
+        if not examdate:
+            print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+            continue
+        line['EXAMDATE'] = examdate
+        av45_by_subj[subj].append(line)
+    return dict(av45_by_subj)
+
 def importLongitudinalFreesurfer(longfree_file, include_failed = False):
     headers, lines = parseCSV(longfree_file)
     data = defaultdict(list)
@@ -448,3 +472,17 @@ def dumpCSV(file_path, headers, lines):
         for k in headers:
             filtered_line[k] = l[k] if k in l else ''
         writer.writerow(filtered_line)
+
+def rearrangeHeaders(new_headers, to_add, after=None):
+    '''
+    if after is None, then stick in the end of the headers
+    '''
+    for ta in to_add:
+        if ta in new_headers:
+            new_headers.remove(ta)
+    if after is None:
+        new_headers.extend(to_add)
+    else:
+        idx = new_headers.index(after) + 1
+        new_headers = new_headers[:idx] + to_add + new_headers[idx:]
+    return new_headers
