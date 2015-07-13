@@ -94,17 +94,20 @@ def importTBMSyn(tbm_file):
 def importCSF(csf_files):
     data = defaultdict(dict)
     for csffile in csf_files:
-        print csffile
+        print "Importing CSF file %s" % csffile
         headers, lines = parseCSV(csffile)
         for i, line in enumerate(lines):
-            print line
             subj = int(line['RID'])
             vc = line['VISCODE'].strip().lower()
+            rundate = datetime.strptime(line['RUNDATE'],'%m/%d/%y')
             try:
                 vc2 = line['VISCODE2'].strip().lower()
             except:
                 vc2 = ''
-            rundate = datetime.strptime(line['RUNDATE'],'%m/%d/%y')
+            try:
+                examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
+            except:
+                examdate = None
             try:
                 abeta = float(line['ABETA'])
             except:
@@ -119,6 +122,7 @@ def importCSF(csf_files):
                 ptau = None
             visitkey = (vc,vc2)
             newdata = {'rundate': rundate,
+                       'EXAMDATE': examdate,
                        'abeta': abeta,
                        'tau': tau,
                        'ptau': ptau}

@@ -104,7 +104,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         first_scan_date = dates[0]
 
 
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_line, patient_pets=None)
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
 
         new_subj_data = {}
         all_values = []
@@ -728,6 +728,11 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         patient_pets = sorted(pet_meta.get(subj,[]))
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
         
+        # Date differences between scans
+        av45_1_2_diff = ((av45_2 - bl_av45).days/365.0) if (bl_av45 is not None and av45_2 is not None) else ''
+        av45_1_3_diff = ((av45_3 - bl_av45).days/365.0) if (bl_av45 is not None and av45_3 is not None) else ''
+
+
         # find very first visit date in registry (excluding scmri)
         subj_registry = [_ for _ in registry[subj] if _['VISCODE'] != 'scmri' and _['VISCODE2'] != 'scmri']
         sorted_registry = sorted(subj_registry, key=lambda x: x['date'])
@@ -1228,27 +1233,27 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
 
     # add new headers as needed
     csf_headers = []
-    csf_headers.append['CSF_ABETA.%s' % (i+1) for i in range(7)]
-    csf_headers.append(['CSF_ABETApostAV45.%s' % (i+1) for i in range(7)])
-    csf_headers.append(['CSF_ABETA_slope', 'CSF_ABETA_closest_AV45', 
-                        'CSF_ABETA_closest_AV45_2', 'CSF_ABETA_closest_AV45_3'])
+    csf_headers += ['CSF_ABETA.%s' % (i+1) for i in range(7)]
+    csf_headers += ['CSF_ABETApostAV45.%s' % (i+1) for i in range(7)]
+    csf_headers += ['CSF_ABETA_slope', 'CSF_ABETA_closest_AV45', 
+                           'CSF_ABETA_closest_AV45_2', 'CSF_ABETA_closest_AV45_3']
 
-    csf_headers.append['CSF_TAU.%s' % (i+1) for i in range(7)]
-    csf_headers.append(['CSF_TAUpostAV45.%s' % (i+1) for i in range(7)])
-    csf_headers.append(['CSF_TAU_slope', 'CSF_TAU_closest_AV45', 
-                        'CSF_TAU_closest_AV45_2', 'CSF_TAU_closest_AV45_3'])
+    csf_headers += ['CSF_TAU.%s' % (i+1) for i in range(7)]
+    csf_headers += ['CSF_TAUpostAV45.%s' % (i+1) for i in range(7)]
+    csf_headers += ['CSF_TAU_slope', 'CSF_TAU_closest_AV45', 
+                    'CSF_TAU_closest_AV45_2', 'CSF_TAU_closest_AV45_3']
 
-    csf_headers.append['CSF_PTAU.%s' % (i+1) for i in range(7)]
-    csf_headers.append(['CSF_PTAUpostAV45.%s' % (i+1) for i in range(7)])
-    csf_headers.append(['CSF_PTAU_slope', 'CSF_PTAU_closest_AV45', 
-                        'CSF_PTAU_closest_AV45_2', 'CSF_PTAU_closest_AV45_3'])
+    csf_headers += ['CSF_PTAU.%s' % (i+1) for i in range(7)]
+    csf_headers += ['CSF_PTAUpostAV45.%s' % (i+1) for i in range(7)]
+    csf_headers += ['CSF_PTAU_slope', 'CSF_PTAU_closest_AV45', 
+                    'CSF_PTAU_closest_AV45_2', 'CSF_PTAU_closest_AV45_3']
 
     for ch in csf_headers:
         if ch in new_headers:
             new_headers.remove(ch)
     # slap onto the end
     new_headers.extend(csf_headers)
-    
+    lengths = set()
     new_lines = []
     for old_l in old_lines:
         # get subject ID
@@ -1262,23 +1267,32 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
             continue
 
         subj_csf = csf_by_subj[subj]
-
+        subj_csf_filtered = []
         # find the examdate for each point, then sort
         subj_listings = registry[subj]
+
         for i in range(len(subj_csf)):
+            csf_row = subj_csf[i]
+            viscode = csf_row['vc']
+            viscode2 = csf_row['vc2']
+            # check if exam date already in there
+            if csf_row['EXAMDATE'] is not None:
+                subj_csf_filtered.append(csf_row)
+                continue
+            # if not, get date from registry listings
             examdate = None
-            viscode = subj_csf[i]['vc']
-            viscode2 = subj_csf[i]['vc2']
             for listing in subj_listings:
-                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                if listing['VISCODE'] == viscode or listing['VISCODE2'] == viscode2:
                     examdate = listing['date']
                     break
             if examdate is None:
                 print "No exam date for %s (%s, %s)" % (subj, viscode, viscode2)
                 continue
             else:
-                subj_csf[i]['EXAMDATE'] = examdate
-
+                csf_row['EXAMDATE'] = examdate
+                subj_csf_filtered.append(csf_row)
+        subj_csf = sorted(subj_csf_filtered, key=lambda x: x['EXAMDATE'])
+        lengths.add(len(subj_csf))
         # find av45 dates
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
 
@@ -1287,22 +1301,31 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
         abeta_slope_points = []
         tau_slope_points = []
         for i in range(7):
-            if i < len(subj_tbm):
-                datapoint = subj_tbm[i]
+            if i < len(subj_csf):
+                datapoint = subj_csf[i]
                 examdate = datapoint['EXAMDATE']
                 timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
                 if timediff <= (90.0/365.0):
                     timediff = ''
-                new_data['CSF_ABETA.%s' % (i+1)] = float(datapoint['abeta'])
-                new_data['CSF_PTAU.%s' % (i+1)] = float(datapoint['ptau'])
-                new_data['CSF_TAU.%s' % (i+1)] = float(datapoint['tau'])
+                abeta_val = datapoint['abeta']
+                ptau_val = datapoint['ptau']
+                tau_val = datapoint['tau']
+                abeta_val = float(abeta_val) if abeta_val is not None else ''
+                ptau_val = float(ptau_val) if ptau_val is not None else ''
+                tau_val = float(tau_val) if tau_val is not None else ''
+                new_data['CSF_ABETA.%s' % (i+1)] = abeta_val
+                new_data['CSF_PTAU.%s' % (i+1)] = ptau_val
+                new_data['CSF_TAU.%s' % (i+1)] = tau_val
                 new_data['CSF_ABETApostAV45.%s' % (i+1)] = timediff
                 new_data['CSF_PTAUpostAV45.%s' % (i+1)] = timediff
                 new_data['CSF_TAUpostAV45.%s' % (i+1)] = timediff
                 if timediff:
-                    abeta_slope_points.append((timediff, float(datapoint['abeta'])))
-                    tau_slope_points.append((timediff, float(datapoin['tau'])))
-                    ptau_slope_points.append((timediff, float(datapoint['ptau'])))
+                    if abeta_val != '':
+                        abeta_slope_points.append((timediff, abeta_val))
+                    if tau_val != '':
+                        tau_slope_points.append((timediff, tau_val))
+                    if ptau_val != '':
+                        ptau_slope_points.append((timediff, ptau_val))
             else:
                 new_data['CSF_ABETA.%s' % (i+1)] = ''
                 new_data['CSF_PTAU.%s' % (i+1)] = ''
@@ -1314,36 +1337,54 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
         # match up with av45 scans
         av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_csf, bl_av45, av45_2, av45_3)
         if av45_bl_closest:
-            new_data['CSF_TAU_closest_AV45'] = av45_bl_closest
-            new_data['CSF_PTAU_closest_AV45'] = av45_bl_closest
-            new_data['CSF_ABETA_closest_AV45'] = av45_bl_closest
+            tau_val = av45_bl_closest['tau']
+            ptau_val = av45_bl_closest['ptau']
+            abeta_val = av45_bl_closest['abeta']
+            abeta_val = float(abeta_val) if abeta_val is not None else ''
+            ptau_val = float(ptau_val) if ptau_val is not None else ''
+            tau_val = float(tau_val) if tau_val is not None else ''
+            new_data['CSF_TAU_closest_AV45'] = tau_val
+            new_data['CSF_PTAU_closest_AV45'] = ptau_val
+            new_data['CSF_ABETA_closest_AV45'] = abeta_val
         if av45_2_closest:
-            new_data['CSF_TAU_closest_AV45_2'] = av45_2_closest
-            new_data['CSF_PTAU_closest_AV45_2'] = av45_2_closest
-            new_data['CSF_ABETA_closest_AV45_2'] = av45_2_closest
+            tau_val = av45_2_closest['tau']
+            ptau_val = av45_2_closest['ptau']
+            abeta_val = av45_2_closest['abeta']
+            abeta_val = float(abeta_val) if abeta_val is not None else ''
+            ptau_val = float(ptau_val) if ptau_val is not None else ''
+            tau_val = float(tau_val) if tau_val is not None else ''
+            new_data['CSF_TAU_closest_AV45_2'] = tau_val
+            new_data['CSF_PTAU_closest_AV45_2'] = ptau_val
+            new_data['CSF_ABETA_closest_AV45_2'] = abeta_val
         if av45_3_closest:
-            new_data['CSF_TAU_closest_AV45_3'] = av45_3_closest
-            new_data['CSF_PTAU_closest_AV45_3'] = av45_3_closest
-            new_data['CSF_ABETA_closest_AV45_3'] = av45_3_closest
+            tau_val = av45_3_closest['tau']
+            ptau_val = av45_3_closest['ptau']
+            abeta_val = av45_3_closest['abeta']
+            abeta_val = float(abeta_val) if abeta_val is not None else ''
+            ptau_val = float(ptau_val) if ptau_val is not None else ''
+            tau_val = float(tau_val) if tau_val is not None else ''
+            new_data['CSF_TAU_closest_AV45_3'] = tau_val
+            new_data['CSF_PTAU_closest_AV45_3'] = ptau_val
+            new_data['CSF_ABETA_closest_AV45_3'] = abeta_val
 
         # calculate slope
         if len(ptau_slope_points) >= 2:
             raw_dates = [_[0] for _ in ptau_slope_points]
             raw_scores = [_[1] for _ in ptau_slope_points]
             slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
-            new_subj_data['CSF_PTAU_slope'] = slope
+            new_data['CSF_PTAU_slope'] = slope
         if len(tau_slope_points) >= 2:
             raw_dates = [_[0] for _ in tau_slope_points]
             raw_scores = [_[1] for _ in tau_slope_points]
             slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
-            new_subj_data['CSF_TAU_slope'] = slope
+            new_data['CSF_TAU_slope'] = slope
         if len(abeta_slope_points) >= 2:
             raw_dates = [_[0] for _ in abeta_slope_points]
             raw_scores = [_[1] for _ in abeta_slope_points]
             slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
-            new_subj_data['CSF_ABETA_slope'] = slope
+            new_data['CSF_ABETA_slope'] = slope
 
-        new_data = convertToCSVDataType(new_data, decimal_places=5) # TBMSyn needs more decimal places
+        new_data = convertToCSVDataType(new_data, decimal_places=5)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -1400,11 +1441,10 @@ def eliminateColumns(headers, lines):
         new_lines.append(l)
     return headers, new_lines
 
-def getAV45Dates(old_line, patient_pets=None):
+def getAV45Dates(old_l, patient_pets=None):
     if patient_pets is None:
         patient_pets = []
     # Get AV45 Scan dates
-    patient_pets = sorted(pet_meta.get(subj,[]))
     if old_l['AV45_Date'] != '':
         bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
     elif len(patient_pets) >= 1:
@@ -1432,9 +1472,10 @@ if __name__ == '__main__':
     REMEMBER TO DELETE ALL OLD AV45 FIELDS BEFORE RUNNING
     '''
 
-    # Input/output/lookup files
+    # IO files
     master_file = "../FDG_AV45_COGdata.csv"
     output_file = "../FDG_AV45_COGdata_synced.csv"
+    # LOOKUP files
     registry_file = "../docs/registry_clean.csv"
     arm_file = "../docs/ARM.csv"
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
@@ -1458,7 +1499,6 @@ if __name__ == '__main__':
     new_headers, new_lines = parseCSV(master_file)
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
-    '''
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
@@ -1471,7 +1511,6 @@ if __name__ == '__main__':
     new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
     print "\nSYNCING AVLT\n"
     new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
-    '''
     print "\nSYNCING CSF\n"
     new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=output_file)
 
