@@ -103,7 +103,8 @@ DOD_FIELDNAMES = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
 DOD_FIELDNAMES_EXTRA = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
-                  'FRONTAL','CINGULATE','PARIETAL','TEMPORAL','COMPOSITE','COMPOSITE_REF',
+                  'FRONTAL','FRONTAL_SIZE','CINGULATE','CINGULATE_SIZE','PARIETAL','PARIETAL_SIZE',
+                  'TEMPORAL','TEMPORAL_SIZE','COMPOSITE','COMPOSITE_REF','ERODED_SUBCORTICALWM',
                   'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
@@ -128,7 +129,26 @@ DOD_FIELDNAMES_EXTRA = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
-
+ADNI_OMIT = ['LEFT_CEREBELLUM_CORTEX',
+             'RIGHT_CEREBELLUM_CORTEX',
+             'LEFT_UNSEGMENTEDWHITEMATTER',
+             'RIGHT_UNSEGMENTEDWHITEMATTER']
+ADNI_EXTRA_OMIT = ADNI_OMIT
+DOD_OMIT = ADNI_OMIT
+DOD_EXTRA_OMIT = ADNI_OMIT
+ADNI_OMIT_SIZES = ['PID', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
+                   'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
+                   'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
+                   'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
+                   'CEREBELLUMWHITEMATTER', 'LEFT-PALLIDUM', 'LEFT-CAUDATE', 'LEFT-PUTAMEN', 
+                   'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
+ADNI_EXTRA_OMIT_SIZES = ADNI_OMIT_SIZES
+DOD_OMIT_SIZES = ADNI_OMIT_SIZES
+DOD_EXTRA_OMIT_SIZES = ['PID', 'RID', 'COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
+                        'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
+                        'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
+                        'CEREBELLUMWHITEMATTER', 'LEFT-PALLIDUM', 'LEFT-CAUDATE', 'LEFT-PUTAMEN', 
+                        'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
 
 
 
@@ -210,17 +230,21 @@ def convertHeaderCodes(header):
     converted = [str(lookup.get(int(h),h)) for h in header]
     return converted
 
-def combineMeansAndSize(mean_header, size_header, mean_row, size_row):
-    omit = ['LEFT_CEREBELLUM_CORTEX',
-            'RIGHT_CEREBELLUM_CORTEX',
-            'LEFT_UNSEGMENTEDWHITEMATTER',
-            'RIGHT_UNSEGMENTEDWHITEMATTER']
-    omit_sizes = ['PID', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
-                  'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
-                  'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
-                  'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
-                  'CEREBELLUMWHITEMATTER', 'LEFT-PALLIDUM', 'LEFT-CAUDATE', 'LEFT-PUTAMEN', 
-                  'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
+def combineMeansAndSize(agg_type, mean_header, size_header, mean_row, size_row):
+    if agg_type == 'adni':
+        omit = ADNI_OMIT
+        omit_sizes = ADNI_OMIT_SIZES
+    elif agg_type == 'adni_extra':
+        omit = ADNI_EXTRA_OMIT
+        omit_sizes = ADNI_EXTRA_OMIT_SIZES
+    elif agg_type == 'dod':
+        omit = DOD_OMIT
+        omit_sizes = DOD_OMIT_SIZES
+    elif agg_type == 'dod_extra':
+        omit = DOD_EXTRA_OMIT
+        omit_sizes = DOD_EXTRA_OMIT_SIZES
+    else:
+        raise Exception("Bad agg_type")
     mean_values = dict(zip(mean_header, mean_row))
     size_values = dict(zip(size_header, size_row))
     rid = int(float(mean_values['RID']))
@@ -284,7 +308,7 @@ def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_
     writer.writeheader()
     count = 0
     for vis, (mean_line, size_line) in total_iter_chain:
-        rid, all_header, all_values = combineMeansAndSize(copy.copy(mean_header), copy.copy(size_header), mean_line, size_line)
+        rid, all_header, all_values = combineMeansAndSize(agg_type, copy.copy(mean_header), copy.copy(size_header), mean_line, size_line)
 
         # add on metadata
         if agg_type in set(['adni', 'adni_extra']):

@@ -14,48 +14,8 @@ from scipy import stats, optimize
 from utils import *
 
 def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None):
-    adni1_headers, adni1_lines = parseCSV(adni1_adas_file)
-    adni2_headers, adni2_lines = parseCSV(adnigo2_adas_file)
     registry = importRegistry(registry_file)
-
-    # restructure by subject
-    adas_by_subj = defaultdict(list)
-    for line in adni1_lines:
-        subj = int(line['RID'])
-        viscode = line['VISCODE'].strip().lower()
-        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
-        totscore = float(line['TOTAL11'])
-        if totscore < 0:
-            totscore = ''
-        adas_by_subj[subj].append({'VISCODE': viscode,
-                                   'VISCODE2': None,
-                                   'EXAMDATE': examdate,
-                                   'TOTSCORE': totscore})
-    for line in adni2_lines:
-        subj = int(line['RID'])
-        viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
-        raw_totscore = line['TOTSCORE']
-        if raw_totscore == '':
-            print "%s (%s, %s) has missing totscore" % (subj, viscode, viscode2)
-            continue
-        totscore = int(raw_totscore)
-        if totscore < 0:
-            totscore = ''
-        examdate = None
-        subj_listings = registry[subj]
-        for listing in subj_listings:
-            if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-                examdate = listing['date']
-                break
-        if examdate is None:
-            print "No exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-            continue
-        adas_by_subj[subj].append({'VISCODE': viscode,
-                                   'VISCODE2': viscode2,
-                                   'EXAMDATE': examdate,
-                                   'TOTSCORE': totscore})
-    adas_by_subj = dict(adas_by_subj)
+    adas_by_subj = importADASCog(adni1_adas_file, adnigo2_adas_file, registry=registry)
 
     new_headers = old_headers
     new_lines = []
@@ -462,9 +422,10 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
     return (new_headers, new_lines)
 
 
-def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file, pet_meta_file, dump_to=None):
+def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None):
     diag_headers, diag_lines = parseCSV(diag_file)
     registry = importRegistry(registry_file)
+    demogs = importDemog(demog_file)
     arm = importARM(arm_file)
     pet_meta = importPetMETA(pet_meta_file)
 
@@ -635,6 +596,17 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         # Get AV45 Scan dates
         patient_pets = sorted(pet_meta.get(subj,[]))
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        patient_dob = demogs.get(subj, {}).get('dob',None)
+        av45_age = ''
+        av45_age2 = ''
+        av45_age3 = ''
+        if patient_dob is not None:
+            if bl_av45:
+                av45_age = (bl_av45-patient_dob).days / 365.25
+            if av45_2:
+                av45_age2 = (av45_2-patient_dob).days / 365.25
+            if av45_3:
+                av45_age3 = (av45_3-patient_dob).days / 365.25
         
         # Date differences between scans
         av45_1_2_diff = ((av45_2 - bl_av45).days/365.0) if (bl_av45 is not None and av45_2 is not None) else ''
@@ -668,6 +640,10 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         new_data = {'AV45_Date': bl_av45,
                     'AV45_2_Date': av45_2,
                     'AV45_3_Date': av45_3,
+                    'BD MM-YY': patient_dob,
+                    'Age@AV45': av45_age,
+                    'Age@AV45_2' : av45_age2,
+                    'Age@AV45_3' : av45_age3,
                     'AV45_1_2_Diff (Yrs)': av45_1_2_diff,
                     'AV45_1_3_Diff (yrs)': av45_1_3_diff,
                     'MCItoADConv(fromav45)': '0',
@@ -763,7 +739,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
     This function adds new subject lines to the output
     '''
     registry = importRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, registry=registry):
+    av45_by_subj = importAV45(av45_file, registry=registry)
 
     new_headers = None
     new_lines = []
@@ -934,7 +910,7 @@ def parseAV45Entries(old_headers, subj_av45):
                  all_wmratio_keys]
     all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
     new_headers = rearrangeHeaders(old_headers, all_av45_keys, after = 'LastCSFAbeta')
-    
+
     data = {k:'' for k in all_av45_keys}
     wm70_0 = None
     # fill in values
@@ -1374,7 +1350,13 @@ def eliminateColumns(headers, lines):
                  'tau_closest_AV45_2',
                  'ptau_closest_AV45',
                  'ptau_bin23',
-                 'ptau_closest_2']
+                 'ptau_closest_2',
+                 'WMH_CLOSEST_AV45',
+                 'WMH_CLOSEST_']
+    to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
+    to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
+    to_remove += ['TAU.%s' % (i+1) for i in range(7)]
+    to_remove += ['PTAU.%s' % (i+1) for i in range(7)]
     for tm in to_remove:
         while tm in headers:
             headers.remove(tm)
@@ -1423,6 +1405,7 @@ if __name__ == '__main__':
     registry_file = "../docs/registry_clean.csv"
     arm_file = "../docs/ARM.csv"
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
+    demog_file = "../docs/PTDEMOG.csv"
     # AV45 File
     av45_file = "../output/UCBERKELEYAV45_07_08_15_extra.csv"
     # MMSE files
@@ -1448,7 +1431,7 @@ if __name__ == '__main__':
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
-    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
+    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING TBMSYN\n"
     new_headers, new_lines = syncTBMSynData(new_headers, new_lines, tbm_file, registry_file, dump_to=None)
     print "\nSYNCING MMSE\n"

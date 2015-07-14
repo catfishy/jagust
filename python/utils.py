@@ -69,6 +69,63 @@ def importDODRegistry(dod_registry_file):
     return registry
 
 
+def importFreesurferLookup(lut_file):
+    infile = open(lut_file, 'r')
+    data = {}
+    for line in infile.readlines():
+        parts = [_.strip() for _ in line.split(' ') if _.strip() != '']
+        if len(parts) < 2:
+            continue
+        try:
+            idx = int(parts[0])
+            data[idx] = parts[1]
+        except Exception as e:
+            continue
+    return data
+
+def importAPOE(apoe_file):
+    headers, lines = parseCSV(apoe_file)
+    apoe_by_subj = {}
+    for line in lines:
+        subj = int(line['SCRNO'])
+        apgen1 = line['APGEN1']
+        apgen2 = line['APGEN2']
+        apoe_by_subj[subj] = {'apgen1': apgen1, 'apgen2': apgen2}
+    return apoe_by_subj
+
+def importDemog(demog_file):
+    headers, lines = parseCSV(demog_file)
+    demog_by_subj = {}
+    for line in lines:
+        if 'SCRNO' in line:
+            subj = int(line['SCRNO'])
+        else:
+            subj = int(line['RID'])
+        gender = line['PTGENDER']
+        gender = int(gender) if gender != '' else gender
+        if 'PTAGE' in line:
+            age = float(line['PTAGE'])
+        else:
+            age = None
+        married = line['PTMARRY']
+        married = int(married) if married != '' else married
+        edu = line['PTEDUCAT']
+        edu = int(edu) if edu != '' else edu
+        dob = None
+        if 'PTDOB' in line:
+            dob = datetime.strptime(line['PTDOB'],'%m/%d/%y')
+        elif 'PTDOBMM' in line and 'PTDOBYY' in line:
+            year = line['PTDOBYY']
+            month = line['PTDOBMM']
+            if year != '' and month != '':
+                dob = datetime(year=int(year), month=int(month), day=1)
+        demog_by_subj[subj] = {'gender': gender,
+                               'age': age,
+                               'married': married,
+                               'edu': edu,
+                               'dob': dob}
+    return demog_by_subj
+
 def importMMSE(mmse_file, registry=None):
     mmse_headers, mmse_lines = parseCSV(mmse_file)
     
@@ -100,23 +157,27 @@ def importMMSE(mmse_file, registry=None):
     return mmse_by_subject
 
 
+
+
 def importAVLT(avlt_file, registry=None):
     headers, lines = parseCSV(avlt_file)
     # restructure by subject
     avlt_by_subj = defaultdict(list)
     for line in lines:
-        subj = int(line['RID'])
+        if 'SCRNO' in line:
+            subj = int(line['SCRNO'])
+        else:
+            subj = int(line['RID'])
         viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
-        examdate = line['EXAMDATE']
-        if examdate:
+        if 'VISCODE2' in line:
+            viscode2 = line['VISCODE2'].strip().lower()
+        else:
+            viscode2 = ''
+        examdate = line.get('EXAMDATE','')
+        if examdate != '':
             examdate = datetime.strptime(examdate,'%Y-%m-%d')
         elif registry is not None:
-            subj_listings = registry.get(subj,[])
-            for listing in subj_listings:
-                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-                    examdate = listing['date']
-                    break
+            examdate = findVisitDate(registry, subj, viscode, viscode2)
             if not examdate:
                 print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
                 continue
@@ -138,6 +199,44 @@ def importAVLT(avlt_file, registry=None):
                                    'TOTS': test_score})
     return dict(avlt_by_subj)
 
+def importADASCog(adni1_file, adnigo2_file, registry=None):
+    adni1_headers, adni1_lines = parseCSV(adni1_file)
+    adni2_headers, adni2_lines = parseCSV(adnigo2_file)
+    # restructure by subject
+    adas_by_subj = defaultdict(list)
+    for line in adni1_lines:
+        subj = int(line['RID'])
+        viscode = line['VISCODE'].strip().lower()
+        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        totscore = float(line['TOTAL11'])
+        if totscore < 0:
+            totscore = ''
+        adas_by_subj[subj].append({'VISCODE': viscode,
+                                   'VISCODE2': None,
+                                   'EXAMDATE': examdate,
+                                   'TOTSCORE': totscore})
+    for line in adni2_lines:
+        subj = int(line['RID'])
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        raw_totscore = line['TOTSCORE']
+        if raw_totscore == '':
+            print "%s (%s, %s) has missing totscore" % (subj, viscode, viscode2)
+            continue
+        totscore = int(raw_totscore)
+        if totscore < 0:
+            totscore = ''
+        examdate = None
+        if registry is not None:
+            examdate = findVisitDate(registry, subj, viscode, viscode2)
+        if examdate is None:
+            print "No exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+            continue
+        adas_by_subj[subj].append({'VISCODE': viscode,
+                                   'VISCODE2': viscode2,
+                                   'EXAMDATE': examdate,
+                                   'TOTSCORE': totscore})
+    return dict(adas_by_subj)
 
 def importTBMSyn(tbm_file):
     headers, lines = parseCSV(tbm_file)
@@ -193,7 +292,10 @@ def importCSF(csf_files):
         print "Importing CSF file %s" % csffile
         headers, lines = parseCSV(csffile)
         for i, line in enumerate(lines):
-            subj = int(line['RID'])
+            if 'SCRNO' in line: # for the dod patients
+                subj = int(line['SCRNO'])
+            else:
+                subj = int(line['RID'])
             vc = line['VISCODE'].strip().lower()
             rundate = datetime.strptime(line['RUNDATE'],'%m/%d/%y')
             try:
@@ -420,18 +522,25 @@ def importAV45(av45_file, registry=None):
     av45_headers, av45_lines = parseCSV(av45_file)
     av45_by_subj = defaultdict(list)
     for line in av45_lines:
-        subj = int(line.pop('RID',None))
+        if 'RID' in line:
+            subj = int(line.pop('RID',None))
+        elif 'PID' in line:
+            subj = int(line.pop('PID',None))
+        else:
+            raise Exception("Can't find subject column in AV45 file")
         viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
+        if 'VISCODE2' in line:
+            viscode2 = line['VISCODE2'].strip().lower()
+        else:
+            viscode2 = ''
         examdate = line.get('EXAMDATE',None)
         if examdate:
-            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+            try:
+                examdate = datetime.strptime(examdate,'%Y-%m-%d')
+            except:
+                examdate = datetime.strptime(examdate,'%m/%d/%y')
         elif registry is not None:
-            subj_listings = registry[subj]
-            for listing in subj_listings:
-                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-                    examdate = listing['date']
-                    break
+            examdate = findVisitDate(registry, subj, viscode, viscode2)
         if not examdate:
             print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
             continue
@@ -486,3 +595,29 @@ def rearrangeHeaders(new_headers, to_add, after=None):
         idx = new_headers.index(after) + 1
         new_headers = new_headers[:idx] + to_add + new_headers[idx:]
     return new_headers
+
+def findVisitDate(registry, subj, vc, vc2):
+    subj_listings = registry[subj]
+    examdate = None
+    for listing in subj_listings:
+        if vc2 != '' and listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+            examdate = listing['date']
+            break
+        elif vc2 == '' and listing['VISCODE'] == viscode:
+            examdate = listing['date']
+            break
+    return examdate
+
+
+if __name__ == "__main__":
+    lut_file = "../FreeSurferColorLUT.txt"
+    data = importFreesurferLookup(lut_file)
+    to_lookup = [5,14,15,18,24,26,28,30,31,44,54,58,60,62,63,72,77,80,85,
+                 251,252,253,254,255,1000,1001,1004,1005,1007,1009,1010,
+                 1013,1016,1017,1021,1022,1024,1026,1030,1033,1034,1035,
+                 2000,2001,2004,2005,2007,2009,2010,2013,2016,2017,2021,
+                 2022,2024,2026,2030,2033,2034,2035]
+    for idx in to_lookup:
+        print "%s: %s" % (idx, data[idx])
+
+

@@ -7,9 +7,46 @@ import numpy as np
 from utils import *
 
 
+def syncAPOEData(old_headers, old_lines, apoe_file, registry_file, dump_to=None):
+    apoe_by_subj = importAPOE(apoe_file)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncDemogData(old_headers, old_lines, demog_file, registry_file, dump_to=None):
+    demog_by_subj = importDemog(demog_file)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncCSFData(new_headers, new_lines, csf_file, registry_file, dump_to=None):
+    csf_by_subj = importCSF(csf_file)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncADASData(new_headers, new_lines, adas_file, registry_file, dump_to=None):
+    registry = importDODRegistry(registry_file)
+    adas_by_subj = importADASCog(adni1_file, adnigo2_file, registry=registry)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncAVLTData(new_headers, new_lines, avlt_file, registry_file, dump_to=None):
+    registry = importDODRegistry(registry_file)
+    avlt_by_subj = importAVLT(avlt_file, registry=registry)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
 def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None):
     registry = importDODRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, registry=registry):
+    av45_by_subj = importAV45(av45_file, registry=registry)
 
     new_headers = None
     new_lines = []
@@ -26,7 +63,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
             new_lines.append(old_l)
             continue
         updated_headers, new_data = parseAV45Entries(old_headers, av45_by_subj[subj])
-        if new_headers if None:
+        if new_headers is None:
             new_headers = updated_headers
         new_data = convertToCSVDataType(new_data, decimal_places=5)
         old_l.update(new_data)
@@ -37,19 +74,18 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
     print "New AV45 subjects: %s" % new_subjects
     for ns in new_subjects:
         av45_data = av45_by_subj[ns]
-        old_l = {k: '' for k in new_headers}
-        old_l['PID'] = str(ns)
         updated_headers, new_data = parseAV45Entries(old_headers, av45_data)
-        if new_headers if None:
+        if new_headers is None:
             new_headers = updated_headers
         new_data = convertToCSVDataType(new_data, decimal_places=5)
+        old_l = {k: '' for k in new_headers}
+        old_l['PID'] = str(ns)
         old_l.update(new_data)
         new_lines.append(old_l)
 
     # dump out
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
-
     return (new_headers, new_lines)
 
 def parseAV45Entries(old_headers, subj_rows):
@@ -100,12 +136,12 @@ def parseAV45Entries(old_headers, subj_rows):
         to_add_headers.append('AV45_%s_parietal_MR_asymmetry' % r)
         to_add_headers.append('AV45_%s_temporal__MR_asymmetry' % r)
         to_add_headers.append('AV45_%s_ventrical_MR_asymmetry' % r)
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
 
     data = {}
     for i, point in enumerate(subj_rows):
         examdate = point['EXAMDATE']
         # extract necessary values
-        cerebw = float(point['CEREBELLUMWHITEMATTER'])
         wcereb = float(point['WHOLECEREBELLUM'])
         cerebg = float(point['CEREBELLUMGREYMATTER'])
         compositeroi = float(point['COMPOSITE'])
@@ -130,6 +166,14 @@ def parseAV45Entries(old_headers, subj_rows):
         right_parietal = np.mean([float(point[k]) for k in right_parietal_keys])
         left_temporal = np.mean([float(point[k]) for k in left_temporal_keys])
         right_temporal = np.mean([float(point[k]) for k in right_temporal_keys])
+        left_frontal_size = np.mean([float(point["%s_SIZE" % k]) for k in left_frontal_keys])
+        right_frontal_size = np.mean([float(point["%s_SIZE" % k]) for k in right_frontal_keys])
+        left_cingulate_size = np.mean([float(point["%s_SIZE" % k]) for k in left_cingulate_keys])
+        right_cingulate_size = np.mean([float(point["%s_SIZE" % k]) for k in right_cingulate_keys])
+        left_parietal_size = np.mean([float(point["%s_SIZE" % k]) for k in left_parietal_keys])
+        right_parietal_size = np.mean([float(point["%s_SIZE" % k]) for k in right_parietal_keys])
+        left_temporal_size = np.mean([float(point["%s_SIZE" % k]) for k in left_temporal_keys])
+        right_temporal_size = np.mean([float(point["%s_SIZE" % k]) for k in right_temporal_keys])
      
         # Dates
         data['AV45_%s_EXAMDATE' % (i+1)] = examdate
@@ -144,21 +188,21 @@ def parseAV45Entries(old_headers, subj_rows):
         data['AV45_%s_Right_BG_avg' % (i+1)] = ''
         data['AV45_%s_BG_avg' % (i+1)] = ''
         data['AV45_%s_comp/wcerb' % (i+1)] = compositeroi / wcereb
-        data['AV45_%s_wcerb_bin' % (i+1)] = 1 if data['comp/wcerb'] >= 1.11 else 0 # WHATS THE REAL THRESHOLD
+        data['AV45_%s_wcerb_bin' % (i+1)] = 1 if (compositeroi/wcereb) >= 1.11 else 0 # WHATS THE REAL THRESHOLD
         data['AV45_%s_comp/brainstem' % (i+1)] = compositeroi / brainstem
         data['AV45_%s_comp/bigref' % (i+1)] = compositeroi / bigref
         data['AV45_%s_comp/cerbg' % (i+1)] = compositeroi / cerebg
         data['AV45_%s_comp/wm70' % (i+1)] = compositeroi / wm70
-        # Assymetry values
+        # Asymmetry values
         data['AV45_%s_frontal_asymmetry_negvalue_means_R<L' % (i+1)] = right_frontal - left_frontal
         data['AV45_%s_cingulate_asymmetry_negvalue_means_R<L' % (i+1)] = right_cingulate - left_cingulate
         data['AV45_%s_parietal_asymmetry_negvalue_means_R<L' % (i+1)] = right_parietal - left_parietal
         data['AV45_%s_temporal_asymmetry_negvalue_means_R<L' % (i+1)] = right_temporal - left_temporal
         data['AV45_%s_asym_summary_absvals_negvalue_means_R<L' % (i+1)] = ''
-        data['AV45_%s_frontal_MR_asymmetry' % (i+1)] = ''
-        data['AV45_%s_cingulate_MR_asymmetry' % (i+1)] = ''
-        data['AV45_%s_parietal_MR_asymmetry' % (i+1)] = ''
-        data['AV45_%s_temporal__MR_asymmetry' % (i+1)] = ''
+        data['AV45_%s_frontal_MR_asymmetry' % (i+1)] = right_frontal_size - left_frontal_size
+        data['AV45_%s_cingulate_MR_asymmetry' % (i+1)] = right_cingulate_size - left_frontal_size
+        data['AV45_%s_parietal_MR_asymmetry' % (i+1)] = right_parietal_size - left_parietal_size
+        data['AV45_%s_temporal__MR_asymmetry' % (i+1)] = right_temporal_size - left_temporal_size
         data['AV45_%s_ventrical_MR_asymmetry' % (i+1)] = ''
 
     return (new_headers, data)
@@ -170,22 +214,24 @@ if __name__ == '__main__':
     output_file = "../DOD_DATA_synced.csv"
 
     # LOOKUP files
-    registry_file = "../docs/DOD_REGISTRY.csv"
+    registry_file = "../docs/DOD/DOD_REGISTRY.csv"
 
     # AV45 files
-    av45_file = "../DOD/AV45_DOD_LONI_07.13.15_extra.csv"
+    av45_file = "../docs/DOD/AV45_DOD_LONI_07.13.15_extra.csv"
 
 
     # syncing pipeline
     try:
         new_headers, new_lines = parseCSV(master_file)
     except:
-        new_headers = []
+        new_headers = ['PID', 'Notes']
         new_lines = []
 
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
-
+    new_headers, new_lines = syncAPOEData(new_headers, new_lines, av45_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncDemogData(new_headers, new_lines, av45_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncCSFData(new_headers, new_lines, av45_file, registry_file, dump_to=output_file)
 
 
 
