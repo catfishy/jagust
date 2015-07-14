@@ -1357,6 +1357,7 @@ def eliminateColumns(headers, lines):
     to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
     to_remove += ['TAU.%s' % (i+1) for i in range(7)]
     to_remove += ['PTAU.%s' % (i+1) for i in range(7)]
+    to_remove += ['EXAM_tau.%s' % (i+1) for i in range(7)]
     for tm in to_remove:
         while tm in headers:
             headers.remove(tm)
