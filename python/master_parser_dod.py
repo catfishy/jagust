@@ -9,6 +9,23 @@ from utils import *
 
 def syncAPOEData(old_headers, old_lines, apoe_file, registry_file, dump_to=None):
     apoe_by_subj = importAPOE(apoe_file)
+
+    to_add_headers = ['APOE4BIN']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        apoe4 = 0
+        if subj_row['apgen1'] == 4 or subj_row['apgen2'] == 4:
+            apoe4 = 1
+        return {'APOE4BIN': apoe4}
+
+    for old_l in old_lines:
+        new_data = updateLine(old_l, apoe_by_subj, extraction_fn, 
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
     # dump out
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
@@ -16,29 +33,106 @@ def syncAPOEData(old_headers, old_lines, apoe_file, registry_file, dump_to=None)
 
 def syncDemogData(old_headers, old_lines, demog_file, registry_file, dump_to=None):
     demog_by_subj = importDemog(demog_file)
+    
+    to_add_headers = ['Sex', 'Age', 'Edu']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        if int(subj_row['gender']) == 1:
+            sex = 'M'
+        elif int(subj_row['gender']) == 2:
+            sex = 'F'
+        else:
+            raise Exception("Bad gender %s" % subj_row['gender'])
+        age = float(subj_row['age'])
+        edu = int(subj_row['edu'])
+        return {'Sex': sex,
+                'Age': age,
+                'Edu': edu}
+
+    for old_l in old_lines:
+        new_data = updateLine(old_l, demog_by_subj, extraction_fn, 
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
     # dump out
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncCSFData(new_headers, new_lines, csf_file, registry_file, dump_to=None):
-    csf_by_subj = importCSF(csf_file)
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
-    return (new_headers, new_lines)
-
-def syncADASData(new_headers, new_lines, adas_file, registry_file, dump_to=None):
+def syncCSFData(old_headers, old_lines, csf_file, registry_file, dump_to=None):
     registry = importDODRegistry(registry_file)
-    adas_by_subj = importADASCog(adni1_file, adnigo2_file, registry=registry)
+    csf_by_subj = importCSF([csf_file], registry)
+
+    to_add_headers = ['CSF_abeta', 'CSF_tau', 'CSF_ptau']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
+        return {'CSF_abeta': point['abeta'],
+                'CSF_tau': point['tau'],
+                'CSF_ptau': point['ptau']}
+
+    for i, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, csf_by_subj, extraction_fn, 
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
     # dump out
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncAVLTData(new_headers, new_lines, avlt_file, registry_file, dump_to=None):
+def syncADASData(old_headers, old_lines, adas_file, registry_file, dump_to=None):
+    registry = importDODRegistry(registry_file)
+    adas_by_subj = importADASCog(None, adas_file, registry=registry)
+    
+    to_add_headers = ['ADAS_TOTSCORE']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
+        return {'ADAS_TOTSCORE': point['TOTSCORE']}
+
+    for i, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, adas_by_subj, extraction_fn, 
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncAVLTData(old_headers, old_lines, avlt_file, registry_file, dump_to=None):
     registry = importDODRegistry(registry_file)
     avlt_by_subj = importAVLT(avlt_file, registry=registry)
+
+    to_add_headers = ['AVLT_total_6mths_Examdate']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        bl_av45, av45_2 = getAV45Dates(old_l, patient_pets=None)
+        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
+        if abs(point['EXAMDATE']-bl_av45).days <= (6*31):
+            tots = point['TOTS']
+        else:
+            tots = ''
+        return {'AVLT_total_6mths_Examdate': tots}
+
+    for i, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, avlt_by_subj, extraction_fn, 
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
     # dump out
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
@@ -198,7 +292,10 @@ def parseAV45Entries(old_headers, subj_rows):
         data['AV45_%s_cingulate_asymmetry_negvalue_means_R<L' % (i+1)] = right_cingulate - left_cingulate
         data['AV45_%s_parietal_asymmetry_negvalue_means_R<L' % (i+1)] = right_parietal - left_parietal
         data['AV45_%s_temporal_asymmetry_negvalue_means_R<L' % (i+1)] = right_temporal - left_temporal
-        data['AV45_%s_asym_summary_absvals_negvalue_means_R<L' % (i+1)] = ''
+        data['AV45_%s_asym_summary_absvals_negvalue_means_R<L' % (i+1)] = np.mean([right_frontal - left_frontal,
+                                                                                   right_cingulate - left_cingulate,
+                                                                                   right_parietal - left_parietal,
+                                                                                   right_temporal - left_temporal])
         data['AV45_%s_frontal_MR_asymmetry' % (i+1)] = right_frontal_size - left_frontal_size
         data['AV45_%s_cingulate_MR_asymmetry' % (i+1)] = right_cingulate_size - left_frontal_size
         data['AV45_%s_parietal_MR_asymmetry' % (i+1)] = right_parietal_size - left_parietal_size
@@ -208,47 +305,74 @@ def parseAV45Entries(old_headers, subj_rows):
     return (new_headers, data)
 
 
-if __name__ == '__main__':
-    # IO files
-    master_file = "../DOD_DATA.csv"
-    output_file = "../DOD_DATA_synced.csv"
+def getAV45Dates(old_l, patient_pets=None):
+    if patient_pets is None:
+        patient_pets = []
+    # Get AV45 Scan dates
+    if old_l.get('AV45_1_EXAMDATE','') != '':
+        bl_av45 = datetime.strptime(old_l['AV45_1_EXAMDATE'], '%m/%d/%y')
+    elif len(patient_pets) >= 1:
+        bl_av45 = patient_pets[0]
+    else:
+        bl_av45 = None
+    if old_l.get('AV45_2_EXAMDATE','') != '':
+        av45_2 = datetime.strptime(old_l['AV45_2_EXAMDATE'], '%m/%d/%y')
+    elif len(patient_pets) >= 2:
+        av45_2 = patient_pets[1]
+    else:
+        av45_2 = None
+    return (bl_av45, av45_2)
 
-    # LOOKUP files
-    registry_file = "../docs/DOD/DOD_REGISTRY.csv"
 
-    # AV45 files
-    av45_file = "../docs/DOD/AV45_DOD_LONI_07.13.15_extra.csv"
-
-
+def runPipeline():
     # syncing pipeline
     try:
         new_headers, new_lines = parseCSV(master_file)
+        print len(new_lines)
     except:
         new_headers = ['PID', 'Notes']
         new_lines = []
 
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
-    new_headers, new_lines = syncAPOEData(new_headers, new_lines, av45_file, registry_file, dump_to=None)
-    new_headers, new_lines = syncDemogData(new_headers, new_lines, av45_file, registry_file, dump_to=None)
-    new_headers, new_lines = syncCSFData(new_headers, new_lines, av45_file, registry_file, dump_to=output_file)
-
-
-
-
-    '''
-    print "\nSYNCING DIAGNOSES\n"
-    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
-    print "\nSYNCING TBMSYN\n"
-    new_headers, new_lines = syncTBMSynData(new_headers, new_lines, tbm_file, registry_file, dump_to=None)
-    print "\nSYNCING MMSE\n"
-    new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file, dump_to=None)
-    print "\nSYNCING ADASCOG\n"
-    new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
+    print len(new_lines)
+    print "\nSYNCING APOE\n"
+    new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file, dump_to=None)
+    print len(new_lines)
+    print "\nSYNCING ADAS\n"
+    new_headers, new_lines = syncADASData(new_headers, new_lines, adas_file, registry_file, dump_to=None)
+    print len(new_lines)
     print "\nSYNCING AVLT\n"
-    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncAVLTData(new_headers, new_lines, avlt_file, registry_file, dump_to=None)
+    print len(new_lines)
+    print "\nSYNCING DEMOG\n"
+    new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, registry_file, dump_to=None)
+    print len(new_lines)
     print "\nSYNCING CSF\n"
-    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=None)
-    print "\nSYNCING WMH\n"
-    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, registry_file, dump_to=output_file)
-    '''
+    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_file, registry_file, dump_to=output_file)
+    print len(new_lines)
+
+
+if __name__ == '__main__':
+    now = datetime.now()
+    # IO files
+    master_file = "../DOD_DATA.csv"
+    output_file = "../DOD_DATA_%s.csv" % (now.strftime("%m_%d_%y"))
+
+    # LOOKUP files
+    registry_file = "../docs/DOD/DOD_REGISTRY.csv"
+
+    # AV45 file
+    av45_file = "../docs/DOD/AV45_DOD_LONI_07.13.15_extra.csv"
+    # AVLT file
+    avlt_file = "../docs/DOD/NEUROBAT.csv"
+    # ADAS file
+    adas_file = "../docs/DOD/ADAS.csv"
+    # Demog file
+    demog_file = "../docs/DOD/PTDEMOG.csv"
+    # CSF file
+    csf_file = "../docs/DOD/UPENNBIOMK.csv"
+    # APOE file
+    apoe_file = "../docs/DOD/APOERES.csv"
+
+    runPipeline()

@@ -23,6 +23,29 @@ def convertToCSVDataType(new_data, decimal_places=2):
             new_data[k] = ''
     return new_data
 
+
+def updateLine(old_line, new_data, extraction_fn, 
+               pid_key='RID', pet_meta=None, decimal_places=4):
+    try:
+        subj = int(old_line[pid_key])
+    except Exception as e:
+        print "No subject column %s found" % pid_key
+        return {}
+
+    subj_row = new_data.get(subj,None)
+    if subj_row is None:
+        print "No subj row found for %s" % (subj)
+        return {}
+
+    patient_pets = None
+    if pet_meta is not None:
+        patient_pets = sorted(pet_meta.get(subj,[]))
+
+    new_data = extraction_fn(subj, subj_row, old_line, patient_pets) # patient_pets is passed in as context
+    new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
+    return new_data
+
+
 def importRegistry(registry_file):
     headers, lines = parseCSV(registry_file)
     registry = defaultdict(list)
@@ -43,7 +66,7 @@ def importRegistry(registry_file):
             continue
         registry[subj].append({'VISCODE': data['VISCODE'].strip().lower(),
                                'VISCODE2': data['VISCODE2'].strip().lower(),
-                               'date': date,
+                               'EXAMDATE': date,
                                'update_stamp': data['update_stamp']})
     return registry
 
@@ -69,6 +92,102 @@ def importDODRegistry(dod_registry_file):
     return registry
 
 
+
+def importADNIDiagnosis(diag_file, registry=None):
+    diag_headers, diag_lines = parseCSV(diag_file)
+    diag_by_subj = defaultdict(list)
+    for line in diag_lines:
+        subj = int(line['RID'])
+        viscode = line['VISCODE'].strip().lower()
+        viscode2 = line['VISCODE2'].strip().lower()
+        #if viscode == 'sc' or viscode2 == 'sc':
+        #    continue
+        examdate = line['EXAMDATE']
+        change = line['DXCHANGE'].strip()
+        current = line['DXCURREN'].strip()
+        conv = line['DXCONV'].strip()
+        conv_type = line['DXCONTYP'].replace('-4','').strip()
+        rev_type = line['DXREV'].replace('-4','').strip()
+        if examdate:
+            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+        else:
+            subj_listings = registry[subj]
+            for listing in subj_listings:
+                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
+                    examdate = listing['EXAMDATE']
+                    break
+            if not examdate:
+                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+                continue
+
+        '''
+            DXCHANGE: (ADNI2 DIAG CHANGE): 
+                1=Stable: NL to NL; 
+                2=Stable: MCI to MCI; 
+                3=Stable: Dementia to Dementia; 
+                4=Conversion: NL to MCI; 
+                5=Conversion: MCI to Dementia; 
+                6=Conversion: NL to Dementia; 
+                7=Reversion: MCI to NL; 
+                8=Reversion: Dementia to MCI; 
+                9=Reversion: Dementia to NL
+            
+            DXCURREN: (CURRENT DIAGNOSIS): 
+                1=NL;
+                2=MCI;
+                3=AD
+            DXCONV: 
+                1=Yes - Conversion; 
+                2=Yes - Reversion; 
+                0=No
+            DXCONTYP: 
+                1=Normal Control to MCI; 
+                2=Normal Control to AD; 
+                3=MCI to AD
+            DXREV: 
+                1=MCI to Normal Control; 
+                2=AD to MCI; 
+                3=AD to Normal Control
+        '''
+
+        # if adni 1 coding, convert to adni2 coding
+        if change == '' and current != '':
+            if conv == '1':
+                # conversion
+                if conv_type == '1':
+                    change = '4'
+                elif conv_type == '2':
+                    change = '6'
+                elif conv_type == '3':
+                    change = '5'
+            elif conv == '2':
+                # reversion
+                if rev_type == '1':
+                    change = '7'
+                elif rev_type == '2':
+                    change = '8'
+                elif rev_type == '3':
+                    change = '9'
+            elif conv == '0':
+                # stable
+                if current == '1':
+                    change = '1'
+                elif current == '2':
+                    change = '2'
+                elif current == '3':
+                    change = '3'
+
+        if change == '':
+            print "Couldn't convert to adni2 coding: %s, %s, %s" % (subj, viscode, viscode2)
+            continue
+
+        diag_by_subj[subj].append({'VISCODE': viscode,
+                                   'VISCODE2': viscode2,
+                                   'EXAMDATE': examdate,
+                                   'change': int(change)})
+    return dict(diag_by_subj)
+
+
 def importFreesurferLookup(lut_file):
     infile = open(lut_file, 'r')
     data = {}
@@ -88,8 +207,8 @@ def importAPOE(apoe_file):
     apoe_by_subj = {}
     for line in lines:
         subj = int(line['SCRNO'])
-        apgen1 = line['APGEN1']
-        apgen2 = line['APGEN2']
+        apgen1 = int(line['APGEN1'])
+        apgen2 = int(line['APGEN2'])
         apoe_by_subj[subj] = {'apgen1': apgen1, 'apgen2': apgen2}
     return apoe_by_subj
 
@@ -113,7 +232,10 @@ def importDemog(demog_file):
         edu = int(edu) if edu != '' else edu
         dob = None
         if 'PTDOB' in line:
-            dob = datetime.strptime(line['PTDOB'],'%m/%d/%y')
+            try:
+                dob = datetime.strptime(line['PTDOB'].replace('--','01'),'%m/%d/%Y')
+            except:
+                dob = datetime.strptime(line['PTDOB'].replace('--','01'),'%m/%d/%y')
         elif 'PTDOBMM' in line and 'PTDOBYY' in line:
             year = line['PTDOBYY']
             month = line['PTDOBMM']
@@ -141,7 +263,7 @@ def importMMSE(mmse_file, registry=None):
             subject_registry = registry.get(subj,[])
             date = None
             for v in subject_registry:
-                item_date = v['date']
+                item_date = v['EXAMDATE']
                 if vs2 == v['VISCODE2']:
                     date = item_date
                     break
@@ -200,8 +322,14 @@ def importAVLT(avlt_file, registry=None):
     return dict(avlt_by_subj)
 
 def importADASCog(adni1_file, adnigo2_file, registry=None):
-    adni1_headers, adni1_lines = parseCSV(adni1_file)
-    adni2_headers, adni2_lines = parseCSV(adnigo2_file)
+    try:
+        adni1_headers, adni1_lines = parseCSV(adni1_file)
+    except Exception as e:
+        adni1_lines = []
+    try:
+        adni2_headers, adni2_lines = parseCSV(adnigo2_file)
+    except Exception as e:
+        adni2_lines = []
     # restructure by subject
     adas_by_subj = defaultdict(list)
     for line in adni1_lines:
@@ -216,9 +344,15 @@ def importADASCog(adni1_file, adnigo2_file, registry=None):
                                    'EXAMDATE': examdate,
                                    'TOTSCORE': totscore})
     for line in adni2_lines:
-        subj = int(line['RID'])
+        if 'SCRNO' in line:
+            subj = int(line['SCRNO'])
+        else:
+            subj = int(line['RID'])
         viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
+        try:
+            viscode2 = line['VISCODE2'].strip().lower()
+        except Exception as e:
+            viscode2 = ''
         raw_totscore = line['TOTSCORE']
         if raw_totscore == '':
             print "%s (%s, %s) has missing totscore" % (subj, viscode, viscode2)
@@ -286,7 +420,7 @@ def importWMH(wmh_file):
     return dict(data)
 
 
-def importCSF(csf_files):
+def importCSF(csf_files, registry=None):
     data = defaultdict(dict)
     for csffile in csf_files:
         print "Importing CSF file %s" % csffile
@@ -297,7 +431,10 @@ def importCSF(csf_files):
             else:
                 subj = int(line['RID'])
             vc = line['VISCODE'].strip().lower()
-            rundate = datetime.strptime(line['RUNDATE'],'%m/%d/%y')
+            try:
+                rundate = datetime.strptime(line['RUNDATE'],'%m/%d/%y')
+            except:
+                rundate = datetime.strptime(line['RUNDATE'],'%Y-%m-%d')
             try:
                 vc2 = line['VISCODE2'].strip().lower()
             except:
@@ -305,7 +442,7 @@ def importCSF(csf_files):
             try:
                 examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
             except:
-                examdate = None
+                examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else Nones
             try:
                 abeta = float(line['ABETA'])
             except:
@@ -597,14 +734,14 @@ def rearrangeHeaders(new_headers, to_add, after=None):
     return new_headers
 
 def findVisitDate(registry, subj, vc, vc2):
-    subj_listings = registry[subj]
+    subj_listings = registry.get(subj,[])
     examdate = None
     for listing in subj_listings:
-        if vc2 != '' and listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-            examdate = listing['date']
+        if vc2 != '' and listing['VISCODE'] == vc and listing['VISCODE2'] == vc2:
+            examdate = listing['EXAMDATE']
             break
-        elif vc2 == '' and listing['VISCODE'] == viscode:
-            examdate = listing['date']
+        elif vc2 == '' and listing['VISCODE'] == vc:
+            examdate = listing['EXAMDATE']
             break
     return examdate
 
