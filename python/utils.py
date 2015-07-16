@@ -92,6 +92,25 @@ def importDODRegistry(dod_registry_file):
     return registry
 
 
+def importCAPS(caps_curr_file, caps_lifetime_file):
+    curr_headers, curr_lines = parseCSV(caps_curr_file)
+    life_headers, life_lines = parseCSV(caps_lifetime_file)
+    data = defaultdict(dict)
+    for line in curr_lines:
+        subj = int(line['SCRNO'])
+        try:
+            score = int(line['CAPSSCORE'])
+        except Exception as e:
+            score = ''
+        data[subj]['curr'] = score
+    for line in life_lines:
+        subj = int(line['SCRNO'])
+        try:
+            score = int(line['CAPSSCORE'])
+        except Exception as e:
+            score = ''
+        data[subj]['life'] = score
+    return dict(data)
 
 def importADNIDiagnosis(diag_file, registry=None):
     diag_headers, diag_lines = parseCSV(diag_file)
@@ -399,11 +418,17 @@ def importWMH(wmh_file):
     for line in lines:
         # get subject ID
         try:
-            subj = int(line['RID'])
+            if 'SCRNO' in line:
+                subj = int(line['SCRNO'])
+            else:
+                subj = int(line['RID'])
         except Exception as e:
             continue
         vc = line['VISCODE'].strip().lower()
-        vc2 = line['VISCODE2'].strip().lower()
+        try:
+            vc2 = line['VISCODE2'].strip().lower()
+        except:
+            vc2 = ''
         try:
             examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
         except:
@@ -419,6 +444,15 @@ def importWMH(wmh_file):
                            'wmh_percent': wmh_percent})
     return dict(data)
 
+
+def importGD(gd_file):
+    headers, lines = parseCSV(gd_file)
+    data = defaultdict(dict)
+    for line in lines:
+        subj = int(line['SCRNO'])
+        gdtotal = int(line['GDTOTAL'])
+        data[subj]['gdtotal']  = gdtotal
+    return dict(data)
 
 def importCSF(csf_files, registry=None):
     data = defaultdict(dict)
@@ -529,6 +563,44 @@ def importARM(arm_file):
                            'STATUS': status_str})
     return dict(arms)
 
+def importDODEligibility(elig_file):
+    headers, lines = parseCSV(elig_file)
+    data = defaultdict(dict)
+    for line in lines:
+        subj = int(line['SCRNO'])
+        try:
+            cohort = int(line['COHORT'])
+        except Exception as e:
+            cohort = ''
+        if cohort == '' and data[subj].get('cohort','') != '':
+            # don't overwrite good value with bad one
+            continue
+        data[subj]['cohort'] = cohort
+    return dict(data)
+
+
+def importDODMRI(mri_file):
+    headers, lines = parseCSV(mri_file)
+    data = defaultdict(list)
+    for line in lines:
+        subj = int(line['SCRNO'])
+        try:
+            conducted = int(line['MMCONDCT'])
+        except Exception as e:
+            continue
+        if conducted == 0:
+            continue
+        try:
+            date = datetime.strptime(line['EXAMDATE'], '%Y-%m-%d')
+        except:
+            date = datetime.strptime(line['EXAMDATE'], '%m/%d/%y')
+        data[subj].append(date)
+
+    # sort
+    data = dict(data)
+    for k in data.keys():
+        data[k] = sorted(data[k])
+    return data
 
 def importMRI(mri_file):
     bad_sequences = set([])

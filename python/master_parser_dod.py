@@ -62,6 +62,92 @@ def syncDemogData(old_headers, old_lines, demog_file, registry_file, dump_to=Non
         dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
+def syncCAPSData(old_headers, old_lines, curr_file, lifetime_file, dump_to=None):
+    caps_by_subj = importCAPS(curr_file, lifetime_file)
+
+    to_add_headers = ['CAPS_CURRSCORE', 'CAPS_LIFETIME_SCORE']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        return {'CAPS_CURRSCORE': subj_row['curr'],
+                'CAPS_LIFETIME_SCORE': subj_row['life']}
+
+    for old_l in old_lines:
+        new_data = updateLine(old_l, caps_by_subj, extraction_fn,
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+
+def syncWMHData(old_headers, old_lines, wmh_file, dump_to=None):
+    wmh_by_subj = importWMH(wmh_file)
+
+    to_add_headers = ['WMH_WHITMATHYP', 'WMH_percentOfICV']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0] # take first point
+        return {'WMH_percentOfICV': point['wmh_percent'],
+                'WMH_WHITMATHYP': point['wmh']}
+
+    for old_l in old_lines:
+        new_data = updateLine(old_l, wmh_by_subj, extraction_fn,
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+
+def syncMRIData(old_headers, old_lines, mri_file, dump_to=None):
+    mri_by_subj = importDODMRI(mri_file)
+    to_add_headers = ["MRIDATE"]
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patients_pets):
+        first_mri = subj_row[0]
+        return {"MRIDATE": first_mri}
+
+    for old_l in old_lines:
+        new_data = updateLine(old_l, mri_by_subj, extraction_fn,
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+
+def syncGDData(old_headers, old_lines, gd_file, dump_to=None):
+    gd_by_subj = importGD(gd_file)
+    to_add_headers = ['GDtotal']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        return {'GDtotal': subj_row['gdtotal']}
+
+    for old_l in old_lines:
+        new_data = updateLine(old_l, gd_by_subj, extraction_fn,
+                              pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
 def syncCSFData(old_headers, old_lines, csf_file, registry_file, dump_to=None):
     registry = importDODRegistry(registry_file)
     csf_by_subj = importCSF([csf_file], registry)
@@ -137,6 +223,56 @@ def syncAVLTData(old_headers, old_lines, avlt_file, registry_file, dump_to=None)
     if dump_to is not None:
         dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
+
+def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
+    elig_by_subj = importDODEligibility(elig_file)
+
+    to_add_headers = ['PTGroup', 'Study', 'GroupNum']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        cohort = subj_row['cohort']
+        new_data = {'PTGroup': '',
+                    'Study': 1,
+                    'GroupNum': ''}
+        if cohort == 1:
+            new_data['PTGroup'] = 'PTSD'
+            new_data['GroupNum'] = 1
+        elif cohort == 2:
+            new_data['PTGroup'] = 'TBI'
+            new_data['GroupNum'] = 2
+        elif cohort == 3:
+            new_data['PTGroup'] = 'C'
+            new_data['GroupNum'] = 3
+        elif cohort == 4:
+            new_data['PTGroup'] = 'TBI+PTSD'
+            new_data['GroupNum'] = 4
+        elif cohort == '':
+            # decide what to do here
+            pass
+        return new_data
+
+    for i, old_l in enumerate(old_lines):
+        new_data = {'PTGroup': '',
+                    'Study': '',
+                    'GroupNum': ''}
+        subj = int(old_l['PID'])
+        if subj < 6000:
+            new_data = {'PTGroup': 'ADNI C',
+                        'Study': 0,
+                        'GroupNum': 5}
+        else:
+            new_data = updateLine(old_l, elig_by_subj, extraction_fn, 
+                          pid_key='PID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
 
 def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None):
     registry = importDODRegistry(registry_file)
@@ -272,12 +408,12 @@ def parseAV45Entries(old_headers, subj_rows):
         # Dates
         data['AV45_%s_EXAMDATE' % (i+1)] = examdate
         # SUVR values
-        data['AV45_%s_Left-Putamen' % (i+1)] = leftputamen
-        data['AV45_%s_Right-Putamen' % (i+1)] = rightputamen
-        data['AV45_%s_Left-Caudate' % (i+1)] = leftcaudate
-        data['AV45_%s_Right-Caudate' % (i+1)] = rightcaudate
-        data['AV45_%s_Left-Pallidum' % (i+1)] = leftpallidum
-        data['AV45_%s_Right-Pallidum' % (i+1)] = rightpallidum
+        data['AV45_%s_Left-Putamen' % (i+1)] = leftputamen/wm70
+        data['AV45_%s_Right-Putamen' % (i+1)] = rightputamen/wm70
+        data['AV45_%s_Left-Caudate' % (i+1)] = leftcaudate/wm70
+        data['AV45_%s_Right-Caudate' % (i+1)] = rightcaudate/wm70
+        data['AV45_%s_Left-Pallidum' % (i+1)] = leftpallidum/wm70
+        data['AV45_%s_Right-Pallidum' % (i+1)] = rightpallidum/wm70
         data['AV45_%s_Left_BG_avg' % (i+1)] = ''
         data['AV45_%s_Right_BG_avg' % (i+1)] = ''
         data['AV45_%s_BG_avg' % (i+1)] = ''
@@ -335,22 +471,26 @@ def runPipeline():
 
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
-    print len(new_lines)
     print "\nSYNCING APOE\n"
     new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file, dump_to=None)
-    print len(new_lines)
     print "\nSYNCING ADAS\n"
     new_headers, new_lines = syncADASData(new_headers, new_lines, adas_file, registry_file, dump_to=None)
-    print len(new_lines)
     print "\nSYNCING AVLT\n"
     new_headers, new_lines = syncAVLTData(new_headers, new_lines, avlt_file, registry_file, dump_to=None)
-    print len(new_lines)
     print "\nSYNCING DEMOG\n"
     new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, registry_file, dump_to=None)
-    print len(new_lines)
+    print "\nSYNCING CAPS\n"
+    new_headers, new_lines = syncCAPSData(new_headers, new_lines, caps_curr_file, caps_lifetime_file, dump_to=None)
+    print "\nSYNCING WMH\n"
+    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, dump_to=None)
+    print "\nSYNCING GD\n"
+    new_headers, new_lines = syncGDData(new_headers, new_lines, gd_file, dump_to=None)
+    print "\nSYNCING MRI\n"
+    new_headers, new_lines = syncMRIData(new_headers, new_lines, mri_file, dump_to=None)
+    print "\nSYNCING STUDY\n"
+    new_headers, new_lines = syncStudyData(new_headers, new_lines, elig_file, dump_to=None)
     print "\nSYNCING CSF\n"
     new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_file, registry_file, dump_to=output_file)
-    print len(new_lines)
 
 
 if __name__ == '__main__':
@@ -374,5 +514,16 @@ if __name__ == '__main__':
     csf_file = "../docs/DOD/UPENNBIOMK.csv"
     # APOE file
     apoe_file = "../docs/DOD/APOERES.csv"
+    # CAPS files
+    caps_curr_file = "../docs/DOD/CAPSCURR.csv"
+    caps_lifetime_file = "../docs/DOD/CAPSLIFE.csv"
+    # WMH file
+    wmh_file = "../docs/DOD/WMH_VOLUMES.csv"
+    # GD file
+    gd_file = "../docs/DOD/GDSCALE.csv"
+    # MRi file
+    mri_file = "../docs/DOD/MRIMETA.csv"
+    # Elig file
+    elig_file = "../docs/DOD/VAELG.csv"
 
     runPipeline()
