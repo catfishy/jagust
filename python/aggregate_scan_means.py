@@ -262,22 +262,18 @@ def combineMeansAndSize(agg_type, mean_header, size_header, mean_row, size_row):
             all_values.append(size_values[h])
     return (rid, all_headers, all_values)
 
-def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry, agg_type):
+def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry, agg_type):
     assert agg_type in set(['adni', 'adni_extra', 'dod', 'dod_extra'])
 
     if agg_type == 'adni':
-        registry = importRegistry(registry)
         pet_dates = importPetMETA(meta_pet)
         fieldnames = ADNI_FIELDNAMES
     elif agg_type == 'adni_extra':
-        registry = importRegistry(registry)
         pet_dates = importPetMETA(meta_pet)
         fieldnames = ADNI_FIELDNAMES_EXTRA
     elif agg_type == 'dod':
-        registry = importDODRegistry(registry)
         fieldnames = DOD_FIELDNAMES
     elif agg_type == 'dod_extra':
-        registry = importDODRegistry(registry)
         fieldnames = DOD_FIELDNAMES_EXTRA
 
     num_bl = int(bl_means.split('_')[-1].replace('.csv',''))
@@ -289,7 +285,7 @@ def aggregatePreprocessingOutput(total_output, bl_means, v2_means, v3_means, bl_
     print "%s baseline scans" % len(bl_lines)
     print "%s visit 2 scans" % len(v2_lines)
 
-    if v3_means is not None and v3_sizes is not None:
+    if agg_type in set(['adni', 'adni_extra']) and v3_means is not None and v3_sizes is not None:
         num_v3 = int(v3_means.split('_')[-1].replace('.csv',''))
         v3_header, v3_lines = readHeaderAndLines(v3_means, limit=num_v3)
         v3_size_header, v3_size_lines = readHeaderAndLines(v3_sizes, limit=num_v3)
@@ -418,21 +414,31 @@ if __name__ == "__main__":
     '''
     output = '../output/UCBERKELEYAV45_DOD_07_08_15_extra.csv'
     preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
-    registry = "../docs/registry_clean.csv"
+    registry = importRegistry("../docs/registry_clean.csv")
     meta_pet = "../docs/PET_META_LIST_edited.csv"
-    agg_type = 'adni
+    agg_type = 'adni'
     '''
 
-    # for adni dod
+    # for adni dod (also add in adni controls)
     output = '../output/AV45_DOD_LONI_07.13.15_extra.csv'
+    temp_output = '../output/temp.csv'
     preprocess_folder =  '../docs/AV45_DOD_preprocess_output_06_25_15'
-    registry = "../docs/DOD_REGISTRY.csv"
+    adni_preprocess_folder = '../docs/AV45_preprocess_output_07_08_15_extra'
+    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    registry_adni = importRegistry("../docs/registry_clean.csv")
     meta_pet = None
+    meta_pet_adni = None
     agg_type = 'dod_extra'
 
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry, agg_type)
+    bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
+    aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
+                                 meta_pet_adni, registry_adni, agg_type)
 
+    appendCSV(output, temp_output)
+    removeFile(temp_output)
 
 '''
 ## output keys ###

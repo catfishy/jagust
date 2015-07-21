@@ -1,4 +1,6 @@
+import sys
 import csv
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -18,7 +20,10 @@ def convertToCSVDataType(new_data, decimal_places=2):
         if isinstance(new_data[k], datetime):
             new_data[k] = datetime.strftime(new_data[k], '%m/%d/%y')
         elif isinstance(new_data[k], float):
-            new_data[k] = str(round(new_data[k],decimal_places))
+            if decimal_places is None:
+                new_data[k] = str(new_data[k])
+            else:
+                new_data[k] = str(round(new_data[k],decimal_places))
         elif new_data[k] is None:
             new_data[k] = ''
     return new_data
@@ -476,7 +481,7 @@ def importCSF(csf_files, registry=None):
             try:
                 examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
             except:
-                examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else Nones
+                examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else None
             try:
                 abeta = float(line['ABETA'])
             except:
@@ -757,6 +762,30 @@ def importAV45(av45_file, registry=None):
         av45_by_subj[subj].append(line)
     return dict(av45_by_subj)
 
+def importCrossSectionFreesurfer(crossfree_file, include_failed=False):
+    headers, lines = parseCSV(crossfree_file)
+    data = defaultdict(list)
+    failed = 0
+    for i, line in enumerate(lines):
+        if not include_failed and line['OVERALLQC'] == 'Fail':
+            failed += 1
+            continue
+        elif not include_failed and line['OVERALLQC'] == 'Partial' and line['VENTQC'] == 'Fail':
+            failed += 1
+            continue
+        subj = int(line['RID'])
+        vc = line['VISCODE'].strip().lower()
+        vc2 = line['VISCODE2'].strip().lower()
+        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        inner_data = {k: v for k,v in line.iteritems() if k.startswith('ST') and k not in set(['STATUS'])}
+        data[subj].append({'VISCODE': vc,
+                           'VISCODE2': vc2,
+                           'EXAMDATE': examdate,
+                           'inner_data': inner_data})
+    print "CROSS FREESURFER failed: %s" % failed
+    return dict(data)
+
+
 def importLongitudinalFreesurfer(longfree_file, include_failed = False):
     headers, lines = parseCSV(longfree_file)
     data = defaultdict(list)
@@ -817,16 +846,49 @@ def findVisitDate(registry, subj, vc, vc2):
             break
     return examdate
 
+def appendCSV(csv1, csv2):
+    '''
+    appends csv2 rows to csv1 (have to have same headers)
+    '''
+    h1, r1 = parseCSV(csv1)
+    h2, r2 = parseCSV(csv2)
+    all_rows = r1 + r2
+    all_headers = h1
+    dumpCSV(csv1, all_headers, all_rows)
+
+def removeFile(filename):
+    try:
+        os.remove(filename)
+    except OSError:
+        print "File to remove does not exist"
 
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     data = importFreesurferLookup(lut_file)
+
+    
+    for k,v in data.iteritems():
+        if 'ventricle' in v.lower():
+            print "%s: %s" % (k,v)
+    sys.exit(1)
+
+    # Suzanne Other ROI
+    '''
     to_lookup = [5,14,15,18,24,26,28,30,31,44,54,58,60,62,63,72,77,80,85,
                  251,252,253,254,255,1000,1001,1004,1005,1007,1009,1010,
                  1013,1016,1017,1021,1022,1024,1026,1030,1033,1034,1035,
                  2000,2001,2004,2005,2007,2009,2010,2013,2016,2017,2021,
                  2022,2024,2026,2030,2033,2034,2035]
+    '''
+
+    # DOD Output
+    to_lookup = [3000,3001,3002,3003,3004,4000,8,47,5003,5001,5002,5000,16,12,
+                 51,11,50,13,52,1003,1012,1014,1018,1019,1020,1027,1028,1032,
+                 2003,2012,2014,2018,2019,2020,2027,2028,2032,1002,1010,1023,
+                 1026,2002,2010,2023,2026,1008,1025,1029,1031,2008,2025,2029,
+                 2031,1015,1030,2015,2030]
+
     for idx in to_lookup:
-        print "%s: %s" % (idx, data[idx])
+        print "%s: %s" % (idx, data.get(idx, 'Unknown'))
 
 

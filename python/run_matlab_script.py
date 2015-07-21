@@ -14,7 +14,7 @@ When this python script is specified in the SGE batch submission bash script,
 min(NHOSTS, (# of SGE Jobs)) x (PROCESSES_PER_MACHINE) matlab scripts will be run simultaneously
 '''
 
-MATLAB_TO_RUN = None
+MATLAB_TO_RUN = 'parallel_test'
 INPUT_VAR_NAME = 'subj' # used if running a matlab script with input, ignored otherwise
 PROCESSES_PER_MACHINE = 2
 

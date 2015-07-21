@@ -281,29 +281,28 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         for i in range(11):
             if i >= len(tests):
                 test_date = ''
-                test_date_string = ''
                 test_score = ''
                 diff_from_first = ''
             else:
                 test_results = tests[i]
                 test_date = test_results['EXAMDATE']
-                test_date_string = test_date.strftime("%m/%d/%y")
                 test_score = test_results['TOTS']
                 diff_from_first = (test_date-first_scan_date).days / 365.0
                 if test_score != '':
                     all_values.append(test_score) 
                     all_times.append(diff_from_first)
             count = i+1
-            new_subj_data['AVLT_DATE.%s' % count] = test_date_string
+            new_subj_data['AVLT_DATE.%s' % count] = test_date
             new_subj_data['AVLT.%s' % count] = test_score
             new_subj_data['TIME_AVLT.%s' % count] = diff_from_first
+            new_subj_data['TIMEreltoAV45_AVLT.%s' % count] = ''
             if bl_av45 is not None and test_date != '':
                 rel_time_days = (test_date - bl_av45).days
                 rel_time = rel_time_days / 365.0
                 new_subj_data['TIMEreltoAV45_AVLT.%s' % count] = rel_time
                 if abs(rel_time_days) <= 93 and 'AVLT_3MTHS_AV45' not in new_subj_data:
                     new_subj_data['AVLT_3MTHS_AV45'] = test_score
-                    new_subj_data['AVLT_3MTHSAV45_Date'] = test_date_string
+                    new_subj_data['AVLT_3MTHSAV45_Date'] = test_date
                 if rel_time >= (-93.0/365.0):
                     if test_score != '':
                         post_values.append(test_score)
@@ -316,7 +315,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                 rel_time_days = (test_date - av45_2).days 
                 if abs(rel_time_days) <= 93 and 'AVLT_AV45_2_3MTHS' not in new_subj_data:
                     new_subj_data['AVLT_AV45_2_3MTHS'] = test_score
-                    new_subj_data['AVLT_AV45_2_DATE'] = test_date_string
+                    new_subj_data['AVLT_AV45_2_DATE'] = test_date
         if max_followup_counter is not None:
             new_subj_data['AVLT_post_AV45_followuptime'] = max(max_followup_counter, 0.0)
 
