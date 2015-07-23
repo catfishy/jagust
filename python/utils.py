@@ -862,9 +862,17 @@ def removeFile(filename):
     except OSError:
         print "File to remove does not exist"
 
+
+def printROIGrouping(names, groupings):
+    data = importFreesurferLookup(lut_file)
+    for name, group in zip(names,groupings):
+        print "\t%s" % name
+        for g in group:
+            print "\t\t%s: %s" % (g, data.get(g, 'Unknown'))
+
+
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
-    data = importFreesurferLookup(lut_file)
 
     
     # Get ventricle sections
@@ -905,7 +913,88 @@ if __name__ == "__main__":
                  2031,1015,1030,2015,2030]
     '''
 
+    '''
+    data = importFreesurferLookup(lut_file)
     for idx in to_lookup:
         print "%s: %s" % (idx, data.get(idx, 'Unknown'))
+    '''
 
 
+    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
+    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
+    temporal=[1015,1030,2015,2030]
+    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
+    basal_ganglia=[11,50,12,51,13,52]
+    occipital=[1011,2011]
+    other=[2,4,7,8,10,16,17,18,26,28,30,41,43,46,47,49,53,54,58,60,62,77,80,85,251,252,253,254,255,1000,1001,1004,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2004,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
+    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,other]
+    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','other']
+    print "\n\nGROUPING 1"
+    printROIGrouping(names, all_groups)
+
+    left_frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032]
+    right_frontal=[2003,2012,2014,2018,2019,2020,2027,2028,2032]
+    left_parietal=[1008,1025,1029,1031]
+    right_parietal=[2008,2025,2029,2031]
+    left_temporal=[1015,1030]
+    right_temporal=[2015,2030]
+    left_cingulate=[1002,1010,1023,1026]
+    right_cingulate=[2002,2010,2023,2026]
+    left_basal_ganglia=[11,12,13]
+    right_basal_ganglia=[50,51,52]
+    left_occipital=[1011]
+    right_occipital=[2011]
+    other=[2,4,7,8,10,16,17,18,26,28,30,41,43,46,47,49,53,54,58,60,62,77,80,85,251,252,253,254,255,1000,1001,1004,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2004,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
+    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,other]
+    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate','left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','other']
+    print "\n\nGROUPING 2"
+    printROIGrouping(names, all_groups)
+
+
+    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
+    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
+    temporal=[1015,1030,2015,2030]
+    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
+    basal_ganglia=[11,50,12,51,13,52]
+    occipital=[1011,2011,1005,2005,1013,2013,1021,2021]
+    precentral_postcentral=[1024,2024,1022,2022]
+    thalamus=[10,49]
+    hemiWM=[2,41]
+    cerebWM=[7,46]
+    cerebGM=[8,47]
+    hippocampus=[17,53,1016,2016,1006,2006]
+    other=[4,11,16,18,26,28,30,43,54,58,60,62,77,80,85,251,252,253,254,255,1000,1001,1004,1007,1009,1017,1033,1034,1035,2000,2001,2004,2007,2009,2017,2033,2034,2035]
+    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,precentral_postcentral,thalamus,hemiWM,cerebWM,cerebGM,hippocampus,other]
+    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','precentral_postcentral','thalamus','hemiWM','cerebWM','cerebGM','hippocampus','other']
+    print "\n\nGROUPING 3"
+    printROIGrouping(names, all_groups)
+
+    left_frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032]
+    right_frontal=[2003,2012,2014,2018,2019,2020,2027,2028,2032]
+    left_parietal=[1008,1025,1029,1031]
+    right_parietal=[2008,2025,2029,2031]
+    left_temporal=[1015,1030]
+    right_temporal=[2015,2030]
+    left_cingulate=[1002,1010,1023,1026]
+    right_cingulate=[2002,2010,2023,2026]
+    left_basal_ganglia=[11,12,13]
+    right_basal_ganglia=[50,51,52]
+    left_occipital=[1011,1005,1013,1021]
+    right_occipital=[2011,2005,2013,2021]
+    left_precentral_postcentral=[1024,1022]
+    right_precental_postcentral=[2024,2022]
+    left_thalamus=[10]
+    right_thalamus=[49]
+    left_hemiWM=[2]
+    right_hemiWM=[41]
+    left_cerebWM=[7]
+    right_cerebWM=[46]
+    left_cerebGM=[8]
+    right_cerebGM=[47]
+    left_hippocampus=[17,1016,1006]
+    right_hippocampus=[53,2016,2006]
+    other=[4,16,18,26,28,30,43,54,58,60,62,77,80,85,251,252,253,254,255,1000,1001,1004,1007,1009,1017,1033,1034,1035,2000,2001,2004,2007,2009,2017,2033,2034,2035]
+    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,left_precentral_postcentral,right_precental_postcentral,left_thalamus,right_thalamus,left_hemiWM,right_hemiWM,left_cerebWM,right_cerebWM,left_cerebGM,right_cerebGM,left_hippocampus,right_hippocampus,other]
+    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate','left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','left_precentral_postcentral','right_precental_postcentral','left_thalamus','right_thalamus','left_hemiWM','right_hemiWM','left_cerebWM','right_cerebWM','left_cerebGM','right_cerebGM','left_hippocampus','right_hippocampus','other']
+    print "\n\nGROUPING 4"
+    printROIGrouping(names, all_groups)
