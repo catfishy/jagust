@@ -107,8 +107,6 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
 
         return new_subj_data
 
-
-    new_headers = old_headers
     new_lines = []
     new_values = 0
     total = 0
@@ -396,7 +394,6 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
 
     # add 'Diag@AV45_3_long'
     new_headers = rearrangeHeaders(old_headers, ['Diag@AV45_3_long'], after='Diag@AV45_2_long')
-
     # replace old pivot date keys
     for i in range(len(new_headers)):
         if re.search(pivot_diag_regex, new_headers[i]):
@@ -512,7 +509,6 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
                     new_data['AV45_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - bl_av45).days / 365.0
         return new_data
 
-    new_headers = old_headers 
     new_lines = []
     new_values = 0
     new_conversions = 0
@@ -1164,8 +1160,10 @@ def eliminateColumns(headers, lines):
                  'DIFF_LastClinicalVisit_AV45',
                  'ClinicalVisitClosestto_AV45',
                  'ClinicalVisitClosestto_AV45_2',
-                 'MMSEclosest_1', 'MMSEclosest_AV45',
-                 'datediff_MMSE_AV45', 'MMSE_3mths_AV45',
+                 'MMSEclosest_1', 
+                 'MMSEclosest_AV45',
+                 'datediff_MMSE_AV45', 
+                 'MMSE_3mths_AV45',
                  'PostAV45Followup',
                  'abeta_closest_AV45',
                  'abeta_bin192',
