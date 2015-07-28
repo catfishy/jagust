@@ -847,6 +847,8 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     # add new headers as needed
     tbm_columns = ['TBMSyn_DATE.%s' % (i+1) for i in range(10)]
     tbm_columns.extend(['TBMSyn_SCORE.%s' % (i+1) for i in range(10)])
+    tbm_columns.extend(['TBMSyn_postAV45.%s' % (i+1) for i in range(10)])
+    tbm_columns.append('TBMSyn_BL_DATE')
     tbm_columns.append('TBMSyn_count')
     tbm_columns.append('TBMSyn_SLOPE')
     new_headers = rearrangeHeaders(old_headers, tbm_columns, after=None)
@@ -872,9 +874,11 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
                 new_data['TBMSyn_SCORE.%s' % (i+1)] = datapoint['SCORE']
                 timediff = (datapoint['EXAMDATE']-datapoint['BL_EXAMDATE']).days / 365.0
                 slope_points.append((timediff,datapoint['SCORE']))
+                new_data['TBMSyn_postAV45.%s' % (i+1)] = timediff
             else:
                 new_data['TBMSyn_DATE.%s' % (i+1)] = ''
                 new_data['TBMSyn_SCORE.%s' % (i+1)] = ''
+                new_data['TBMSyn_postAV45.%s' % (i+1)] = ''
 
         # calculate slope
         if len(slope_points) >= 2:
@@ -888,6 +892,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
         else:
             new_data['TBMSyn_SLOPE'] = ''
         new_data['TBMSyn_count'] = len(slope_points)
+        new_data['TBMSyn_BL_DATE'] = bl_examdate
         return new_data
 
     new_lines = []
