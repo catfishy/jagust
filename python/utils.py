@@ -5,11 +5,70 @@ import scipy.io as sio
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-def parseCSV(file_path):
-    reader = csv.DictReader(open(file_path,'rU'))
+def parseCSV(file_path, delimiter=','):
+    reader = csv.DictReader(open(file_path,'rU'),delimiter=delimiter)
     lines = [l for l in reader]
     headers = reader.fieldnames
     return (headers, lines)
+
+def createVisitIDLookup(lookupfile):
+    headers, lines = parseCSV(lookupfile)
+    data = defaultdict(dict)
+    for line in lines:
+        subj = int(line['RID'])
+        vc = line['VISCODE']
+        vc2 = line['VISCODE2']
+        data[subj][vc] = vc2
+    return data
+
+def convertVisitName(vc_name):
+    vc_name = ' - '.join([_.strip() for _ in vc_name.split('-')])
+    if 'ADNIGO' in vc_name:
+        vc_name = vc_name.replace('ADNIGO','').strip()
+    if 'ADNI1' in vc_name:
+        vc_name = vc_name.replace('ADNI1','').strip()
+    if 'ADNI2' in vc_name:
+        vc_name = vc_name.replace('ADNI2','').strip()
+    if 'Cont Pt' in vc_name:
+        vc_name = vc_name.replace('Cont Pt','Continuing Pt').strip()
+    lookup = {'Baseline - New Pt': 'v03',
+              'Month 24': 'm24',
+              'Baseline': 'bl',
+              'Year 4 TelCheck': 'v42',
+              'Unscheduled': 'uns1',
+              'Screening - New Pt': 'v01',
+              'Year 5 Visit': 'v51',
+              'Month 54': 'm54',
+              'No Visit Defined': 'nv',
+              'Year 2 TelCheck': 'v22',
+              'Month 18': 'm18',
+              'Screening MRI - New Pt': 'v02',
+              'Month 78': 'm78',
+              'Month 12': 'm12',
+              'Month 72': 'm72',
+              'Year 3 TelCheck': 'v32',
+              'Month 30': 'm30',
+              'Month 36': 'm36',
+              'Year 5 TelCheck': 'v52',
+              'Month 6 - New Pt': 'v05',
+              'Year 4 Visit': 'v41',
+              'Year 1 TelCheck': 'v12',
+              'Month 3 MRI': 'm03',
+              'Year 2 Visit': 'v21',
+              'Year 3 Visit': 'v31',
+              'Initial TelCheck - Continuing Pt': 'v07',
+              'Month 3 MRI - New Pt': 'v04',
+              'Month 48': 'm48',
+              'Initial Visit - Continuing Pt': 'v06',
+              'Screen Fail': 'f',
+              'Screening MRI': 'scmri',
+              'Month 6': 'm06',
+              'Year 1 Visit': 'v11',
+              'Month 42': 'm42',
+              'Month 66': 'm66',
+              'Month 60': 'm60',
+              'Screening': 'sc'}
+    return lookup.get(vc_name,None)
 
 def convertToCSVDataType(new_data, decimal_places=2):
     '''
@@ -52,11 +111,11 @@ def updateLine(old_line, new_data, extraction_fn,
     return new_data
 
 
-def importRegistry(registry_file):
+def importRegistry(registry_file, include_all=False):
     headers, lines = parseCSV(registry_file)
     registry = defaultdict(list)
     for data in lines:
-        if data['EXAMDATE'] == '':
+        if not include_all and data['EXAMDATE'] == '':
             continue
         subj = int(data['RID'])
         date = None
@@ -68,7 +127,7 @@ def importRegistry(registry_file):
             date = datetime.strptime(data['EXAMDATE'],'%m/%d/%y')
         except Exception as e:
             pass
-        if date is None:
+        if not include_all and date is None:
             continue
         registry[subj].append({'VISCODE': data['VISCODE'].strip().lower(),
                                'VISCODE2': data['VISCODE2'].strip().lower(),
@@ -236,6 +295,65 @@ def importAPOE(apoe_file):
         apgen2 = int(line['APGEN2'])
         apoe_by_subj[subj] = {'apgen1': apgen1, 'apgen2': apgen2}
     return apoe_by_subj
+
+def importExtractedFDG(fdg_file, registry):
+    headers, lines = parseCSV(fdg_file, delimiter='\t')
+    fdg_rows = []
+    ts = datetime.strftime(datetime.now(),"%Y-%m-%d %H:%M:%S.0")
+    for line in lines:
+        subj = line['PTID']
+        subj_id = int(subj.split('_')[-1])
+        date_str = line['DATE'].strip().split(' ')[0].strip()
+        examdate = datetime.strptime(date_str,'%Y-%m-%d')
+        subject_registry = registry.get(subj_id,[])
+        if len(subject_registry) == 0:
+            raise Exception("NO SUBJECT REGISTRY")
+        # find viscode in registry
+        vc_name = line['VISCODE'].strip()
+        vc = convertVisitName(vc_name)
+        vc2 = None
+        if vc is not None:
+            # find vc2 from registry
+            for regrow in subject_registry:
+                if regrow['VISCODE'].strip() == vc:
+                    vc2 = regrow['VISCODE2']
+                    break
+        if vc is None or vc2 is None:
+            # find by examdate
+            subj_sort = sorted(subject_registry, key=lambda x: abs(examdate-x['EXAMDATE']).days)
+            closest = subj_sort[0]
+            if abs(closest['EXAMDATE']-examdate).days < 90:
+                vc = closest['VISCODE']
+                vc2 = closest['VISCODE2']
+            else:
+                print "VISCODE NAME COULD NOT BE CONVERTED AND CLOSEST DATE OUT OF RANGE: %s, %s, %s" % (vc_name,vc,vc2)
+        if vc is not None and vc2 is None:
+            # copy over
+            print "COPYING VC TO VC2"
+            vc2 = vc
+        if vc is None or vc2 is None:
+            print "COULD NOT FIND VISCODES FOR %s, %s, %s" % (subj_id, examdate, line['VISCODE'])
+            vc = ''
+            vc2 = ''
+        data = {'RID': subj_id,
+                'VISCODE': vc,
+                'VISCODE2': vc2,
+                'UID': line['UID'].strip(),
+                'ROINAME': line['ROINAME'].strip(),
+                'ROILAT': line['ROILAT'].strip(),
+                'EXAMDATE': examdate,
+                'MEAN': float(line['MEAN']),
+                'MEDIAN': float(line['MEDIAN']),
+                'MODE': float(line['MODE']),
+                'MIN': float(line['MIN']),
+                'MAX': float(line['MAX']),
+                'STDEV': float(line['STDEV']),
+                'NANVOX': int(line['NANVOX']),
+                'TOTVOX': int(line['TOTVOX']),
+                'update_stamp': ts}
+        fdg_rows.append(data)
+    return fdg_rows
+
 
 def importDemog(demog_file):
     headers, lines = parseCSV(demog_file)
@@ -451,7 +569,7 @@ def importWMH(wmh_file):
     return dict(data)
 
 
-def importGD(gd_file):
+def importGD_DOD(gd_file):
     headers, lines = parseCSV(gd_file)
     data = defaultdict(dict)
     for line in lines:
@@ -459,6 +577,24 @@ def importGD(gd_file):
         gdtotal = int(line['GDTOTAL'])
         data[subj]['gdtotal']  = gdtotal
     return dict(data)
+
+def importGD(gd_file):
+    headers, lines = parseCSV(gd_file)
+    data = defaultdict(list)
+    for line in lines:
+        subj = int(line['RID'])
+        vc = line['VISCODE']
+        vc2 = line['VISCODE2']
+        try:
+            examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
+        except:
+            examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        gdtotal = int(line['GDTOTAL'])
+        data[subj].append({'vc': vc,
+                           'vc2': vc2,
+                           'EXAMDATE': examdate,
+                           'GDTOTAL': gdtotal})
+    return data
 
 def importCSF(csf_files, registry=None):
     data = defaultdict(dict)
@@ -879,8 +1015,18 @@ def createMATFile(name, data, output_file):
 
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
+    fdg_extract_file = "../docs/FDG_preprocess_output_01_20_15/Tue-Jan-20-15-38-15-2015_FDGmetaroi.csv"
+    registry_file = "../docs/registry_clean.csv"
+    registry = importRegistry(registry_file)
+    fdg_rows = importExtractedFDG(fdg_extract_file, registry=registry)
+    fdg_rows = [convertToCSVDataType(_, decimal_places=5) for _ in fdg_rows]
+    fdg_output = '../UCBERKELEY_FDG_07_29_15.csv'
+    headers = ['RID','VISCODE','VISCODE2','UID','EXAMDATE','ROINAME','ROILAT','MEAN','MEDIAN','MODE','MIN','MAX','STDEV','NANVOX','TOTVOX','update_stamp']
+    dumpCSV(fdg_output, headers, fdg_rows)
+    sys.exit(1)
 
-    
+
+
     # Get ventricle sections
     '''
     for k,v in data.iteritems():
@@ -932,10 +1078,14 @@ if __name__ == "__main__":
     cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
     basal_ganglia=[11,50,12,51,13,52]
     occipital=[1011,2011]
-    WM=[2,7,16,41,46,77,251,252,253,254,255,85,2004,1004]
-    other=[0,8,10,17,18,26,28,30,47,49,53,54,58,60,62,80,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
-    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,WM,other]
-    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','WM','other']
+    cerebGM=[8,47]
+    cerebWM=[7,46]
+    brainstem=[16]
+    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
+    non_hemiWM=[85]
+    other=[0,10,17,18,26,28,30,49,53,54,58,60,62,80,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
+    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,other]
+    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','other']
     print "\n\nGROUPING 1"
     filepath = "grouping_1.mat"
     createROIGrouping(names, all_groups, filepath)
@@ -953,10 +1103,16 @@ if __name__ == "__main__":
     right_basal_ganglia=[50,51,52]
     left_occipital=[1011]
     right_occipital=[2011]
-    WM=[2,7,16,41,46,77,251,252,253,254,255,85,2004,1004]
-    other=[0,8,10,17,18,26,28,30,47,49,53,54,58,60,62,80,85,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
-    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,WM,other]
-    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate','left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','WM','other']
+    cerebGM=[8,47]
+    cerebWM=[7,46]
+    brainstem=[16]
+    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
+    non_hemiWM=[85]
+    other=[0,10,17,18,26,28,30,49,53,54,58,60,62,80,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
+    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,
+                left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,other]
+    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate',
+             'left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','other']
     print "\n\nGROUPING 2"
     filepath = "grouping_2.mat"
     createROIGrouping(names, all_groups, filepath)
@@ -971,14 +1127,15 @@ if __name__ == "__main__":
     occipital=[1011,2011,1005,2005,1013,2013,1021,2021]
     central_gyri=[1017,1022,1024,2017,2024,2022]
     thalamus=[10,49]
-    hemiWM=[2,41,77,251,251,252,253,254,255,1004,2004]
-    brainstem=[16]
-    non_hemiWM=[7,46,85]
     cerebGM=[8,47]
+    cerebWM=[7,46]
+    brainstem=[16]
+    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
+    non_hemiWM=[85]
     hippocampus=[17,53,1006,1009,1016,1033,1034,2006,2009,2016,2033,2034]
     other=[0,18,26,28,30,54,58,60,62,80,1000,1001,1007,1035,2000,2001,2007,2035]
-    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,central_gyri,thalamus,hemiWM,brainstem,non_hemiWM,cerebGM,hippocampus,other]
-    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','central_gyri','thalamus','hemiWM','brainstem','non_hemiWM','cerebGM','hippocampus','other']
+    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,central_gyri,thalamus,cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,hippocampus,other]
+    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','central_gyri','thalamus','cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','hippocampus','other']
     print "\n\nGROUPING 3"
     filepath = "grouping_3.mat"
     createROIGrouping(names, all_groups, filepath)
@@ -1000,16 +1157,21 @@ if __name__ == "__main__":
     right_central_gyri=[2017,2024,2022]
     left_thalamus=[10]
     right_thalamus=[49]
-    hemiWM=[2,41,77,251,251,252,253,254,255,1004,2004]
-    brainstem=[16]
-    non_hemiWM=[7,46,85]
     left_cerebGM=[8]
     right_cerebGM=[47]
+    cerebWM=[7,46]
+    brainstem=[16]
+    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
+    non_hemiWM=[85]
     left_hippocampus=[17,1006,1009,1016,1033,1034]
     right_hippocampus=[53,2006,2009,2016,2033,2034]
     other=[0,18,26,28,30,54,58,60,62,80,1000,1001,1007,1035,2000,2001,2007,2035]
-    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,left_central_gyri,right_central_gyri,left_thalamus,right_thalamus,hemiWM,brainstem,non_hemiWM,left_cerebGM,right_cerebGM,left_hippocampus,right_hippocampus,other]
-    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate','left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','left_central_gyri','right_central_gyri','left_thalamus','right_thalamus','hemiWM','brainstem','non_hemiWM','left_cerebGM','right_cerebGM','left_hippocampus','right_hippocampus','other']
+    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,left_basal_ganglia,right_basal_ganglia,
+                left_occipital,right_occipital,left_central_gyri,right_central_gyri,left_thalamus,right_thalamus,
+                left_cerebGM,right_cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,left_hippocampus,right_hippocampus,other]
+    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate','left_basal_ganglia','right_basal_ganglia',
+             'left_occipital','right_occipital','left_central_gyri','right_central_gyri','left_thalamus','right_thalamus',
+             'left_cerebGM','right_cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','left_hippocampus','right_hippocampus','other']
     print "\n\nGROUPING 4"
     filepath = "grouping_4.mat"
     createROIGrouping(names, all_groups, filepath)

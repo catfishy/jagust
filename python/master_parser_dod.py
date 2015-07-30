@@ -130,7 +130,7 @@ def syncMRIData(old_headers, old_lines, mri_file, dump_to=None):
 
 
 def syncGDData(old_headers, old_lines, gd_file, dump_to=None):
-    gd_by_subj = importGD(gd_file)
+    gd_by_subj = importGD_DOD(gd_file)
     to_add_headers = ['GDtotal']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
     new_lines = []

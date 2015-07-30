@@ -5,7 +5,7 @@ from tabulate import tabulate
 from utils import *
 
 
-def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data):
+def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output):
     '''
     Aggregate into one dictionary
     remove datapoints from before the first av45 scan
@@ -35,6 +35,11 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
     print len(interesting)
     interesting_counts = defaultdict(list)
     '''
+    headers = ['Source', 'Diagnosis', 'Phase', 'BL', 'year1', 'year2', 'year3', 'year4', 'year5', 'm3', 'm6', 'm12', 'm24', 'm36', 'm48']
+    rows = []
+
+    lookupfile = '../docs/ADNI2_VISITID.csv'
+    vc_lookup = createVisitIDLookup(lookupfile)
 
     adni1_mri_visit_counts = {'N': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
                               'SMC': {"BL": [], "year1": [], "year2": [], "year3": [], "year4": []},
@@ -107,10 +112,10 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
             subj_long = sorted(all_longfree_data, key=lambda x: x['EXAMDATE'])
         else:
             subj_long = []
-        subj_points['long'] = [_['VISCODE2'].replace('m0','m') for _ in subj_long if _['EXAMDATE'] >= bl_av45]
+        subj_points['long'] = [_['VISCODE2'].replace('m0','m').replace('scmri','bl') for _ in subj_long if _['EXAMDATE'] >= bl_av45]
 
         subj_cross = sorted(crossfree_data.get(subj,[]), key=lambda x: x['EXAMDATE'])
-        subj_points['cross'] = [_['VISCODE2'].replace('m0','m') for _ in subj_cross if _['EXAMDATE'] >= bl_av45]
+        subj_points['cross'] = [_['VISCODE2'].replace('m0','m').replace('scmri','bl') for _ in subj_cross if _['EXAMDATE'] >= bl_av45]
 
         if subj in tbm_data:
             subj_tbm = sorted(tbm_data[subj], key=lambda x: x['EXAMDATE'])
@@ -128,11 +133,23 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         if len(subj_points['mri']) > 0:
             first_mri_time = subj_points['mri'][0][0]
             mri_diffs = [(a-first_mri_time).days/ 365.0 for a,b in subj_points['mri']]
-            mri_vc = [b for a,b in subj_points['mri']]
+            mri_vc = [convertVisitName(b) if convertVisitName(b) else b for a,b in subj_points['mri']]
+            mri_vc = [vc_lookup.get(subj,{}).get(_,_).replace('m0','m').replace('scmri','bl') for _ in mri_vc] 
         else:
             mri_diffs = []
             mri_vc = []
         #print "%s: %s -> %s" % (subj, len(subj_mri), len(subj_points['mri']))
+
+        # remove duplicates from subject points
+        for k in subj_points.keys():
+            values = subj_points[k]
+            seen = set()
+            filtered = []
+            for v in subj_points[k]:
+                if v not in seen:
+                    filtered.append(v)
+                    seen.add(v)
+            subj_points[k] = filtered
 
         points_by_subj[subj] = subj_points
         diag = master_data.get(subj,{}).get('Init_Diagnosis','Unknown')
@@ -204,10 +221,13 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
                     cross_bl = int(cross_bl.replace('m',''))
                 used = set()
                 for vc in subj_points['cross']:
-                    if not vc.startswith('m'):
+                    if not (vc.startswith('m') or vc == 'bl'):
                         continue
                     # get month diff 
-                    month_diff = int(vc.replace('m','')) - cross_bl
+                    if vc == 'bl':
+                        month_diff = 0
+                    else:
+                        month_diff = int(vc.replace('m','')) - cross_bl
                     if month_diff == 0:
                         year_key = "BL"
                     else:
@@ -227,10 +247,13 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
                     long_bl = int(long_bl.replace('m',''))
                 used = set()
                 for vc in subj_points['long']:
-                    if not vc.startswith('m'):
+                    if not (vc.startswith('m') or vc == 'bl'):
                         continue
                     # get month diff 
-                    month_diff = int(vc.replace('m','')) - long_bl
+                    if vc == 'bl':
+                        month_diff = 0
+                    else:
+                        month_diff = int(vc.replace('m','')) - long_bl
                     if month_diff == 0:
                         year_key = "BL"
                     else:
@@ -243,20 +266,43 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
             months = [(0.0,0),(0.25,3),(0.5,6),(1,12),(2,24),(3,36),(4,48)]
 
             # Match MRI by name, then by time
+            '''
             used_months = set([])
             used_cols = set([])
+            print mri_diffs
+            print mri_vc
             for m_annual, m in months:
                 month_found = None
                 for mridiff, mrivc in sorted(zip(mri_diffs, mri_vc), key=lambda x: abs(m_annual-x[0])):
+                    if mrivc not in used_cols:
+                        adni2_mir_visit_counts[diag][vc].append(subj)
+                        used_cols.append(vc)
                     if mridiff in used_months:
                         continue
-                    if (("Month %s" % m) in mrivc or ("Year %s" % m_annual) in mrivc) and abs(m_annual - mridiff) <= 0.7: # use time as sanity check
-                        month_found = m
-                        used_months.add(mridiff)
-                        chosen_timepoints.append((m,mridiff))
-                        break
+                
+                if vc.lower() == 'bl':
+                    if 'bl' not in used:
+                        adni2_cross_visit_counts[diag]['BL'].append(subj)
+                        used.add('bl')
+                    continue
+                if not vc.startswith('m'):
+                    continue
+                if vc not in used:
+                    adni2_cross_visit_counts[diag][vc].append(subj)
+                    used.add(vc)
+
+
+                    if mrivc.lower() == 'scmri':
+                        if 'bl' not in used:
+                            chosen_timepoints.append((m,mridiff))
+                            adni2_long_visit_counts[diag]['BL'].append(subj)
+                            used_months.add(mridiff)
+                            break
+                    if vc.startswith('m'):
+                        adni2_long_visit_counts[diag][vc].append(subj)
+                        used.add(vc)
+
                 if month_found is not None:
-                    used_cols.add("BL")
                     if month_found == 0 and "BL" not in used_cols:
                         adni2_mri_visit_counts[diag]["BL"].append(subj)
                         used_cols.add("BL")
@@ -283,6 +329,21 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
                         adni2_mri_visit_counts[diag]["m%s" % month_found].append(subj)
             if len(used_months) != len(mri_diffs):
                 print 'FAILED MRI MATCH'
+            '''
+
+            # Match MRI by vc
+            used = set()
+            for vc in mri_vc:
+                if vc.lower() == 'bl':
+                    if 'bl' not in used:
+                        adni2_mri_visit_counts[diag]['BL'].append(subj)
+                        used.add('bl')
+                    continue
+                if not vc.startswith('m'):
+                    continue
+                if vc not in used:
+                    adni2_mri_visit_counts[diag][vc].append(subj)
+                    used.add(vc)
 
             # Match TBM by vc
             used = set()
@@ -301,10 +362,10 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
             # Match Crossfree by vc
             used = set()
             for vc in subj_points['cross']:
-                if vc.lower() == 'scmri':
-                    if 'scmri' not in used:
+                if vc.lower() == 'bl':
+                    if 'bl' not in used:
                         adni2_cross_visit_counts[diag]['BL'].append(subj)
-                        used.add('scmri')
+                        used.add('bl')
                     continue
                 if not vc.startswith('m'):
                     continue
@@ -315,10 +376,10 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
             # Match Longfree by vc
             used = set()
             for vc in subj_points['long']:
-                if vc.lower() == 'scmri':
-                    if 'scmri' not in used:
+                if vc.lower() == 'bl':
+                    if 'bl' not in used:
                         adni2_long_visit_counts[diag]['BL'].append(subj)
-                        used.add('scmri')
+                        used.add('bl')
                     continue
                 if not vc.startswith('m'):
                     continue
@@ -363,6 +424,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni1counts = adni1_mri_visit_counts[diag_row]
         cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
         adni1table.append(cols)
+        output_data = {'Source': 'MRI',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNI1',
+                       'BL': cols[1],
+                       'year1': cols[2],
+                       'year2': cols[3],
+                       'year3': cols[4],
+                       'year4': cols[5],
+                       'year5': '',
+                       'm3': '',
+                       'm6': '',
+                       'm12': '',
+                       'm24': '',
+                       'm36': '',
+                       'm48': ''}
+        rows.append(output_data)
     print tabulate(adni1table)
 
     print "ADNIGO/2 MRI's"
@@ -372,6 +449,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni2counts = adni2_mri_visit_counts[diag_row]
         cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
         adni2table.append(cols)
+        output_data = {'Source': 'MRI',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNIGO/2',
+                       'BL': cols[1],
+                       'year1': '',
+                       'year2': '',
+                       'year3': '',
+                       'year4': '',
+                       'year5': '',
+                       'm3': cols[2],
+                       'm6': cols[3],
+                       'm12': cols[4],
+                       'm24': cols[5],
+                       'm36': cols[6],
+                       'm48': cols[7]}
+        rows.append(output_data)
     print tabulate(adni2table)
 
     print '\n\n'
@@ -382,6 +475,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni1counts = adni1_tbm_visit_counts[diag_row]
         cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
         adni1table.append(cols)
+        output_data = {'Source': 'TBMSyn',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNI1',
+                       'BL': '',
+                       'year1': cols[1],
+                       'year2': cols[2],
+                       'year3': cols[3],
+                       'year4': cols[4],
+                       'year5': '',
+                       'm3': '',
+                       'm6': '',
+                       'm12': '',
+                       'm24': '',
+                       'm36': '',
+                       'm48': ''}
+        rows.append(output_data)
     print tabulate(adni1table)
 
     print "ADNIGO/2 TBMSyn's"
@@ -391,6 +500,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni2counts = adni2_tbm_visit_counts[diag_row]
         cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
         adni2table.append(cols)
+        output_data = {'Source': 'TBMSyn',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNIGO/2',
+                       'BL': '',
+                       'year1': '',
+                       'year2': '',
+                       'year3': '',
+                       'year4': '',
+                       'year5': '',
+                       'm3': cols[1],
+                       'm6': cols[2],
+                       'm12': cols[3],
+                       'm24': cols[4],
+                       'm36': cols[5],
+                       'm48': cols[6]}
+        rows.append(output_data)
     print tabulate(adni2table)
 
     print '\n\n'
@@ -401,6 +526,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni1counts = adni1_bsi_visit_counts[diag_row]
         cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
         adni1table.append(cols)
+        output_data = {'Source': 'BSI',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNI1',
+                       'BL': '',
+                       'year1': cols[1],
+                       'year2': cols[2],
+                       'year3': cols[3],
+                       'year4': cols[4],
+                       'year5': '',
+                       'm3': '',
+                       'm6': '',
+                       'm12': '',
+                       'm24': '',
+                       'm36': '',
+                       'm48': ''}
+        rows.append(output_data)
     print tabulate(adni1table)
 
     print "ADNIGO/2 BSI's"
@@ -410,6 +551,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni2counts = adni2_bsi_visit_counts[diag_row]
         cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
         adni2table.append(cols)
+        output_data = {'Source': 'BSI',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNIGO/2',
+                       'BL': '',
+                       'year1': '',
+                       'year2': '',
+                       'year3': '',
+                       'year4': '',
+                       'year5': '',
+                       'm3': cols[1],
+                       'm6': cols[2],
+                       'm12': cols[3],
+                       'm24': cols[4],
+                       'm36': cols[5],
+                       'm48': cols[6]}
+        rows.append(output_data)
     print tabulate(adni2table)
 
     print '\n\n'
@@ -420,6 +577,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni1counts = adni1_long_visit_counts[diag_row]
         cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
         adni1table.append(cols)
+        output_data = {'Source': 'Longitudinal Freesurfer',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNI1',
+                       'BL': cols[1],
+                       'year1': cols[2],
+                       'year2': cols[3],
+                       'year3': cols[4],
+                       'year4': cols[5],
+                       'year5': '',
+                       'm3': '',
+                       'm6': '',
+                       'm12': '',
+                       'm24': '',
+                       'm36': '',
+                       'm48': ''}
+        rows.append(output_data)
     print tabulate(adni1table)
 
     print "ADNIGO/2 Longitudinal Freesurfer's"
@@ -429,6 +602,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni2counts = adni2_long_visit_counts[diag_row]
         cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
         adni2table.append(cols)
+        output_data = {'Source': 'Longitudinal Freesurfer',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNIGO/2',
+                       'BL': cols[1],
+                       'year1': '',
+                       'year2': '',
+                       'year3': '',
+                       'year4': '',
+                       'year5': '',
+                       'm3': cols[2],
+                       'm6': cols[3],
+                       'm12': cols[4],
+                       'm24': cols[5],
+                       'm36': cols[6],
+                       'm48': cols[7]}
+        rows.append(output_data)
     print tabulate(adni2table)
 
     print '\n\n'
@@ -439,6 +628,22 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni1counts = adni1_cross_visit_counts[diag_row]
         cols = [diag_row] + [len(adni1counts[k]) for k in key_order]
         adni1table.append(cols)
+        output_data = {'Source': 'Cross-sectional Freesurfer',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNI1',
+                       'BL': cols[1],
+                       'year1': cols[2],
+                       'year2': cols[3],
+                       'year3': cols[4],
+                       'year4': cols[5],
+                       'year5': '',
+                       'm3': '',
+                       'm6': '',
+                       'm12': '',
+                       'm24': '',
+                       'm36': '',
+                       'm48': ''}
+        rows.append(output_data)
     print tabulate(adni1table)
 
     print "ADNIGO/2 Cross-sectional Freesurfer's"
@@ -448,9 +653,25 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         adni2counts = adni2_cross_visit_counts[diag_row]
         cols = [diag_row] + [len(adni2counts[k]) for k in key_order]
         adni2table.append(cols)
+        output_data = {'Source': 'Cross-sectional Freesurfer',
+                       'Diagnosis': diag_row,
+                       'Phase': 'ADNIGO/2',
+                       'BL': cols[1],
+                       'year1': '',
+                       'year2': '',
+                       'year3': '',
+                       'year4': '',
+                       'year5': '',
+                       'm3': cols[2],
+                       'm6': cols[3],
+                       'm12': cols[4],
+                       'm24': cols[5],
+                       'm36': cols[6],
+                       'm48': cols[7]}
+        rows.append(output_data)
     print tabulate(adni2table)
 
-
+    dumpCSV(numerical_output, headers, rows)
 
     '''
     interesting_counts = dict(interesting_counts)
@@ -925,6 +1146,7 @@ if __name__ == "__main__":
     master_file = "../FDG_AV45_COGdata_07_15_15.csv"
     registry_file = "../docs/registry_clean.csv"
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
+    numerical_output = "../longitudinal_mri_counts.csv"
     
     mri_meta_file = "../docs/MPRAGEMETA.csv"
     #mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
@@ -955,7 +1177,7 @@ if __name__ == "__main__":
     print 'MRI patients: %s' % len(mri_data)
     master_data = importMaster(master_file)
 
-    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data)
+    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
 
 
 

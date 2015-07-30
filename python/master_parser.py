@@ -13,6 +13,31 @@ from scipy import stats, optimize
 
 from utils import *
 
+def syncGDData(old_headers, old_lines, gd_file, registry_file, dump_to=None):
+    gd_by_subj = importGD(gd_file)
+
+    to_add_headers = []
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        scores = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, gd_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+
 def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None):
     registry = importRegistry(registry_file)
     adas_by_subj = importADASCog(adni1_adas_file, adnigo2_adas_file, registry=registry)
@@ -1253,6 +1278,8 @@ def runPipeline():
     new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
     print "\nSYNCING CSF\n"
     new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=None)
+    print "\nSYNCING GD\n"
+    new_headers, new_lines = syncGDData(new_headers, new_lines, gd_file, registry_file, dump_to=None)
     print "\nSYNCING WMH\n"
     new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, registry_file, dump_to=output_file)
 
@@ -1284,5 +1311,7 @@ if __name__ == '__main__':
     csf_files = ['../docs/UPENNBIOMK5_firstset.csv','../docs/UPENNBIOMK6_secondset.csv','../docs/UPENNBIOMK7_thirdset.csv','../docs/UPENNBIOMK8_fourthset.csv']
     # WMH file
     wmh_file = '../docs/UCD_ADNI2_WMH_03_12_15.csv'
+    # GD file
+    gd_file = '../docs/GDSCALE.csv'
 
     runPipeline()
