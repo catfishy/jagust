@@ -278,72 +278,6 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         elif subj >= 2000:
             months = [(0.0,0),(0.25,3),(0.5,6),(1,12),(2,24),(3,36),(4,48)]
 
-            # Match MRI by name, then by time
-            '''
-            used_months = set([])
-            used_cols = set([])
-            print mri_diffs
-            print mri_vc
-            for m_annual, m in months:
-                month_found = None
-                for mridiff, mrivc in sorted(zip(mri_diffs, mri_vc), key=lambda x: abs(m_annual-x[0])):
-                    if mrivc not in used_cols:
-                        adni2_mir_visit_counts[diag][vc].append(subj)
-                        used_cols.append(vc)
-                    if mridiff in used_months:
-                        continue
-                
-                if vc.lower() == 'bl':
-                    if 'bl' not in used:
-                        adni2_cross_visit_counts[diag]['BL'].append(subj)
-                        used.add('bl')
-                    continue
-                if not vc.startswith('m'):
-                    continue
-                if vc not in used:
-                    adni2_cross_visit_counts[diag][vc].append(subj)
-                    used.add(vc)
-
-
-                    if mrivc.lower() == 'scmri':
-                        if 'bl' not in used:
-                            chosen_timepoints.append((m,mridiff))
-                            adni2_long_visit_counts[diag]['BL'].append(subj)
-                            used_months.add(mridiff)
-                            break
-                    if vc.startswith('m'):
-                        adni2_long_visit_counts[diag][vc].append(subj)
-                        used.add(vc)
-
-                if month_found is not None:
-                    if month_found == 0 and "BL" not in used_cols:
-                        adni2_mri_visit_counts[diag]["BL"].append(subj)
-                        used_cols.add("BL")
-                    elif "m%s" % month_found not in used_cols:
-                        adni2_mri_visit_counts[diag]["m%s" % month_found].append(subj)
-                        used_cols.add("m%s" % month_found)
-            for m_annual, m in months:
-                month_found = None
-                if m in used_cols:
-                    continue
-                for mridiff, mrivc in sorted(zip(mri_diffs, mri_vc), key=lambda x: abs(m_annual-x[0])):
-                    if mridiff in used_months:
-                        continue
-                    if abs(m_annual - mridiff) < 0.8:
-                        print "MIRACULOUS"
-                        month_found = m
-                        used_months.add(mridiff)
-                        chosen_timepoints.append((m,mridiff))
-                        break
-                if month_found is not None and month_found not in used_cols:
-                    if month_found == 0:
-                        adni2_mri_visit_counts[diag]["BL"].append(subj)
-                    else:
-                        adni2_mri_visit_counts[diag]["m%s" % month_found].append(subj)
-            if len(used_months) != len(mri_diffs):
-                print 'FAILED MRI MATCH'
-            '''
-
             # Match MRI by vc
             used = set()
             for vc in mri_vc:
@@ -1157,44 +1091,44 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
 
 if __name__ == "__main__":
 
-include_failed = True
+    include_failed = True
 
-# Input/output/lookup files
-master_file = "../FDG_AV45_COGdata_07_15_15.csv"
-registry_file = "../docs/registry_clean.csv"
-pet_meta_file = "../docs/PET_META_LIST_edited.csv"
-numerical_output = "../longitudinal_mri_counts.csv"
+    # Input/output/lookup files
+    master_file = "../FDG_AV45_COGdata_07_15_15.csv"
+    registry_file = "../docs/registry_clean.csv"
+    pet_meta_file = "../docs/PET_META_LIST_edited.csv"
+    numerical_output = "../longitudinal_mri_counts.csv"
 
-mri_meta_file = "../docs/MPRAGEMETA.csv"
-#mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
+    mri_meta_file = "../docs/MPRAGEMETA.csv"
+    #mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
 
-# BSI file
-bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
-# long freesurfer file
-longfree_file = '../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_08_01_14.csv'
-longfree_adni1_file = "../mr_docs/UCSF/longitudinal/UCSFFSL_05_20_15_ADNI1.csv"
-# cross freesurfer file
-crossfree_file = "../mr_docs/UCSF/cross_section/UCSFFSX51_05_20_15.csv"
-# TBMsyn file
-tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
+    # BSI file
+    bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
+    # long freesurfer file
+    longfree_file = '../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_08_01_14.csv'
+    longfree_adni1_file = "../mr_docs/UCSF/longitudinal/UCSFFSL_05_20_15_ADNI1.csv"
+    # cross freesurfer file
+    crossfree_file = "../mr_docs/UCSF/cross_section/UCSFFSX51_05_20_15.csv"
+    # TBMsyn file
+    tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
 
-pet_data = importPetMETA(pet_meta_file)
-print 'PET patients: %s' % len(pet_data)
-bsi_data = importBSI(bsi_file, include_failed=include_failed)
-print 'BSI patients: %s' % len(bsi_data)
-longfree_data = importLongitudinalFreesurfer(longfree_file, include_failed=include_failed)
-print 'Longfree patients: %s' % len(longfree_data)
-longfree_data_adni1 = importLongitudinalFreesurfer(longfree_adni1_file, include_failed=include_failed)
-print 'Longfree ADNI1 patients: %s' % len(longfree_data_adni1)
-crossfree_data = importCrossSectionFreesurfer(crossfree_file, include_failed=include_failed)
-print "Crossfree patients: %s" % len(crossfree_data)
-tbm_data = importTBMSyn(tbm_file)
-print 'TBM patients: %s' % len(tbm_data)
-mri_data = importMRI(mri_meta_file)
-print 'MRI patients: %s' % len(mri_data)
-master_data = importMaster(master_file)
+    pet_data = importPetMETA(pet_meta_file)
+    print 'PET patients: %s' % len(pet_data)
+    bsi_data = importBSI(bsi_file, include_failed=include_failed)
+    print 'BSI patients: %s' % len(bsi_data)
+    longfree_data = importLongitudinalFreesurfer(longfree_file, include_failed=include_failed)
+    print 'Longfree patients: %s' % len(longfree_data)
+    longfree_data_adni1 = importLongitudinalFreesurfer(longfree_adni1_file, include_failed=include_failed)
+    print 'Longfree ADNI1 patients: %s' % len(longfree_data_adni1)
+    crossfree_data = importCrossSectionFreesurfer(crossfree_file, include_failed=include_failed)
+    print "Crossfree patients: %s" % len(crossfree_data)
+    tbm_data = importTBMSyn(tbm_file)
+    print 'TBM patients: %s' % len(tbm_data)
+    mri_data = importMRI(mri_meta_file)
+    print 'MRI patients: %s' % len(mri_data)
+    master_data = importMaster(master_file)
 
-avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
+    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
 
 
 
