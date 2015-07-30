@@ -580,22 +580,26 @@ def importGD_DOD(gd_file):
         data[subj]['gdtotal']  = gdtotal
     return dict(data)
 
-def importGD(gd_file):
+def importGD(gd_file, registry=None):
     headers, lines = parseCSV(gd_file)
     data = defaultdict(list)
     for line in lines:
         subj = int(line['RID'])
-        vc = line['VISCODE']
-        vc2 = line['VISCODE2']
+        vc = line['VISCODE'].strip()
+        vc2 = line['VISCODE2'].strip()
         try:
-            examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
-        except:
             examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
-        gdtotal = int(line['GDTOTAL'])
+        except:
+            examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else None
+        if examdate is None:
+            print "Couldn't find GD examdate for %s, %s, %s" % (subj, vc, vc2)
+            continue
+        gdtotal = line['GDTOTAL']
         data[subj].append({'vc': vc,
                            'vc2': vc2,
                            'EXAMDATE': examdate,
                            'GDTOTAL': gdtotal})
+    data = dict(data)
     return data
 
 def importCSF(csf_files, registry=None):

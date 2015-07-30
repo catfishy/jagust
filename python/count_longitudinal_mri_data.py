@@ -96,8 +96,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
             'long': set(),
             'cross': set(),
             'tbm': set(),
-            'mri': set(),
-    }
+            'mri': set()}
 
     points_by_subj = {}
     for subj,v in pet_data.iteritems():
@@ -146,6 +145,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         else:
             mri_diffs = []
             mri_vc = []
+        subj_points['mri_vc'] = mri_vc
         #print "%s: %s -> %s" % (subj, len(subj_mri), len(subj_points['mri']))
 
         # remove duplicates from subject points
@@ -167,7 +167,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         print subj_tbm_bl
         for k,v in subj_points.items():
             if subj >= 2000:
-                if k != 'mri':
+                if k != 'mri' and k != 'mri_vc':
                     alls[k] |= set(v)
                     print "%s: %s" % (k,v)
                 if k == 'mri':
@@ -1152,49 +1152,49 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
                               sum(bsi_graph[5][6:]),
                               sum(bsi_graph[5][7:])])
     print tabulate(bsi_graph_morethan) + '\n'
-
+    return points_by_subj
 
 
 if __name__ == "__main__":
 
-    include_failed = True
+include_failed = True
 
-    # Input/output/lookup files
-    master_file = "../FDG_AV45_COGdata_07_15_15.csv"
-    registry_file = "../docs/registry_clean.csv"
-    pet_meta_file = "../docs/PET_META_LIST_edited.csv"
-    numerical_output = "../longitudinal_mri_counts.csv"
-    
-    mri_meta_file = "../docs/MPRAGEMETA.csv"
-    #mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
-    
-    # BSI file
-    bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
-    # long freesurfer file
-    longfree_file = '../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_08_01_14.csv'
-    longfree_adni1_file = "../mr_docs/UCSF/longitudinal/UCSFFSL_05_20_15_ADNI1.csv"
-    # cross freesurfer file
-    crossfree_file = "../mr_docs/UCSF/cross_section/UCSFFSX51_05_20_15.csv"
-    # TBMsyn file
-    tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
+# Input/output/lookup files
+master_file = "../FDG_AV45_COGdata_07_15_15.csv"
+registry_file = "../docs/registry_clean.csv"
+pet_meta_file = "../docs/PET_META_LIST_edited.csv"
+numerical_output = "../longitudinal_mri_counts.csv"
 
-    pet_data = importPetMETA(pet_meta_file)
-    print 'PET patients: %s' % len(pet_data)
-    bsi_data = importBSI(bsi_file, include_failed=include_failed)
-    print 'BSI patients: %s' % len(bsi_data)
-    longfree_data = importLongitudinalFreesurfer(longfree_file, include_failed=include_failed)
-    print 'Longfree patients: %s' % len(longfree_data)
-    longfree_data_adni1 = importLongitudinalFreesurfer(longfree_adni1_file, include_failed=include_failed)
-    print 'Longfree ADNI1 patients: %s' % len(longfree_data_adni1)
-    crossfree_data = importCrossSectionFreesurfer(crossfree_file, include_failed=include_failed)
-    print "Crossfree patients: %s" % len(crossfree_data)
-    tbm_data = importTBMSyn(tbm_file)
-    print 'TBM patients: %s' % len(tbm_data)
-    mri_data = importMRI(mri_meta_file)
-    print 'MRI patients: %s' % len(mri_data)
-    master_data = importMaster(master_file)
+mri_meta_file = "../docs/MPRAGEMETA.csv"
+#mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
 
-    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
+# BSI file
+bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
+# long freesurfer file
+longfree_file = '../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_08_01_14.csv'
+longfree_adni1_file = "../mr_docs/UCSF/longitudinal/UCSFFSL_05_20_15_ADNI1.csv"
+# cross freesurfer file
+crossfree_file = "../mr_docs/UCSF/cross_section/UCSFFSX51_05_20_15.csv"
+# TBMsyn file
+tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
+
+pet_data = importPetMETA(pet_meta_file)
+print 'PET patients: %s' % len(pet_data)
+bsi_data = importBSI(bsi_file, include_failed=include_failed)
+print 'BSI patients: %s' % len(bsi_data)
+longfree_data = importLongitudinalFreesurfer(longfree_file, include_failed=include_failed)
+print 'Longfree patients: %s' % len(longfree_data)
+longfree_data_adni1 = importLongitudinalFreesurfer(longfree_adni1_file, include_failed=include_failed)
+print 'Longfree ADNI1 patients: %s' % len(longfree_data_adni1)
+crossfree_data = importCrossSectionFreesurfer(crossfree_file, include_failed=include_failed)
+print "Crossfree patients: %s" % len(crossfree_data)
+tbm_data = importTBMSyn(tbm_file)
+print 'TBM patients: %s' % len(tbm_data)
+mri_data = importMRI(mri_meta_file)
+print 'MRI patients: %s' % len(mri_data)
+master_data = importMaster(master_file)
+
+avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
 
 
 

@@ -10,19 +10,82 @@ import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 from scipy import stats, optimize
+import numpy as np
 
 from utils import *
 
 def syncGDData(old_headers, old_lines, gd_file, registry_file, dump_to=None):
-    gd_by_subj = importGD(gd_file)
+    registry = importRegistry(registry_file)
+    gd_by_subj = importGD(gd_file, registry=registry)
 
-    to_add_headers = []
+    to_add_headers = ['GD_TOTAL.%s' % (i+1) for i in range(10)]
+    to_add_headers += ['GD_timePostAV45.%s' % (i+1) for i in range(10)]
+    to_add_headers += ['GD_AV45_6MTHS', 'GD_AV45_DATE',
+                       'GD_AV45_2_6MTHS', 'GD_AV45_2_DATE',
+                       'GD_AV45_3_6MTHS', 'GD_AV45_3_DATE']
+    to_add_headers.append('GD_slope')
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
         scores = sorted(subj_row, key=lambda x: x['EXAMDATE'])
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        new_subj_data = {}
+        six_months = 31 * 6
 
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(scores, bl_av45, av45_2, av45_3, day_limit=six_months)
+        if av45_bl_closest:
+            new_subj_data['GD_AV45_6MTHS'] = av45_bl_closest['GDTOTAL']
+            new_subj_data['GD_AV45_DATE'] = av45_bl_closest['EXAMDATE']
+        else:
+            new_subj_data['GD_AV45_6MTHS'] = ''
+            new_subj_data['GD_AV45_DATE'] = ''
+        if av45_2_closest:
+            new_subj_data['GD_AV45_2_6MTHS'] = av45_2_closest['GDTOTAL']
+            new_subj_data['GD_AV45_2_DATE'] = av45_2_closest['EXAMDATE']
+        else:
+            new_subj_data['GD_AV45_2_6MTHS'] = ''
+            new_subj_data['GD_AV45_2_DATE'] = ''
+        if av45_3_closest:
+            new_subj_data['GD_AV45_3_6MTHS'] = av45_3_closest['GDTOTAL']
+            new_subj_data['GD_AV45_3_DATE'] = av45_3_closest['EXAMDATE']
+        else:
+            new_subj_data['GD_AV45_3_6MTHS'] = ''
+            new_subj_data['GD_AV45_3_DATE'] = ''
+
+        
+        post_av45_points = []
+        for i in range(10):
+            if i >= len(scores):
+                post_diff = ''
+                tot_score = ''
+            else:
+                cur_score = scores[i]
+                date = cur_score['EXAMDATE']
+                tot_score = cur_score['GDTOTAL']
+                try:
+                    tot_score = int(tot_score)
+                except:
+                    pass
+                if bl_av45 is not None:
+                    post_diff_days = (date - bl_av45).days
+                    post_diff_years = post_diff_days / 365.0
+                    if isinstance(tot_score, int) and post_diff_days > -30:
+                        post_av45_points.append((post_diff_years, tot_score))
+                else:
+                    post_diff_years = ''
+            new_subj_data['GD_TOTAL.%s' % (i+1)] = tot_score
+            new_subj_data['GD_timePostAV45.%s' % (i+1)] = post_diff_years
+        # get slope
+        if len(post_av45_points) >= 2:
+            post_av45_points = np.array(post_av45_points)
+            post_times = post_av45_points[:,0]
+            post_values = post_av45_points[:,1]
+            slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            new_subj_data['GD_slope'] = slope
+        else:
+            new_subj_data['GD_slope'] = ''
+
+        return new_subj_data
 
     new_lines = []
     for linenum, old_l in enumerate(old_lines):

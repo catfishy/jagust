@@ -1,9 +1,17 @@
 from collections import defaultdict
 import pylab as P
 import numpy as np
+import itertools
 from utils import *
 
 
+def generate_Rousset_input(subjs, groupings, output_file):
+    # write combinations
+    outfile = open(output_file,'w')
+    for a,b in itertools.product(subjs, groupings):
+        line = "%s;%s\n" % (a,b)
+        outfile.write(line)
+    outfile.close()
 
 
 def main(master_file):
@@ -75,5 +83,29 @@ def main(master_file):
     for _ in AD_high: print _
 
 if __name__ == "__main__":
+
+    # To find low/mid/high scans to run PVC on
+    '''
     master = "../FDG_AV45_COGdata_07_28_15.csv"
     main(master)
+    '''
+
+    # To generate the Rousset SGE input file
+    subj = [4222,
+            4580,
+            4555,
+            4441,
+            4151,
+            4277,
+            4172,
+            4924,
+            4755,
+            4280,
+            5187,
+            5146]
+    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings/grouping_1.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings/grouping_2.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings/grouping_3.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings/grouping_4.mat']
+    output = 'input.txt'
+    generate_Rousset_input(subj, groupings, output)
