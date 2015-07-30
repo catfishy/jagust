@@ -92,7 +92,12 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
                               'LMCI': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []},
                               'AD': {"m3": [], "m6": [], "m12": [], "m24": [], "m36": [], "m48": []}}
 
-
+    alls = {'bsi': set(),
+            'long': set(),
+            'cross': set(),
+            'tbm': set(),
+            'mri': set(),
+    }
 
     points_by_subj = {}
     for subj,v in pet_data.iteritems():
@@ -126,7 +131,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         subj_points['tbm'] = [_['VISCODE2'].replace('m0','m') for _ in subj_tbm if _['BL_EXAMDATE'] >= bl_av45]
 
         if subj in mri_data:
-            subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc']) for _ in mri_data[subj]])))
+            subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc']) for _ in mri_data[subj] if _['EXAMDATE'] >= bl_av45])))
         else:
             subj_mri = []
         subj_points['mri'] = [_ for _ in subj_mri if _[0] >= bl_av45]
@@ -134,7 +139,10 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
             first_mri_time = subj_points['mri'][0][0]
             mri_diffs = [(a-first_mri_time).days/ 365.0 for a,b in subj_points['mri']]
             mri_vc = [convertVisitName(b) if convertVisitName(b) else b for a,b in subj_points['mri']]
-            mri_vc = [vc_lookup.get(subj,{}).get(_,_).replace('m0','m').replace('scmri','bl') for _ in mri_vc] 
+            mri_vc = [vc_lookup.get(subj,{}).get(_,_).replace('m0','m').replace('scmri','bl') for _ in mri_vc]
+            if subj >= 2000:
+                print subj_mri
+                print mri_vc
         else:
             mri_diffs = []
             mri_vc = []
@@ -158,8 +166,13 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         print first_mri_time
         print subj_tbm_bl
         for k,v in subj_points.items():
-            print "%s: %s" % (k,v)
-
+            if subj >= 2000:
+                if k != 'mri':
+                    alls[k] |= set(v)
+                    print "%s: %s" % (k,v)
+                if k == 'mri':
+                    alls[k] |= set(mri_vc)
+            
         # add to adni1 or adnigo/2 counts
         chosen_timepoints = []
         if subj < 2000:
@@ -415,6 +428,10 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
 
     print len(set(n_m3_mri) & set(n_m3_tbm))
     '''
+
+    print "ALLS"
+    print alls
+
 
     print '\n\n'
     print "ADNI1 MRI's"
@@ -1140,7 +1157,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
 
 if __name__ == "__main__":
 
-    include_failed = False
+    include_failed = True
 
     # Input/output/lookup files
     master_file = "../FDG_AV45_COGdata_07_15_15.csv"

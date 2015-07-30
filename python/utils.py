@@ -23,6 +23,8 @@ def createVisitIDLookup(lookupfile):
 
 def convertVisitName(vc_name):
     vc_name = ' - '.join([_.strip() for _ in vc_name.split('-')])
+    if 'ADNI1/GO' in vc_name:
+        vc_name = vc_name.replace('ADNI1/GO','').strip()
     if 'ADNIGO' in vc_name:
         vc_name = vc_name.replace('ADNIGO','').strip()
     if 'ADNI1' in vc_name:
