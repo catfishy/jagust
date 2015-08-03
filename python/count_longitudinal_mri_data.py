@@ -130,14 +130,15 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         subj_points['tbm'] = [_['VISCODE2'].replace('m0','m') for _ in subj_tbm if _['BL_EXAMDATE'] >= bl_av45]
 
         if subj in mri_data:
-            subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc']) for _ in mri_data[subj] if _['EXAMDATE'] >= bl_av45])))
+            subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc'],_['strength']) for _ in mri_data[subj] if _['EXAMDATE'] >= bl_av45])))
         else:
             subj_mri = []
-        subj_points['mri'] = [_ for _ in subj_mri if _[0] >= bl_av45]
+        subj_points['mri'] = subj_mri
         if len(subj_points['mri']) > 0:
             first_mri_time = subj_points['mri'][0][0]
-            mri_diffs = [(a-first_mri_time).days/ 365.0 for a,b in subj_points['mri']]
-            mri_vc = [convertVisitName(b) if convertVisitName(b) else b for a,b in subj_points['mri']]
+            mri_diffs = [(a-first_mri_time).days/ 365.0 for a,b,c in subj_points['mri']]
+            mri_vc = [convertVisitName(b) if convertVisitName(b) else b for a,b,c in subj_points['mri']]
+            mri_strengths = [c for a,b,c in subj_points['mri']]
             mri_vc = [vc_lookup.get(subj,{}).get(_,_).replace('m0','m').replace('scmri','bl') for _ in mri_vc]
             if subj >= 2000:
                 print subj_mri
@@ -1089,8 +1090,35 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
     return points_by_subj
 
 
-if __name__ == "__main__":
+def findMRIDiscrepancies(key, discrep_output):
+    avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
+    outfile = open(discrep_output,'w')
+    subjects = avai_points.keys()
+    headers = ['RID', 'VISCODE2', 'Visit','ScanDate','MagStrength']
+    lines = []
+    for subj in subjects:
+        mris = avai_points[subj]['mri']
+        mrivcs = avai_points[subj]['mri_vc']
+        vcs_tocompare = avai_points[subj][key]
+        print "%s vs %s" % (mrivcs, vcs_tocompare)
+        if 'bl' not in mrivcs and key not in set(['long', 'cross']):
+            continue
+        for i, vc in enumerate(mrivcs):
+            if vc.lower() == 'bl' and key not in set(['cross', 'long']):
+                continue
 
+            if vc not in vcs_tocompare:
+                # write lines
+                new_line = {'RID': subj,
+                            'VISCODE2': vc,
+                            'Visit': mris[i][1],
+                            'ScanDate': mris[i][0],
+                            'MagStrength': mris[i][2]}
+                new_line = convertToCSVDataType(new_line, decimal_places=2)
+                lines.append(new_line)
+    dumpCSV(discrep_output,headers,lines)
+
+if __name__ == "__main__":
     include_failed = True
 
     # Input/output/lookup files
@@ -1128,9 +1156,16 @@ if __name__ == "__main__":
     print 'MRI patients: %s' % len(mri_data)
     master_data = importMaster(master_file)
 
+
+    # main run
+    '''
     avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
-
-
+    '''
+    # discrepancy run
+    cross_discrep = '../cross_sectional_missing_mris.csv'
+    tbm_discrep = '../tbmsyn_missing_mris.csv'
+    #findMRIDiscrepancies('cross', cross_discrep)
+    findMRIDiscrepancies('tbm', tbm_discrep)
 
 
 

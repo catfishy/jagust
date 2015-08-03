@@ -810,7 +810,8 @@ def importMRI(mri_file):
         else:
             vc = None
 
-        data[subj].append({'EXAMDATE' : date, 'vc': vc})
+        MagStrength = line['MagStrength']
+        data[subj].append({'EXAMDATE' : date, 'vc': vc, 'strength': MagStrength})
     print bad_sequences
     return dict(data)
 
