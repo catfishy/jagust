@@ -1024,6 +1024,10 @@ def createROIGrouping(names, indices, output_file):
 def createMATFile(name, data, output_file):
     sio.savemat(output_file, {name: data})
 
+def loadMATFile(input_file):
+    data = sio.loadmat(input_file)
+    return data
+
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     fdg_extract_file = "../docs/FDG_preprocess_output_01_20_15/Tue-Jan-20-15-38-15-2015_FDGmetaroi.csv"
