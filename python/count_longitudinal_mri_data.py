@@ -123,11 +123,12 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
 
         if subj in tbm_data:
             subj_tbm = sorted(tbm_data[subj], key=lambda x: x['EXAMDATE'])
-            subj_tbm_bl = tbm_data[subj][0]['VISCODEBL']
+            subj_tbm_bl = tbm_data[subj][0]['VISCODEBL'].replace('scmri','bl')
         else:
             subj_tbm = []
             subj_tbm_bl = None
         subj_points['tbm'] = [_['VISCODE2'].replace('m0','m') for _ in subj_tbm if _['BL_EXAMDATE'] >= bl_av45]
+        subj_points['tbm_bl'] = subj_tbm_bl
 
         if subj in mri_data:
             subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc'],_['strength']) for _ in mri_data[subj] if _['EXAMDATE'] >= bl_av45])))
@@ -151,6 +152,8 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
 
         # remove duplicates from subject points
         for k in subj_points.keys():
+            if k not in set(['mri', 'mri_vc', 'tbm', 'cross', 'long', 'bsi']):
+                continue
             values = subj_points[k]
             seen = set()
             filtered = []
@@ -168,7 +171,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         print subj_tbm_bl
         for k,v in subj_points.items():
             if subj >= 2000:
-                if k != 'mri' and k != 'mri_vc':
+                if k in set(['cross', 'long', 'tbm', 'bsi']):
                     alls[k] |= set(v)
                     print "%s: %s" % (k,v)
                 if k == 'mri':
@@ -1096,17 +1099,32 @@ def findMRIDiscrepancies(key, discrep_output):
     subjects = avai_points.keys()
     headers = ['RID', 'VISCODE2', 'Visit','ScanDate','MagStrength']
     lines = []
+    mri_counts = defaultdict(int)
+    other_counts = defaultdict(int)
     for subj in subjects:
+        print subj
         mris = avai_points[subj]['mri']
         mrivcs = avai_points[subj]['mri_vc']
-        vcs_tocompare = avai_points[subj][key]
-        print "%s vs %s" % (mrivcs, vcs_tocompare)
-        if 'bl' not in mrivcs and key not in set(['long', 'cross']):
+        if key in set(['tbm', 'bsi', 'long']) and len(mrivcs) < 2:
+            # these measurements require more than one timepoint
             continue
+        vcs_tocompare = avai_points[subj][key]
+        baseline_vc = avai_points[subj].get("%s_bl" % key, None)
+        if baseline_vc is not None:
+            print baseline_vc
+            try:
+                # cut out all the mri's before the baseline
+                mrivcs = mrivcs[mrivcs.index(baseline_vc)+1:]
+                print "Cut out before %s" % baseline_vc
+            except ValueError as e:
+                pass
+        else:
+            # remove the first one if tbm or bsi
+            if key in set(['tbm', 'bsi']):
+                mrivcs = mrivcs[1:]
+        print "%s vs %s" % (mrivcs, vcs_tocompare)
         for i, vc in enumerate(mrivcs):
-            if vc.lower() == 'bl' and key not in set(['cross', 'long']):
-                continue
-
+            mri_counts[vc] += 1
             if vc not in vcs_tocompare:
                 # write lines
                 new_line = {'RID': subj,
@@ -1116,6 +1134,10 @@ def findMRIDiscrepancies(key, discrep_output):
                             'MagStrength': mris[i][2]}
                 new_line = convertToCSVDataType(new_line, decimal_places=2)
                 lines.append(new_line)
+            else:
+                other_counts[vc] += 1
+    print mri_counts
+    print other_counts
     dumpCSV(discrep_output,headers,lines)
 
 if __name__ == "__main__":
