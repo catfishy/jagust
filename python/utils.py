@@ -750,7 +750,7 @@ def importDODMRI(mri_file):
         data[k] = sorted(data[k])
     return data
 
-def importMRI(mri_file):
+def importMRI(mri_file, magstrength_filter=None):
     bad_sequences = set([])
     headers, lines = parseCSV(mri_file)
     data = defaultdict(list)
@@ -811,6 +811,10 @@ def importMRI(mri_file):
             vc = None
 
         MagStrength = line.get('MagStrength','')
+        if magstrength_filter is not None:
+            if MagStrength.strip().lower() != magstrength_filter.strip().lower():
+                continue
+        # find existing
         data[subj].append({'EXAMDATE' : date, 'vc': vc, 'strength': MagStrength})
     print bad_sequences
     return dict(data)

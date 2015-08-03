@@ -131,7 +131,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         subj_points['tbm_bl'] = subj_tbm_bl
 
         if subj in mri_data:
-            subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc'],_['strength']) for _ in mri_data[subj] if _['EXAMDATE'] >= bl_av45])))
+            subj_mri = sorted(list(set([(_['EXAMDATE'],_['vc'],_['strength'])  for _ in mri_data[subj] if _['EXAMDATE'] >= bl_av45])))
         else:
             subj_mri = []
         subj_points['mri'] = subj_mri
@@ -167,7 +167,7 @@ def checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_d
         diag = master_data.get(subj,{}).get('Init_Diagnosis','Unknown')
 
         print subj
-        print first_mri_time
+        #print first_mri_time
         print subj_tbm_bl
         for k,v in subj_points.items():
             if subj >= 2000:
@@ -1101,6 +1101,7 @@ def findMRIDiscrepancies(key, discrep_output):
     lines = []
     mri_counts = defaultdict(int)
     other_counts = defaultdict(int)
+    other_strengths = defaultdict(int)
     for subj in subjects:
         print subj
         mris = avai_points[subj]['mri']
@@ -1135,10 +1136,28 @@ def findMRIDiscrepancies(key, discrep_output):
                 new_line = convertToCSVDataType(new_line, decimal_places=2)
                 lines.append(new_line)
             else:
+                other_strengths[mris[i][2]] += 1
                 other_counts[vc] += 1
     print mri_counts
+    print other_strengths
     print other_counts
     dumpCSV(discrep_output,headers,lines)
+    return lines
+
+def findBothStrengthMRIS():
+    ones = importMRI(mri_meta_file, magstrength_filter='1.5')
+    threes = importMRI(mri_meta_file, magstrength_filter='3.0')
+
+    all_subj = list(set(ones.keys()) | set(threes.keys()))
+
+    overlaps = []
+    for s in all_subj:
+        onescans = {_['vc']: _ for _ in ones.get(s,[])}
+        threescans = {_['vc']: _ for _ in threes.get(s,[])}
+        for k in list(set(onescans.keys()) & set(threescans.keys())):
+            overlaps.append({'RID': s, 'Visit': k})
+    dumpCSV('mri_1.5_and_3.0.csv', ['RID', 'Visit'], overlaps)
+    return overlaps
 
 if __name__ == "__main__":
     include_failed = True
@@ -1149,8 +1168,8 @@ if __name__ == "__main__":
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
     numerical_output = "../longitudinal_mri_counts.csv"
 
-    #mri_meta_file = "../docs/MPRAGEMETA.csv"
-    mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
+    mri_meta_file = "../docs/MPRAGEMETA.csv"
+    #mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
 
     # BSI file
     bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
@@ -1174,7 +1193,9 @@ if __name__ == "__main__":
     print "Crossfree patients: %s" % len(crossfree_data)
     tbm_data = importTBMSyn(tbm_file)
     print 'TBM patients: %s' % len(tbm_data)
-    mri_data = importMRI(mri_meta_file)
+
+    magfilter='3.0'
+    mri_data = importMRI(mri_meta_file, magstrength_filter=magfilter)
     print 'MRI patients: %s' % len(mri_data)
     master_data = importMaster(master_file)
 
@@ -1184,8 +1205,8 @@ if __name__ == "__main__":
     avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
     '''
     # discrepancy run
-    cross_discrep = '../cross_sectional_missing_mris_imgsearch.csv'
-    tbm_discrep = '../tbmsyn_missing_mris_imgsearch.csv'
+    cross_discrep = '../cross_sectional_missing_mris_3.0.csv'
+    tbm_discrep = '../tbmsyn_missing_mris_3.0.csv'
     findMRIDiscrepancies('cross', cross_discrep)
     findMRIDiscrepancies('tbm', tbm_discrep)
 
