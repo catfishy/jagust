@@ -1149,8 +1149,8 @@ if __name__ == "__main__":
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
     numerical_output = "../longitudinal_mri_counts.csv"
 
-    mri_meta_file = "../docs/MPRAGEMETA.csv"
-    #mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
+    #mri_meta_file = "../docs/MPRAGEMETA.csv"
+    mri_meta_file = "../docs/idaSearch_7_09_2015.csv"
 
     # BSI file
     bsi_file = "../mr_docs/Fox/FOXLABBSI_04_30_15.csv"
@@ -1184,9 +1184,9 @@ if __name__ == "__main__":
     avai_points = checkAvailablePointsPerSubject(pet_data, bsi_data, longfree_data, longfree_data_adni1, crossfree_data, tbm_data, mri_data, master_data, numerical_output)
     '''
     # discrepancy run
-    cross_discrep = '../cross_sectional_missing_mris.csv'
-    tbm_discrep = '../tbmsyn_missing_mris.csv'
-    #findMRIDiscrepancies('cross', cross_discrep)
+    cross_discrep = '../cross_sectional_missing_mris_imgsearch.csv'
+    tbm_discrep = '../tbmsyn_missing_mris_imgsearch.csv'
+    findMRIDiscrepancies('cross', cross_discrep)
     findMRIDiscrepancies('tbm', tbm_discrep)
 
 
