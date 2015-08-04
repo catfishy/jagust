@@ -1030,6 +1030,7 @@ def loadMATFile(input_file):
 
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
+    '''
     fdg_extract_file = "../docs/FDG_preprocess_output_01_20_15/Tue-Jan-20-15-38-15-2015_FDGmetaroi.csv"
     registry_file = "../docs/registry_clean.csv"
     registry = importRegistry(registry_file)
@@ -1038,9 +1039,7 @@ if __name__ == "__main__":
     fdg_output = '../UCBERKELEY_FDG_07_29_15.csv'
     headers = ['RID','VISCODE','VISCODE2','UID','EXAMDATE','ROINAME','ROILAT','MEAN','MEDIAN','MODE','MIN','MAX','STDEV','NANVOX','TOTVOX','update_stamp']
     dumpCSV(fdg_output, headers, fdg_rows)
-    sys.exit(1)
-
-
+    '''
 
     # Get ventricle sections
     '''
@@ -1093,14 +1092,16 @@ if __name__ == "__main__":
     cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
     basal_ganglia=[11,50,12,51,13,52]
     occipital=[1011,2011]
-    cerebGM=[8,47]
-    cerebWM=[7,46]
+    left_cerebGM=[8]
+    right_cerebGM=[47]
+    left_cerebWM=[7]
+    right_cerebWM=[46]
     brainstem=[16]
     hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
     non_hemiWM=[85]
     other=[0,10,17,18,26,28,30,49,53,54,58,60,62,80,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
-    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,other]
-    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','other']
+    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,other]
+    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','other']
     print "\n\nGROUPING 1"
     filepath = "grouping_1.mat"
     createROIGrouping(names, all_groups, filepath)
@@ -1118,16 +1119,18 @@ if __name__ == "__main__":
     right_basal_ganglia=[50,51,52]
     left_occipital=[1011]
     right_occipital=[2011]
-    cerebGM=[8,47]
-    cerebWM=[7,46]
+    left_cerebGM=[8]
+    right_cerebGM=[47]
+    left_cerebWM=[7]
+    right_cerebWM=[46]
     brainstem=[16]
     hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
     non_hemiWM=[85]
     other=[0,10,17,18,26,28,30,49,53,54,58,60,62,80,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
     all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,
-                left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,other]
+                left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,other]
     names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate',
-             'left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','other']
+             'left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','other']
     print "\n\nGROUPING 2"
     filepath = "grouping_2.mat"
     createROIGrouping(names, all_groups, filepath)
@@ -1142,15 +1145,17 @@ if __name__ == "__main__":
     occipital=[1011,2011,1005,2005,1013,2013,1021,2021]
     central_gyri=[1017,1022,1024,2017,2024,2022]
     thalamus=[10,49]
-    cerebGM=[8,47]
-    cerebWM=[7,46]
+    left_cerebGM=[8]
+    right_cerebGM=[47]
+    left_cerebWM=[7]
+    right_cerebWM=[46]
     brainstem=[16]
     hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
     non_hemiWM=[85]
     hippocampus=[17,53,1006,1009,1016,1033,1034,2006,2009,2016,2033,2034]
     other=[0,18,26,28,30,54,58,60,62,80,1000,1001,1007,1035,2000,2001,2007,2035]
-    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,central_gyri,thalamus,cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,hippocampus,other]
-    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','central_gyri','thalamus','cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','hippocampus','other']
+    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,central_gyri,thalamus,left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,hippocampus,other]
+    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','central_gyri','thalamus','left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','hippocampus','other']
     print "\n\nGROUPING 3"
     filepath = "grouping_3.mat"
     createROIGrouping(names, all_groups, filepath)
@@ -1174,7 +1179,8 @@ if __name__ == "__main__":
     right_thalamus=[49]
     left_cerebGM=[8]
     right_cerebGM=[47]
-    cerebWM=[7,46]
+    left_cerebWM=[7]
+    right_cerebWM=[46]
     brainstem=[16]
     hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
     non_hemiWM=[85]
@@ -1183,10 +1189,10 @@ if __name__ == "__main__":
     other=[0,18,26,28,30,54,58,60,62,80,1000,1001,1007,1035,2000,2001,2007,2035]
     all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,left_basal_ganglia,right_basal_ganglia,
                 left_occipital,right_occipital,left_central_gyri,right_central_gyri,left_thalamus,right_thalamus,
-                left_cerebGM,right_cerebGM,cerebWM,brainstem,hemiWM,non_hemiWM,left_hippocampus,right_hippocampus,other]
+                left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,left_hippocampus,right_hippocampus,other]
     names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate','left_basal_ganglia','right_basal_ganglia',
              'left_occipital','right_occipital','left_central_gyri','right_central_gyri','left_thalamus','right_thalamus',
-             'left_cerebGM','right_cerebGM','cerebWM','brainstem','hemiWM','non_hemiWM','left_hippocampus','right_hippocampus','other']
+             'left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','left_hippocampus','right_hippocampus','other']
     print "\n\nGROUPING 4"
     filepath = "grouping_4.mat"
     createROIGrouping(names, all_groups, filepath)

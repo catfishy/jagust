@@ -82,30 +82,22 @@ def main(master_file):
     print "AD_HIGH"
     for _ in AD_high: print _
 
+    return 
+
 if __name__ == "__main__":
 
     # To find low/mid/high scans to run PVC on
     '''
     master = "../FDG_AV45_COGdata_07_28_15.csv"
     main(master)
+    sys.exit(1)
     '''
 
     # To generate the Rousset SGE input file
-    subj = [4222,
-            4580,
-            4555,
-            4441,
-            4151,
-            4277,
-            4172,
-            4924,
-            4755,
-            4280,
-            5187,
-            5146]
-    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings/grouping_1.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings/grouping_2.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings/grouping_3.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings/grouping_4.mat']
-    output = 'input.txt'
+    subj = [4643,4222,4084,5040,4387,4609,4516,4367,4762,4337,4496,4139,4580,4357,4020,4177,4555,4441,4255,4060,4576,4644,4612,4151,4010,4291,4277,4172,5138,4924,4755,4280,5224,5028,4692,4863,5187,4195,4307,4892,4211,4879,4853,4962,5146,4910,4583,5119,4657]
+    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_080415/grouping_1.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings_080415/grouping_2.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings_080415/grouping_3.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings_080415/grouping_4.mat']
+    output = 'input_080415.txt'
     generate_Rousset_input(subj, groupings, output)
