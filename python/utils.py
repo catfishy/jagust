@@ -7,11 +7,12 @@ from datetime import datetime, timedelta
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 def parseCSV(file_path, delimiter=','):
-    reader = csv.DictReader(open(file_path,'rU'),delimiter=delimiter)
-    lines = [l for l in reader]
-    headers = reader.fieldnames
+    data = pd.read_csv(file_path, sep=delimiter, low_memory=False)
+    lines = [dict(data.iloc[i].replace(np.nan, '')) for i in range(len(data))]
+    headers = list(data.columns.values)
     return (headers, lines)
 
 def createVisitIDLookup(lookupfile):
@@ -123,13 +124,14 @@ def importRegistry(registry_file, include_all=False):
         if not include_all and data['EXAMDATE'] == '':
             continue
         subj = int(data['RID'])
+        date_str = data['EXAMDATE'].strip().lower()
         date = None
         try:
-            date = datetime.strptime(data['EXAMDATE'],'%Y-%m-%d')
+            date = datetime.strptime(date_str,'%Y-%m-%d')
         except Exception as e:
             pass
         try:
-            date = datetime.strptime(data['EXAMDATE'],'%m/%d/%y')
+            date = datetime.strptime(date_str,'%m/%d/%y')
         except Exception as e:
             pass
         if not include_all and date is None:
@@ -138,6 +140,10 @@ def importRegistry(registry_file, include_all=False):
                                'VISCODE2': data['VISCODE2'].strip().lower(),
                                'EXAMDATE': date,
                                'update_stamp': data['update_stamp']})
+    registry = dict(registry)
+    for k in registry.keys():
+        new_val = sorted(registry[k], key=lambda x: x['EXAMDATE'])
+        registry[k] = new_val
     return registry
 
 def importDODRegistry(dod_registry_file):
@@ -192,11 +198,23 @@ def importADNIDiagnosis(diag_file, registry=None):
         #if viscode == 'sc' or viscode2 == 'sc':
         #    continue
         examdate = line['EXAMDATE']
-        change = line['DXCHANGE'].strip()
-        current = line['DXCURREN'].strip()
-        conv = line['DXCONV'].strip()
-        conv_type = line['DXCONTYP'].replace('-4','').strip()
-        rev_type = line['DXREV'].replace('-4','').strip()
+        change = line['DXCHANGE']
+        current = line['DXCURREN']
+        conv = line['DXCONV']
+        conv_type = line['DXCONTYP']
+        rev_type = line['DXREV']
+
+        if change != '':
+            change = str(int(change))
+        if current != '':
+            current = str(int(current))
+        if conv != '':
+            conv = str(int(conv))
+        if conv_type != '':
+            conv_type = str(int(conv_type)).replace('-4','').strip()
+        if rev_type != '':
+            rev_type = str(int(rev_type)).replace('-4','').strip()
+
         if examdate:
             examdate = datetime.strptime(examdate,'%Y-%m-%d')
         else:
@@ -703,10 +721,9 @@ def importARM(arm_file):
     arms = defaultdict(list)
     for data in lines:
         subj = int(data['RID'])
-        status = data['ARM'].strip()
+        status = data['ARM']
         if status == '':
             continue
-        status = int(status)
         userdate = datetime.strptime(data['USERDATE'],'%Y-%m-%d')
         # convert status
         status_str = translation[status]
@@ -893,6 +910,7 @@ def importAV45(av45_file, registry=None):
             subj = int(line.pop('PID',None))
         else:
             raise Exception("Can't find subject column in AV45 file")
+
         viscode = line['VISCODE'].strip().lower()
         if 'VISCODE2' in line:
             viscode2 = line['VISCODE2'].strip().lower()
@@ -908,7 +926,7 @@ def importAV45(av45_file, registry=None):
             examdate = findVisitDate(registry, subj, viscode, viscode2)
         if not examdate:
             print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-            continue
+            #continue
         line['EXAMDATE'] = examdate
         av45_by_subj[subj].append(line)
     return dict(av45_by_subj)
@@ -1094,7 +1112,7 @@ if __name__ == "__main__":
     data2 = {r['PID']:r['AV45_1_comp/wcerb'] for r in rows2}
     points = []
     for pid in list(set(data1.keys()) & set(data2.keys())):
-        if int(pid.strip()) < 6000:
+        if pid < 6000:
             continue
         xval = float(data1[pid])
         yval = float(data2[pid])

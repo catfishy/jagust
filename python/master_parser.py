@@ -1362,7 +1362,7 @@ if __name__ == '__main__':
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
     demog_file = "../docs/PTDEMOG.csv"
     # AV45 File
-    av45_file = "../output/UCBERKELEYAV45_07_08_15_extra.csv"
+    av45_file = "../output/UCBERKELEYAV45_08_06_15_extra.csv"
     # MMSE files
     mmse_file = "../cog_tests/MMSE.csv"
     # ADAS-COG files

@@ -227,10 +227,15 @@ def convertHeaderCodes(header):
             1019: 'CTX_LH_PARSORBITALIS',
             1020: 'CTX_LH_PARSTRIANGULARIS',
             1023: 'CTX_LH_POSTERIORCINGULATE'}
-    converted = [str(lookup.get(int(h),h)) for h in header]
+    if isinstance(header,list):
+        converted = [str(lookup.get(int(h),h)) for h in header]
+    elif isinstance(header,str) or isinstance(header,int) or isinstance(header,float):
+        converted = str(lookup.get(int(header),header))
+    else:
+        raise Exception("Invalid header data type passed into conversion")
     return converted
 
-def combineMeansAndSize(agg_type, mean_header, size_header, mean_row, size_row):
+def combineMeansAndSize(agg_type, mean_header, size_header, mean_values, size_values):
     if agg_type == 'adni':
         omit = ADNI_OMIT
         omit_sizes = ADNI_OMIT_SIZES
@@ -245,8 +250,8 @@ def combineMeansAndSize(agg_type, mean_header, size_header, mean_row, size_row):
         omit_sizes = DOD_EXTRA_OMIT_SIZES
     else:
         raise Exception("Bad agg_type")
-    mean_values = dict(zip(mean_header, mean_row))
-    size_values = dict(zip(size_header, size_row))
+    mean_values = {convertHeaderCodes(k):v for k,v in mean_values.iteritems()}
+    size_values = {convertHeaderCodes(k):v for k,v in size_values.iteritems()}
     rid = int(float(mean_values['RID']))
 
     header_list, mean_values, size_values = additionalCalculations(mean_header, mean_values, size_values)
@@ -278,17 +283,24 @@ def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes,
 
     num_bl = int(bl_means.split('_')[-1].replace('.csv',''))
     num_v2 = int(v2_means.split('_')[-1].replace('.csv',''))
-    bl_header, bl_lines = readHeaderAndLines(bl_means, limit=num_bl)
-    v2_header, v2_lines = readHeaderAndLines(v2_means, limit=num_v2)
-    bl_size_header, bl_size_lines = readHeaderAndLines(bl_sizes, limit=num_bl)
-    v2_size_header, v2_size_lines = readHeaderAndLines(v2_sizes, limit=num_v2)
+    bl_header, bl_lines = parseCSV(bl_means)
+    bl_lines = bl_lines[:num_bl]
+    v2_header, v2_lines = parseCSV(v2_means)
+    v2_lines = v2_lines[:num_v2]
+    bl_size_header, bl_size_lines = parseCSV(bl_sizes)
+    bl_size_lines = bl_size_lines[:num_bl]
+    v2_size_header, v2_size_lines = parseCSV(v2_sizes)
+    v2_size_lines = v2_size_lines[:num_v2]
+
     print "%s baseline scans" % len(bl_lines)
     print "%s visit 2 scans" % len(v2_lines)
 
     if agg_type in set(['adni', 'adni_extra']) and v3_means is not None and v3_sizes is not None:
         num_v3 = int(v3_means.split('_')[-1].replace('.csv',''))
-        v3_header, v3_lines = readHeaderAndLines(v3_means, limit=num_v3)
-        v3_size_header, v3_size_lines = readHeaderAndLines(v3_sizes, limit=num_v3)
+        v3_header, v3_lines = parseCSV(v3_means)
+        v3_lines = v3_lines[:num_v3]
+        v3_size_header, v3_size_lines = parseCSV(v3_sizes)
+        v3_size_lines = v3_size_lines[:num_v3]
         print "%s visit 3 scans" % len(v3_lines)
         total_iter_chain = chain(izip(repeat('BL'), zip(bl_lines, bl_size_lines)), 
                                  izip(repeat('V2'), zip(v2_lines, v2_size_lines)), 
@@ -296,6 +308,9 @@ def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes,
     else:
         total_iter_chain = chain(izip(repeat('BL'), zip(bl_lines, bl_size_lines)), 
                                  izip(repeat('V2'), zip(v2_lines, v2_size_lines)))
+    
+    # header list of converted here
+    # headers for the row dictionary are converted in combineMeansAndSize
     mean_header = convertHeaderCodes(bl_header) # assuming headers are equivalent across files
     size_header = convertHeaderCodes(bl_size_header)
 
@@ -319,17 +334,14 @@ def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes,
             if date is None:
                 raise Exception("Date not found: %s on %s" % (rid, vis))
 
-            registry_list = registry[rid]
-            cap_date = date+timedelta(days=30)
-            possible_dates = [_ for _ in registry_list.keys() if _ <= cap_date]
-            if len(possible_dates) == 0:
-                raise Exception("No possible dates for %s (%s): %s" % (rid, date, registry_list.keys()))
-            registry_date = sorted(possible_dates, key=lambda x: cap_date-x)[0]
-            metadata = registry_list[registry_date]
-            metadata['EXAMDATE'] = date.strftime('%Y-%m-%d')
+            subj_reg = registry.get(rid,[])
+            if len(subj_reg) == 0:
+                raise Exception("No possible dates for %s (%s)" % (rid, date))
+            sorted_subj_reg = sorted(subj_reg, key=lambda x: abs(x['EXAMDATE']-date).days)
+            metadata = sorted_subj_reg[0]
 
-            if (date-registry_date).days > 30:
-                print "%s, %s: %s, %s -> %s (%s days)" % (rid, vis, metadata, date, registry_date, (date-registry_date).days)
+            if (date-metadata['EXAMDATE']).days > 60:
+                print "%s, %s: %s, %s -> %s days" % (rid, vis, metadata, date, (date-metadata['EXAMDATE']).days)
         elif agg_type in set(['dod', 'dod_extra']):
             subj_registry = registry[rid]
             metadata = None
@@ -341,13 +353,14 @@ def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes,
                 metadata = subj_registry[2]
             if metadata is None:
                 raise Exception("Date not found: %s on %s" % (rid, vis))
+
         # insert viscode, viscode2, update_stamp
         data = dict(zip(all_header, all_values))
         data.update(metadata)
         for k in data.keys():
             if k not in fieldnames:
                 data.pop(k, None)
-        data = convertToCSVDataType(data, decimal_places=4)
+        data = convertToCSVDataType(data, decimal_places=8)
         writer.writerow(data)
 
 def additionalCalculations(headers, mean_values, size_values):
@@ -411,15 +424,19 @@ if __name__ == "__main__":
 
 
     # for adni av45
-    '''
-    output = '../output/UCBERKELEYAV45_DOD_07_08_15_extra.csv'
+    output = '../output/UCBERKELEYAV45_08_06_15_extra.csv'
     preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
-    registry = importRegistry("../docs/registry_clean.csv")
+    registry = importRegistry("../docs/registry_clean.csv") 
     meta_pet = "../docs/PET_META_LIST_edited.csv"
-    agg_type = 'adni'
-    '''
+    agg_type = 'adni_extra'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
+    sys.exit(1)
+    
 
     # for adni dod (also add in adni controls)
+    '''
     output = '../output/AV45_DOD_LONI_08.05.15_extra.csv'
     temp_output = '../output/temp.csv'
     preprocess_folder =  '../docs/AV45_DOD_preprocess_output_08_05_15'
@@ -436,9 +453,23 @@ if __name__ == "__main__":
                                  meta_pet, registry, agg_type)
     aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
                                  meta_pet_adni, registry_adni, agg_type)
-
+    print 'appending'
     appendCSV(output, temp_output)
+    print 'removing'
     removeFile(temp_output)
+    '''
+
+    # for adni dod testing with old inputs
+    output = '../output/AV45_DOD_LONI_OLDTEST_extra.csv'
+    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_12_18_14'
+    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    meta_pet = None
+    meta_pet_adni = None
+    agg_type = 'dod_extra'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
+
 
 '''
 ## output keys ###
