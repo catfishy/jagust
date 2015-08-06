@@ -24,10 +24,10 @@ def parseResult(arg):
 
 
 if __name__ == "__main__":
-	normal = [4643,4222,4084,5040,4387,4609,4516,4367,4762,4337,4496,4139,4580,4357,4020,4177,4555,4441,4255,4060,4576,4644,4612,4151,4010,4291,4277]
-	ad = [4172,5138,4924,4755,4280,5224,5028,4692,4863,5187,4195,4307,4892,4211,4879,4853,4962,5146,4910,4583,5119,4657]
+	ad = [4009, 5241, 4338, 5067, 4676, 4732, 4379, 4172, 5138, 4924, 4755, 4280, 5224, 4223, 4772, 5120, 4911, 4568, 4827, 4730, 5032, 5196, 4152, 5028, 4692, 4863, 5187, 4195, 4307, 4892, 4211, 4879, 4853, 4962, 5146, 4910, 4583, 5119, 4657]
+	normal = [4119, 4499, 4427, 4393, 4269, 4148, 4643, 4222, 4084, 5040, 4387, 4609, 4516, 4367, 4762, 4337, 4496, 4139, 4580, 4357, 4020, 4177, 4488, 4224, 4382, 4599, 4424, 4586, 4279, 4585, 4173, 4428, 4097, 4090, 4921, 4835, 4449, 4598, 4637, 4555, 4441, 4255, 4060, 4576, 4644, 4612, 4290, 4093, 4578, 4587, 4100, 4474, 4120, 4385, 4508, 4616, 4151, 4010, 4291, 4277, 4433]
 
-	rousset_mat = '../rousset_outputs_080415.mat'
+	rousset_mat = '../rousset_outputs_080515.mat'
 	data = loadMATFile(rousset_mat)
 	result_list = [parseResult(_) for _ in data['result_list'][0]]
 	subj_list = data['subj_list'][0]
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
-
+		plt.xticks(only_graph)
 	#plt.figure(2)
 	'''
 	plt.subplot(252)
@@ -92,6 +92,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
+		plt.xticks(only_graph)
 
 	#plt.figure(3)
 	plt.subplot(253)
@@ -107,6 +108,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
+		plt.xticks(only_graph)
 
 	#plt.figure(4)
 	plt.subplot(254)
@@ -139,6 +141,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
+		plt.xticks(only_graph)
 
 	#plt.figure(5)
 	plt.subplot(255)
@@ -154,6 +157,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
+		plt.xticks(only_graph)
 
 	#plt.figure(6)
 	plt.subplot(256)
@@ -169,6 +173,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
+		plt.xticks(only_graph)
 
 	#plt.figure(7)
 	plt.subplot(257)
@@ -184,6 +189,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
+		plt.xticks(only_graph)
 
 	#plt.figure(8)
 	plt.subplot(258)
@@ -199,6 +205,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
+		plt.xticks(only_graph)
 
 	#plt.figure(9)
 	plt.subplot(259)
@@ -214,7 +221,7 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
-
+		plt.xticks(only_graph)
 	
 	#plt.figure(10)
 	plt.subplot(2,5,10)
@@ -230,7 +237,8 @@ if __name__ == "__main__":
 		x = [0] + groups
 		y = [startval] + tograph
 		plt.plot([x[_] for _ in only_graph],[y[_] for _ in only_graph], color)
-	
+		plt.xticks(only_graph)
+
 	plt.show()
 
 	'''

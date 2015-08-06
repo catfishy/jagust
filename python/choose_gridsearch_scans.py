@@ -95,9 +95,12 @@ if __name__ == "__main__":
     
     master = "../FDG_AV45_COGdata_07_28_15.csv"
     all_N, all_AD = main(master)
+    print "AD: %s" % all_AD
+    print "N: %s" % all_N
+
     subj = all_N + all_AD
     print subj
-    
+    sys.exit(1)
 
     # To generate the Rousset SGE input file
     groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_080515/grouping_1.mat',
