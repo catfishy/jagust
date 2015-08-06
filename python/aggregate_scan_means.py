@@ -106,6 +106,7 @@ DOD_FIELDNAMES_EXTRA = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN
                   'FRONTAL','FRONTAL_SIZE','CINGULATE','CINGULATE_SIZE','PARIETAL','PARIETAL_SIZE',
                   'TEMPORAL','TEMPORAL_SIZE','COMPOSITE','COMPOSITE_REF','ERODED_SUBCORTICALWM',
                   'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
+                  'LEFT-PUTAMEN_SIZE','RIGHT-PUTAMEN_SIZE','LEFT-CAUDATE_SIZE','RIGHT-CAUDATE_SIZE','LEFT-PALLIDUM_SIZE','RIGHT-PALLIDUM_SIZE',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
@@ -147,8 +148,7 @@ DOD_OMIT_SIZES = ADNI_OMIT_SIZES
 DOD_EXTRA_OMIT_SIZES = ['PID', 'RID', 'COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                         'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                         'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
-                        'CEREBELLUMWHITEMATTER', 'LEFT-PALLIDUM', 'LEFT-CAUDATE', 'LEFT-PUTAMEN', 
-                        'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
+                        'CEREBELLUMWHITEMATTER']
 
 
 
@@ -420,9 +420,9 @@ if __name__ == "__main__":
     '''
 
     # for adni dod (also add in adni controls)
-    output = '../output/AV45_DOD_LONI_07.13.15_extra.csv'
+    output = '../output/AV45_DOD_LONI_08.05.15_extra.csv'
     temp_output = '../output/temp.csv'
-    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_06_25_15'
+    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_08_05_15'
     adni_preprocess_folder = '../docs/AV45_preprocess_output_07_08_15_extra'
     registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
     registry_adni = importRegistry("../docs/registry_clean.csv")

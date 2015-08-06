@@ -269,9 +269,9 @@ def syncADNIMasterData(old_headers, old_lines, adnimaster_file, dump_to=None):
                     'AVLT_total_6mths_Examdate': subj_row['AVLT_3MTHS_AV45'],
                     'CAPS_CURRSCORE': '',
                     'CAPS_LIFETIME_SCORE': '',
-                    'WMH_WHITMATHYP': '',
+                    'WMH_WHITMATHYP': subj_row['WMH_WHITMATHYP.1'],
                     'WMH_percentOfICV': subj_row['WMH_percentOfICV.1'],
-                    'GDtotal': '',
+                    'GDtotal': subj_row['GD_AV45_6MTHS'],
                     'MRIDATE': '',
                     'CSF_abeta': subj_row['CSF_ABETA.1'],
                     'CSF_tau': subj_row['CSF_TAU.1'],
@@ -474,26 +474,26 @@ def parseAV45Entries(old_headers, subj_rows):
         rightcaudate = float(point['RIGHT-CAUDATE'])
         leftpallidum = float(point['LEFT-PALLIDUM'])
         rightpallidum = float(point['RIGHT-PALLIDUM'])
-        left_frontal = np.mean([float(point[k]) for k in left_frontal_keys])
-        right_frontal = np.mean([float(point[k]) for k in right_frontal_keys])
-        left_cingulate = np.mean([float(point[k]) for k in left_cingulate_keys])
-        right_cingulate = np.mean([float(point[k]) for k in right_cingulate_keys])
-        left_parietal = np.mean([float(point[k]) for k in left_parietal_keys])
-        right_parietal = np.mean([float(point[k]) for k in right_parietal_keys])
-        left_temporal = np.mean([float(point[k]) for k in left_temporal_keys])
-        right_temporal = np.mean([float(point[k]) for k in right_temporal_keys])
-        left_bg = np.mean([float(point[k]) for k in left_bg_keys])
-        right_bg = np.mean([float(point[k]) for k in right_bg_keys])
-        left_frontal_size = np.mean([float(point["%s_SIZE" % k]) for k in left_frontal_keys])
-        right_frontal_size = np.mean([float(point["%s_SIZE" % k]) for k in right_frontal_keys])
-        left_cingulate_size = np.mean([float(point["%s_SIZE" % k]) for k in left_cingulate_keys])
-        right_cingulate_size = np.mean([float(point["%s_SIZE" % k]) for k in right_cingulate_keys])
-        left_parietal_size = np.mean([float(point["%s_SIZE" % k]) for k in left_parietal_keys])
-        right_parietal_size = np.mean([float(point["%s_SIZE" % k]) for k in right_parietal_keys])
-        left_temporal_size = np.mean([float(point["%s_SIZE" % k]) for k in left_temporal_keys])
-        right_temporal_size = np.mean([float(point["%s_SIZE" % k]) for k in right_temporal_keys])
-        left_ventrical_size = np.mean([float(point["%s_SIZE" % k]) for k in left_ventrical_keys])
-        right_ventrical_size = np.mean([float(point["%s_SIZE" % k]) for k in right_ventrical_keys])
+        left_frontal = np.average([float(point[k]) for k in left_frontal_keys], weights=[float(point["%s_SIZE" % k]) for k in left_frontal_keys])
+        right_frontal = np.average([float(point[k]) for k in right_frontal_keys], weights=[float(point["%s_SIZE" % k]) for k in right_frontal_keys])
+        left_cingulate = np.average([float(point[k]) for k in left_cingulate_keys], weights=[float(point["%s_SIZE" % k]) for k in left_cingulate_keys])
+        right_cingulate = np.average([float(point[k]) for k in right_cingulate_keys], weights=[float(point["%s_SIZE" % k]) for k in right_cingulate_keys])
+        left_parietal = np.average([float(point[k]) for k in left_parietal_keys], weights=[float(point["%s_SIZE" % k]) for k in left_parietal_keys])
+        right_parietal = np.average([float(point[k]) for k in right_parietal_keys], weights=[float(point["%s_SIZE" % k]) for k in right_parietal_keys])
+        left_temporal = np.average([float(point[k]) for k in left_temporal_keys], weights=[float(point["%s_SIZE" % k]) for k in left_temporal_keys])
+        right_temporal = np.average([float(point[k]) for k in right_temporal_keys], weights=[float(point["%s_SIZE" % k]) for k in right_temporal_keys])
+        left_bg = np.average([float(point[k]) for k in left_bg_keys], weights=[float(point["%s_SIZE" % k]) for k in left_bg_keys])
+        right_bg = np.average([float(point[k]) for k in right_bg_keys], weights=[float(point["%s_SIZE" % k]) for k in right_bg_keys])
+        left_frontal_size = np.sum([float(point["%s_SIZE" % k]) for k in left_frontal_keys])
+        right_frontal_size = np.sum([float(point["%s_SIZE" % k]) for k in right_frontal_keys])
+        left_cingulate_size = np.sum([float(point["%s_SIZE" % k]) for k in left_cingulate_keys])
+        right_cingulate_size = np.sum([float(point["%s_SIZE" % k]) for k in right_cingulate_keys])
+        left_parietal_size = np.sum([float(point["%s_SIZE" % k]) for k in left_parietal_keys])
+        right_parietal_size = np.sum([float(point["%s_SIZE" % k]) for k in right_parietal_keys])
+        left_temporal_size = np.sum([float(point["%s_SIZE" % k]) for k in left_temporal_keys])
+        right_temporal_size = np.sum([float(point["%s_SIZE" % k]) for k in right_temporal_keys])
+        left_ventrical_size = np.sum([float(point["%s_SIZE" % k]) for k in left_ventrical_keys])
+        right_ventrical_size = np.sum([float(point["%s_SIZE" % k]) for k in right_ventrical_keys])
      
         # Dates
         data['AV45_%s_EXAMDATE' % (i+1)] = examdate
@@ -521,7 +521,7 @@ def parseAV45Entries(old_headers, subj_rows):
         data['AV45_%s_asym_summary_absvals_negvalue_means_R<L' % (i+1)] = np.mean([abs(asymIndex(left_frontal, right_frontal)),
                                                                                    abs(asymIndex(left_cingulate, right_cingulate)),
                                                                                    abs(asymIndex(left_parietal, right_parietal)),
-                                                                                   abs(asymIndex(left_temporal, right_temporal))]) # try abs vals
+                                                                                   abs(asymIndex(left_temporal, right_temporal))])
         data['AV45_%s_frontal_MR_asymmetry' % (i+1)] = asymIndex(left_frontal_size, right_frontal_size)
         data['AV45_%s_cingulate_MR_asymmetry' % (i+1)] = asymIndex(left_cingulate_size, right_cingulate_size)
         data['AV45_%s_parietal_MR_asymmetry' % (i+1)] = asymIndex(left_parietal_size, right_parietal_size)
@@ -622,7 +622,7 @@ if __name__ == '__main__':
     registry_file = "../docs/DOD/DOD_REGISTRY.csv"
 
     # AV45 file
-    av45_file = "../docs/DOD/AV45_DOD_LONI_07.13.15_extra.csv"
+    av45_file = '../output/AV45_DOD_LONI_08.05.15_extra.csv'
     # AVLT file
     avlt_file = "../docs/DOD/NEUROBAT.csv"
     # ADAS file
@@ -645,7 +645,7 @@ if __name__ == '__main__':
     # Elig file
     elig_file = "../docs/DOD/VAELG.csv"
     # ADNI master file
-    adnimaster_file = "../FDG_AV45_COGdata_07_20_15.csv"
+    adnimaster_file = "../FDG_AV45_COGdata_08_05_15.csv"
 
 
     runPipeline()

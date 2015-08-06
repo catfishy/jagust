@@ -4,6 +4,9 @@ import os
 import scipy.io as sio
 from collections import defaultdict
 from datetime import datetime, timedelta
+import itertools
+import numpy as np
+import matplotlib.pyplot as plt
 
 def parseCSV(file_path, delimiter=','):
     reader = csv.DictReader(open(file_path,'rU'),delimiter=delimiter)
@@ -1028,8 +1031,84 @@ def loadMATFile(input_file):
     data = sio.loadmat(input_file)
     return data
 
+
+def calculateCSVDifference(file1, file2, index='RID'):
+    headers1, rows1 = parseCSV(file1)
+    headers2, rows2 = parseCSV(file2)
+    common_headers = list(set(headers1) & set(headers2))
+    differences = {h:[] for h in common_headers}
+    # index the rows
+    index1 = {}
+    for r in rows1:
+        key = r.get(index)
+        if key:
+            index1[key.lower().strip()] = r
+    index2 = {}
+    for r in rows2:
+        key = r.get(index)
+        if key:
+            index2[key.lower().strip()] = r
+    common_keys = list(set(index1.keys()) & set(index2.keys()))
+    for key, header in itertools.product(common_keys, common_headers):
+        cur_diff = float(index1[key][header]) - float(index2[key][header])
+        differences[header].append(cur_diff)
+    diff_distr = {}
+    for k,values in differences.iteritems():
+        diff_distr[k] = (np.mean(values), np.std(values), np.max(values), np.min(values))
+    return diff_distr
+
+
 if __name__ == "__main__":
+    # Calculate DOD raw output differences
+    '''
     lut_file = "../FreeSurferColorLUT.txt"
+    data = importFreesurferLookup(lut_file)
+    file1 = '../docs/AV45_DOD_preprocess_output_12_18_14/AV45_BL_means_extraregions_18-Dec-2014_99.csv'
+    file2 = '../docs/AV45_DOD_preprocess_output_08_05_15/AV45_BL_means_extraregions_05-Aug-2015_121.csv'
+    diff_distr = calculateCSVDifference(file1, file2, index='0')
+    plt.figure(1)
+    keys = diff_distr.keys()
+    x = range(len(keys))
+    avgs = [diff_distr[k][0] for k in keys]
+    stds = [diff_distr[k][1] for k in keys]
+    maxs = [diff_distr[k][2] for k in keys]
+    mins = [diff_distr[k][3] for k in keys]
+    plt.errorbar(x, avgs, stds)
+    plt.plot(x,maxs)
+    plt.plot(x,mins)
+    x1,x2,y1,y2 = plt.axis()
+    plt.axis((0,len(x),y1,y2))
+    locs, labels = plt.xticks()
+    keys = [data.get(int(k),k) for k in keys]
+    plt.xticks(x, keys, rotation='vertical')
+    plt.show()
+    sys.exit(1)
+    '''
+
+    # Scatter plot of composite SUVR values
+    file1 = '../docs/DOD/AV45_BL_means_Dec2014_99.csv'
+    file2 = '../DOD_DATA_08_05_15.csv'
+    headers1, rows1 = parseCSV(file1)
+    headers2, rows2 = parseCSV(file2)
+    data1 = {r['PID']:r['comp/wcerb'] for r in rows1}
+    data2 = {r['PID']:r['AV45_1_comp/wcerb'] for r in rows2}
+    points = []
+    for pid in list(set(data1.keys()) & set(data2.keys())):
+        if int(pid.strip()) < 6000:
+            continue
+        xval = float(data1[pid])
+        yval = float(data2[pid])
+        points.append((xval,yval))
+    x = [_[0] for _ in points]
+    y = [_[1] for _ in points]
+    plt.figure(1)
+    plt.scatter(x,y)
+    plt.plot([0.8,1.7],[0.8,1.7])
+    
+    plt.xlabel('Old Value')
+    plt.ylabel('New Value')
+    plt.show()
+    # Import FDG raw data
     '''
     fdg_extract_file = "../docs/FDG_preprocess_output_01_20_15/Tue-Jan-20-15-38-15-2015_FDGmetaroi.csv"
     registry_file = "../docs/registry_clean.csv"
@@ -1080,6 +1159,7 @@ if __name__ == "__main__":
     '''
 
     '''
+    lut_file = "../FreeSurferColorLUT.txt"
     data = importFreesurferLookup(lut_file)
     for idx in to_lookup:
         print "%s: %s" % (idx, data.get(idx, 'Unknown'))

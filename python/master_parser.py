@@ -1173,6 +1173,7 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
 
     to_add_headers = ['WMH_percentOfICV.%s' % (i+1) for i in range(7)]
     to_add_headers += ['WMH_postAV45.%s' % (i+1) for i in range(7)]
+    to_add_headers += ['WMH_WHITMATHYP.%s' % (i+1) for i in range(7)]
     to_add_headers.append('WMH_slope')
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
     
@@ -1185,17 +1186,20 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
             if i < len(subj_wmh):
                 datapoint = subj_wmh[i]
                 examdate = datapoint['EXAMDATE']
+                wmh_raw = datapoint['wmh']
                 wmh_val = datapoint['wmh_percent']
                 timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
                 if timediff <= -(90.0/365.0):
                     timediff = ''
                 new_data['WMH_percentOfICV.%s' % (i+1)] = wmh_val
                 new_data['WMH_postAV45.%s' % (i+1)] = timediff
+                new_data['WMH_WHITMATHYP.%s' % (i+1)] = wmh_raw
                 if timediff and wmh_val:
                     slope_points.append((timediff, wmh_val))
             else:
                 new_data['WMH_percentOfICV.%s' % (i+1)] = ''
                 new_data['WMH_postAV45.%s' % (i+1)] = ''
+                new_data['WMH_WHITMATHYP.%s' % (i+1)] = ''
         # calculate slope
         if len(slope_points) >= 2:
             raw_dates = [_[0] for _ in slope_points]
