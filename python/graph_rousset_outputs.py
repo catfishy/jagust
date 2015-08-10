@@ -71,22 +71,28 @@ def subplot_scatter_between_group(data, key, groupA, groupB):
 
 def subplot_residuals(data):
     by_group = defaultdict(list)
+    scatter_points = []
     for subj, subjdata in data:
         tograph = [_['rmse_residual'] for _ in subjdata]
+        color = 'b'
+        if subj in NORMAL:
+            color = 'g'
+            xmod = -0.07
+        elif subj in AD:
+            color = 'r'
+            xmod = 0.07
         for i,v in enumerate(tograph):
             by_group[i].append(v)
-        color = 'b'
-        if subj in normal:
-            color = 'g'
-        elif subj in ad:
-            color = 'r'
-        plt.plot(groups, tograph, color)
+            actual_x = i+1+xmod
+            scatter_points.append((actual_x,v,color))
     avgs = [np.mean(by_group[i]) for i,g in enumerate(groups)]
     stds = [np.std(by_group[i]) for i,g in enumerate(groups)]
-    print stds
     plt.errorbar(groups, avgs, stds)
+    plt.scatter([_[0] for _ in scatter_points], [_[1] for _ in scatter_points],c=[_[2] for _ in scatter_points])
     x1,x2,y1,y2 = plt.axis()
     plt.axis((0,5,y1,y2))
+    plt.xlabel('GROUPINGS')
+    plt.ylabel('PVC Residuals')
 
 def addCompositeSUVR(result_list):
     # add composite
@@ -94,6 +100,8 @@ def addCompositeSUVR(result_list):
         for groupdata in subjdata:
             groupdata['composite_suvr_nonpvc'] = np.mean([groupdata['parietal_suvr_nonpvc'],groupdata['frontal_suvr_nonpvc'],groupdata['temporal_suvr_nonpvc'],groupdata['cingulate_suvr_nonpvc']])
             groupdata['composite_suvr_pvc'] = np.mean([groupdata['parietal_suvr_pvc'],groupdata['frontal_suvr_pvc'],groupdata['temporal_suvr_pvc'],groupdata['cingulate_suvr_pvc']])
+            groupdata['composite_wm_suvr_nonpvc'] = np.mean([groupdata['parietal_suvr_nonpvc'],groupdata['frontal_suvr_nonpvc'],groupdata['temporal_suvr_nonpvc'],groupdata['cingulate_suvr_nonpvc']] * groupdata['ref_nonpvc'] / groupdata['hemiWM_nonpvc'])
+            groupdata['composite_wm_suvr_pvc'] = np.mean([groupdata['parietal_suvr_pvc'],groupdata['frontal_suvr_pvc'],groupdata['temporal_suvr_pvc'],groupdata['cingulate_suvr_pvc']] * groupdata['ref_nonpvc'] / groupdata['hemiWM_nonpvc'])
     return result_list
 
 
@@ -109,24 +117,33 @@ if __name__ == "__main__":
     sorted_data = zip(subj_list,result_list)
 
     
+    '''
+    plot the residuals for each group
+    '''
+    '''
+    plt.figure(1)
+    plt.title('Residuals')
+    subplot_residuals(sorted_data)
+    plt.show()
+    '''
     
     '''
     plot pvc vs nonpvc, by group
     '''
     # grouping to plot, by index of group (group num - 1)
-    grouping=0
+    grouping=3
     subplot_height = 2
     subplot_length = 5
     subplot_indices = range(1,(subplot_height*subplot_length)+1)
-    subplot_order = ['ref', 'brainstem', 'hemiWM', 'basal_ganglia_suvr', 'temporal_suvr', 'frontal_suvr', 'occipital_suvr', 'cingulate_suvr', 'composite_suvr', 'parietal_suvr']
+    subplot_order = ['ref', 'brainstem', 'hemiWM', 'composite_wm_suvr', 'temporal_suvr', 'frontal_suvr', 'occipital_suvr', 'cingulate_suvr', 'composite_suvr', 'parietal_suvr']
     plt.figure(1)
     for subplot_i, subplot_key in zip(subplot_indices, subplot_order):
         ax = plt.subplot(subplot_height, subplot_length, subplot_i)
         plt.title(subplot_key.replace('_',' ').replace('suvr', 'SUVR'))
         subplot_scatter(sorted_data, subplot_key, grouping)
         if 'suvr' in subplot_key or subplot_key == 'ref':
-            ax.set_xlim([0.5, 1.8])
-            ax.set_ylim([0.5, 2.2])
+            ax.set_xlim([0.2, 1.8])
+            ax.set_ylim([0.2, 2.2])
         elif subplot_key in set(['brainstem', 'hemiWM']):
             ax.set_xlim([1.0, 3.0])
             ax.set_ylim([1.0, 4.0])
