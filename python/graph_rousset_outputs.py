@@ -66,8 +66,6 @@ def subplot_scatter_between_group(data, key, groupA, groupB):
         # scatter plot
         scatter_points.append(([groupA_val], [groupB_val], color))
     plt.scatter([_[0] for _ in scatter_points], [_[1] for _ in scatter_points],c=[_[2] for _ in scatter_points])
-    x1,x2,y1,y2 = plt.axis()
-    plt.plot([x1,x2],[x1,x2])
     plt.xlabel('GROUPING %s' % (groupA+1,))
     plt.ylabel('GROUPING %s' % (groupB+1,))
 
@@ -110,26 +108,36 @@ if __name__ == "__main__":
     result_list = addCompositeSUVR(result_list)
     sorted_data = zip(subj_list,result_list)
 
+    
+    
     '''
     plot pvc vs nonpvc, by group
     '''
-    '''
     # grouping to plot, by index of group (group num - 1)
-    grouping=3
+    grouping=0
     subplot_height = 2
     subplot_length = 5
     subplot_indices = range(1,(subplot_height*subplot_length)+1)
     subplot_order = ['ref', 'brainstem', 'hemiWM', 'basal_ganglia_suvr', 'temporal_suvr', 'frontal_suvr', 'occipital_suvr', 'cingulate_suvr', 'composite_suvr', 'parietal_suvr']
     plt.figure(1)
     for subplot_i, subplot_key in zip(subplot_indices, subplot_order):
-        plt.subplot(subplot_height, subplot_length, subplot_i)
+        ax = plt.subplot(subplot_height, subplot_length, subplot_i)
         plt.title(subplot_key.replace('_',' ').replace('suvr', 'SUVR'))
         subplot_scatter(sorted_data, subplot_key, grouping)
+        if 'suvr' in subplot_key or subplot_key == 'ref':
+            ax.set_xlim([0.5, 1.8])
+            ax.set_ylim([0.5, 2.2])
+        elif subplot_key in set(['brainstem', 'hemiWM']):
+            ax.set_xlim([1.0, 3.0])
+            ax.set_ylim([1.0, 4.0])
+        x1,x2,y1,y2 = plt.axis()
+        plt.plot([x1,x2],[x1,x2],color='b')
     plt.show()
-    '''
+    
 
     '''
     plot pvc vs nonpvc, by group, non-suvr values
+    '''
     '''
     # grouping to plot, by index of group (group num - 1)
     grouping=3
@@ -143,6 +151,8 @@ if __name__ == "__main__":
         plt.title(subplot_key.replace('_',' ').replace('suvr', '').strip())
         subplot_scatter(sorted_data, subplot_key, grouping, plot_raw=True)
     plt.show()
+    '''
+
 
     '''
     plot group A vs group B, pvc
