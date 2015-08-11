@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
 from collections import defaultdict
+from scipy.stats import norm, mannwhitneyu
 
 from utils import *
 
@@ -52,6 +54,114 @@ def subplot_scatter(data, key, grouping, plot_raw=False):
     plt.xlabel('NON-PVC')
     plt.ylabel('PVC')
 
+
+def slope_graph(data, key, grouping, plot_raw=False):
+    points = {'b': [], 'g': [], 'r': []}
+    for subj, subjdata in data:
+        if plot_raw and 'suvr' in key:
+            startval = np.mean([_['%s_nonpvc' % key]*_['ref_nonpvc'] for _ in subjdata])
+            tograph = [_['%s_pvc' % key]*_['ref_pvc'] for _ in subjdata]
+        else:
+            startval = np.mean([_['%s_nonpvc' % key] for _ in subjdata])
+            tograph = [_['%s_pvc' % key] for _ in subjdata]
+        color = 'b'
+        if subj in NORMAL:
+            color = 'g'
+        elif subj in AD:
+            color = 'r'
+        # scatter plot
+        slope = tograph[grouping] - startval
+        points[color].append(slope)
+    all_values = [v for _ in points.values() for v in _]
+    min_v = min(all_values)
+    max_v = max(all_values)
+
+    u, pvalue = mannwhitneyu(points['r'], points['g'], use_continuity=True)
+    u_max = len(points['g']) * len(points['r'])
+    rank_biserial = 1.0 - (2*u/u_max)
+    print key
+    print "%s/%s" % (u,u_max)
+    print pvalue
+    print rank_biserial
+
+    stats = {}
+    for k,v in points.iteritems():
+        if v:
+            weights = np.ones_like(v)/len(v)
+            n, bins, patches = plt.hist(v, 80, weights=weights, facecolor=k, alpha=0.30)
+            (mu, sigma) = norm.fit(v)
+            print mu
+            print sigma
+            x = np.linspace(min_v, max_v, 100)
+            y = mlab.normpdf(x, mu, sigma)
+            weights = np.ones_like(y)/len(y)
+            y = np.multiply(y,weights)
+            plt.plot(x, y, '%s--' % k, linewidth=3)
+            if k == 'g': # Normal
+                stats['N'] = (mu, sigma)
+            elif k == 'r': # AD
+                stats['AD'] = (mu, sigma)
+    full_text = "$\mathrm{N:}\ \mu=%.3f,\ \sigma=%.3f$\n$\mathrm{AD:}\ \mu=%.3f,\ \sigma=%.3f$" % (stats['N'][0], stats['N'][1], stats['AD'][0], stats['AD'][1])
+    mwu_text = "$U=%i$\n$\\rho=%.3e$\n$r_{RankBiserial}=%.3f$\n$n_N=%i$\n$n_{AD}=%i$" % (u, pvalue, rank_biserial, len(points['g']), len(points['r']))
+    plt.xlim(min_v, max_v)
+    props = dict(boxstyle='round,pad=0.8', facecolor='wheat', alpha=0.7)
+    plt.annotate(full_text, xy=(0.05,0.87), xycoords='axes fraction', bbox=props, fontsize=13)
+    plt.annotate(mwu_text, xy=(0.6,0.75), xycoords='axes fraction', bbox=props, fontsize=13)
+    plt.xlabel('(PVC value) - (Non-PVC value)')
+    plt.ylabel('Frequency')
+
+def mean_graph(data, key, grouping, plot_raw=False):
+    points = {'b': [], 'g': [], 'r': []}
+    for subj, subjdata in data:
+        if plot_raw and 'suvr' in key:
+            startval = np.mean([_['%s_nonpvc' % key]*_['ref_nonpvc'] for _ in subjdata])
+            tograph = [_['%s_pvc' % key]*_['ref_pvc'] for _ in subjdata]
+        else:
+            startval = np.mean([_['%s_nonpvc' % key] for _ in subjdata])
+            tograph = [_['%s_pvc' % key] for _ in subjdata]
+        color = 'b'
+        if subj in NORMAL:
+            color = 'g'
+        elif subj in AD:
+            color = 'r'
+        # scatter plot
+        val = tograph[grouping]
+        points[color].append(val)
+    all_values = [v for _ in points.values() for v in _]
+    min_v = min(all_values)
+    max_v = max(all_values)
+
+    u, pvalue = mannwhitneyu(points['r'], points['g'], use_continuity=True)
+    u_max = len(points['g']) * len(points['r'])
+    rank_biserial = 1.0 - (2*u/u_max)
+    print key
+    print "%s/%s" % (u,u_max)
+    print pvalue
+    print rank_biserial
+
+    stats = {}
+    for k,v in points.iteritems():
+        if v:
+            weights = np.ones_like(v)/len(v)
+            n, bins, patches = plt.hist(v, 80, weights=weights, facecolor=k, alpha=0.30)
+            (mu, sigma) = norm.fit(v)
+            x = np.linspace(min_v, max_v, 100)
+            y = mlab.normpdf(x, mu, sigma)
+            weights = np.ones_like(y)/len(y)
+            y = np.multiply(y,weights)
+            plt.plot(x, y, '%s--' % k, linewidth=3)
+            if k == 'g': # Normal
+                stats['N'] = (mu, sigma)
+            elif k == 'r': # AD
+                stats['AD'] = (mu, sigma)
+    full_text = "$\mathrm{N:}\ \mu=%.3f,\ \sigma=%.3f$\n$\mathrm{AD:}\ \mu=%.3f,\ \sigma=%.3f$" % (stats['N'][0], stats['N'][1], stats['AD'][0], stats['AD'][1])
+    mwu_text = "$U=%i$\n$\\rho=%.3e$\n$r_{RankBiserial}=%.3f$\n$n_N=%i$\n$n_{AD}=%i$" % (u, pvalue, rank_biserial, len(points['g']), len(points['r']))
+    plt.xlim(min_v, max_v)
+    props = dict(boxstyle='round,pad=0.8', facecolor='wheat', alpha=0.7)
+    plt.annotate(full_text, xy=(0.05,0.87), xycoords='axes fraction', bbox=props, fontsize=13)
+    plt.annotate(mwu_text, xy=(0.6,0.75), xycoords='axes fraction', bbox=props, fontsize=13)
+    plt.xlabel('PVC')
+    plt.ylabel('Frequency')
 
 def subplot_scatter_between_group(data, key, groupA, groupB):
     scatter_points = []
@@ -127,6 +237,40 @@ if __name__ == "__main__":
     plt.show()
     '''
     
+    '''
+    plot pvc value distribution, by group
+    '''
+    '''
+    grouping=3
+    subplot_height = 2
+    subplot_length = 5
+    subplot_indices = range(1,(subplot_height*subplot_length)+1)
+    subplot_order = ['ref', 'brainstem', 'hemiWM', 'composite_wm_suvr', 'temporal_suvr', 'frontal_suvr', 'occipital_suvr', 'cingulate_suvr', 'composite_suvr', 'parietal_suvr']
+    plt.figure(1)
+    for subplot_i, subplot_key in zip(subplot_indices, subplot_order):
+        ax = plt.subplot(subplot_height, subplot_length, subplot_i)
+        plt.title(subplot_key.replace('_',' ').replace('suvr', 'SUVR'))
+        mean_graph(sorted_data, subplot_key, grouping, plot_raw=False)
+    plt.show()
+    sys.exit(1)
+    '''
+
+    '''
+    plot pvc-nonpvc slope, by group
+    '''
+    grouping=3
+    subplot_height = 2
+    subplot_length = 5
+    subplot_indices = range(1,(subplot_height*subplot_length)+1)
+    subplot_order = ['ref', 'brainstem', 'hemiWM', 'composite_wm_suvr', 'temporal_suvr', 'frontal_suvr', 'occipital_suvr', 'cingulate_suvr', 'composite_suvr', 'parietal_suvr']
+    plt.figure(1)
+    for subplot_i, subplot_key in zip(subplot_indices, subplot_order):
+        ax = plt.subplot(subplot_height, subplot_length, subplot_i)
+        plt.title(subplot_key.replace('_',' ').replace('suvr', 'SUVR'))
+        slope_graph(sorted_data, subplot_key, grouping, plot_raw=False)
+    plt.show()
+    sys.exit(1)
+
     '''
     plot pvc vs nonpvc, by group
     '''
