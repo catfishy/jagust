@@ -1049,7 +1049,6 @@ def loadMATFile(input_file):
     data = sio.loadmat(input_file)
     return data
 
-
 def calculateCSVDifference(file1, file2, index='RID'):
     headers1, rows1 = parseCSV(file1)
     headers2, rows2 = parseCSV(file2)
