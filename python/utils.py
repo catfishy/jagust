@@ -151,6 +151,7 @@ def importDODRegistry(dod_registry_file):
     registry = defaultdict(list)
     for data in lines:
         subj = int(data['SCRNO'])
+        rid = int(data['RID'])
         viscode = data['VISCODE'].strip().lower()
         if viscode.startswith('sc'):
             continue
@@ -160,7 +161,8 @@ def importDODRegistry(dod_registry_file):
         date = datetime.strptime(date_string,'%Y-%m-%d')
         registry[subj].append({'VISCODE': viscode,
                                'EXAMDATE': date,
-                               'update_stamp': data['update_stamp']})
+                               'update_stamp': data['update_stamp'],
+                               'RID': rid})
     registry = dict(registry)
     for k in registry.keys():
         new_val = sorted(registry[k], key=lambda x: x['EXAMDATE'])
@@ -904,7 +906,9 @@ def importAV45(av45_file, registry=None):
     av45_headers, av45_lines = parseCSV(av45_file)
     av45_by_subj = defaultdict(list)
     for line in av45_lines:
-        if 'RID' in line:
+        if 'SCRNO' in line:
+            subj = int(line.pop('SCRNO',None))
+        elif 'RID' in line:
             subj = int(line.pop('RID',None))
         elif 'PID' in line:
             subj = int(line.pop('PID',None))

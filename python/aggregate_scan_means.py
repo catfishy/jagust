@@ -77,7 +77,7 @@ ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMA
                    'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                    'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                    'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-DOD_FIELDNAMES = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+DOD_FIELDNAMES = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
                   'FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
@@ -102,7 +102,7 @@ DOD_FIELDNAMES = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM',
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
-DOD_FIELDNAMES_EXTRA = ['PID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+DOD_FIELDNAMES_EXTRA = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
                   'FRONTAL','FRONTAL_SIZE','CINGULATE','CINGULATE_SIZE','PARIETAL','PARIETAL_SIZE',
                   'TEMPORAL','TEMPORAL_SIZE','COMPOSITE','COMPOSITE_REF','ERODED_SUBCORTICALWM',
                   'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
@@ -137,7 +137,7 @@ ADNI_OMIT = ['LEFT_CEREBELLUM_CORTEX',
 ADNI_EXTRA_OMIT = ADNI_OMIT
 DOD_OMIT = ADNI_OMIT
 DOD_EXTRA_OMIT = ADNI_OMIT
-ADNI_OMIT_SIZES = ['PID', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
+ADNI_OMIT_SIZES = ['SCRNO', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
                    'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                    'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                    'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
@@ -145,7 +145,7 @@ ADNI_OMIT_SIZES = ['PID', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM'
                    'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
 ADNI_EXTRA_OMIT_SIZES = ADNI_OMIT_SIZES
 DOD_OMIT_SIZES = ADNI_OMIT_SIZES
-DOD_EXTRA_OMIT_SIZES = ['PID', 'RID', 'COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
+DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                         'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                         'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
                         'CEREBELLUMWHITEMATTER']
@@ -254,7 +254,7 @@ def combineMeansAndSize(agg_type, mean_header, size_header, mean_values, size_va
     size_values = {convertHeaderCodes(k):v for k,v in size_values.iteritems()}
     rid = int(float(mean_values['RID']))
 
-    header_list, mean_values, size_values = additionalCalculations(mean_header, mean_values, size_values)
+    header_list, mean_values, size_values = additionalCalculations(mean_header, mean_values, size_values, agg_type)
     all_headers = []
     all_values = []
     for h in header_list:
@@ -363,7 +363,7 @@ def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes,
         data = convertToCSVDataType(data, decimal_places=8)
         writer.writerow(data)
 
-def additionalCalculations(headers, mean_values, size_values):
+def additionalCalculations(headers, mean_values, size_values, agg_type):
     '''
         SUMMARYSUVR_WHOLECEREBNORM
         SUMMARYSUVR_COMPOSITE_REFNORM
@@ -397,9 +397,14 @@ def additionalCalculations(headers, mean_values, size_values):
     headers.append('COMPOSITE_REF')
     mean_values['COMPOSITE_REF'] = composite_ref
 
-    headers.append('PID')
-    mean_values['RID'] = int(mean_values['RID'])
-    mean_values['PID'] = mean_values['RID']
+    if agg_type in set(['dod', 'dod_extra']):
+        # convert RID -> SCRNO, then actual RID is added in with metadata
+        headers.append('SCRNO')
+        mean_values['SCRNO'] = int(mean_values['RID'])
+    else:
+        headers.append('PID')
+        headers.remove('RID')
+        mean_values['PID'] = int(mean_values['RID'])
     return (headers, mean_values, size_values)
 
 
@@ -424,6 +429,7 @@ if __name__ == "__main__":
 
 
     # for adni av45
+    '''
     output = '../output/UCBERKELEYAV45_08_06_15_extra.csv'
     preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
     registry = importRegistry("../docs/registry_clean.csv") 
@@ -433,11 +439,11 @@ if __name__ == "__main__":
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
                                  meta_pet, registry, agg_type)
     sys.exit(1)
-    
-
-    # for adni dod (also add in adni controls)
     '''
-    output = '../output/AV45_DOD_LONI_08.05.15_extra.csv'
+
+    # for adni dod (also add in adni controls
+    
+    output = '../output/AV45_DOD_LONI_08.05.15_extra_withcontrols.csv'
     temp_output = '../output/temp.csv'
     preprocess_folder =  '../docs/AV45_DOD_preprocess_output_08_05_15'
     adni_preprocess_folder = '../docs/AV45_preprocess_output_07_08_15_extra'
@@ -457,9 +463,23 @@ if __name__ == "__main__":
     appendCSV(output, temp_output)
     print 'removing'
     removeFile(temp_output)
+    
+
+    # for adni dod (don't add in adni controls)
+    '''
+    output = '../output/AV45_DOD_LONI_08.05.15_extra.csv'
+    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_08_05_15'
+    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    meta_pet = None
+    meta_pet_adni = None
+    agg_type = 'dod_extra'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
     '''
 
     # for adni dod testing with old inputs
+    '''
     output = '../output/AV45_DOD_LONI_OLDTEST_extra.csv'
     preprocess_folder =  '../docs/AV45_DOD_preprocess_output_12_18_14'
     registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
@@ -469,7 +489,7 @@ if __name__ == "__main__":
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
                                  meta_pet, registry, agg_type)
-
+    '''
 
 '''
 ## output keys ###

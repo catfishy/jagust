@@ -22,7 +22,7 @@ def syncAPOEData(old_headers, old_lines, apoe_file, registry_file, dump_to=None)
 
     for old_l in old_lines:
         new_data = updateLine(old_l, apoe_by_subj, extraction_fn, 
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -53,7 +53,7 @@ def syncDemogData(old_headers, old_lines, demog_file, registry_file, dump_to=Non
 
     for old_l in old_lines:
         new_data = updateLine(old_l, demog_by_subj, extraction_fn, 
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -75,7 +75,7 @@ def syncCAPSData(old_headers, old_lines, curr_file, lifetime_file, dump_to=None)
 
     for old_l in old_lines:
         new_data = updateLine(old_l, caps_by_subj, extraction_fn,
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
     # dump out
@@ -98,7 +98,7 @@ def syncWMHData(old_headers, old_lines, wmh_file, dump_to=None):
 
     for old_l in old_lines:
         new_data = updateLine(old_l, wmh_by_subj, extraction_fn,
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
     # dump out
@@ -119,7 +119,7 @@ def syncMRIData(old_headers, old_lines, mri_file, dump_to=None):
 
     for old_l in old_lines:
         new_data = updateLine(old_l, mri_by_subj, extraction_fn,
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -140,7 +140,7 @@ def syncGDData(old_headers, old_lines, gd_file, dump_to=None):
 
     for old_l in old_lines:
         new_data = updateLine(old_l, gd_by_subj, extraction_fn,
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
     # dump out
@@ -164,7 +164,7 @@ def syncCSFData(old_headers, old_lines, csf_file, registry_file, dump_to=None):
 
     for i, old_l in enumerate(old_lines):
         new_data = updateLine(old_l, csf_by_subj, extraction_fn, 
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -187,7 +187,7 @@ def syncADASData(old_headers, old_lines, adas_file, registry_file, dump_to=None)
 
     for i, old_l in enumerate(old_lines):
         new_data = updateLine(old_l, adas_by_subj, extraction_fn, 
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -215,7 +215,7 @@ def syncAVLTData(old_headers, old_lines, avlt_file, registry_file, dump_to=None)
 
     for i, old_l in enumerate(old_lines):
         new_data = updateLine(old_l, avlt_by_subj, extraction_fn, 
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -281,7 +281,7 @@ def syncADNIMasterData(old_headers, old_lines, adnimaster_file, dump_to=None):
 
     for i, old_l in enumerate(old_lines):
         new_data = updateLine(old_l, master_by_subj, extraction_fn, 
-                              pid_key='PID', pet_meta=None)
+                              pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -326,14 +326,14 @@ def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
         new_data = {'PTGroup': '',
                     'Study': '',
                     'GroupNum': ''}
-        subj = int(old_l['PID'])
+        subj = int(old_l['SCRNO'])
         if subj < 6000:
             new_data = {'PTGroup': 'ADNI C',
                         'Study': 0,
                         'GroupNum': 5}
         else:
             new_data = updateLine(old_l, elig_by_subj, extraction_fn, 
-                          pid_key='PID', pet_meta=None)
+                          pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -358,7 +358,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
     for old_l in old_lines:
         # get subject ID
         try:
-            subj = int(old_l['PID'])
+            subj = int(old_l['SCRNO'])
         except Exception as e:
             continue
 
@@ -392,7 +392,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None)
             new_headers = updated_headers
         new_data = convertToCSVDataType(new_data, decimal_places=None)
         old_l = {k: '' for k in new_headers}
-        old_l['PID'] = str(ns)
+        old_l['SCRNO'] = str(ns)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -564,7 +564,7 @@ def runPipeline():
         new_headers, new_lines = parseCSV(master_file)
         print len(new_lines)
     except:
-        new_headers = ['PID', 'Notes']
+        new_headers = ['SCRNO', 'Notes']
         new_lines = []
 
     print "\nSYNCING AV45\n"
@@ -627,7 +627,7 @@ if __name__ == '__main__':
     registry_file = "../docs/DOD/DOD_REGISTRY.csv"
 
     # AV45 file
-    av45_file = '../output/AV45_DOD_LONI_08.05.15_extra.csv'
+    av45_file = '../output/AV45_DOD_LONI_08.05.15_extra_withcontrols.csv'
     # AVLT file
     avlt_file = "../docs/DOD/NEUROBAT.csv"
     # ADAS file
