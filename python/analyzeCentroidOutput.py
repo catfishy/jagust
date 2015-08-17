@@ -2,6 +2,7 @@ from scipy.spatial.distance import euclidean
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -76,51 +77,63 @@ if __name__ == '__main__':
             if cur_centroid is not None:
                 subj_centroids.append(cur_centroid)
         centroids[r] = np.mean(np.array(subj_centroids), axis=0)
-        print centroids[r]
 
     binding_distributions = []
+    centroid_vectors = []
     segments = []
     variances = {}
     means = {}
     for k,v in by_region.iteritems():
         v = np.nan_to_num(v)
         binding_distributions.append(v)
+        centroid_vectors.append(centroids[k])
         segments.append(k)
         variances[k] = np.std(v)
         means[k] = np.mean(v)
 
+    '''
     sorted_means = sorted(means.items(), key=lambda x: x[1], reverse=True)
-    #for k,v in sorted_means:
-    #    print "%s: %s +/- %s" % (k,v, variances[k])
+    for k,v in sorted_means:
+        print "%s: %s +/- %s" % (k,v, variances[k])
+    '''
 
-    # preprocessing input somehow????
     obs = np.array(binding_distributions)
 
+    # Append centroids
+    '''
+    appended = []
+    for i,x in enumerate(obs):
+        appended.append(np.append(x, centroid_vectors[i]))
+    obs = np.array(appended)
+    '''
+
+    # Scale
+    scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
+    obs = scaler.fit_transform(obs)
+
     # PCA
-    pca_model = PCA(n_components=0.90, copy=True, whiten=False)
+    pca_model = PCA(n_components=0.95, copy=True, whiten=False)
     obs_pca = pca_model.fit_transform(obs)
     for x in pca_model.explained_variance_ratio_:
         print x
     print obs_pca.shape
 
-    # Append centroids
-    appended = []
-    for i,x in enumerate(obs_pca):
-        appended.append(np.append(x, centroids[segments[i]]))
-        print appended
+    for op in obs_pca:
+        print op
 
     scores = []
-    for k in range(8,26):
+    for k in range(6,80):
         model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
         labels = model.fit_predict(obs_pca)
         try:
             score = silhouette_score(obs_pca,labels,metric='euclidean')
-        except:
+        except Exception as e:
+            print e
             score = np.nan
         scores.append((k,score, model))
 
-    #for s in scores:
-    #    print s
+    for s in scores:
+        print s[:2]
     plt.plot([_[0] for _ in scores], [_[1] for _ in scores])
 
     best = sorted(scores, key=lambda x: x[1], reverse=True)[0]
