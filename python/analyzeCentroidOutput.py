@@ -1,5 +1,5 @@
 from scipy.spatial.distance import euclidean
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -100,12 +100,10 @@ if __name__ == '__main__':
     obs = np.array(binding_distributions)
 
     # Append centroids
-    '''
     appended = []
     for i,x in enumerate(obs):
         appended.append(np.append(x, centroid_vectors[i]))
     obs = np.array(appended)
-    '''
 
     # Scale
     scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
@@ -121,9 +119,17 @@ if __name__ == '__main__':
     for op in obs_pca:
         print op
 
+    # RUN HIERARCHICAL CLUSTERING
+
+
+    # RUN K_MEANS
     scores = []
     for k in range(6,80):
+        '''
         model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+        labels = model.fit_predict(obs_pca)
+        '''
+        model = AgglomerativeClustering(n_clusters=k, affinity='euclidean', linkage='ward')
         labels = model.fit_predict(obs_pca)
         try:
             score = silhouette_score(obs_pca,labels,metric='euclidean')
@@ -132,12 +138,8 @@ if __name__ == '__main__':
             score = np.nan
         scores.append((k,score, model))
 
-    for s in scores:
-        print s[:2]
-    plt.plot([_[0] for _ in scores], [_[1] for _ in scores])
-
     best = sorted(scores, key=lambda x: x[1], reverse=True)[0]
-    labels = best[2].predict(obs_pca)
+    labels = best[2].fit_predict(obs_pca)
     by_cluster_label = {_:[] for _ in list(set(labels))}
     for cluster, segment in zip(labels, segments):
         by_cluster_label[cluster].append(segment)
@@ -146,4 +148,7 @@ if __name__ == '__main__':
         print "Cluster %s" % k
         print "Segments: %s" % (v,)
 
+    for s in scores:
+        print s[:2]
+    plt.plot([_[0] for _ in scores], [_[1] for _ in scores])
     plt.show()
