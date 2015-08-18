@@ -3,8 +3,10 @@ from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import kneighbors_graph
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 from utils import *
 
@@ -100,17 +102,19 @@ if __name__ == '__main__':
     obs = np.array(binding_distributions)
 
     # Append centroids
+    '''
     appended = []
     for i,x in enumerate(obs):
         appended.append(np.append(x, centroid_vectors[i]))
     obs = np.array(appended)
+    '''
 
     # Scale
     scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
     obs = scaler.fit_transform(obs)
 
     # PCA
-    pca_model = PCA(n_components=0.95, copy=True, whiten=False)
+    pca_model = PCA(n_components=0.96, copy=True, whiten=False)
     obs_pca = pca_model.fit_transform(obs)
     for x in pca_model.explained_variance_ratio_:
         print x
@@ -119,27 +123,32 @@ if __name__ == '__main__':
     for op in obs_pca:
         print op
 
+
     # RUN HIERARCHICAL CLUSTERING
-
-
     # RUN K_MEANS
     scores = []
-    for k in range(6,80):
-        '''
-        model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
-        labels = model.fit_predict(obs_pca)
-        '''
-        model = AgglomerativeClustering(n_clusters=k, affinity='euclidean', linkage='ward')
-        labels = model.fit_predict(obs_pca)
-        try:
-            score = silhouette_score(obs_pca,labels,metric='euclidean')
-        except Exception as e:
-            print e
-            score = np.nan
-        scores.append((k,score, model))
+    for s in range(25,75):
+        # connectivity (use centroids)
+        connectivity = kneighbors_graph(centroid_vectors, n_neighbors=s, include_self=False)
+        for k in range(15,65):
+            '''
+            model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+            labels = model.fit_predict(obs_pca)
+            '''
+            model = AgglomerativeClustering(n_clusters=k, 
+                                            affinity='euclidean', 
+                                            linkage='ward',
+                                            connectivity=connectivity)
+            labels = model.fit_predict(obs_pca)
+            try:
+                score = silhouette_score(obs_pca,labels,metric='euclidean')
+            except Exception as e:
+                print e
+                score = np.nan
+            scores.append((k, s, score, model))
 
-    best = sorted(scores, key=lambda x: x[1], reverse=True)[0]
-    labels = best[2].fit_predict(obs_pca)
+    best = sorted(scores, key=lambda x: x[2], reverse=True)[0]
+    labels = best[3].fit_predict(obs_pca)
     by_cluster_label = {_:[] for _ in list(set(labels))}
     for cluster, segment in zip(labels, segments):
         by_cluster_label[cluster].append(segment)
@@ -148,7 +157,12 @@ if __name__ == '__main__':
         print "Cluster %s" % k
         print "Segments: %s" % (v,)
 
-    for s in scores:
-        print s[:2]
-    plt.plot([_[0] for _ in scores], [_[1] for _ in scores])
+    fig = plt.figure()
+    ax = Axes3D(fig)
+    xs = [_[0] for _ in scores]
+    ys = [_[1] for _ in scores]
+    zs = [_[2] for _ in scores]
+    # put 0s on the y-axis, and put the y axis on the z-axis
+    ax.scatter(xs=xs, ys=ys, zs=zs, zdir='z')
+    #plt.plot([_[0] for _ in scores], [_[1] for _ in scores])
     plt.show()
