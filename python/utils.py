@@ -772,7 +772,7 @@ def importDODMRI(mri_file):
         data[k] = sorted(data[k])
     return data
 
-def importMRI(mri_file, magstrength_filter=None):
+def importMRI(mri_file, magstrength_filter=None, filter_mprage=True):
     bad_sequences = set([])
     headers, lines = parseCSV(mri_file)
     data = defaultdict(list)
@@ -789,10 +789,7 @@ def importMRI(mri_file, magstrength_filter=None):
         except Exception as e:
             print e
             continue
-        '''
-        if line['Sequence'] != 'MPRAGE':
-            continue
-        '''
+
         if 'Sequence' in line:
             seq = line['Sequence'].strip().lower()
         elif 'SEQUENCE' in line:
@@ -805,11 +802,11 @@ def importMRI(mri_file, magstrength_filter=None):
         seq = seq.replace('mp-rage', 'mprage')
         seq = seq.replace('mp- rage', 'mprage')
         
-        '''
-        if not ('mpr' in seq or 'spgr' in seq or 'n3m' in seq):
+        
+        if filter_mprage and not ('mpr' in seq or 'spgr' in seq or 'n3m' in seq):
             bad_sequences.add(seq)
             continue
-        '''
+        
         if 'ScanDate' in line:
             new_date = line['ScanDate']
         elif 'SCANDATE' in line:

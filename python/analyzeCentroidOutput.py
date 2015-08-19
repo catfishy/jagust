@@ -130,7 +130,7 @@ if __name__ == '__main__':
     for s in range(25,75):
         # connectivity (use centroids)
         connectivity = kneighbors_graph(centroid_vectors, n_neighbors=s, include_self=False)
-        for k in range(15,65):
+        for k in range(15o,65):
             '''
             model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
             labels = model.fit_predict(obs_pca)
