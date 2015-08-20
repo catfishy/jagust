@@ -692,7 +692,7 @@ def importPetMETA(pet_meta_file):
     pets = dict(pets)
     for k in pets.keys():
         pets[k] = sorted(pets[k])
-    return dict(pets)
+    return pets
 
 def importARM(arm_file):
     '''

@@ -130,7 +130,7 @@ if __name__ == '__main__':
     for s in range(25,75):
         # connectivity (use centroids)
         connectivity = kneighbors_graph(centroid_vectors, n_neighbors=s, include_self=False)
-        for k in range(15o,65):
+        for k in range(15,65):
             '''
             model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
             labels = model.fit_predict(obs_pca)
@@ -147,7 +147,10 @@ if __name__ == '__main__':
                 score = np.nan
             scores.append((k, s, score, model))
 
-    best = sorted(scores, key=lambda x: x[2], reverse=True)[0]
+    best = sorted(scores, key=lambda x: x[2], reverse=True)[:40]
+    for b in best:
+        print "Clusters: %s, Neighbors: %s, Score: %s" % (b[0],b[1],b[2])
+    '''
     labels = best[3].fit_predict(obs_pca)
     by_cluster_label = {_:[] for _ in list(set(labels))}
     for cluster, segment in zip(labels, segments):
@@ -156,7 +159,7 @@ if __name__ == '__main__':
     for k,v in by_cluster_label.iteritems():
         print "Cluster %s" % k
         print "Segments: %s" % (v,)
-
+    '''
     fig = plt.figure()
     ax = Axes3D(fig)
     xs = [_[0] for _ in scores]
