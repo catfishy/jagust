@@ -321,6 +321,24 @@ def importAPOE(apoe_file):
         apoe_by_subj[subj] = {'apgen1': apgen1, 'apgen2': apgen2}
     return apoe_by_subj
 
+def importFDG(fdg_file):
+    headers, lines = parseCSV(fdg_file)
+    by_subj = defaultdict(list)
+    for line in lines:
+        subj = int(line['RID'])
+        vc = line['VISCODE']
+        vc2 = line['VISCODE2']
+        date = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
+        roiname = line['ROINAME']
+        mean = float(line['MEAN'])
+        by_subj[subj].append({'vc': vc,
+                              'vc2': vc2,
+                              'EXAMDATE': date,
+                              'ROI': roiname,
+                              'MEAN': mean})
+    return dict(by_subj)
+
+
 def importExtractedFDG(fdg_file, registry):
     headers, lines = parseCSV(fdg_file, delimiter='\t')
     fdg_rows = []

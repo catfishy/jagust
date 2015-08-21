@@ -107,7 +107,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
 
     to_add_headers = ['ADAS_AV45_3_3MTHS', 'ADAS_AV45_3_DATE']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after='ADAS_AV45_2_DATE')
-    to_add_headers = ['ADAS_post_AV45_followuptime']
+    to_add_headers = ['ADAS_post_AV45_followuptime', 'ADASslope_postAV45']
     new_headers = rearrangeHeaders(new_headers, to_add_headers, after='ADAS_3MTH_AV45')
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
@@ -156,8 +156,8 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                     if test_score != '':
                         post_values.append(test_score)
                         post_times.append(diff_from_first)
+                        max_followup_counter = rel_time
                     new_subj_data['TIMEpostAV45_ADAS.%s' % count] = rel_time
-                    max_followup_counter = rel_time
                 else:
                     new_subj_data['TIMEpostAV45_ADAS.%s' % count] = ''
             if av45_2 is not None and test_date != '':
@@ -182,17 +182,18 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
                 new_subj_data[f_key] = ''
         
         # get slopes
+        '''
         if len(all_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(all_times, all_values)
             new_subj_data['ADAS_slope_all'] = slope
         else:
             new_subj_data['ADAS_slope_all'] = ''
+            '''
         if len(post_values) >= 2:
             slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
             new_subj_data['ADASslope_postAV45'] = slope
         else:
             new_subj_data['ADASslope_postAV45'] = ''
-
         return new_subj_data
 
     new_lines = []
@@ -277,9 +278,9 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
                 if rel_time_days >= -93.0:
                     annualized_time = rel_time_days / 365.0
                     new_subj_data['TIMEpostAV45_MMSE.%s' % count] = annualized_time
-                    max_followup_counter = annualized_time
                     if test_score != '':
                         post_av45_points.append((annualized_time, test_score))
+                        max_followup_counter = annualized_time
             if ('TIMEpostAV45_MMSE.%s' % count) not in new_subj_data:
                 new_subj_data['TIMEpostAV45_MMSE.%s' % count] = ''
             # pair up with subsequent av45 scans
@@ -393,8 +394,8 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                     if test_score != '':
                         post_values.append(test_score)
                         post_times.append(diff_from_first)
+                        max_followup_counter = rel_time
                     new_subj_data['TIMEpostAV45_AVLT.%s' % count] = rel_time
-                    max_followup_counter = rel_time
                 else:
                     new_subj_data['TIMEpostAV45_AVLT.%s' % count] = ''
             if av45_2 is not None and test_date != '':
@@ -732,17 +733,20 @@ def parseAV45Entries(old_headers, subj_av45):
                          ["%s_pchange" % _ for _ in wm70_composite_keys[1:]] + \
                          ["%s_pchange_ABS" % _ for _ in wm70_composite_keys[1:]] + \
                          ["%s_diff" % _ for _ in wm70_composite_keys[1:]] + \
-                         ["%s_diff_ABS" % _ for _ in wm70_composite_keys[1:]]
+                         ["%s_diff_ABS" % _ for _ in wm70_composite_keys[1:]] + \
+                         ['AV45_WM70/composite_Slope_2pts', 'AV45_WM70/composite_Slope_3pts']
     all_wm70_cerebg_keys = wm70_cerebg_keys + \
                            ["%s_pchange" % _ for _ in wm70_cerebg_keys[1:]] + \
                            ["%s_pchange_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
                            ["%s_diff" % _ for _ in wm70_cerebg_keys[1:]] + \
-                           ["%s_diff_ABS" % _ for _ in wm70_cerebg_keys[1:]]
+                           ["%s_diff_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
+                           ['AV45_WM70/cerebg_Slope_2pts', 'AV45_WM70/cerebg_Slope_3pts']
     all_wm70_wcereb_keys = wm70_wcereb_keys + \
                            ["%s_pchange" % _ for _ in wm70_wcereb_keys[1:]] + \
                            ["%s_pchange_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
                            ["%s_diff" % _ for _ in wm70_wcereb_keys[1:]] + \
-                           ["%s_diff_ABS" % _ for _ in wm70_wcereb_keys[1:]]
+                           ["%s_diff_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
+                           ['AV45_WM70/wcereb_Slope_2pts', 'AV45_WM70/wcereb_Slope_3pts']
     all_unilateral_keys = unilateral_keys
     all_bigref_keys = bigref_keys + \
                       ["%s_pchange" % _ for _ in bigref_keys[1:]] + \
@@ -909,6 +913,12 @@ def parseAV45Entries(old_headers, subj_av45):
                 data['AV45_wcereb_Slope_2pts'] = slope
                 slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in brainstem_keys[:2]])
                 data['AV45_brainstem_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_composite_keys[:2]])
+                data['AV45_WM70/composite_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_cerebg_keys[:2]])
+                data['AV45_WM70/cerebg_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_wcereb_keys[:2]])
+                data['AV45_WM70/wcereb_Slope_2pts'] = slope
             if i == 2:
                 times = exam_timedeltas[:3]
                 slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in bigref_keys[:3]])
@@ -921,8 +931,74 @@ def parseAV45Entries(old_headers, subj_av45):
                 data['AV45_wcereb_Slope_3pts'] = slope
                 slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in brainstem_keys[:3]])
                 data['AV45_brainstem_Slope_3pts'] = slope
-
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_composite_keys[:3]])
+                data['AV45_WM70/composite_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_cerebg_keys[:3]])
+                data['AV45_WM70/cerebg_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_wcereb_keys[:3]])
+                data['AV45_WM70/wcereb_Slope_3pts'] = slope
     return (new_headers, data)
+
+def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
+    fdg_by_subj = importFDG(fdg_file)
+
+    fdg_columns = []
+    fdg_columns += ['FDG_pons_Vis%s' % (i+1) for i in range(10)]
+    fdg_columns += ['FDGVis%s_ReltoAV45' % (i+1) for i in range(10)]
+    fdg_columns += ['FDG_postAV45_slope','FDG_postAV45_followuptime']
+    new_headers= rearrangeHeaders(old_headers, fdg_columns, after='FDG_Bin_Baseline')
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        # collapse subj rows per visit
+        av45_bl, av45_2, av45_3 = getAV45Dates(old_l)
+        examdates = list(set([_['EXAMDATE'] for _ in subj_row]))
+        examdates = sorted(examdates)
+        subj_fdg = []
+        for ed in examdates:
+            rel_rows = [_ for _ in subj_row if _['EXAMDATE'] == ed]
+            means = [_['MEAN'] for _ in rel_rows]
+            pons_avg = np.mean(means)
+            subj_fdg.append({'EXAMDATE': ed, 'PONS': pons_avg})
+
+        new_data = {}
+        slope_points = []
+        for i in range(10):
+            if i < len(subj_fdg):
+                datapoint = subj_fdg[i]
+                new_data['FDG_pons_Vis%s' % (i+1)] = datapoint['PONS']
+                if av45_bl:
+                    rel_time = abs(datapoint['EXAMDATE'] - av45_bl).days / 365.0
+                    new_data['FDGVis%s_ReltoAV45' % (i+1)] = rel_time
+                    if rel_time >= -(30.0/365.0):
+                        slope_points.append((rel_time, datapoint['PONS']))
+                else:
+                    new_data['FDGVis%s_ReltoAV45' % (i+1)] = ''
+            else:
+                new_data['FDG_pons_Vis%s' % (i+1)] = ''
+                new_data['FDGVis%s_ReltoAV45' % (i+1)] = ''
+        if len(slope_points) >= 2:
+            raw_dates = [_[0] for _ in slope_points]
+            raw_scores = [_[1] for _ in slope_points]
+            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            new_data['FDG_postAV45_slope'] = slope
+            new_data['FDG_postAV45_followuptime'] = raw_dates[-1]
+        else:
+            new_data['FDG_postAV45_slope'] = ''
+            new_data['FDG_postAV45_followuptime'] = ''
+
+        return new_data
+    new_lines = []
+    for old_l in old_lines:
+        new_data = updateLine(old_l, fdg_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None, decimal_places=5)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
 
 
 def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None):
@@ -935,6 +1011,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     tbm_columns.append('TBMSyn_BL_DATE')
     tbm_columns.append('TBMSyn_count')
     tbm_columns.append('TBMSyn_SLOPE')
+    tbm_columns.append('TBMSyn_slope_followuptime')
     new_headers = rearrangeHeaders(old_headers, tbm_columns, after=None)
     
     def extraction_fn(subj, subj_row, old_l, patient_pets):
@@ -973,8 +1050,10 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
             #slope, intercept, r, p, stderr = stats.linregress(diff_dates, diff_scores)
             output = optimize.fmin(lambda b, x, y: ((b*x-y)**2).sum(), x0=0.1, args=(diff_dates, diff_scores))
             new_data['TBMSyn_SLOPE'] = output[0]
+            new_data['TBMSyn_slope_followuptime'] = raw_dates[-1]
         else:
             new_data['TBMSyn_SLOPE'] = ''
+            new_data['TBMSyn_slope_followuptime'] = ''
         new_data['TBMSyn_count'] = len(slope_points)
         new_data['TBMSyn_BL_DATE'] = bl_examdate
         return new_data
@@ -1279,7 +1358,9 @@ def eliminateColumns(headers, lines):
                  'CSF<3mths_AV45_2',
                  'LastCSF',
                  'LastCSF_AV45_1_TimeDiff',
-                 'LastCSFAbeta']
+                 'LastCSFAbeta',
+                 'ADAS_slope_all',
+                 'FDG_slope']
     to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
     to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
     to_remove += ['TAU.%s' % (i+1) for i in range(7)]
@@ -1335,6 +1416,8 @@ def runPipeline():
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
+    print "\nSYNCING FDG\n"
+    new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file, dump_to=None)
     print "\nSYNCING TBMSYN\n"
     new_headers, new_lines = syncTBMSynData(new_headers, new_lines, tbm_file, registry_file, dump_to=None)
     print "\nSYNCING MMSE\n"
@@ -1380,5 +1463,8 @@ if __name__ == '__main__':
     wmh_file = '../docs/UCD_ADNI2_WMH_03_12_15.csv'
     # GD file
     gd_file = '../docs/GDSCALE.csv'
+    # FDG file
+    fdg_file = '../docs/UCBERKELEY_FDG_07_29_15.csv'
+
 
     runPipeline()
