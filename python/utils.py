@@ -2,12 +2,61 @@ import sys
 import csv
 import os
 import scipy.io as sio
+from scipy.spatial.distance import euclidean
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from collections import defaultdict
 from datetime import datetime, timedelta
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+
+
+
+def gap(data, nrefs=20, ks=range(10,70)):
+    """
+    Compute the Gap statistic for an nxm dataset in data.
+    Either give a precomputed set of reference distributions in refs as an (n,m,k) scipy array,
+    or state the number k of reference distributions in nrefs for automatic generation with a
+    uniformed distribution within the bounding box of data.
+    Give the list of k-values for which you want to compute the statistic in ks.
+    """
+    shape = data.shape
+
+    tops = data.max(axis=0)
+    bots = data.min(axis=0)
+    dists = np.matrix(np.diag(tops-bots))
+    rands = np.random.random_sample(size=(shape[0],shape[1],nrefs))
+    for i in range(nrefs):
+        rands[:,:,i] = rands[:,:,i]*dists+bots
+
+    gaps = np.zeros((len(ks),))
+    sds = np.zeros((len(ks),))
+    for i,k in enumerate(ks):
+        # USE KMEANS
+        model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+        labels = model.fit_predict(data)
+        centers = model.cluster_centers_
+
+        disp = sum([euclidean(data[m,:],centers[labels[m],:]) for m in range(shape[0])])
+
+        refdisps = np.zeros((rands.shape[2],))
+        for j in range(rands.shape[2]):
+            model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+            labels = model.fit_predict(rands[:,:,j])
+            centers = model.cluster_centers_
+            refdisps[j] = sum([euclidean(rands[m,:,j],centers[labels[m],:]) for m in range(shape[0])])
+        gaps[i] = np.mean(np.log(refdisps))-np.log(disp)
+        sds[i] = np.sqrt(1.0 + 1.0/nrefs) * np.std(np.log(refdisps))
+
+
+    valid_ks = []
+    for i, g in enumerate(gaps[:-1]):
+        if g >= gaps[i+1] - sds[i+1]:
+            valid_ks.append(ks[i])
+
+    return gaps, valid_ks
+
 
 def parseCSV(file_path, delimiter=','):
     data = pd.read_csv(file_path, sep=delimiter, low_memory=False)

@@ -114,23 +114,39 @@ if __name__ == '__main__':
     obs = scaler.fit_transform(obs)
 
     # PCA
-    pca_model = PCA(n_components=0.96, copy=True, whiten=False)
+    pca_model = PCA(n_components=10, copy=True, whiten=False)
     obs_pca = pca_model.fit_transform(obs)
     for x in pca_model.explained_variance_ratio_:
         print x
     print obs_pca.shape
 
-    for op in obs_pca:
-        print op
+    '''
+    # CHOOSE NUMBER OF CLUSTESR
+    ks=range(10,55)
+    gaps_raw, valid_ks_raw = gap(obs, nrefs=20, ks=ks)
+    gaps_pca, valid_ks_pca = gap(obs_pca, nrefs=20, ks=ks)
 
 
+    print "RAW GAPS"
+    print gaps_raw
+    print valid_ks_raw
+    print "PCA GAPS"
+    print gaps_pca
+    print valid_ks_pca
+
+    fig = plt.figure()
+    plt.plot(ks, gaps_raw)
+    plt.plot(ks, gaps_pca)
+    plt.show()
+    sys.exit(1)
+    '''
     # RUN HIERARCHICAL CLUSTERING
     # RUN K_MEANS
     scores = []
     for s in range(25,75):
         # connectivity (use centroids)
         connectivity = kneighbors_graph(centroid_vectors, n_neighbors=s, include_self=False)
-        for k in range(15,65):
+        for k in range(30,31):
             '''
             model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
             labels = model.fit_predict(obs_pca)
@@ -148,17 +164,30 @@ if __name__ == '__main__':
             scores.append((k, s, score, model))
 
     best = sorted(scores, key=lambda x: x[2], reverse=True)[:40]
-    for b in best:
-        print "Clusters: %s, Neighbors: %s, Score: %s" % (b[0],b[1],b[2])
-    '''
-    labels = best[3].fit_predict(obs_pca)
-    by_cluster_label = {_:[] for _ in list(set(labels))}
-    for cluster, segment in zip(labels, segments):
-        by_cluster_label[cluster].append(segment)
+    by_score = defaultdict(list)
 
-    for k,v in by_cluster_label.iteritems():
-        print "Cluster %s" % k
-        print "Segments: %s" % (v,)
+    for b in best:
+        by_score[b[2]].append(b)
+    
+    print by_score.keys()
+
+    chosen_connectivities = []
+    for k,v in by_score.items():
+        sorted_v = sorted(v, key=lambda x: x[1])
+        chosen_connectivities.append(sorted_v[0])
+
+    for c in chosen_connectivities:
+        print "Clusters: %s, Neighbors: %s, Score: %s" % (c[0],c[1],c[2])
+        labels = c[3].fit_predict(obs_pca)
+        by_cluster_label = {_:[] for _ in list(set(labels))}
+        for cluster, segment in zip(labels, segments):
+            by_cluster_label[cluster].append(segment)
+
+        for k,v in by_cluster_label.iteritems():
+            print "Cluster %s" % k
+            print "Segments: %s" % (v,)
+        print '\n\n'
+
     '''
     fig = plt.figure()
     ax = Axes3D(fig)
@@ -169,3 +198,4 @@ if __name__ == '__main__':
     ax.scatter(xs=xs, ys=ys, zs=zs, zdir='z')
     #plt.plot([_[0] for _ in scores], [_[1] for _ in scores])
     plt.show()
+    '''
