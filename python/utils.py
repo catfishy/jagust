@@ -13,7 +13,7 @@ import pandas as pd
 
 
 
-def gap(data, nrefs=20, ks=range(10,70)):
+def gap(data, nrefs=20, ks=range(10,70), clustertype='kmeans'):
     """
     Compute the Gap statistic for an nxm dataset in data.
     Either give a precomputed set of reference distributions in refs as an (n,m,k) scipy array,
@@ -21,6 +21,8 @@ def gap(data, nrefs=20, ks=range(10,70)):
     uniformed distribution within the bounding box of data.
     Give the list of k-values for which you want to compute the statistic in ks.
     """
+    assert clustertype in set(['kmeans','agglomerative'])
+
     shape = data.shape
 
     tops = data.max(axis=0)
@@ -34,9 +36,10 @@ def gap(data, nrefs=20, ks=range(10,70)):
     sds = np.zeros((len(ks),))
     for i,k in enumerate(ks):
         # USE KMEANS
-        model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
-        labels = model.fit_predict(data)
-        centers = model.cluster_centers_
+        if clustertype == 'kmeans':
+            model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+            labels = model.fit_predict(data)
+            centers = model.cluster_centers_
 
         disp = sum([euclidean(data[m,:],centers[labels[m],:]) for m in range(shape[0])])
 

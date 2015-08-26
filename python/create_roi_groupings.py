@@ -114,42 +114,40 @@ filepath = "grouping_4.mat"
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
 
-
-Cluster0=[62, 30, 49]
-Cluster1=[4, 31, 63, 43]
-Cluster2=[1027, 1003, 2020, 2027, 1020, 2028, 1008, 2018, 2003, 1031, 2017, 2031, 2008, 1017, 1028, 1018]
-Cluster3=[7, 46, 52, 16, 28, 60, 13]
-Cluster4=[2024, 1024, 1022, 2029, 1029, 2022]
-Cluster5=[1004, 2004]
-Cluster6=[18, 2016, 2000, 1016, 54, 1000]
+Cluster0=[1027, 2014, 2027, 1014]
+Cluster1=[24, 85, 14]
+Cluster2=[7, 46, 52, 16, 28, 60, 13]
+Cluster3=[18, 2016, 2033, 2000, 1033, 1016, 54, 1000]
+Cluster4=[2034, 1034, 1035, 2035]
+Cluster5=[44, 5]
+Cluster6=[1004, 2004]
 Cluster7=[72]
-Cluster8=[2014, 1012, 2012, 1014]
-Cluster9=[44, 5]
-Cluster10=[2034, 1034, 1035, 2030, 2035, 26, 58]
-Cluster11=[2, 41]
+Cluster8=[1026, 2026, 2002, 1002]
+Cluster9=[1011, 2005, 1013, 1005, 2013, 2011]
+Cluster10=[2, 41]
+Cluster11=[2024, 1024, 1022, 2029, 1029, 2022]
 Cluster12=[1032, 2032]
-Cluster13=[2033, 1033, 1006, 2006]
-Cluster14=[24, 85, 14]
-Cluster15=[1023, 1026, 2026, 2010, 2023, 1010, 2002, 1002, 1025, 2025]
-Cluster16=[1009, 1007, 2009, 2019, 1030, 2015, 1015, 2007, 1019]
-Cluster17=[1021, 2021]
-Cluster18=[2005, 1013, 1005, 2013]
-Cluster19=[51, 12]
-Cluster20=[251]
-Cluster21=[253, 254, 252]
-Cluster22=[77, 255]
-Cluster23=[50, 11, 10]
-Cluster24=[1001, 2001]
-Cluster25=[15, 47, 8]
-Cluster26=[1011, 2011]
-Cluster27=[53, 17, 80]
+Cluster13=[15, 47, 1006, 2006, 8]
+Cluster14=[1023, 2010, 2023, 1010, 1025, 2025]
+Cluster15=[1021, 2021]
+Cluster16=[50, 11, 62, 10, 30, 49]
+Cluster17=[1009, 1007, 2009, 2019, 1030, 2015, 1015, 2030, 2007, 1019]
+Cluster18=[53, 17, 80]
+Cluster19=[253, 254, 252]
+Cluster20=[4, 31, 63, 43]
+Cluster21=[1001, 2001]
+Cluster22=[26, 58]
+Cluster23=[251]
+Cluster24=[77, 255]
+Cluster25=[2020, 1020, 2018, 1012, 2012, 1018]
+Cluster26=[51, 12]
+Cluster27=[1003, 2028, 1008, 2003, 1031, 2017, 2031, 2008, 1017, 1028]
 all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,Cluster8,Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,Cluster24,Cluster25,Cluster26,Cluster27]
 names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 'Cluster7', 'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 'Cluster14', 'Cluster15', 'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 'Cluster21', 'Cluster22', 'Cluster23', 'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27']
 print '\n\nGROUPING KMEANS'
-filepath = "grouping_kmeans.mat"
+filepath = "grouping_kmeans_26.mat"
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
-
 
 Cluster0=[53, 50, 11, 17, 80]
 Cluster1=[24, 85, 14]
@@ -182,6 +180,6 @@ Cluster27=[52, 13]
 all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,Cluster8,Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,Cluster24,Cluster25,Cluster26,Cluster27]
 names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 'Cluster7', 'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 'Cluster14', 'Cluster15', 'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 'Cluster21', 'Cluster22', 'Cluster23', 'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27']
 print '\n\nGROUPING AGG'
-filepath = "grouping_agg.mat"
+filepath = "grouping_kmeans_55.mat"
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)

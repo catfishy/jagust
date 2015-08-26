@@ -72,6 +72,18 @@ def parseResult(data, lut_table):
 
     return by_region, by_subj, subjects
 
+def createConnectivityGraph(region_list):
+    '''
+    Separate ventricles from white matter from other
+    '''
+    ventricles = ['Left-Lateral-Ventricle','4th-Ventricle','CSF','3rd-Ventricle','5th-Ventricle','Left-Inf-Lat-Vent','Right-Inf-Lat-Vent']
+    whitematter = ['CC_Central','Left-Cerebral-White-Matter','Left-Cerebellum-White-Matter','CC_Anterior','Right-Cerebellum-White-Matter','ctx-rh-corpuscallosum','CC_Mid_Posterior','CC_Posterior','WM-hypointensities','CC_Mid_Anterior','Right-Cerebral-White-Matter']
+    ambiguous = ['Optic-Chiasm','ctx-rh-unknown','ctx-lh-unknown']
+
+    
+
+    pass
+
 if __name__ == '__main__':
     output_mat = "../aggOutput.mat"
     data = loadMATFile(output_mat)
@@ -103,6 +115,8 @@ if __name__ == '__main__':
         variances[k] = np.std(v)
         means[k] = np.mean(v)
 
+    print segments
+
     '''
     sorted_means = sorted(means.items(), key=lambda x: x[1], reverse=True)
     for k,v in sorted_means:
@@ -127,60 +141,65 @@ if __name__ == '__main__':
 
     '''
     # CHOOSE NUMBER OF CLUSTERS
-    ks=range(10,55)
-    gaps_raw, valid_ks_raw = gap(obs, nrefs=20, ks=ks)
+    ks=range(18,60)
+    gaps_raw, valid_ks_raw = gap(obs, nrefs=40, ks=ks)
 
     print "RAW GAPS"
     print gaps_raw
-    print valid_ks_raw
+    print sorted(valid_ks_raw, key=lambda x: x[1], reverse=True)
 
     fig = plt.figure()
     plt.plot(ks, gaps_raw)
     plt.show()
     sys.exit(1)
     '''
-    k = 28
+    k = [26,55]
     
     # RUN HIERARCHICAL CLUSTERING
     # RUN K_MEANS
     scores = []
 
-    ## connectivity (use centroids)
-    #connectivity = kneighbors_graph(centroid_vectors, n_neighbors=70, include_self=False)
-    connectivity = None
+    # Get connectivity graph
+    connectivity = createConnectivityGraph(segments)
 
-    # PCA (5 components explains most of variance)
-    pca_model = PCA(n_components=10, copy=True, whiten=False)
-    obs_pca = pca_model.fit_transform(obs)
-    print obs_pca.shape
     '''
+    # PCA
+    pca_model = PCA(n_components=0.99, copy=True, whiten=False)
+    obs_pca = pca_model.fit_transform(obs)
     for x in pca_model.explained_variance_ratio_:
         print x
     '''
+    # no pca
+    obs_pca = obs
 
-    # KMEANS
-    model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
-    labels = model.fit_predict(obs_pca)
-    try:
-        score = silhouette_score(obs,labels,metric='euclidean')
-    except Exception as e:
-        print e
-        score = np.nan
-    scores.append((k, 'kmeans', score, model))
-
-    # AGGLOMERATIVE
-    model = AgglomerativeClustering(n_clusters=k, 
-                                    affinity='euclidean', 
-                                    linkage='ward',
-                                    connectivity=connectivity)
-    labels = model.fit_predict(obs_pca)
-    try:
-        score = silhouette_score(obs,labels,metric='euclidean')
-    except Exception as e:
-        print e
-        score = np.nan
-    scores.append((k, 'agg', score, model))
-
+    print obs_pca.shape
+    for cur_k in k:
+        '''
+        # KMEANS
+        model = KMeans(n_clusters=cur_k, max_iter=1000, tol=0.00001,
+                       n_jobs=-1, copy_x=True, verbose=False)
+        labels = model.fit_predict(obs_pca)
+        try:
+            score = silhouette_score(obs,labels,metric='euclidean')
+        except Exception as e:
+            print e
+            score = np.nan
+        scores.append((cur_k, 'kmeans', score, model))
+        '''
+        
+        # AGGLOMERATIVE
+        model = AgglomerativeClustering(n_clusters=cur_k, 
+                                        affinity='euclidean', 
+                                        linkage='ward',
+                                        connectivity=connectivity)
+        labels = model.fit_predict(obs_pca)
+        try:
+            score = silhouette_score(obs,labels,metric='euclidean')
+        except Exception as e:
+            print e
+            score = np.nan
+        scores.append((cur_k, 'agg', score, model))
+        
     best = sorted(scores, key=lambda x: x[2], reverse=True)[:40]
     for c in best:
         print "Clusters: %s, Neighbors: %s, Score: %s" % (c[0],c[1],c[2])
@@ -188,13 +207,14 @@ if __name__ == '__main__':
         by_cluster_label = {_:[] for _ in list(set(labels))}
         for cluster, segment in zip(labels, segments):
             segment_index = [k for k,v in lut_table.iteritems() if v == segment][0]
-            by_cluster_label[cluster].append(segment_index)
+            #by_cluster_label[cluster].append(segment_index)
+            by_cluster_label[cluster].append(segment)
         roinames = []
         varnames = []
         for cluster, indices in by_cluster_label.iteritems():
             cluster_varname = 'Cluster%s' % cluster
             print '%s=%s' % (cluster_varname,indices)
-            roinames.append("%s" % cluster_varname)
+            roinames.append("%s" % cluster_varname) 
             varnames.append(cluster_varname)
         print "all_groups=[%s]" % (','.join(varnames),)
         print "names=%s" % roinames
