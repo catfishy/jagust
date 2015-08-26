@@ -49,11 +49,11 @@ def gap(data, nrefs=20, ks=range(10,70)):
         gaps[i] = np.mean(np.log(refdisps))-np.log(disp)
         sds[i] = np.sqrt(1.0 + 1.0/nrefs) * np.std(np.log(refdisps))
 
-
     valid_ks = []
     for i, g in enumerate(gaps[:-1]):
         if g >= gaps[i+1] - sds[i+1]:
-            valid_ks.append(ks[i])
+            diff = g - (gaps[i+1] - sds[i+1])
+            valid_ks.append((ks[i], diff))
 
     return gaps, valid_ks
 
@@ -1100,7 +1100,7 @@ def removeFile(filename):
         print "File to remove does not exist"
 
 
-def printROIGrouping(names, groupings):
+def printROIGrouping(names, groupings, lut_file):
     data = importFreesurferLookup(lut_file)
     for name, group in zip(names,groupings):
         print "\t%s" % name
@@ -1249,116 +1249,3 @@ if __name__ == "__main__":
     for idx in to_lookup:
         print "%s: %s" % (idx, data.get(idx, 'Unknown'))
     '''
-
-
-    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
-    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
-    temporal=[1015,1030,2015,2030]
-    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
-    basal_ganglia=[11,50,12,51,13,52]
-    occipital=[1011,2011]
-    left_cerebGM=[8]
-    right_cerebGM=[47]
-    left_cerebWM=[7]
-    right_cerebWM=[46]
-    brainstem=[16]
-    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
-    non_hemiWM=[85]
-    other=[0,10,17,18,26,28,30,49,53,54,58,60,62,80,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
-    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,other]
-    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','other']
-    print "\n\nGROUPING 1"
-    filepath = "grouping_1.mat"
-    createROIGrouping(names, all_groups, filepath)
-    printROIGrouping(names, all_groups)
-
-    left_frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032]
-    right_frontal=[2003,2012,2014,2018,2019,2020,2027,2028,2032]
-    left_parietal=[1008,1025,1029,1031]
-    right_parietal=[2008,2025,2029,2031]
-    left_temporal=[1015,1030]
-    right_temporal=[2015,2030]
-    left_cingulate=[1002,1010,1023,1026]
-    right_cingulate=[2002,2010,2023,2026]
-    left_basal_ganglia=[11,12,13]
-    right_basal_ganglia=[50,51,52]
-    left_occipital=[1011]
-    right_occipital=[2011]
-    left_cerebGM=[8]
-    right_cerebGM=[47]
-    left_cerebWM=[7]
-    right_cerebWM=[46]
-    brainstem=[16]
-    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
-    non_hemiWM=[85]
-    other=[0,10,17,18,26,28,30,49,53,54,58,60,62,80,1000,1001,1005,1006,1007,1009,1013,1016,1017,1021,1022,1024,1033,1034,1035,2000,2001,2005,2006,2007,2009,2013,2016,2017,2021,2022,2024,2033,2034,2035]
-    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,
-                left_basal_ganglia,right_basal_ganglia,left_occipital,right_occipital,left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,other]
-    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate',
-             'left_basal_ganglia','right_basal_ganglia','left_occipital','right_occipital','left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','other']
-    print "\n\nGROUPING 2"
-    filepath = "grouping_2.mat"
-    createROIGrouping(names, all_groups, filepath)
-    printROIGrouping(names, all_groups)
-
-
-    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
-    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
-    temporal=[1015,1030,2015,2030]
-    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
-    basal_ganglia=[11,50,12,51,13,52]
-    occipital=[1011,2011,1005,2005,1013,2013,1021,2021]
-    central_gyri=[1017,1022,1024,2017,2024,2022]
-    thalamus=[10,49]
-    left_cerebGM=[8]
-    right_cerebGM=[47]
-    left_cerebWM=[7]
-    right_cerebWM=[46]
-    brainstem=[16]
-    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
-    non_hemiWM=[85]
-    hippocampus=[17,53,1006,1009,1016,1033,1034,2006,2009,2016,2033,2034]
-    other=[0,18,26,28,30,54,58,60,62,80,1000,1001,1007,1035,2000,2001,2007,2035]
-    all_groups=[frontal,parietal,temporal,cingulate,basal_ganglia,occipital,central_gyri,thalamus,left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,hippocampus,other]
-    names = ['frontal','parietal','temporal','cingulate','basal_ganglia','occipital','central_gyri','thalamus','left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','hippocampus','other']
-    print "\n\nGROUPING 3"
-    filepath = "grouping_3.mat"
-    createROIGrouping(names, all_groups, filepath)
-    printROIGrouping(names, all_groups)
-
-    left_frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032]
-    right_frontal=[2003,2012,2014,2018,2019,2020,2027,2028,2032]
-    left_parietal=[1008,1025,1029,1031]
-    right_parietal=[2008,2025,2029,2031]
-    left_temporal=[1015,1030]
-    right_temporal=[2015,2030]
-    left_cingulate=[1002,1010,1023,1026]
-    right_cingulate=[2002,2010,2023,2026]
-    left_basal_ganglia=[11,12,13]
-    right_basal_ganglia=[50,51,52]
-    left_occipital=[1011,1005,1013,1021]
-    right_occipital=[2011,2005,2013,2021]
-    left_central_gyri=[1017,1024,1022]
-    right_central_gyri=[2017,2024,2022]
-    left_thalamus=[10]
-    right_thalamus=[49]
-    left_cerebGM=[8]
-    right_cerebGM=[47]
-    left_cerebWM=[7]
-    right_cerebWM=[46]
-    brainstem=[16]
-    hemiWM=[2,41,77,251,252,253,254,255,1004,2004]
-    non_hemiWM=[85]
-    left_hippocampus=[17,1006,1009,1016,1033,1034]
-    right_hippocampus=[53,2006,2009,2016,2033,2034]
-    other=[0,18,26,28,30,54,58,60,62,80,1000,1001,1007,1035,2000,2001,2007,2035]
-    all_groups=[left_frontal,right_frontal,left_parietal,right_parietal,left_temporal,right_temporal,left_cingulate,right_cingulate,left_basal_ganglia,right_basal_ganglia,
-                left_occipital,right_occipital,left_central_gyri,right_central_gyri,left_thalamus,right_thalamus,
-                left_cerebGM,right_cerebGM,left_cerebWM,right_cerebWM,brainstem,hemiWM,non_hemiWM,left_hippocampus,right_hippocampus,other]
-    names = ['left_frontal','right_frontal','left_parietal','right_parietal','left_temporal','right_temporal','left_cingulate','right_cingulate','left_basal_ganglia','right_basal_ganglia',
-             'left_occipital','right_occipital','left_central_gyri','right_central_gyri','left_thalamus','right_thalamus',
-             'left_cerebGM','right_cerebGM','left_cerebWM','right_cerebWM','brainstem','hemiWM','non_hemiWM','left_hippocampus','right_hippocampus','other']
-    print "\n\nGROUPING 4"
-    filepath = "grouping_4.mat"
-    createROIGrouping(names, all_groups, filepath)
-    printROIGrouping(names, all_groups)

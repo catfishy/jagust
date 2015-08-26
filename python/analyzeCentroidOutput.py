@@ -13,6 +13,16 @@ from utils import *
 '''
 NORMALIZE THE CENTROID DIFFERENCES BY SOME STANDARD MEASURE OF BRAIN SIZE
 '''
+def createGroupingFile(clusters, filepath):
+    # convert back to indices
+    names = []
+    all_groups = []
+    for c,v in clusters.iteritems():
+        names.append(c)
+        all_groups.append(v)
+    createROIGrouping(names, all_groups, filepath)
+    printROIGrouping(names, all_groups)
+
 
 def parseResult(data, lut_table):
     '''
@@ -109,93 +119,84 @@ if __name__ == '__main__':
     obs = np.array(appended)
     '''
 
-    # Scale
+    # Scale (not really necessary as scans are already prenormalized)
+    '''
     scaler = StandardScaler(copy=True, with_mean=True, with_std=True)
     obs = scaler.fit_transform(obs)
-
-    # PCA
-    pca_model = PCA(n_components=10, copy=True, whiten=False)
-    obs_pca = pca_model.fit_transform(obs)
-    for x in pca_model.explained_variance_ratio_:
-        print x
-    print obs_pca.shape
+    '''
 
     '''
-    # CHOOSE NUMBER OF CLUSTESR
+    # CHOOSE NUMBER OF CLUSTERS
     ks=range(10,55)
     gaps_raw, valid_ks_raw = gap(obs, nrefs=20, ks=ks)
-    gaps_pca, valid_ks_pca = gap(obs_pca, nrefs=20, ks=ks)
-
 
     print "RAW GAPS"
     print gaps_raw
     print valid_ks_raw
-    print "PCA GAPS"
-    print gaps_pca
-    print valid_ks_pca
 
     fig = plt.figure()
     plt.plot(ks, gaps_raw)
-    plt.plot(ks, gaps_pca)
     plt.show()
     sys.exit(1)
     '''
+    k = 28
+    
     # RUN HIERARCHICAL CLUSTERING
     # RUN K_MEANS
     scores = []
-    for s in range(25,75):
-        # connectivity (use centroids)
-        connectivity = kneighbors_graph(centroid_vectors, n_neighbors=s, include_self=False)
-        for k in range(30,31):
-            '''
-            model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
-            labels = model.fit_predict(obs_pca)
-            '''
-            model = AgglomerativeClustering(n_clusters=k, 
-                                            affinity='euclidean', 
-                                            linkage='ward',
-                                            connectivity=connectivity)
-            labels = model.fit_predict(obs_pca)
-            try:
-                score = silhouette_score(obs_pca,labels,metric='euclidean')
-            except Exception as e:
-                print e
-                score = np.nan
-            scores.append((k, s, score, model))
+
+    ## connectivity (use centroids)
+    #connectivity = kneighbors_graph(centroid_vectors, n_neighbors=70, include_self=False)
+    connectivity = None
+
+    # PCA (5 components explains most of variance)
+    pca_model = PCA(n_components=10, copy=True, whiten=False)
+    obs_pca = pca_model.fit_transform(obs)
+    print obs_pca.shape
+    '''
+    for x in pca_model.explained_variance_ratio_:
+        print x
+    '''
+
+    # KMEANS
+    model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+    labels = model.fit_predict(obs_pca)
+    try:
+        score = silhouette_score(obs,labels,metric='euclidean')
+    except Exception as e:
+        print e
+        score = np.nan
+    scores.append((k, 'kmeans', score, model))
+
+    # AGGLOMERATIVE
+    model = AgglomerativeClustering(n_clusters=k, 
+                                    affinity='euclidean', 
+                                    linkage='ward',
+                                    connectivity=connectivity)
+    labels = model.fit_predict(obs_pca)
+    try:
+        score = silhouette_score(obs,labels,metric='euclidean')
+    except Exception as e:
+        print e
+        score = np.nan
+    scores.append((k, 'agg', score, model))
 
     best = sorted(scores, key=lambda x: x[2], reverse=True)[:40]
-    by_score = defaultdict(list)
-
-    for b in best:
-        by_score[b[2]].append(b)
-    
-    print by_score.keys()
-
-    chosen_connectivities = []
-    for k,v in by_score.items():
-        sorted_v = sorted(v, key=lambda x: x[1])
-        chosen_connectivities.append(sorted_v[0])
-
-    for c in chosen_connectivities:
+    for c in best:
         print "Clusters: %s, Neighbors: %s, Score: %s" % (c[0],c[1],c[2])
         labels = c[3].fit_predict(obs_pca)
         by_cluster_label = {_:[] for _ in list(set(labels))}
         for cluster, segment in zip(labels, segments):
-            by_cluster_label[cluster].append(segment)
-
-        for k,v in by_cluster_label.iteritems():
-            print "Cluster %s" % k
-            print "Segments: %s" % (v,)
-        print '\n\n'
-
-    '''
-    fig = plt.figure()
-    ax = Axes3D(fig)
-    xs = [_[0] for _ in scores]
-    ys = [_[1] for _ in scores]
-    zs = [_[2] for _ in scores]
-    # put 0s on the y-axis, and put the y axis on the z-axis
-    ax.scatter(xs=xs, ys=ys, zs=zs, zdir='z')
-    #plt.plot([_[0] for _ in scores], [_[1] for _ in scores])
-    plt.show()
-    '''
+            segment_index = [k for k,v in lut_table.iteritems() if v == segment][0]
+            by_cluster_label[cluster].append(segment_index)
+        roinames = []
+        varnames = []
+        for cluster, indices in by_cluster_label.iteritems():
+            cluster_varname = 'Cluster%s' % cluster
+            print '%s=%s' % (cluster_varname,indices)
+            roinames.append("%s" % cluster_varname)
+            varnames.append(cluster_varname)
+        print "all_groups=[%s]" % (','.join(varnames),)
+        print "names=%s" % roinames
+        print "\n\n"
+        
