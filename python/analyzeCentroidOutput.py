@@ -7,6 +7,7 @@ from sklearn.neighbors import kneighbors_graph
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import itertools
 
 from utils import *
 
@@ -79,10 +80,30 @@ def createConnectivityGraph(region_list):
     ventricles = ['Left-Lateral-Ventricle','4th-Ventricle','CSF','3rd-Ventricle','5th-Ventricle','Left-Inf-Lat-Vent','Right-Inf-Lat-Vent']
     whitematter = ['CC_Central','Left-Cerebral-White-Matter','Left-Cerebellum-White-Matter','CC_Anterior','Right-Cerebellum-White-Matter','ctx-rh-corpuscallosum','CC_Mid_Posterior','CC_Posterior','WM-hypointensities','CC_Mid_Anterior','Right-Cerebral-White-Matter']
     ambiguous = ['Optic-Chiasm','ctx-rh-unknown','ctx-lh-unknown']
+    others = [_ for _ in region_list if _ not in ventricles+whitematter+ambiguous]
 
-    
+    graph = np.zeros((len(region_list),len(region_list)))
 
-    pass
+    for v1, v2 in itertools.combinations_with_replacement(ventricles, 2):
+        v1_index = region_list.index(v1)
+        v2_index = region_list.index(v2)
+        graph[v1_index, v2_index] = 1
+        graph[v2_index, v1_index] = 1
+    for v1, v2 in itertools.combinations_with_replacement(whitematter, 2):
+        v1_index = region_list.index(v1)
+        v2_index = region_list.index(v2)
+        graph[v1_index, v2_index] = 1
+        graph[v2_index, v1_index] = 1
+    for v1, v2 in itertools.combinations_with_replacement(others, 2):
+        v1_index = region_list.index(v1)
+        v2_index = region_list.index(v2)
+        graph[v1_index, v2_index] = 1
+        graph[v2_index, v1_index] = 1
+    for a in ambiguous:
+        a_index = region_list.index(a)
+        graph[a_index,:] = 1
+        graph[:,a_index] = 1
+    return graph
 
 if __name__ == '__main__':
     output_mat = "../aggOutput.mat"
