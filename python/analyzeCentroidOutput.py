@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import itertools
+from scipy.sparse import csr_matrix
 
 from utils import *
 
@@ -78,8 +79,9 @@ def createConnectivityGraph(region_list):
     Separate ventricles from white matter from other
     '''
     ventricles = ['Left-Lateral-Ventricle','4th-Ventricle','CSF','3rd-Ventricle','5th-Ventricle','Left-Inf-Lat-Vent','Right-Inf-Lat-Vent']
-    whitematter = ['CC_Central','Left-Cerebral-White-Matter','Left-Cerebellum-White-Matter','CC_Anterior','Right-Cerebellum-White-Matter','ctx-rh-corpuscallosum','CC_Mid_Posterior','CC_Posterior','WM-hypointensities','CC_Mid_Anterior','Right-Cerebral-White-Matter']
-    ambiguous = ['Optic-Chiasm','ctx-rh-unknown','ctx-lh-unknown']
+    whitematter = ['Optic-Chiasm','CC_Central','Left-Cerebral-White-Matter','Left-Cerebellum-White-Matter','CC_Anterior','Right-Cerebellum-White-Matter','ctx-rh-corpuscallosum','CC_Mid_Posterior','CC_Posterior','WM-hypointensities','CC_Mid_Anterior','Right-Cerebral-White-Matter']
+    #ambiguous = ['Optic-Chiasm','ctx-rh-unknown','ctx-lh-unknown']
+    ambiguous = []
     others = [_ for _ in region_list if _ not in ventricles+whitematter+ambiguous]
 
     graph = np.zeros((len(region_list),len(region_list)))
@@ -99,11 +101,14 @@ def createConnectivityGraph(region_list):
         v2_index = region_list.index(v2)
         graph[v1_index, v2_index] = 1
         graph[v2_index, v1_index] = 1
+    '''
     for a in ambiguous:
         a_index = region_list.index(a)
         graph[a_index,:] = 1
         graph[:,a_index] = 1
-    return graph
+    '''
+    sparse = csr_matrix(graph)
+    return connectivity
 
 if __name__ == '__main__':
     output_mat = "../aggOutput.mat"
@@ -179,6 +184,7 @@ if __name__ == '__main__':
     # RUN HIERARCHICAL CLUSTERING
     # RUN K_MEANS
     scores = []
+
 
     # Get connectivity graph
     connectivity = createConnectivityGraph(segments)
