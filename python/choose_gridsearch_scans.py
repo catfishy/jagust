@@ -148,8 +148,8 @@ if __name__ == "__main__":
                  '941-S-4292', '941-S-4365', '941-S-4376', '941-S-4420', '941-S-4764', '941-S-5124', '941-S-5193', '027-S-5083', '027-S-5079', '114-S-2392', '137-S-0668', '128-S-5123', '021-S-0337']
     groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_2.mat',
                  '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_4.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agg_low.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agg_high.mat']
+                 '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agglow.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agghigh.mat']
     subj = [int(_.split('-')[-1]) for _ in subj_list]
     output = 'input_082715.txt'
     generate_Rousset_input(subj, groupings, output)
