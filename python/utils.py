@@ -10,10 +10,11 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.decomposition import PCA
 
 
 
-def gap(data, nrefs=20, ks=range(10,70), clustertype='kmeans'):
+def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
     """
     Compute the Gap statistic for an nxm dataset in data.
     Either give a precomputed set of reference distributions in refs as an (n,m,k) scipy array,
@@ -21,25 +22,37 @@ def gap(data, nrefs=20, ks=range(10,70), clustertype='kmeans'):
     uniformed distribution within the bounding box of data.
     Give the list of k-values for which you want to compute the statistic in ks.
     """
-    assert clustertype in set(['kmeans','agglomerative'])
-
     shape = data.shape
 
-    tops = data.max(axis=0)
-    bots = data.min(axis=0)
-    dists = np.matrix(np.diag(tops-bots))
-    rands = np.random.random_sample(size=(shape[0],shape[1],nrefs))
-    for i in range(nrefs):
-        rands[:,:,i] = rands[:,:,i]*dists+bots
+    if use_pca:
+        pca_model = PCA(n_components=0.97, copy=True, whiten=False)
+        pca_data = pca_model.fit_transform(data)
+        pca_shape = pca_data.shape
+        tops = pca_data.max(axis=0)
+        bots = pca_data.min(axis=0)
+        dists = np.matrix(np.diag(tops-bots))
+        pca_rands = np.random.random_sample(size=(pca_shape[0],pca_shape[1],nrefs))
+        rands = np.zeros(shape=(shape[0],shape[1],nrefs))
+        for i in range(nrefs):
+            # convert back to original space
+            pca_samples = pca_rands[:,:,i]*dists+bots
+            samples = pca_model.inverse_transform(pca_samples)
+            rands[:,:,i] = samples
+    else:
+        shape = data.shape
+        tops = data.max(axis=0)
+        bots = data.min(axis=0)
+        dists = np.matrix(np.diag(tops-bots))
+        rands = np.random.random_sample(size=(shape[0],shape[1],nrefs))
+        for i in range(nrefs):
+            rands[:,:,i] = rands[:,:,i]*dists+bots
 
     gaps = np.zeros((len(ks),))
     sds = np.zeros((len(ks),))
     for i,k in enumerate(ks):
-        # USE KMEANS
-        if clustertype == 'kmeans':
-            model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
-            labels = model.fit_predict(data)
-            centers = model.cluster_centers_
+        model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+        labels = model.fit_predict(data)
+        centers = model.cluster_centers_
 
         disp = sum([euclidean(data[m,:],centers[labels[m],:]) for m in range(shape[0])])
 

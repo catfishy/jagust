@@ -101,14 +101,8 @@ def createConnectivityGraph(region_list):
         v2_index = region_list.index(v2)
         graph[v1_index, v2_index] = 1
         graph[v2_index, v1_index] = 1
-    '''
-    for a in ambiguous:
-        a_index = region_list.index(a)
-        graph[a_index,:] = 1
-        graph[:,a_index] = 1
-    '''
     sparse = csr_matrix(graph)
-    return connectivity
+    return sparse
 
 if __name__ == '__main__':
     output_mat = "../aggOutput.mat"
@@ -141,8 +135,6 @@ if __name__ == '__main__':
         variances[k] = np.std(v)
         means[k] = np.mean(v)
 
-    print segments
-
     '''
     sorted_means = sorted(means.items(), key=lambda x: x[1], reverse=True)
     for k,v in sorted_means:
@@ -165,10 +157,11 @@ if __name__ == '__main__':
     obs = scaler.fit_transform(obs)
     '''
 
-    '''
+    
     # CHOOSE NUMBER OF CLUSTERS
-    ks=range(18,60)
-    gaps_raw, valid_ks_raw = gap(obs, nrefs=40, ks=ks)
+    '''
+    ks=range(20,60)
+    gaps_raw, valid_ks_raw = gap(obs, nrefs=100, ks=ks)
 
     print "RAW GAPS"
     print gaps_raw
@@ -179,7 +172,7 @@ if __name__ == '__main__':
     plt.show()
     sys.exit(1)
     '''
-    k = [26,55]
+    k = [23,55]
     
     # RUN HIERARCHICAL CLUSTERING
     # RUN K_MEANS
@@ -234,8 +227,8 @@ if __name__ == '__main__':
         by_cluster_label = {_:[] for _ in list(set(labels))}
         for cluster, segment in zip(labels, segments):
             segment_index = [k for k,v in lut_table.iteritems() if v == segment][0]
-            #by_cluster_label[cluster].append(segment_index)
-            by_cluster_label[cluster].append(segment)
+            by_cluster_label[cluster].append(segment_index)
+            #by_cluster_label[cluster].append(segment)
         roinames = []
         varnames = []
         for cluster, indices in by_cluster_label.iteritems():
