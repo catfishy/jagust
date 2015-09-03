@@ -169,8 +169,21 @@ Cluster51=[4, 43]
 Cluster52=[44]
 Cluster53=[2016, 1016]
 Cluster54=[1026, 2026]
-all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,Cluster8,Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,Cluster24,Cluster25,Cluster26,Cluster27,Cluster28,Cluster29,Cluster30,Cluster31,Cluster32,Cluster33,Cluster34,Cluster35,Cluster36,Cluster37,Cluster38,Cluster39,Cluster40,Cluster41,Cluster42,Cluster43,Cluster44,Cluster45,Cluster46,Cluster47,Cluster48,Cluster49,Cluster50,Cluster51,Cluster52,Cluster53,Cluster54]
-names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 'Cluster7', 'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 'Cluster14', 'Cluster15', 'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 'Cluster21', 'Cluster22', 'Cluster23', 'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27', 'Cluster28', 'Cluster29', 'Cluster30', 'Cluster31', 'Cluster32', 'Cluster33', 'Cluster34', 'Cluster35', 'Cluster36', 'Cluster37', 'Cluster38', 'Cluster39', 'Cluster40', 'Cluster41', 'Cluster42', 'Cluster43', 'Cluster44', 'Cluster45', 'Cluster46', 'Cluster47', 'Cluster48', 'Cluster49', 'Cluster50', 'Cluster51', 'Cluster52', 'Cluster53', 'Cluster54']
+all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,Cluster8,
+            Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,Cluster16,
+            Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,Cluster24,
+            Cluster25,Cluster26,Cluster27,Cluster28,Cluster29,Cluster30,Cluster31,Cluster32,
+            Cluster33,Cluster34,Cluster35,Cluster36,Cluster37,Cluster38,Cluster39,Cluster40,
+            Cluster41,Cluster42,Cluster43,Cluster44,Cluster45,Cluster46,Cluster47,Cluster48,
+            Cluster49,Cluster50,Cluster51,Cluster52,Cluster53,Cluster54]
+names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 
+       'Cluster7', 'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 
+       'Cluster14', 'Cluster15', 'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 
+       'Cluster21', 'Cluster22', 'Cluster23', 'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27', 
+       'Cluster28', 'Cluster29', 'Cluster30', 'Cluster31', 'Cluster32', 'Cluster33', 'Cluster34', 
+       'Cluster35', 'Cluster36', 'Cluster37', 'Cluster38', 'Cluster39', 'Cluster40', 'Cluster41', 
+       'Cluster42', 'Cluster43', 'Cluster44', 'Cluster45', 'Cluster46', 'Cluster47', 'Cluster48', 
+       'Cluster49', 'Cluster50', 'Cluster51', 'Cluster52', 'Cluster53', 'Cluster54']
 print '\n\nGROUPING AGG high'
 filepath = "grouping_agghigh.mat"
 createROIGrouping(names, all_groups, filepath)
@@ -205,8 +218,14 @@ Cluster25=[1007, 2007]
 Cluster26=[1017, 2017]
 Cluster27=[26, 58, 1035, 2035]
 
-all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,Cluster8,Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22]
-names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 'Cluster7', 'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 'Cluster14', 'Cluster15', 'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 'Cluster21', 'Cluster22']
+all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,
+            Cluster8,Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,
+            Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,
+            Cluster24,Cluster25,Cluster26,Cluster27]
+names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 'Cluster7', 
+       'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 'Cluster14', 'Cluster15', 
+       'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 'Cluster21', 'Cluster22', 'Cluster23', 
+       'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27']
 print "\n\nGROUPING AGG low"
 filepath = "grouping_agglow.mat"
 createROIGrouping(names, all_groups, filepath)
