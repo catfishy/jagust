@@ -6,16 +6,42 @@ from scipy.stats import norm, mannwhitneyu
 
 from utils import *
 
-AD = [4009, 5241, 4338, 5067, 4676, 4732, 4379, 4172, 5138, 4924, 4755, 4280, 5224, 4223, 4772, 5120, 4911, 4568, 4827, 4730, 5032, 5196, 4152, 5028, 4692, 4863, 5187, 4195, 4307, 4892, 4211, 4879, 4853, 4962, 5146, 4910, 4583, 5119, 4657]
-NORMAL = [4119, 4499, 4427, 4393, 4269, 4148, 4643, 4222, 4084, 5040, 4387, 4609, 4516, 4367, 4762, 4337, 4496, 4139, 4580, 4357, 4020, 4177, 4488, 4224, 4382, 4599, 4424, 4586, 4279, 4585, 4173, 4428, 4097, 4090, 4921, 4835, 4449, 4598, 4637, 4555, 4441, 4255, 4060, 4576, 4644, 4612, 4290, 4093, 4578, 4587, 4100, 4474, 4120, 4385, 4508, 4616, 4151, 4010, 4291, 4277, 4433]
 
+def zipFields(args):
+    '''
+    For structs imported from mat files,
+    where field values are in a list and the field names are listed under dtype
+    '''
+    fields = args.dtype.names
+    values = []
+    for i,v in enumerate(args):
+        try:
+            v = unwrap(v)
+            if len(v) > 1:
+                v = zipFields(v)
+        except Exception as e:
+            pass
+        values.append(v)
+    return dict(zip(fields,values))
 
 def parseResult(arg):
+    arg = unwrap(arg)
+    data = zipFields(arg)
+    return data
+
+'''
+def parseResult(arg):
     while type(arg) != np.ndarray or len(arg) <= 1:
+        print type(arg)
+        print len(arg)
+        if len(arg) > 1:
+            print arg
         arg = arg[0]
-    to_return = []
+    print arg
+    to_return = []  
     for i, a in enumerate(arg):
         fields = a.dtype.names
+        print a
         data = a[0][0]
         extracted = {}
         for k,v in zip(fields,data):
@@ -24,6 +50,7 @@ def parseResult(arg):
             extracted[k] = v
         to_return.append(extracted)
     return to_return
+'''
 
 def subplot_scatter(data, key, grouping, plot_raw=False):
     scatter_points = []
@@ -112,21 +139,27 @@ def slope_graph(data, key, grouping, plot_raw=False):
 
 def mean_graph(data, key, grouping, plot_raw=False):
     points = {'b': [], 'g': [], 'r': []}
-    for subj, subjdata in data:
-        if plot_raw and 'suvr' in key:
-            startval = np.mean([_['%s_nonpvc' % key]*_['ref_nonpvc'] for _ in subjdata])
-            tograph = [_['%s_pvc' % key]*_['ref_pvc'] for _ in subjdata]
-        else:
-            startval = np.mean([_['%s_nonpvc' % key] for _ in subjdata])
-            tograph = [_['%s_pvc' % key] for _ in subjdata]
+
+    for subj, subjdata in data.iteritems():
+        groupdata = subjdata[grouping]
+        roidata = groupdata[key]
+        refdata = groupdata['wholecereb']
+
+        pvcval = roidata['pvcval']
+        non_pvcval = roidata['nonpvcval']
+
+        # normalize
+        if not plot_raw and 'cereb' not in key:
+            pvcval /= float(refdata['pvcval'])
+            non_pvcval /= float(refdata['nonpvcval'])
+
         color = 'b'
         if subj in NORMAL:
             color = 'g'
         elif subj in AD:
             color = 'r'
         # scatter plot
-        val = tograph[grouping]
-        points[color].append(val)
+        points[color].append(pvcval)
     all_values = [v for _ in points.values() for v in _]
     min_v = min(all_values)
     max_v = max(all_values)
@@ -182,49 +215,68 @@ def subplot_scatter_between_group(data, key, groupA, groupB):
 def subplot_residuals(data):
     by_group = defaultdict(list)
     scatter_points = []
-    for subj, subjdata in data:
-        tograph = [_['rmse_residual'] for _ in subjdata]
-        color = 'b'
-        if subj in NORMAL:
-            color = 'g'
-            xmod = -0.07
-        elif subj in AD:
-            color = 'r'
-            xmod = 0.07
-        for i,v in enumerate(tograph):
-            by_group[i].append(v)
-            actual_x = i+1+xmod
+    groups = ['group2', 'group4', 'agglow', 'agghigh']
+    for subj, subjdata in data.iteritems():
+        for groupname, groupdata in subjdata.iteritems():
+            color = 'b'
+            if subj in NORMAL:
+                color = 'g'
+                xmod = -0.07
+            elif subj in AD:
+                color = 'r'
+                xmod = 0.07
+            else:
+                continue
+            index = groups.index(groupname)
+            v = groupdata['residuals']['rmse']
+            by_group[index].append(v)
+            actual_x = index+1+xmod
             scatter_points.append((actual_x,v,color))
     avgs = [np.mean(by_group[i]) for i,g in enumerate(groups)]
     stds = [np.std(by_group[i]) for i,g in enumerate(groups)]
-    plt.errorbar(groups, avgs, stds)
+    plt.errorbar(range(1,len(groups)+1), avgs, stds)
     plt.scatter([_[0] for _ in scatter_points], [_[1] for _ in scatter_points],c=[_[2] for _ in scatter_points])
     x1,x2,y1,y2 = plt.axis()
-    plt.axis((0,5,y1,y2))
+    plt.axis((0,len(groups)+1,y1,y2))
     plt.xlabel('GROUPINGS')
     plt.ylabel('PVC Residuals')
 
-def addCompositeSUVR(result_list):
-    # add composite
-    for subjdata in result_list:
-        for groupdata in subjdata:
-            groupdata['composite_suvr_nonpvc'] = np.mean([groupdata['parietal_suvr_nonpvc'],groupdata['frontal_suvr_nonpvc'],groupdata['temporal_suvr_nonpvc'],groupdata['cingulate_suvr_nonpvc']])
-            groupdata['composite_suvr_pvc'] = np.mean([groupdata['parietal_suvr_pvc'],groupdata['frontal_suvr_pvc'],groupdata['temporal_suvr_pvc'],groupdata['cingulate_suvr_pvc']])
-            groupdata['composite_wm_suvr_nonpvc'] = np.mean([groupdata['parietal_suvr_nonpvc'],groupdata['frontal_suvr_nonpvc'],groupdata['temporal_suvr_nonpvc'],groupdata['cingulate_suvr_nonpvc']] * groupdata['ref_nonpvc'] / groupdata['hemiWM_nonpvc'])
-            groupdata['composite_wm_suvr_pvc'] = np.mean([groupdata['parietal_suvr_pvc'],groupdata['frontal_suvr_pvc'],groupdata['temporal_suvr_pvc'],groupdata['cingulate_suvr_pvc']] * groupdata['ref_nonpvc'] / groupdata['hemiWM_nonpvc'])
-    return result_list
-
-
 if __name__ == "__main__":
-    rousset_mat = '../rousset_outputs_080515.mat'
+
+    master_file = "../FDG_AV45_COGdata_08_21_15.csv"
+    subj_data = importMaster(master_file)
+    diag_key = 'Init_Diagnosis'
+    by_diag = defaultdict(list)
+    for k,v in subj_data.iteritems():
+        new_key = v.get('Init_Diagnosis')
+        if new_key:
+            by_diag[new_key].append(k)
+
+    AD = by_diag['AD']
+    NORMAL = by_diag['N']
+    MCI = by_diag['LMCI'] + by_diag['EMCI']
+
+
+    # load agglomerative grouping results
+    rousset_mat = '../rousset_output_low_high.mat'
+    data = loadMATFile(rousset_mat)
+    agg_result_list = [parseResult(_) for _ in data['result_list'][0]]
+    agg_subj_list = data['subj_list'][0]
+    agg_groups = list(data['group_names'][0])
+    agg_sorted_data = dict(zip(agg_subj_list,agg_result_list))
+
+    # load regular grouping results
+    rousset_mat = '../rousset_output_2_4.mat'
     data = loadMATFile(rousset_mat)
     result_list = [parseResult(_) for _ in data['result_list'][0]]
     subj_list = data['subj_list'][0]
-    groups = list(data['groups'][0])
+    groups = list(data['group_names'][0])
+    sorted_data = dict(zip(subj_list,result_list))
 
-    # sort by temporal_suvr_nonpvc
-    result_list = addCompositeSUVR(result_list)
-    sorted_data = zip(subj_list,result_list)
+    # aggregate
+    for k,v in sorted_data.iteritems():
+        sorted_data[k].update(agg_sorted_data.get(k,{}))
+
 
     
     '''
@@ -235,25 +287,30 @@ if __name__ == "__main__":
     plt.title('Residuals')
     subplot_residuals(sorted_data)
     plt.show()
+    sys.exit(1)
     '''
-    
+
     '''
     plot pvc value distribution, by group
     '''
-    '''
-    grouping=3
-    subplot_height = 2
+    
+    grouping='group4'
+    subplot_height = 1
     subplot_length = 5
     subplot_indices = range(1,(subplot_height*subplot_length)+1)
-    subplot_order = ['ref', 'brainstem', 'hemiWM', 'composite_wm_suvr', 'temporal_suvr', 'frontal_suvr', 'occipital_suvr', 'cingulate_suvr', 'composite_suvr', 'parietal_suvr']
+    subplot_order = ['wholecereb',
+                     'composite',
+                     'hemiWM',
+                     'cerebWM',
+                     'cerebGM']
     plt.figure(1)
     for subplot_i, subplot_key in zip(subplot_indices, subplot_order):
         ax = plt.subplot(subplot_height, subplot_length, subplot_i)
-        plt.title(subplot_key.replace('_',' ').replace('suvr', 'SUVR'))
-        mean_graph(sorted_data, subplot_key, grouping, plot_raw=False)
+        plt.title(subplot_key)
+        mean_graph(sorted_data, subplot_key, grouping)
     plt.show()
     sys.exit(1)
-    '''
+    
 
     '''
     plot pvc-nonpvc slope, by group

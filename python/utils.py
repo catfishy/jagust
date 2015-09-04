@@ -13,6 +13,13 @@ import pandas as pd
 from sklearn.decomposition import PCA
 
 
+def unwrap(arg):
+    try:
+        while len(arg) == 1 and type(arg) in set([list, tuple, np.ndarray]):
+            arg = arg[0]
+    except Exception as e:
+        pass
+    return arg
 
 def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
     """
