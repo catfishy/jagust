@@ -149,7 +149,7 @@ def mean_graph(data, key, grouping, plot_raw=False):
         non_pvcval = roidata['nonpvcval']
 
         # normalize
-        if not plot_raw and 'cereb' not in key:
+        if not plot_raw and key in set(['composite']):
             pvcval /= float(refdata['pvcval'])
             non_pvcval /= float(refdata['nonpvcval'])
 
@@ -158,6 +158,7 @@ def mean_graph(data, key, grouping, plot_raw=False):
             color = 'g'
         elif subj in AD:
             color = 'r'
+
         # scatter plot
         points[color].append(pvcval)
     all_values = [v for _ in points.values() for v in _]
@@ -241,6 +242,65 @@ def subplot_residuals(data):
     plt.xlabel('GROUPINGS')
     plt.ylabel('PVC Residuals')
 
+def composite_hemiWM_scatter(data, grouping):
+    pvc_points = []
+    nonpvc_points = []
+
+    for subj, subjdata in data.iteritems():
+        groupdata = subjdata[grouping]
+        composite_data = groupdata['composite']
+        hemiwm_data = groupdata['hemiWM']
+        refdata = groupdata['wholecereb']
+        pvc_ref = float(refdata['pvcval'])
+        nonpvc_ref = float(refdata['nonpvcval'])
+
+        composite_pvcval = composite_data['pvcval'] / pvc_ref
+        composite_nonpvcval = composite_data['nonpvcval'] / nonpvc_ref
+        hemiwm_pvcval = hemiwm_data['pvcval'] / pvc_ref
+        hemiwm_nonpvcval = hemiwm_data['nonpvcval'] / nonpvc_ref
+
+        color = 'b'
+        if subj in NORMAL:
+            color = 'g'
+        elif subj in AD:
+            color = 'r'
+        else:
+            continue
+
+        # scatter plot
+        pvc_points.append((hemiwm_pvcval, composite_pvcval, color))
+        nonpvc_points.append((hemiwm_nonpvcval, composite_nonpvcval, color))
+
+    pvc_x = [_[0] for _ in pvc_points]
+    pvc_y = [_[1] for _ in pvc_points]
+    pvc_color = [_[2] for _ in pvc_points]
+    nonpvc_x = [_[0] for _ in nonpvc_points]
+    nonpvc_y = [_[1] for _ in nonpvc_points]
+    nonpvc_color = [_[2] for _ in nonpvc_points]
+
+    min_x = min(pvc_x+nonpvc_x)
+    max_x = max(pvc_x+nonpvc_x)
+    min_y = min(pvc_y+nonpvc_y)
+    max_y = max(pvc_y+nonpvc_y)
+    min_x -= (max_x-min_x)*0.1
+    max_x += (max_x-min_x)*0.1
+    min_y -= (max_y-min_y)*0.1
+    max_y += (max_y-min_y)*0.1
+
+    plt.figure(1)
+    plt.scatter(pvc_x, pvc_y, c=pvc_color)
+    x1,x2,y1,y2 = plt.axis([min_x, max_x, min_y, max_y])
+    plt.plot([x1,x2],[1.11,1.11])
+    plt.xlabel('hemiWM')
+    plt.ylabel('composite')
+
+    plt.figure(2)
+    ax = plt.scatter(nonpvc_x, nonpvc_y, c=nonpvc_color)
+    x1,x2,y1,y2 = plt.axis([min_x, max_x, min_y, max_y])
+    plt.plot([x1,x2],[1.11,1.11])
+    plt.xlabel('hemiWM')
+    plt.ylabel('composite')
+
 if __name__ == "__main__":
 
     master_file = "../FDG_AV45_COGdata_08_21_15.csv"
@@ -291,10 +351,18 @@ if __name__ == "__main__":
     '''
 
     '''
+    Plot scatter plot (composite vs hemiwm)
+    '''
+    grouping='agghigh'
+    composite_hemiWM_scatter(sorted_data, grouping)
+    plt.show()
+    sys.exit(1)
+
+
+    '''
     plot pvc value distribution, by group
     '''
-    
-    grouping='group4'
+    grouping='agghigh'
     subplot_height = 1
     subplot_length = 5
     subplot_indices = range(1,(subplot_height*subplot_length)+1)
