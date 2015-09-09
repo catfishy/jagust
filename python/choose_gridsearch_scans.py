@@ -147,14 +147,16 @@ if __name__ == "__main__":
                  '127-S-5200', '127-S-5218', '018-S-5240', '027-S-5277', '126-S-5243', '027-S-5170', '027-S-5288', '057-S-5292', '141-S-4711', '141-S-4803', '141-S-4907', '141-S-4976', '153-S-2109', '153-S-2148', '153-S-4077', '153-S-4125', '153-S-4133', '153-S-4139', '153-S-4151', '153-S-4159', '153-S-4172', '153-S-4297', '153-S-4372', '153-S-4621', '153-S-4838', '153-S-5261', '153-S-5267', '941-S-1195', '941-S-1202', '941-S-2060', '941-S-4036', '941-S-4066', '941-S-4100', '941-S-4187', '941-S-4255', 
                  '941-S-4292', '941-S-4365', '941-S-4376', '941-S-4420', '941-S-4764', '941-S-5124', '941-S-5193', '027-S-5083', '027-S-5079', '114-S-2392', '137-S-0668', '128-S-5123', '021-S-0337']
     subj = [int(_.split('-')[-1]) for _ in subj_list]
+    '''
     groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_2.mat',
                  '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_4.mat',
                  '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agglow.mat',
                  '/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agghigh.mat']
     '''
-    output = 'input_082715.txt'
+    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agglowtwo.mat']
+    output = 'input_agglowtwo.txt'
     generate_Rousset_input(subj, groupings, output)
-    '''
+    sys.exit(1)
 
     '''
     output = 'input_agglow.txt'

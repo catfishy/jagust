@@ -230,3 +230,47 @@ print "\n\nGROUPING AGG low"
 filepath = "grouping_agglow.mat"
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
+
+Cluster0=[1023, 1026, 2014, 2026, 2010, 2023, 1012, 1010, 2002, 1002, 2012, 1025, 2025, 1014]
+Cluster1=[2, 41, 251]
+Cluster2=[1004, 77, 2004, 255]
+Cluster3=[18, 2016, 2033, 2000, 1033, 1016, 54, 1000]
+Cluster4=[1030, 2030]
+Cluster5=[51, 62, 12, 30]
+Cluster6=[1027, 1003, 2020, 2027, 1020, 2028, 1008, 2018, 2003, 1031, 2031, 2008, 1028, 1018]
+Cluster7=[53, 50, 11, 17, 80, 10, 49]
+Cluster8=[1011, 2005, 1013, 1005, 2013, 2011]
+Cluster9=[2019, 2015, 1015, 1019]
+Cluster10=[2024, 1024, 1022, 2022]
+Cluster11=[44, 5]
+Cluster12=[24, 85, 14]
+Cluster13=[72]
+Cluster14=[1032, 2032]
+Cluster15=[4, 31, 63, 43]
+Cluster16=[47, 8]
+Cluster17=[1001, 2001]
+Cluster18=[52, 16, 28, 60, 13]
+Cluster19=[7, 46]
+Cluster20=[1021, 2021]
+Cluster21=[15]
+Cluster22=[253, 254, 252]
+Cluster23=[1006, 2006]
+Cluster24=[1029, 2029]
+Cluster25=[1007, 2007]
+Cluster26=[1017, 2017]
+Cluster27=[26, 58, 1035, 2035]
+Cluster28=[1009, 2009]
+Cluster29=[1034, 2034]
+
+all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,
+            Cluster8,Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,
+            Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,
+            Cluster24,Cluster25,Cluster26,Cluster27,Cluster28,Cluster29]
+names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 'Cluster7', 
+       'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 'Cluster14', 'Cluster15', 
+       'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 'Cluster21', 'Cluster22', 'Cluster23', 
+       'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27', 'Cluster28', 'Cluster29']
+print "\n\nGROUPING AGG low two"
+filepath = "grouping_agglowtwo.mat"
+createROIGrouping(names, all_groups, filepath)
+printROIGrouping(names, all_groups, lut_file)
