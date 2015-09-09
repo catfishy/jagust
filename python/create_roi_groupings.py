@@ -217,7 +217,6 @@ Cluster24=[1029, 2029]
 Cluster25=[1007, 2007]
 Cluster26=[1017, 2017]
 Cluster27=[26, 58, 1035, 2035]
-
 all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,
             Cluster8,Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,
             Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,

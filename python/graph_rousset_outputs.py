@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 from collections import defaultdict
-from scipy.stats import norm, mannwhitneyu
+from scipy.stats import norm, mannwhitneyu, linregress
 
 from utils import *
 
@@ -242,7 +242,41 @@ def subplot_residuals(data):
     plt.xlabel('GROUPINGS')
     plt.ylabel('PVC Residuals')
 
-def composite_hemiWM_scatter(data, grouping):
+def subplot_residuals_raw(groupname, data):
+    residual_vectors = []
+    colors = []
+    assert groupname in ['group2', 'group4', 'agglow', 'agghigh']
+    for subj, subjdata in data.iteritems():
+        groupdata = subjdata[groupname]
+        if subj in NORMAL:
+            color = 'g'
+        elif subj in AD:
+            color = 'r'
+        else:
+            color = 'b'
+        v = groupdata['residuals']['raw']
+        residual_vectors.append(v)
+        colors.append(color)
+    scatter_points = []
+    for i, group_res in enumerate(zip(*residual_vectors)):
+        for c, val in zip(colors, group_res):
+            scatter_points.append((i+1, val, c))
+    '''
+    avgs = [np.mean(by_group[i]) for i,g in enumerate(groups)]
+    stds = [np.std(by_group[i]) for i,g in enumerate(groups)]
+    plt.errorbar(range(1,len(groups)+1), avgs, stds)
+    '''
+    x = [_[0] for _ in scatter_points]
+    y = [_[1] for _ in scatter_points]
+    y_mod = abs(max(y)-min(y))*0.1
+    color = [_[2] for _ in scatter_points]
+    plt.scatter(x, y, c=color)
+    x1,x2,y1,y2 = plt.axis()
+    plt.axis((0,max(x)+1,min(y)-y_mod,max(y)+y_mod))
+    plt.xlabel('Groups')
+    plt.ylabel('PVC Residuals')
+
+def composite_hemiWM_scatter(data, grouping, threshold=1.11):
     pvc_points = []
     nonpvc_points = []
 
@@ -259,13 +293,12 @@ def composite_hemiWM_scatter(data, grouping):
         hemiwm_pvcval = hemiwm_data['pvcval'] / pvc_ref
         hemiwm_nonpvcval = hemiwm_data['nonpvcval'] / nonpvc_ref
 
-        color = 'b'
         if subj in NORMAL:
             color = 'g'
         elif subj in AD:
             color = 'r'
         else:
-            continue
+            color = 'b'
 
         # scatter plot
         pvc_points.append((hemiwm_pvcval, composite_pvcval, color))
@@ -287,19 +320,84 @@ def composite_hemiWM_scatter(data, grouping):
     min_y -= (max_y-min_y)*0.1
     max_y += (max_y-min_y)*0.1
 
-    plt.figure(1)
+    # linearly fit points above/below thresholds
+    pre_pvc_above = [_ for _ in nonpvc_points if _[1] >= 1.11]
+    pre_pvc_below = [_ for _ in nonpvc_points if _[1] < 1.11]
+    post_pvc_above = [_ for _ in pvc_points if _[1] >= threshold]
+    post_pvc_below = [_ for _ in pvc_points if _[1] < threshold]
+
+
+    plt.subplot(1, 2, 1)
+    plt.title('%s post-PVC' % grouping)
     plt.scatter(pvc_x, pvc_y, c=pvc_color)
     x1,x2,y1,y2 = plt.axis([min_x, max_x, min_y, max_y])
-    plt.plot([x1,x2],[1.11,1.11])
-    plt.xlabel('hemiWM')
-    plt.ylabel('composite')
+    plt.plot([x1,x2],[threshold,threshold])
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in post_pvc_above], [_[1] for _ in post_pvc_above])
+    plt.plot([min_x, max_x], [(min_x*slope)+intercept, (max_x*slope)+intercept])
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in post_pvc_below], [_[1] for _ in post_pvc_below])
+    plt.plot([min_x, max_x], [(min_x*slope)+intercept, (max_x*slope)+intercept])
+    plt.xlabel('Hemi WM / wcereb')
+    plt.ylabel('Cortical Summary / wcereb')
 
-    plt.figure(2)
+    plt.subplot(1, 2, 2)
+    plt.title('%s pre-PVC' % grouping)
     ax = plt.scatter(nonpvc_x, nonpvc_y, c=nonpvc_color)
     x1,x2,y1,y2 = plt.axis([min_x, max_x, min_y, max_y])
     plt.plot([x1,x2],[1.11,1.11])
-    plt.xlabel('hemiWM')
-    plt.ylabel('composite')
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in pre_pvc_above], [_[1] for _ in pre_pvc_above])
+    plt.plot([min_x, max_x], [(min_x*slope)+intercept, (max_x*slope)+intercept])
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in pre_pvc_below], [_[1] for _ in pre_pvc_below])
+    plt.plot([min_x, max_x], [(min_x*slope)+intercept, (max_x*slope)+intercept])
+    plt.xlabel('Hemi WM / wcereb')
+    plt.ylabel('Cortical Summary / wcereb')
+
+def thresholdCorrection(grouping, data):
+    scatter_points = []
+
+    for subj, subjdata in data.iteritems():
+        groupdata = subjdata[grouping]
+        composite_data = groupdata['composite']
+        hemiwm_data = groupdata['hemiWM']
+        refdata = groupdata['wholecereb']
+        pvc_ref = float(refdata['pvcval'])
+        nonpvc_ref = float(refdata['nonpvcval'])
+        composite_pvcval = composite_data['pvcval'] / pvc_ref
+        composite_nonpvcval = composite_data['nonpvcval'] / nonpvc_ref
+
+        if subj in NORMAL:
+            color = 'g'
+        elif subj in AD:
+            color = 'r'
+        else:
+            color = 'b'
+
+        # scatter plot
+        scatter_points.append((composite_nonpvcval, composite_pvcval, color))
+    x = [_[0] for _ in scatter_points]
+    y = [_[1] for _ in scatter_points]
+    color = [_[2] for _ in scatter_points]
+    y_mod = abs(max(y)-min(y))*0.1
+    x_mod = abs(max(x)-min(x))*0.1
+    min_x,max_x,min_y,max_y = (min(x)-x_mod,max(x)+x_mod,min(y)-y_mod,max(y)+y_mod)
+
+    # linear fit
+    slope, intercept, r, p, stderr = linregress(x, y)
+    low_fit_point = min_x*slope + intercept
+    high_fit_point = max_x*slope + intercept
+    threshold_fit_point = 1.11*slope + intercept
+
+    print "%s Corrected Threshold: %s" % (grouping, threshold_fit_point)
+
+    plt.scatter(x, y, c=color)
+    x1,x2,y1,y2 = plt.axis()
+    plt.axis((min_x,max_x,min_y,max_y))
+    plt.xlabel('NonPVC')
+    plt.ylabel('PVC')
+    plt.plot([1.11, 1.11],[min_y,max_y])
+    plt.plot([min_x, max_x],[low_fit_point, high_fit_point])
+    plt.plot([min_x, max_x],[threshold_fit_point, threshold_fit_point])
+
+
 
 if __name__ == "__main__":
 
@@ -337,7 +435,19 @@ if __name__ == "__main__":
     for k,v in sorted_data.iteritems():
         sorted_data[k].update(agg_sorted_data.get(k,{}))
 
+    groupings = ['group2', 'group4', 'agglow', 'agghigh']
 
+    '''
+    plot the nonpvc to pvc linear correction
+    '''
+    '''
+    for i, groupname in enumerate(groupings):
+        fig_num = i+1
+        plt.figure(fig_num)
+        thresholdCorrection(groupname, sorted_data)
+    plt.show()
+    sys.exit(1)
+    '''
     
     '''
     plot the residuals for each group
@@ -351,10 +461,27 @@ if __name__ == "__main__":
     '''
 
     '''
+    plot the raw residuals 
+    '''
+    '''
+    plt.figure(1)
+    groupname = 'agghigh'
+    subplot_residuals_raw(groupname, sorted_data)
+    plt.show()
+    sys.exit(1)
+    '''
+
+    '''
     Plot scatter plot (composite vs hemiwm)
     '''
-    grouping='agghigh'
-    composite_hemiWM_scatter(sorted_data, grouping)
+    thresholds = {'group2': 1.05225,
+                  'group4': 1.10018,
+                  'agglow': 1.26906,
+                  'agghigh': 1.26781}
+    for i, grouping in enumerate(groupings):
+        fig_num = i+1
+        plt.figure(fig_num)
+        composite_hemiWM_scatter(sorted_data, grouping, threshold=thresholds[grouping])
     plt.show()
     sys.exit(1)
 
