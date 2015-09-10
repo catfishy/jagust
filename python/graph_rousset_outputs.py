@@ -7,50 +7,6 @@ from scipy.stats import norm, mannwhitneyu, linregress
 from utils import *
 
 
-def zipFields(args):
-    '''
-    For structs imported from mat files,
-    where field values are in a list and the field names are listed under dtype
-    '''
-    fields = args.dtype.names
-    values = []
-    for i,v in enumerate(args):
-        try:
-            v = unwrap(v)
-            if len(v) > 1:
-                v = zipFields(v)
-        except Exception as e:
-            pass
-        values.append(v)
-    return dict(zip(fields,values))
-
-def parseResult(arg):
-    arg = unwrap(arg)
-    data = zipFields(arg)
-    return data
-
-'''
-def parseResult(arg):
-    while type(arg) != np.ndarray or len(arg) <= 1:
-        print type(arg)
-        print len(arg)
-        if len(arg) > 1:
-            print arg
-        arg = arg[0]
-    print arg
-    to_return = []  
-    for i, a in enumerate(arg):
-        fields = a.dtype.names
-        print a
-        data = a[0][0]
-        extracted = {}
-        for k,v in zip(fields,data):
-            while isinstance(v, np.ndarray) and len(v) <= 1:
-                v = v[0]
-            extracted[k] = v
-        to_return.append(extracted)
-    return to_return
-'''
 
 def subplot_scatter(data, key, grouping, plot_raw=False):
     scatter_points = []
@@ -417,25 +373,16 @@ if __name__ == "__main__":
 
     # load agglomerative grouping results
     rousset_mat = '../rousset_output_low_high.mat'
-    data = loadMATFile(rousset_mat)
-    agg_result_list = [parseResult(_) for _ in data['result_list'][0]]
-    agg_subj_list = data['subj_list'][0]
-    agg_groups = list(data['group_names'][0])
-    agg_sorted_data = dict(zip(agg_subj_list,agg_result_list))
-
+    (agg_group_names, agg_sorted_data) = importRoussetResults(rousset_mat)
     # load regular grouping results
     rousset_mat = '../rousset_output_2_4.mat'
-    data = loadMATFile(rousset_mat)
-    result_list = [parseResult(_) for _ in data['result_list'][0]]
-    subj_list = data['subj_list'][0]
-    groups = list(data['group_names'][0])
-    sorted_data = dict(zip(subj_list,result_list))
+    (group_names, sorted_data) = importRoussetResults(rousset_mat)
 
     # aggregate
     for k,v in sorted_data.iteritems():
         sorted_data[k].update(agg_sorted_data.get(k,{}))
 
-    groupings = ['group2', 'group4', 'agglow', 'agghigh']
+    groupings = ['group2', 'group4', 'agglow', 'agghigh', 'agglowtwo']
 
     '''
     plot the nonpvc to pvc linear correction
@@ -474,10 +421,11 @@ if __name__ == "__main__":
     '''
     Plot scatter plot (composite vs hemiwm)
     '''
-    thresholds = {'group2': 1.05225,
-                  'group4': 1.10018,
-                  'agglow': 1.26906,
-                  'agghigh': 1.26781}
+    thresholds = {'group2': 1.05225257559,
+                  'group4': 1.10017792162,
+                  'agglow': 1.26905730506,
+                  'agghigh': 1.26780842565,
+                  'agglowtwo': 1.27033990344}
     for i, grouping in enumerate(groupings):
         fig_num = i+1
         plt.figure(fig_num)

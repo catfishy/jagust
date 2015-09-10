@@ -14,6 +14,80 @@ import numpy as np
 
 from utils import *
 
+'''
+def syncTemplate(old_headers, old_lines, input_file, dump_to=None):
+    data = importTemplate(input_file)
+
+    to_add_headers = []
+    after = None
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        pass
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, data, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+'''
+
+
+def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_to=None):
+    assert timepoint in set(['BL', 'Scan2', 'Scan3'])
+
+    group_names, sorted_data = importRoussetResults(rousset_matfile)
+
+    to_add_headers = ['AV45_CorticalSummary/Wholecereb_PVC_%s' % timepoint,
+                      'AV45_CerebGM_PVC_%s' % timepoint,
+                      'AV45_HemiWM/Wholecereb_PVC_%s' % timepoint,
+                      'AV45_Wholecereb_PVC_%s' % timepoint,
+                      'AV45_CerebWM_PVC_%s' % timepoint]
+    after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_'))] # last element that contains 'AV45'
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        agghigh = subj_row['agghigh'] # hardcoded syncing of agghigh grouping results
+        new_subj_data = {}
+        wholecereb = float(agghigh['wholecereb']['pvcval'])
+        for region, values in agghigh.iteritems():
+            pvcval = float(values.get('pvcval',0.0))
+            if region == 'composite':
+                new_subj_data['AV45_CorticalSummary/Wholecereb_PVC'] = pvcval/wholecereb
+            elif region == 'cerebGM':
+                new_subj_data['AV45_CerebGM_PVC'] = pvcval
+            elif region == 'hemiWM':
+                new_subj_data['AV45_HemiWM/Wholecereb_PVC'] = pvcval/wholecereb
+            elif region == 'wholecereb':
+                new_subj_data['AV45_Wholecereb_PVC'] = pvcval
+            elif region == 'cerebWM':
+                new_subj_data['AV45_CerebWM_PVC'] = pvcval
+        return new_subj_data
+        ['composite', 'cerebGM', 'hemiWM', 'residuals', 'wholecereb', 'cerebWM']
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, sorted_data, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        new_data = {'%s_%s' % (k, timepoint): v for k,v in new_data.iteritems()}
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+
+
 def syncGDData(old_headers, old_lines, gd_file, registry_file, dump_to=None):
     registry = importRegistry(registry_file)
     gd_by_subj = importGD(gd_file, registry=registry)
@@ -1010,8 +1084,8 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     tbm_columns.extend(['TBMSyn_postAV45.%s' % (i+1) for i in range(10)])
     tbm_columns.append('TBMSyn_BL_DATE')
     tbm_columns.append('TBMSyn_count')
-    tbm_columns.append('TBMSyn_SLOPE')
-    tbm_columns.append('TBMSyn_slope_followuptime')
+    #tbm_columns.append('TBMSyn_SLOPE')
+    #tbm_columns.append('TBMSyn_slope_followuptime')
     new_headers = rearrangeHeaders(old_headers, tbm_columns, after=None)
     
     def extraction_fn(subj, subj_row, old_l, patient_pets):
@@ -1040,7 +1114,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
                 new_data['TBMSyn_DATE.%s' % (i+1)] = ''
                 new_data['TBMSyn_SCORE.%s' % (i+1)] = ''
                 new_data['TBMSyn_postAV45.%s' % (i+1)] = ''
-
+        '''
         # calculate slope
         if len(slope_points) >= 2:
             raw_dates = [_[0] for _ in slope_points]
@@ -1054,6 +1128,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
         else:
             new_data['TBMSyn_SLOPE'] = ''
             new_data['TBMSyn_slope_followuptime'] = ''
+        '''
         new_data['TBMSyn_count'] = len(slope_points)
         new_data['TBMSyn_BL_DATE'] = bl_examdate
         return new_data
@@ -1360,7 +1435,9 @@ def eliminateColumns(headers, lines):
                  'LastCSF_AV45_1_TimeDiff',
                  'LastCSFAbeta',
                  'ADAS_slope_all',
-                 'FDG_slope']
+                 'FDG_slope',
+                 'TBMSyn_SLOPE',
+                 'TBMSyn_slope_followuptime']
     to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
     to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
     to_remove += ['TAU.%s' % (i+1) for i in range(7)]
@@ -1416,6 +1493,10 @@ def runPipeline():
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
+    print "\nSYNCING ROUSSET\n"
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
+    #new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2, 'Scan2', dump_to=None)
+    #new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3, 'Scan3', dump_to=None)
     print "\nSYNCING FDG\n"
     new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file, dump_to=None)
     print "\nSYNCING TBMSYN\n"
@@ -1465,6 +1546,9 @@ if __name__ == '__main__':
     gd_file = '../docs/GDSCALE.csv'
     # FDG file
     fdg_file = '../docs/UCBERKELEY_FDG_07_29_15.csv'
-
+    # Rousset output files
+    rousset_matfile_bl = '../rousset_output_low_high.mat'
+    rousset_matfile_scan2 = '../output/'
+    rousset_matfile_scan3 = '../output/'
 
     runPipeline()

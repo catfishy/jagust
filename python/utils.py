@@ -12,6 +12,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.decomposition import PCA
 
+def importRoussetResults(rousset_mat):
+    data = loadMATFile(rousset_mat)
+    result_list = [parseResult(_) for _ in data['result_list'][0]]
+    subj_list = data['subj_list'][0]
+    group_names = list(data['group_names'][0])
+    sorted_data = dict(zip(subj_list,result_list))
+    return (group_names, sorted_data)
 
 def unwrap(arg):
     try:
@@ -20,6 +27,28 @@ def unwrap(arg):
     except Exception as e:
         pass
     return arg
+
+def zipFields(args):
+    '''
+    For structs imported from mat files,
+    where field values are in a list and the field names are listed under dtype
+    '''
+    fields = args.dtype.names
+    values = []
+    for i,v in enumerate(args):
+        try:
+            v = unwrap(v)
+            if len(v) > 1:
+                v = zipFields(v)
+        except Exception as e:
+            pass
+        values.append(v)
+    return dict(zip(fields,values))
+
+def parseResult(arg):
+    arg = unwrap(arg)
+    data = zipFields(arg)
+    return data
 
 def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
     """
