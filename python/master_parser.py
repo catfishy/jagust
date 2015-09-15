@@ -1019,6 +1019,7 @@ def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
     fdg_columns = []
     fdg_columns += ['FDG_pons_Vis%s' % (i+1) for i in range(10)]
     fdg_columns += ['FDGVis%s_ReltoAV45' % (i+1) for i in range(10)]
+    fdg_columns += ['FDGVis%s_Date' % (i+1) for i in range(10)]
     fdg_columns += ['FDG_postAV45_slope','FDG_postAV45_followuptime']
     new_headers= rearrangeHeaders(old_headers, fdg_columns, after='FDG_Bin_Baseline')
 
@@ -1040,8 +1041,9 @@ def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
             if i < len(subj_fdg):
                 datapoint = subj_fdg[i]
                 new_data['FDG_pons_Vis%s' % (i+1)] = datapoint['PONS']
+                new_data['FDGVis%s_Date' % (i+1)] = datapoint['EXAMDATE']
                 if av45_bl:
-                    rel_time = abs(datapoint['EXAMDATE'] - av45_bl).days / 365.0
+                    rel_time = (datapoint['EXAMDATE'] - av45_bl).days / 365.0
                     new_data['FDGVis%s_ReltoAV45' % (i+1)] = rel_time
                     if rel_time >= -(30.0/365.0):
                         slope_points.append((rel_time, datapoint['PONS']))
