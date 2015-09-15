@@ -395,8 +395,10 @@ def importADNIDiagnosis(diag_file, registry=None):
                                    'VISCODE2': viscode2,
                                    'EXAMDATE': examdate,
                                    'change': int(change)})
-    return dict(diag_by_subj)
-
+    diag_by_subj = dict(diag_by_subj)
+    for k,v in diag_by_subj.iteritems():
+        diag_by_subj[k] = sorted(v, key=lambda x: x['EXAMDATE'])
+    return diag_by_subj
 
 def importFreesurferLookup(lut_file):
     infile = open(lut_file, 'r')

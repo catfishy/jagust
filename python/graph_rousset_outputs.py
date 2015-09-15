@@ -3,8 +3,11 @@ import matplotlib.pyplot as plt
 import matplotlib.mlab as mlab
 from collections import defaultdict
 from scipy.stats import norm, mannwhitneyu, linregress
-
+from sklearn.mixture import GMM, VBGMM, DPGMM
 from utils import *
+import itertools
+from scipy import linalg
+import matplotlib as mpl
 
 
 
@@ -232,6 +235,94 @@ def subplot_residuals_raw(groupname, data):
     plt.xlabel('Groups')
     plt.ylabel('PVC Residuals')
 
+def composite_hemiWM_GMM(data, grouping, threshold=1.11):
+    g = GMM(n_components=2, 
+                covariance_type='full', 
+                random_state=None, 
+                thresh=None, 
+                tol=0.00001, 
+                min_covar=0.00001, 
+                n_iter=200,
+                params='wmc', 
+                init_params='wmc')
+    pvc_points = []
+    for subj, subjdata in data.iteritems():
+        groupdata = subjdata[grouping]
+        composite_data = groupdata['composite']
+        hemiwm_data = groupdata['hemiWM']
+        pvc_ref = float(groupdata['wholecereb']['pvcval'])
+        composite_pvcval = composite_data['pvcval'] / pvc_ref
+        hemiwm_pvcval = hemiwm_data['pvcval'] / pvc_ref
+        # scatter plot
+        pvc_points.append(np.array([hemiwm_pvcval, composite_pvcval]))
+
+    g.fit(pvc_points)
+    print np.round(g.weights_, 2)
+    print np.round(g.means_, 2)
+    try:
+        print np.round(g.precs_, 2) 
+    except:
+        print np.round(g.covars_, 2)
+    print g.converged_
+
+    # predict
+    probs = g.predict_proba(pvc_points)
+    colors = []
+    pvc_above = []
+    pvc_below = []
+    for i, p in enumerate(probs):
+        if p[0] > 0.75:
+            colors.append('r')
+            pvc_above.append(pvc_points[i])
+        elif p[1] > 0.75:
+            colors.append('g')
+            pvc_below.append(pvc_points[i])
+        else:
+            colors.append('b')
+
+    # plot
+    pvc_x = [_[0] for _ in pvc_points]
+    pvc_y = [_[1] for _ in pvc_points]
+
+    min_x = min(pvc_x)
+    max_x = max(pvc_x)
+    min_y = min(pvc_y)
+    max_y = max(pvc_y)
+    min_x -= (max_x-min_x)*0.1
+    max_x += (max_x-min_x)*0.1
+    min_y -= (max_y-min_y)*0.1
+    max_y += (max_y-min_y)*0.1
+
+    plt.plot()
+    splot = plt.subplot(1, 1, 1)
+    plt.title('%s post-PVC' % grouping)
+    plt.scatter(pvc_x, pvc_y, c=colors)
+    x1,x2,y1,y2 = plt.axis([min_x, max_x, min_y, max_y])
+    plt.plot([x1,x2],[threshold,threshold])
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in pvc_above], [_[1] for _ in pvc_above])
+    plt.plot([min_x, max_x], [(min_x*slope)+intercept, (max_x*slope)+intercept])
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in pvc_below], [_[1] for _ in pvc_below])
+    plt.plot([min_x, max_x], [(min_x*slope)+intercept, (max_x*slope)+intercept])
+
+
+    color_iter = itertools.cycle(['r', 'g', 'b', 'c', 'm'])
+    for i, (mean, covar, color) in enumerate(zip(g.means_, g._get_covars(), color_iter)):
+        v, w = linalg.eigh(covar)
+        u = w[0] / linalg.norm(w[0])
+        # Plot an ellipse to show the Gaussian component
+        angle = np.arctan(u[1] / u[0])
+        angle = 180 * angle / np.pi  # convert to degrees
+        ell = mpl.patches.Ellipse(mean, v[0], v[1], 180 + angle, color=color)
+        ell.set_clip_box(splot.bbox)
+        ell.set_alpha(0.5)
+        splot.add_artist(ell)
+    
+    plt.xlabel('Hemi WM / wcereb')
+    plt.ylabel('Cortical Summary / wcereb')
+    plt.show()
+
+
+
 def composite_hemiWM_scatter(data, grouping, threshold=1.11):
     pvc_points = []
     nonpvc_points = []
@@ -383,6 +474,11 @@ if __name__ == "__main__":
         sorted_data[k].update(agg_sorted_data.get(k,{}))
 
     groupings = ['group2', 'group4', 'agglow', 'agghigh', 'agglowtwo']
+    thresholds = {'group2': 1.05225257559,
+                  'group4': 1.10017792162,
+                  'agglow': 1.26905730506,
+                  'agghigh': 1.26780842565,
+                  'agglowtwo': 1.27033990344}
 
     '''
     plot the nonpvc to pvc linear correction
@@ -419,13 +515,16 @@ if __name__ == "__main__":
     '''
 
     '''
+    GMM to composite/hemiWM scatter plot
+    '''
+    grouping='agghigh'
+    composite_hemiWM_GMM(sorted_data, grouping, threshold=thresholds[grouping])
+    sys.exit(1)
+
+    '''
     Plot scatter plot (composite vs hemiwm)
     '''
-    thresholds = {'group2': 1.05225257559,
-                  'group4': 1.10017792162,
-                  'agglow': 1.26905730506,
-                  'agghigh': 1.26780842565,
-                  'agglowtwo': 1.27033990344}
+
     for i, grouping in enumerate(groupings):
         fig_num = i+1
         plt.figure(fig_num)
