@@ -1495,10 +1495,12 @@ def runPipeline():
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
-    print "\nSYNCING ROUSSET\n"
+    print "\nSYNCING ROUSSET BL\n"
     new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
-    #new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2, 'Scan2', dump_to=None)
-    #new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3, 'Scan3', dump_to=None)
+    print "\nSYNCING ROUSSET SCAN2\n"
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2, 'Scan2', dump_to=None)
+    print "\nSYNCING ROUSSET SCAN3\n"
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3, 'Scan3', dump_to=None)
     print "\nSYNCING FDG\n"
     new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file, dump_to=None)
     print "\nSYNCING TBMSYN\n"
@@ -1549,8 +1551,8 @@ if __name__ == '__main__':
     # FDG file
     fdg_file = '../docs/UCBERKELEY_FDG_07_29_15.csv'
     # Rousset output files
-    rousset_matfile_bl = '../rousset_output_low_high.mat'
-    rousset_matfile_scan2 = '../output/'
-    rousset_matfile_scan3 = '../output/'
+    rousset_matfile_bl = '../output/Rousset_BL/rousset_output_agg.mat'
+    rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_agg.mat'
+    rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_agg.mat'
 
     runPipeline()
