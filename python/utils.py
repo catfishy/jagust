@@ -1020,8 +1020,15 @@ def importBSI(bsi_file, include_failed=False):
     return dict(data)
 
 
-def importAV45(av45_file, registry=None):
+def importAV45(av45_file, av45_nontp_file=None ,registry=None):
     av45_headers, av45_lines = parseCSV(av45_file)
+
+    if av45_nontp_file:
+        av45_nontp_headers, av45_nontp_lines = parseCSV(av45_nontp_file)
+    else:
+        av45_nontp_headers = []
+        av45_nontp_lines = []
+
     av45_by_subj = defaultdict(list)
     for line in av45_lines:
         if 'SCRNO' in line:
@@ -1050,7 +1057,43 @@ def importAV45(av45_file, registry=None):
             print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
             #continue
         line['EXAMDATE'] = examdate
+        line['TP_SPECIFIC'] = True
         av45_by_subj[subj].append(line)
+
+    # add in nontp data if given
+    for line in av45_nontp_lines:
+        if 'SCRNO' in line:
+            subj = int(line.pop('SCRNO',None))
+        elif 'RID' in line:
+            subj = int(line.pop('RID',None))
+        elif 'PID' in line:
+            subj = int(line.pop('PID',None))
+        else:
+            raise Exception("Can't find subject column in AV45 file")
+
+        if subj in av45_by_subj:
+            continue
+
+        viscode = line['VISCODE'].strip().lower()
+        if 'VISCODE2' in line:
+            viscode2 = line['VISCODE2'].strip().lower()
+        else:
+            viscode2 = ''
+        examdate = line.get('EXAMDATE',None)
+        if examdate:
+            try:
+                examdate = datetime.strptime(examdate,'%Y-%m-%d')
+            except:
+                examdate = datetime.strptime(examdate,'%m/%d/%y')
+        elif registry is not None:
+            examdate = findVisitDate(registry, subj, viscode, viscode2)
+        if not examdate:
+            print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
+            #continue
+        line['EXAMDATE'] = examdate
+        line['TP_SPECIFIC'] = False
+        av45_by_subj[subj].append(line)
+
     return dict(av45_by_subj)
 
 def importCrossSectionFreesurfer(crossfree_file, include_failed=False):

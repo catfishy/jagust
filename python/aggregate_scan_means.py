@@ -137,7 +137,7 @@ ADNI_OMIT = ['LEFT_CEREBELLUM_CORTEX',
 ADNI_EXTRA_OMIT = ADNI_OMIT
 DOD_OMIT = ADNI_OMIT
 DOD_EXTRA_OMIT = ADNI_OMIT
-ADNI_OMIT_SIZES = ['SCRNO', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
+ADNI_OMIT_SIZES = ['SCRNO', 'RID', 'PID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
                    'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                    'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                    'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
@@ -145,7 +145,7 @@ ADNI_OMIT_SIZES = ['SCRNO', 'RID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTE
                    'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
 ADNI_EXTRA_OMIT_SIZES = ADNI_OMIT_SIZES
 DOD_OMIT_SIZES = ADNI_OMIT_SIZES
-DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
+DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'PID','COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                         'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                         'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
                         'CEREBELLUMWHITEMATTER']
@@ -402,47 +402,59 @@ def additionalCalculations(headers, mean_values, size_values, agg_type):
         headers.append('SCRNO')
         mean_values['SCRNO'] = int(mean_values['RID'])
     else:
+        '''
         headers.append('PID')
         headers.remove('RID')
         mean_values['PID'] = int(mean_values['RID'])
+        '''
+        pass
     return (headers, mean_values, size_values)
 
 
-def findPreprocessOutputFiles(folder_name):
+def findPreprocessOutputFiles(folder_name, nontp=False):
     bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
+    addon = "_nontp" if nontp else ""
     for filename in os.listdir(folder_name):
-        if "BL_means" in filename:
+        if "BL%s_means" % addon in filename:
             bl_means = os.path.join(folder_name, filename)
-        elif "V2_means" in filename:
+        elif "V2%s_means" % addon in filename:
             v2_means = os.path.join(folder_name, filename)
-        elif "V3_means" in filename:
+        elif "V3%s_means" % addon in filename:
             v3_means = os.path.join(folder_name, filename)
-        elif "BL_roisize" in filename:
+        elif "BL%s_roisize" % addon in filename:
             bl_sizes = os.path.join(folder_name, filename)
-        elif "V2_roisize" in filename:
+        elif "V2%s_roisize" % addon in filename:
             v2_sizes = os.path.join(folder_name, filename)
-        elif "V3_roisize" in filename:
+        elif "V3%s_roisize" % addon in filename:
             v3_sizes = os.path.join(folder_name, filename)
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 if __name__ == "__main__":
 
-
-    # for adni av45
-    '''
-    output = '../output/UCBERKELEYAV45_08_06_15_extra.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_07_08_15_extra'
+    # for adni av45 nontp
+    output = '../output/UCBERKELEYAV45_09_21_15_extra_nontp.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_09_21_15'
     registry = importRegistry("../docs/registry_clean.csv") 
     meta_pet = "../docs/PET_META_LIST_edited.csv"
     agg_type = 'adni_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
+    
+    # for adni av45
+    output = '../output/UCBERKELEYAV45_09_21_15_extra.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_09_21_15'
+    registry = importRegistry("../docs/registry_clean.csv") 
+    meta_pet = "../docs/PET_META_LIST_edited.csv"
+    agg_type = 'adni_extra'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
                                  meta_pet, registry, agg_type)
     sys.exit(1)
-    '''
-
-    # for adni dod (also add in adni controls
     
+
+    # for adni dod (add in adni controls)
+    '''
     output = '../output/AV45_DOD_LONI_08.05.15_extra_withcontrols.csv'
     temp_output = '../output/temp.csv'
     preprocess_folder =  '../docs/AV45_DOD_preprocess_output_08_05_15'
@@ -452,7 +464,6 @@ if __name__ == "__main__":
     meta_pet = None
     meta_pet_adni = None
     agg_type = 'dod_extra'
-
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
     bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
@@ -463,7 +474,8 @@ if __name__ == "__main__":
     appendCSV(output, temp_output)
     print 'removing'
     removeFile(temp_output)
-    
+    sys.exit(1)
+    '''
 
     # for adni dod (don't add in adni controls)
     '''
@@ -476,80 +488,5 @@ if __name__ == "__main__":
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
                                  meta_pet, registry, agg_type)
+    sys.exit(1)
     '''
-
-    # for adni dod testing with old inputs
-    '''
-    output = '../output/AV45_DOD_LONI_OLDTEST_extra.csv'
-    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_12_18_14'
-    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
-    meta_pet = None
-    meta_pet_adni = None
-    agg_type = 'dod_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
-    '''
-
-'''
-## output keys ###
-
-RID
-VISCODE
-VISCODE2
-EXAMDATE
-
-
-CEREBELLUMGREYMATTER
-BRAINSTEM
-WHOLECEREBELLUM
-ERODED_SUBCORTICALWM
-COMPOSITE_REF
-FRONTAL
-CINGULATE
-PARIETAL
-TEMPORAL
-SUMMARYSUVR_WHOLECEREBNORM
-SUMMARYSUVR_COMPOSITE_REFNORM
-
-
-CTX_LH_CAUDALMIDDLEFRONTAL
-CTX_LH_LATERALORBITOFRONTAL
-CTX_LH_MEDIALORBITOFRONTAL
-CTX_LH_PARSOPERCULARIS
-CTX_LH_PARSORBITALIS
-CTX_LH_PARSTRIANGULARIS
-CTX_LH_ROSTRALMIDDLEFRONTAL
-CTX_LH_SUPERIORFRONTAL
-CTX_LH_FRONTALPOLE
-CTX_RH_CAUDALMIDDLEFRONTAL
-CTX_RH_LATERALORBITOFRONTAL
-CTX_RH_MEDIALORBITOFRONTAL
-CTX_RH_PARSOPERCULARIS
-CTX_RH_PARSORBITALIS
-CTX_RH_PARSTRIANGULARIS
-CTX_RH_ROSTRALMIDDLEFRONTAL
-CTX_RH_SUPERIORFRONTAL
-CTX_RH_FRONTALPOLE
-CTX_LH_CAUDALANTERIORCINGULATE
-CTX_LH_ISTHMUSCINGULATE
-CTX_LH_POSTERIORCINGULATE
-CTX_LH_ROSTRALANTERIORCINGULATE
-CTX_RH_CAUDALANTERIORCINGULATE
-CTX_RH_ISTHMUSCINGULATE
-CTX_RH_POSTERIORCINGULATE
-CTX_RH_ROSTRALANTERIORCINGULATE
-CTX_LH_INFERIORPARIETALE
-CTX_LH_PRECUNEUS
-CTX_LH_SUPERIORPARIETAL
-CTX_LH_SUPRAMARGINAL
-CTX_RH_INFERIORPARIETAL
-CTX_RH_PRECUNEUS
-CTX_RH_SUPERIORPARIETAL
-CTX_RH_SUPRAMARGINAL
-CTX_LH_MIDDLETEMPORAL
-CTX_LH_SUPERIORTEMPORAL
-CTX_RH_MIDDLETEMPORAL
-CTX_RH_SUPERIORTEMPORAL
-update_stamp
-'''

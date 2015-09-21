@@ -731,15 +731,14 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
     return (new_headers, new_lines)
 
 
-def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None):
+def syncAV45Data(old_headers, old_lines, av45_file, av45_nontp_file, registry_file, dump_to=None):
     '''
     This function does not follow the pattern of the other sync functions because
     the header/data update is accomplished in a nested function, and it also allows
     for the possibility of introducing new subjects via the dataset being synced in
     '''
     registry = importRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, registry=registry)
-
+    av45_by_subj = importAV45(av45_file, av45_nontp_file=av45_nontp_file, registry=registry)
     new_headers = None
     new_lines = []
     old_subjects = set([])
@@ -803,6 +802,7 @@ def parseAV45Entries(old_headers, subj_av45):
     temporal_bigref_keys = ['AV45_Temporal/BigRef','AV45_2_Temporal/BigRef','AV45_3_Temporal/BigRef']
 
     # generate additional keys and arrange into header list
+    all_tp_keys = ['AV45_TP_SPECIFIC_BL', 'AV45_TP_SPECIFIC_SCAN2', 'AV45_TP_SPECIFIC_SCAN3']
     all_wm70_composite_keys = wm70_composite_keys + \
                          ["%s_pchange" % _ for _ in wm70_composite_keys[1:]] + \
                          ["%s_pchange_ABS" % _ for _ in wm70_composite_keys[1:]] + \
@@ -874,7 +874,8 @@ def parseAV45Entries(old_headers, subj_av45):
     all_temporal_bigref_keys = temporal_bigref_keys + \
                       ["%s_pchange" % _ for _ in temporal_bigref_keys[1:]] + \
                       ["%s_diff" % _ for _ in temporal_bigref_keys[1:]]
-    all_av45_key_lists = [all_wm70_composite_keys,
+    all_av45_key_lists = [all_tp_keys,
+                          all_wm70_composite_keys,
                           all_wm70_cerebg_keys,
                           all_wm70_wcereb_keys,
                           all_unilateral_keys,
@@ -935,6 +936,7 @@ def parseAV45Entries(old_headers, subj_av45):
         rightcaudate = float(point['RIGHT-CAUDATE'])
         leftpallidum = float(point['LEFT-PALLIDUM'])
         rightpallidum = float(point['RIGHT-PALLIDUM'])
+        tp_spec = 1 if point['TP_SPECIFIC'] else 0
 
         # fill in basic keys
         data[wm70_composite_keys[i]] = wm70/compositeroi
@@ -955,6 +957,7 @@ def parseAV45Entries(old_headers, subj_av45):
         data["%s_BIN1.11" % wcereb_keys[i]] = 1 if (compositeroi/wcereb) > 1.11 else 0
         data["%s_BIN.79" % brainstem_keys[i]] = 1 if (compositeroi/brainstem) > 0.79 else 0
 
+
         # fill in derivative keys
         if i == 0:
             # fill in unilateral
@@ -965,6 +968,7 @@ def parseAV45Entries(old_headers, subj_av45):
             data['AV45_LeftPallidum/WM70'] = leftpallidum/wm70
             data['AV45_RightPallidum/WM70'] = rightpallidum/wm70
             data[wmratio_keys[i]] = (compositeroi/wcereb)
+            data['AV45_TP_SPECIFIC_BL'] = tp_spec
             wm70_0 = wm70
         elif i == 1 or i == 2:
             data[wmratio_keys[i]] = (compositeroi/wcereb) / (wm70/wm70_0)
@@ -976,6 +980,7 @@ def parseAV45Entries(old_headers, subj_av45):
                 data["%s_pchange_ABS" % al[i]] = abs(data["%s_pchange" % al[i]])
                 data["%s_diff_ABS" % al[i]] = abs(data["%s_diff" % al[i]])
             if i == 1:
+                data['AV45_TP_SPECIFIC_SCAN2'] = tp_spec
                 times = exam_timedeltas[:2]
                 slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in bigref_keys[:2]])
                 data['AV45_BigRef_Slope_2pts'] = slope
@@ -994,6 +999,7 @@ def parseAV45Entries(old_headers, subj_av45):
                 slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_wcereb_keys[:2]])
                 data['AV45_WM70/wcereb_Slope_2pts'] = slope
             if i == 2:
+                data['AV45_TP_SPECIFIC_SCAN3'] = tp_spec
                 times = exam_timedeltas[:3]
                 slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in bigref_keys[:3]])
                 data['AV45_BigRef_Slope_3pts'] = slope
@@ -1492,7 +1498,7 @@ def runPipeline():
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
     print "\nSYNCING AV45\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, av45_nontp_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING ROUSSET BL\n"
@@ -1530,7 +1536,8 @@ if __name__ == '__main__':
     pet_meta_file = "../docs/PET_META_LIST_edited.csv"
     demog_file = "../docs/PTDEMOG.csv"
     # AV45 File
-    av45_file = "../output/UCBERKELEYAV45_08_06_15_extra.csv"
+    av45_file = "../output/UCBERKELEYAV45_09_21_15_extra.csv"
+    av45_nontp_file = "../output/UCBERKELEYAV45_09_21_15_extra_nontp.csv"
     # MMSE files
     mmse_file = "../cog_tests/MMSE.csv"
     # ADAS-COG files
