@@ -45,32 +45,39 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
 
     group_names, sorted_data = importRoussetResults(rousset_matfile)
 
-    to_add_headers = ['AV45_CorticalSummary/Wholecereb_PVC_%s' % timepoint,
-                      'AV45_CerebGM_PVC_%s' % timepoint,
-                      'AV45_HemiWM/Wholecereb_PVC_%s' % timepoint,
-                      'AV45_Wholecereb_PVC_%s' % timepoint,
-                      'AV45_CerebWM_PVC_%s' % timepoint]
-    after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_'))] # last element that contains 'AV45'
+    valid_timepoints = ['BL', 'Scan2', 'Scan3']
+    valid_groupings = ['agghigh', 'group2', 'group4']
+    to_add_headers = []
+    for vg in valid_groupings:
+        to_add_headers += ['AV45_PVC_%s_CorticalSummary/Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
+        to_add_headers += ['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg), 'AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)]
+        to_add_headers += ['AV45_PVC_%s_CerebGM_%s' % (vg, tp) for tp in valid_timepoints]
+        to_add_headers += ['AV45_PVC_%s_HemiWM/Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
+        to_add_headers += ['AV45_PVC_%s_Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
+        to_add_headers += ['AV45_PVC_%s_CerebWM_%s' % (vg, tp) for tp in valid_timepoints]
+    after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
-        agghigh = subj_row['agghigh'] # hardcoded syncing of agghigh grouping results
+        valid_groupings = ['agghigh', 'group2', 'group4']
         new_subj_data = {}
-        wholecereb = float(agghigh['wholecereb']['pvcval'])
-        for region, values in agghigh.iteritems():
-            pvcval = float(values.get('pvcval',0.0))
-            if region == 'composite':
-                new_subj_data['AV45_CorticalSummary/Wholecereb_PVC'] = pvcval/wholecereb
-            elif region == 'cerebGM':
-                new_subj_data['AV45_CerebGM_PVC'] = pvcval
-            elif region == 'hemiWM':
-                new_subj_data['AV45_HemiWM/Wholecereb_PVC'] = pvcval/wholecereb
-            elif region == 'wholecereb':
-                new_subj_data['AV45_Wholecereb_PVC'] = pvcval
-            elif region == 'cerebWM':
-                new_subj_data['AV45_CerebWM_PVC'] = pvcval
+        for k in subj_row.keys():
+            if k in valid_groupings:
+                v = subj_row[k]
+                wholecereb = float(v['wholecereb']['pvcval'])
+                for region, values in v.iteritems():
+                    pvcval = float(values.get('pvcval',0.0))
+                    if region == 'composite':
+                        new_subj_data['AV45_PVC_%s_CorticalSummary/Wholecereb' % k] = pvcval/wholecereb
+                    elif region == 'cerebGM':
+                        new_subj_data['AV45_PVC_%s_CerebGM' % k] = pvcval
+                    elif region == 'hemiWM':
+                        new_subj_data['AV45_PVC_%s_HemiWM/Wholecereb' % k] = pvcval/wholecereb
+                    elif region == 'wholecereb':
+                        new_subj_data['AV45_PVC_%s_Wholecereb' % k] = pvcval
+                    elif region == 'cerebWM':
+                        new_subj_data['AV45_PVC_%s_CerebWM' % k] = pvcval
         return new_subj_data
-        ['composite', 'cerebGM', 'hemiWM', 'residuals', 'wholecereb', 'cerebWM']
 
     new_lines = []
     for linenum, old_l in enumerate(old_lines):
@@ -78,6 +85,35 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                               pid_key='RID', pet_meta=None)
         new_data = {'%s_%s' % (k, timepoint): v for k,v in new_data.iteritems()}
         old_l.update(new_data)
+        # calculate slopes if possible
+        if timepoint == 'Scan2':
+            # try to calculate slope with 2 points
+            for vg in valid_groupings:
+                try:
+                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
+                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
+                    diff1 = float(old_l.get('AV45_1_2_Diff (Yrs)'))
+                    x = [0.0, diff1]
+                    y = [val1, val2]
+                    slope, intercept, r, p, stderr = stats.linregress(x, y)
+                    old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = slope
+                except Exception as e:
+                    old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = ''
+        elif timepoint == 'Scan3':
+            # try to calculate slope with 3 points
+            for vg in valid_groupings:
+                try:
+                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
+                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
+                    val3 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan3' % vg))
+                    diff1 = float(old_l.get('AV45_1_2_Diff (Yrs)'))
+                    diff2 = float(old_l.get('AV45_1_3_Diff (yrs)'))
+                    x = [0.0, diff1, diff2]
+                    y = [val1, val2, val3]
+                    slope, intercept, r, p, stderr = stats.linregress(x, y)
+                    old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = slope
+                except Exception as e:
+                    old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = ''
         new_lines.append(old_l)
 
     # dump out
@@ -1502,11 +1538,14 @@ def runPipeline():
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING ROUSSET BL\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl_manual, 'BL', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl_agg, 'BL', dump_to=None)
     print "\nSYNCING ROUSSET SCAN2\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2, 'Scan2', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2_manual, 'Scan2', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2_agg, 'Scan2', dump_to=None)
     print "\nSYNCING ROUSSET SCAN3\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3, 'Scan3', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3_manual, 'Scan3', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3_agg, 'Scan3', dump_to=None)
     print "\nSYNCING FDG\n"
     new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file, dump_to=None)
     print "\nSYNCING TBMSYN\n"
@@ -1558,8 +1597,11 @@ if __name__ == '__main__':
     # FDG file
     fdg_file = '../docs/UCBERKELEY_FDG_07_29_15.csv'
     # Rousset output files
-    rousset_matfile_bl = '../output/Rousset_BL/rousset_output_agg.mat'
-    rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_agg.mat'
-    rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_agg.mat'
+    rousset_matfile_bl_manual = '../output/Rousset_BL/rousset_output_manual.mat'
+    rousset_matfile_scan2_manual = '../output/Rousset_Scan2/rousset_output_manual.mat'
+    rousset_matfile_scan3_manual = '../output/Rousset_Scan3/rousset_output_manual.mat'
+    rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_output_agg.mat'
+    rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_output_agg.mat'
+    rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_output_agg.mat'
 
     runPipeline()

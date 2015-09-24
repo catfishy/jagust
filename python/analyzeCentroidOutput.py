@@ -104,6 +104,53 @@ def createConnectivityGraph(region_list):
     sparse = csr_matrix(graph)
     return sparse
 
+
+def runClustering(obs, conn, clusters):
+    print "OBS SHAPE: %s, # CLUSTERS: %s" % (obs.shape, clusters)
+
+    '''
+    # KMEANS
+    model = KMeans(n_clusters=clusters, max_iter=1000, tol=0.00001,
+                   n_jobs=-1, copy_x=True, verbose=False)
+    labels = model.fit_predict(obs)
+    try:
+        score = silhouette_score(obs,labels,metric='euclidean')
+    except Exception as e:
+        print e
+        score = np.nan
+    '''
+    # AGGLOMERATIVE
+    model = AgglomerativeClustering(n_clusters=clusters, 
+                                    affinity='euclidean', 
+                                    linkage='ward',
+                                    connectivity=conn)
+    labels = model.fit_predict(obs)
+    try:
+        score = silhouette_score(obs,labels,metric='euclidean')
+    except Exception as e:
+        print e
+        score = np.nan
+
+    c = (clusters, 'agg', score, model)
+    print "Clusters: %s, Neighbors: %s, Score: %s" % (c[0],c[1],c[2])
+    labels = c[3].fit_predict(obs)
+    by_cluster_label = {_:[] for _ in list(set(labels))}
+    for cluster, segment in zip(labels, segments):
+        segment_index = [k for k,v in lut_table.iteritems() if v == segment][0]
+        by_cluster_label[cluster].append(segment_index)
+        #by_cluster_label[cluster].append(segment)
+    roinames = []
+    varnames = []
+    for cluster, indices in by_cluster_label.iteritems():
+        cluster_varname = 'Cluster%s' % cluster
+        print '%s=%s' % (cluster_varname,indices)
+        roinames.append("%s" % cluster_varname) 
+        varnames.append(cluster_varname)
+    print "all_groups=[%s]" % (','.join(varnames),)
+    print "names=%s" % roinames
+    print "\n\n"
+    return by_cluster_label
+
 if __name__ == '__main__':
     output_mat = "../aggOutput.mat"
     data = loadMATFile(output_mat)
@@ -112,6 +159,7 @@ if __name__ == '__main__':
 
     by_region, by_subj, subjects = parseResult(data, lut_table)
 
+    '''
     # find centroid of centroids + normalize it somehow!!! (divide by original image x,y,z)
     centroids = {}
     for r in by_region.keys():
@@ -121,6 +169,7 @@ if __name__ == '__main__':
             if cur_centroid is not None:
                 subj_centroids.append(cur_centroid)
         centroids[r] = np.mean(np.array(subj_centroids), axis=0)
+    '''
 
     binding_distributions = []
     centroid_vectors = []
@@ -130,7 +179,7 @@ if __name__ == '__main__':
     for k,v in by_region.iteritems():
         v = np.nan_to_num(v)
         binding_distributions.append(v)
-        centroid_vectors.append(centroids[k])
+        #centroid_vectors.append(centroids[k])
         segments.append(k)
         variances[k] = np.std(v)
         means[k] = np.mean(v)
@@ -192,51 +241,40 @@ if __name__ == '__main__':
     # no pca
     obs_pca = obs
 
-    print obs_pca.shape
+    # split obs in half
+    half = len(obs_pca)/2
+    obs_1 = obs_pca[:,:half]
+    obs_2 = obs_pca
+
+    observations = [obs_1, obs_2]
+    by_k = {}
     for cur_k in k:
-        '''
-        # KMEANS
-        model = KMeans(n_clusters=cur_k, max_iter=1000, tol=0.00001,
-                       n_jobs=-1, copy_x=True, verbose=False)
-        labels = model.fit_predict(obs_pca)
-        try:
-            score = silhouette_score(obs,labels,metric='euclidean')
-        except Exception as e:
-            print e
-            score = np.nan
-        scores.append((cur_k, 'kmeans', score, model))
-        '''
-        
-        # AGGLOMERATIVE
-        model = AgglomerativeClustering(n_clusters=cur_k, 
-                                        affinity='euclidean', 
-                                        linkage='ward',
-                                        connectivity=connectivity)
-        labels = model.fit_predict(obs_pca)
-        try:
-            score = silhouette_score(obs,labels,metric='euclidean')
-        except Exception as e:
-            print e
-            score = np.nan
-        scores.append((cur_k, 'agg', score, model))
-        
-    best = sorted(scores, key=lambda x: x[2], reverse=True)[:40]
-    for c in best:
-        print "Clusters: %s, Neighbors: %s, Score: %s" % (c[0],c[1],c[2])
-        labels = c[3].fit_predict(obs_pca)
-        by_cluster_label = {_:[] for _ in list(set(labels))}
-        for cluster, segment in zip(labels, segments):
-            segment_index = [k for k,v in lut_table.iteritems() if v == segment][0]
-            by_cluster_label[cluster].append(segment_index)
-            #by_cluster_label[cluster].append(segment)
-        roinames = []
-        varnames = []
-        for cluster, indices in by_cluster_label.iteritems():
-            cluster_varname = 'Cluster%s' % cluster
-            print '%s=%s' % (cluster_varname,indices)
-            roinames.append("%s" % cluster_varname) 
-            varnames.append(cluster_varname)
-        print "all_groups=[%s]" % (','.join(varnames),)
-        print "names=%s" % roinames
-        print "\n\n"
-        
+        outputs = []
+        for obs in observations:
+            o = runClustering(obs, connectivity, cur_k)
+            outputs.append(o)
+        by_k[cur_k] = outputs
+
+    # check out grouping differences
+    for k, outputs in by_k.iteritems():
+        commons = []
+        values = [[sorted(_) for _ in o.values()] for o in outputs]
+        # find values that appear in all 
+        for o in values[0]:
+            common = all([(o in _ ) for _ in values])
+            if common:
+                commons.append(o)
+        # remove common values
+        uniq_values = []
+        for v in values:
+            for c in commons:
+                v.remove(c)
+            uniq_values.append(v)
+        print "Num Clusters: %s" % k
+        commons = [i for _ in commons for i in _]
+        print "%s/105 in common: %s " % (len(commons),commons)
+        for i, uv in enumerate(uniq_values):
+            print "Unique %s" % i
+            for _ in uv:
+                print "\t%s" % _
+        print '\n'

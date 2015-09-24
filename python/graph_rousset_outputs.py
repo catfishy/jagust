@@ -296,7 +296,13 @@ def composite_hemiWM_GMM(data, grouping, threshold=1.11):
     plt.plot()
     splot = plt.subplot(1, 1, 1)
     plt.title('%s post-PVC' % grouping)
+    # draw lines
+
+
+    # draw scatter
     plt.scatter(pvc_x, pvc_y, c=colors)
+
+
     x1,x2,y1,y2 = plt.axis([min_x, max_x, min_y, max_y])
     plt.plot([x1,x2],[threshold,threshold])
     slope, intercept, r, p, stderr = linregress([_[0] for _ in pvc_above], [_[1] for _ in pvc_above])
@@ -463,15 +469,24 @@ if __name__ == "__main__":
 
 
     # load agglomerative grouping results
-    rousset_mat = '../rousset_output_low_high.mat'
+    rousset_mat = '../output/Rousset_BL/rousset_output_agg.mat'
     (agg_group_names, agg_sorted_data) = importRoussetResults(rousset_mat)
     # load regular grouping results
-    rousset_mat = '../rousset_output_2_4.mat'
+    rousset_mat = '../output/Rousset_BL/rousset_output_manual.mat'
     (group_names, sorted_data) = importRoussetResults(rousset_mat)
+
+    # load agglomerative grouping results
+    rousset_mat = '../output/Rousset_Scan2/rousset_output_agg.mat'
+    (agg_group_names_2, agg_sorted_data_2) = importRoussetResults(rousset_mat)
+    # load regular grouping results
+    rousset_mat = '../output/Rousset_Scan2/rousset_output_manual.mat'
+    (group_names_2, sorted_data_2) = importRoussetResults(rousset_mat)
 
     # aggregate
     for k,v in sorted_data.iteritems():
         sorted_data[k].update(agg_sorted_data.get(k,{}))
+    for k,v in sorted_data_2.iteritems():
+        sorted_data_2[k].update(agg_sorted_data_2.get(k,{}))
 
     groupings = ['group2', 'group4', 'agglow', 'agghigh', 'agglowtwo']
     thresholds = {'group2': 1.05225257559,
