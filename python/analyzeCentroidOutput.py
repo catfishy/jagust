@@ -102,12 +102,11 @@ def createConnectivityGraph(region_list):
         graph[v1_index, v2_index] = 1
         graph[v2_index, v1_index] = 1
     sparse = csr_matrix(graph)
+
     return sparse
 
 
-def runClustering(obs, conn, clusters):
-    print "OBS SHAPE: %s, # CLUSTERS: %s" % (obs.shape, clusters)
-
+def runClustering(obs, conn, clusters, print_out=False):
     '''
     # KMEANS
     model = KMeans(n_clusters=clusters, max_iter=1000, tol=0.00001,
@@ -139,17 +138,35 @@ def runClustering(obs, conn, clusters):
         segment_index = [k for k,v in lut_table.iteritems() if v == segment][0]
         by_cluster_label[cluster].append(segment_index)
         #by_cluster_label[cluster].append(segment)
-    roinames = []
-    varnames = []
-    for cluster, indices in by_cluster_label.iteritems():
-        cluster_varname = 'Cluster%s' % cluster
-        print '%s=%s' % (cluster_varname,indices)
-        roinames.append("%s" % cluster_varname) 
-        varnames.append(cluster_varname)
-    print "all_groups=[%s]" % (','.join(varnames),)
-    print "names=%s" % roinames
-    print "\n\n"
+
+    if print_out:
+        roinames = []
+        varnames = []
+        for cluster, indices in by_cluster_label.iteritems():
+            cluster_varname = 'Cluster%s' % cluster
+            print '%s=%s' % (cluster_varname,indices)
+            roinames.append("%s" % cluster_varname) 
+            varnames.append(cluster_varname)
+        print "all_groups=[%s]" % (','.join(varnames),)
+        print "names=%s" % roinames
+        print "\n\n"
+
     return by_cluster_label
+
+def pca_transform(obs, components):
+    # PCA
+    pca_model = PCA(n_components=components, copy=True, whiten=False)
+    obs_pca = pca_model.fit_transform(obs)
+    '''
+    for x in pca_model.explained_variance_ratio_:
+        print x
+    
+    # no pca
+    obs_pca = obs
+    '''
+    print "PCA: %s -> %s" % (obs.shape, obs_pca.shape)
+    return obs_pca
+
 
 if __name__ == '__main__':
     output_mat = "../aggOutput.mat"
@@ -221,7 +238,7 @@ if __name__ == '__main__':
     plt.show()
     sys.exit(1)
     '''
-    k = [23,55]
+    num_clusters = [23,55]
     
     # RUN HIERARCHICAL CLUSTERING
     # RUN K_MEANS
@@ -231,50 +248,64 @@ if __name__ == '__main__':
     # Get connectivity graph
     connectivity = createConnectivityGraph(segments)
 
-    '''
-    # PCA
-    pca_model = PCA(n_components=0.99, copy=True, whiten=False)
-    obs_pca = pca_model.fit_transform(obs)
-    for x in pca_model.explained_variance_ratio_:
-        print x
-    '''
-    # no pca
-    obs_pca = obs
+    fractions = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    results = {_:[] for _ in fractions}
+    for f in fractions:
+        for i in range(15):
+            # split obs in half
+            half = int(obs.shape[1] * f)
+            random_indices = np.random.choice(range(obs.shape[1]), size=half, replace=False)
+            obs_1 = obs[:,random_indices]
+            obs_2 = obs
+            observations = [obs_1, obs_2]
 
-    # split obs in half
-    half = len(obs_pca)/2
-    obs_1 = obs_pca[:,:half]
-    obs_2 = obs_pca
+            # Components explain 99% of variance
+            n_comp = 0.9
 
-    observations = [obs_1, obs_2]
-    by_k = {}
-    for cur_k in k:
-        outputs = []
-        for obs in observations:
-            o = runClustering(obs, connectivity, cur_k)
-            outputs.append(o)
-        by_k[cur_k] = outputs
+            by_k = {}
+            for cur_k in num_clusters:
+                outputs = []
+                for obs in observations:
+                    obs_pca = pca_transform(obs, components=n_comp)
+                    #obs_pca = obs
+                    o = runClustering(obs_pca, connectivity, cur_k)
+                    outputs.append(o)
+                by_k[cur_k] = outputs
 
-    # check out grouping differences
-    for k, outputs in by_k.iteritems():
-        commons = []
-        values = [[sorted(_) for _ in o.values()] for o in outputs]
-        # find values that appear in all 
-        for o in values[0]:
-            common = all([(o in _ ) for _ in values])
-            if common:
-                commons.append(o)
-        # remove common values
-        uniq_values = []
-        for v in values:
-            for c in commons:
-                v.remove(c)
-            uniq_values.append(v)
-        print "Num Clusters: %s" % k
-        commons = [i for _ in commons for i in _]
-        print "%s/105 in common: %s " % (len(commons),commons)
-        for i, uv in enumerate(uniq_values):
-            print "Unique %s" % i
-            for _ in uv:
-                print "\t%s" % _
-        print '\n'
+            # check out grouping differences
+            for k, outputs in by_k.iteritems():
+                commons = []
+                values = [[sorted(_) for _ in o.values()] for o in outputs]
+                numregions = 0
+                # find values that appear in all 
+                for o in values[0]:
+                    numregions += len(o)
+                    common = all([(o in _ ) for _ in values])
+                    if common:
+                        commons.append(o)
+                # remove common values
+                for v in values:
+                    for c in commons:
+                        v.remove(c)
+                print "Num Clusters: %s" % k
+                commons = [i for _ in commons for i in _]
+                commonPercent = len(commons) / float(numregions)
+                results[f].append((k, commonPercent))
+                print "%s/%s in common: %s " % (len(commons),numregions,commons)
+                '''
+                for i, uv in enumerate(values):
+                    print "Unique %s" % i
+                    for _ in uv:
+                        print "\t%s" % _
+                '''
+                print '\n'
+
+    points = defaultdict(list)
+    for k in sorted(results.keys()):
+        v = results[k]
+        by_clusters = defaultdict(list)
+        for a,b in v:
+            by_clusters[a].append(b)
+        for c,vals in dict(by_clusters).iteritems():
+            points[c].append((k, np.mean(vals)))
+    print points
