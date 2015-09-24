@@ -47,26 +47,26 @@ if __name__ == "__main__":
         size_changes[rid] = np.mean(size_change)
         
         # calculate uptake difference between tp and nontp
-        tp_change = float(tp_second['SUMMARYSUVR_WHOLECEREBNORM']) - float(tp_first['SUMMARYSUVR_WHOLECEREBNORM'])
-        nontp_change = float(nontp_second['SUMMARYSUVR_WHOLECEREBNORM']) - float(nontp_first['SUMMARYSUVR_WHOLECEREBNORM'])
-        change_diff = abs(tp_change - nontp_change)
-        uptake_diffs[rid] = change_diff
-        tp_points.append((size_changes[rid], uptake_diffs[rid]))
+        if float(tp_first['SUMMARYSUVR_WHOLECEREBNORM']) >= 1.11:
+            tp_change = float(tp_second['SUMMARYSUVR_WHOLECEREBNORM']) - float(tp_first['SUMMARYSUVR_WHOLECEREBNORM'])
+            nontp_change = float(nontp_second['SUMMARYSUVR_WHOLECEREBNORM']) - float(nontp_first['SUMMARYSUVR_WHOLECEREBNORM'])
+            change_diff = abs(tp_change - nontp_change)
+            uptake_diffs[rid] = change_diff
+            tp_points.append((size_changes[rid], uptake_diffs[rid]))
 
         # calculate uptake difference between pvc and nonpvc
         try:
-            first_pvc = float(master_row['AV45_PVC_agghigh_CorticalSummary/Wholecereb_BL'])
-            second_pvc = float(master_row['AV45_PVC_agghigh_CorticalSummary/Wholecereb_Scan2'])
-            pvc_change = second_pvc - first_pvc
-            pvc_change_diff = abs(pvc_change - nontp_change)
-            pvc_diffs[rid] = pvc_change_diff
-            pvc_points.append((size_changes[rid], pvc_diffs[rid]))
+            if float(master_row['AV45_wcereb']) >= 1.11:
+                first_pvc = float(master_row['AV45_PVC_agghigh_CorticalSummary/Wholecereb_BL'])
+                second_pvc = float(master_row['AV45_PVC_agghigh_CorticalSummary/Wholecereb_Scan2'])
+                pvc_change = second_pvc - first_pvc
+                pvc_change_diff = abs(pvc_change - nontp_change)
+                pvc_diffs[rid] = pvc_change_diff
+                pvc_points.append((size_changes[rid], pvc_diffs[rid]))
         except Exception as e:
             pass
 
-        
-
-
+    
     # plot it
     plt.figure(1)
     x = [_[0] for _ in tp_points]
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     plt.ylabel('Cortical Summary Difference (TP vs Non-TP)')
     props = dict(boxstyle='round,pad=0.8', facecolor='wheat', alpha=0.7)
     text = "$\\rho=%s$\n$p=%s$" % (rho, p)
-    plt.annotate(text, xy=(0.05,0.95), xycoords='axes fraction', bbox=props, fontsize=13)
+    plt.annotate(text, xy=(0.05,0.85), xycoords='axes fraction', bbox=props, fontsize=13)
 
     plt.figure(2)
     x = [_[0] for _ in pvc_points]
@@ -88,6 +88,6 @@ if __name__ == "__main__":
     plt.ylabel('Cortical Summary Difference (PVC vs Non-PVC)')
     props = dict(boxstyle='round,pad=0.8', facecolor='wheat', alpha=0.7)
     text = "$\\rho=%s$\n$p=%s$" % (rho, p)
-    plt.annotate(text, xy=(0.05,0.95), xycoords='axes fraction', bbox=props, fontsize=13)
+    plt.annotate(text, xy=(0.05,0.85), xycoords='axes fraction', bbox=props, fontsize=13)
 
     plt.show()
