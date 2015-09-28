@@ -148,7 +148,8 @@ Cluster26=[1006, 2006]
 Cluster28=[51, 12]
 Cluster29=[2017, 1017]
 Cluster31=[80]
-Cluster32=[16, 28, 60]
+Cluster32=[28, 60]
+Cluster33=[16]
 Cluster34=[85]
 Cluster35=[53, 17]
 Cluster36=[52, 13]
@@ -170,7 +171,7 @@ Cluster54=[1026, 2026]
 all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster8,
             Cluster9,Cluster10,Cluster11,Cluster12,Cluster13,Cluster14,Cluster15,Cluster16,
             Cluster17,Cluster18,Cluster19,Cluster20,Cluster21,Cluster22,Cluster23,Cluster24,
-            Cluster25,Cluster26,Cluster28,Cluster29,Cluster31,Cluster32,
+            Cluster25,Cluster26,Cluster28,Cluster29,Cluster31,Cluster32,Cluster33,
             Cluster34,Cluster35,Cluster36,Cluster37,Cluster38,Cluster39,Cluster40,
             Cluster41,Cluster42,Cluster44,Cluster45,Cluster46,Cluster47,Cluster48,
             Cluster49,Cluster50,Cluster53,Cluster54]
@@ -178,7 +179,7 @@ names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', '
        'Cluster8', 'Cluster9', 'Cluster10', 'Cluster11', 'Cluster12', 'Cluster13', 
        'Cluster14', 'Cluster15', 'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 
        'Cluster21', 'Cluster22', 'Cluster23', 'Cluster24', 'Cluster25', 'Cluster26',
-       'Cluster28', 'Cluster29', 'Cluster31', 'Cluster32', 'Cluster34', 
+       'Cluster28', 'Cluster29', 'Cluster31', 'Cluster32', 'Cluster33', 'Cluster34', 
        'Cluster35', 'Cluster36', 'Cluster37', 'Cluster38', 'Cluster39', 'Cluster40', 'Cluster41', 
        'Cluster42', 'Cluster44', 'Cluster45', 'Cluster46', 'Cluster47', 'Cluster48', 
        'Cluster49', 'Cluster50', 'Cluster53', 'Cluster54']
@@ -204,7 +205,7 @@ Cluster12=[85]
 Cluster14=[1032, 2032]
 Cluster16=[47, 8]
 Cluster17=[1001, 2001]
-Cluster18=[52, 16, 28, 60, 13]
+Cluster18=[52, 28, 60, 13]
 Cluster19=[7, 46]
 Cluster20=[1021, 2021]
 Cluster22=[253, 254, 252]
@@ -215,14 +216,15 @@ Cluster26=[1017, 2017]
 Cluster27=[26, 58, 1035, 2035]
 Cluster28=[1009, 2009]
 Cluster29=[1034, 2034]
+Cluster30=[16]
 all_groups=[Cluster0,Cluster1,Cluster2,Cluster3,Cluster4,Cluster5,Cluster6,Cluster7,
             Cluster8,Cluster9,Cluster10,Cluster12,Cluster14,
             Cluster16,Cluster17,Cluster18,Cluster19,Cluster20,Cluster22,Cluster23,
-            Cluster24,Cluster25,Cluster26,Cluster27,Cluster28,Cluster29]
+            Cluster24,Cluster25,Cluster26,Cluster27,Cluster28,Cluster29,Cluster30]
 names=['Cluster0', 'Cluster1', 'Cluster2', 'Cluster3', 'Cluster4', 'Cluster5', 'Cluster6', 'Cluster7', 
        'Cluster8', 'Cluster9', 'Cluster10', 'Cluster12', 'Cluster14', 
        'Cluster16', 'Cluster17', 'Cluster18', 'Cluster19', 'Cluster20', 'Cluster22', 'Cluster23', 
-       'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27', 'Cluster28', 'Cluster29']
+       'Cluster24', 'Cluster25', 'Cluster26', 'Cluster27', 'Cluster28', 'Cluster29', 'Cluster30']
 print "\n\nGROUPING AGG low two"
 filepath = "grouping_agglowtwo.mat"
 groups_included[filepath] = [i for g in all_groups for i in g]

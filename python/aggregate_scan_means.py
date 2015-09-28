@@ -432,8 +432,8 @@ def findPreprocessOutputFiles(folder_name, nontp=False):
 if __name__ == "__main__":
 
     # for adni av45 nontp
-    output = '../output/UCBERKELEYAV45_09_21_15_extra_nontp.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_09_21_15'
+    output = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
     registry = importRegistry("../docs/registry_clean.csv") 
     meta_pet = "../docs/PET_META_LIST_edited.csv"
     agg_type = 'adni_extra'
@@ -442,8 +442,8 @@ if __name__ == "__main__":
                                  meta_pet, registry, agg_type)
     
     # for adni av45
-    output = '../output/UCBERKELEYAV45_09_21_15_extra.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_09_21_15'
+    output = '../output/UCBERKELEYAV45_09_25_15_extra.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
     registry = importRegistry("../docs/registry_clean.csv") 
     meta_pet = "../docs/PET_META_LIST_edited.csv"
     agg_type = 'adni_extra'

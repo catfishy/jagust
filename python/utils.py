@@ -112,6 +112,7 @@ def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
 
 def parseCSV(file_path, delimiter=','):
     data = pd.read_csv(file_path, sep=delimiter, low_memory=False)
+    data.rename(columns=lambda x: x.strip(), inplace=True)
     lines = [dict(data.iloc[i].replace(np.nan, '')) for i in range(len(data))]
     headers = list(data.columns.values)
     return (headers, lines)
