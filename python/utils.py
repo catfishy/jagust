@@ -86,20 +86,26 @@ def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
     gaps = np.zeros((len(ks),))
     sds = np.zeros((len(ks),))
     for i,k in enumerate(ks):
-        model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+        print "k: %s" % k
+        model = KMeans(n_clusters=k, n_jobs=1, copy_x=True, verbose=True)
         labels = model.fit_predict(data)
         centers = model.cluster_centers_
 
+        print "fit data"
         disp = sum([euclidean(data[m,:],centers[labels[m],:]) for m in range(shape[0])])
 
         refdisps = np.zeros((rands.shape[2],))
         for j in range(rands.shape[2]):
-            model = KMeans(n_clusters=k, n_jobs=-1, copy_x=True)
+            model = KMeans(n_clusters=k, n_jobs=1, copy_x=True, verbose=True)
             labels = model.fit_predict(rands[:,:,j])
             centers = model.cluster_centers_
             refdisps[j] = sum([euclidean(rands[m,:,j],centers[labels[m],:]) for m in range(shape[0])])
+        print "fit random"
+        
         gaps[i] = np.mean(np.log(refdisps))-np.log(disp)
         sds[i] = np.sqrt(1.0 + 1.0/nrefs) * np.std(np.log(refdisps))
+        print gaps[i]
+        print sds[i]
 
     valid_ks = []
     for i, g in enumerate(gaps[:-1]):
