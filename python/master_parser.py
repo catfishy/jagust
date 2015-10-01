@@ -660,6 +660,9 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                 'AV45_PVC': ['AV45_PVC_agghigh_CorticalSummary/Wholecereb_BL',
                             'AV45_PVC_agghigh_CorticalSummary/Wholecereb_Scan2',
                             'AV45_PVC_agghigh_CorticalSummary/Wholecereb_Scan3',
+                            'AV45_PVC_agghigh_CorticalSummary/Bigref_BL',
+                            'AV45_PVC_agghigh_CorticalSummary/Bigref_Scan2',
+                            'AV45_PVC_agghigh_CorticalSummary/Bigref_Scan3',
                             'AV45_PVC_agghigh_CorticalSummary_slope',
                             'AV45_PVC_agghigh_CerebGM_BL',
                             'AV45_PVC_agghigh_CerebGM_Scan2',
@@ -677,6 +680,9 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                             'AV45_PVC_group2_CorticalSummary/Wholecereb_BL',
                             'AV45_PVC_group2_CorticalSummary/Wholecereb_Scan2',
                             'AV45_PVC_group2_CorticalSummary/Wholecereb_Scan3',
+                            'AV45_PVC_group2_CorticalSummary/Bigref_BL',
+                            'AV45_PVC_group2_CorticalSummary/Bigref_Scan2',
+                            'AV45_PVC_group2_CorticalSummary/Bigref_Scan3',
                             'AV45_PVC_group2_CorticalSummary_slope',
                             'AV45_PVC_group2_CorticalSummary_slope_allposs',
                             'AV45_PVC_group2_CerebGM_BL',
@@ -694,6 +700,9 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                             'AV45_PVC_group4_CorticalSummary/Wholecereb_BL',
                             'AV45_PVC_group4_CorticalSummary/Wholecereb_Scan2',
                             'AV45_PVC_group4_CorticalSummary/Wholecereb_Scan3',
+                            'AV45_PVC_group4_CorticalSummary/Bigref_BL',
+                            'AV45_PVC_group4_CorticalSummary/Bigref_Scan2',
+                            'AV45_PVC_group4_CorticalSummary/Bigref_Scan3',
                             'AV45_PVC_group4_CorticalSummary_slope',
                             'AV45_PVC_group4_CorticalSummary_slope_allposs',
                             'AV45_PVC_group4_CerebGM_BL',
@@ -710,14 +719,20 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                             'AV45_PVC_group4_CerebWM_Scan3',
                             'AV45_PVC_agghigh_CorticalSummary_slope_2points',
                             'AV45_PVC_agghigh_CorticalSummary_slope_3points',
+                            'AV45_PVC_agghigh_CorticalSummary/Bigref_slope_2points',
+                            'AV45_PVC_agghigh_CorticalSummary/Bigref_slope_3points',
                             'AV45_PVC_agghigh_HemiWM_slope_2points',
                             'AV45_PVC_agghigh_HemiWM_slope_3points',
                             'AV45_PVC_group2_CorticalSummary_slope_2points',
                             'AV45_PVC_group2_CorticalSummary_slope_3points',
+                            'AV45_PVC_group2_CorticalSummary/Bigref_slope_2points',
+                            'AV45_PVC_group2_CorticalSummary/Bigref_slope_3points',
                             'AV45_PVC_group2_HemiWM_slope_2points',
                             'AV45_PVC_group2_HemiWM_slope_3points',
                             'AV45_PVC_group4_CorticalSummary_slope_2points',
                             'AV45_PVC_group4_CorticalSummary_slope_3points',
+                            'AV45_PVC_group4_CorticalSummary/Bigref_slope_2points',
+                            'AV45_PVC_group4_CorticalSummary/Bigref_slope_3points',
                             'AV45_PVC_group4_HemiWM_slope_2points',
                             'AV45_PVC_group4_HemiWM_slope_3points'], 
                 'ID': ['RID']}
@@ -736,6 +751,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
     for vg in valid_groupings:
         to_add_headers += ['AV45_PVC_%s_CorticalSummary/Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
         to_add_headers += ['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg), 'AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)]
+        to_add_headers += ['AV45_PVC_%s_CorticalSummary/Bigref_%s' % (vg, tp) for tp in valid_timepoints]
+        to_add_headers += ['AV45_PVC_%s_CorticalSummary/Bigref_slope_2points' % (vg), 'AV45_PVC_%s_CorticalSummary/Bigref_slope_3points' % (vg)]
         to_add_headers += ['AV45_PVC_%s_HemiWM/Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
         to_add_headers += ['AV45_PVC_%s_HemiWM_slope_2points' % (vg), 'AV45_PVC_%s_HemiWM_slope_3points' % (vg)]
         to_add_headers += ['AV45_PVC_%s_Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
@@ -751,10 +768,12 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
             if k in valid_groupings:
                 v = subj_row[k]
                 wholecereb = float(v['wholecereb']['pvcval'])
+                bigref = float(v['bigref']['pvcval'])
                 for region, values in v.iteritems():
                     pvcval = float(values.get('pvcval',0.0))
                     if region == 'composite':
                         new_subj_data['AV45_PVC_%s_CorticalSummary/Wholecereb' % k] = pvcval/wholecereb
+                        new_subj_data['AV45_PVC_%s_CorticalSummary/Bigref' % k] = pvcval/bigref
                     elif region == 'cerebGM':
                         new_subj_data['AV45_PVC_%s_CerebGM' % k] = pvcval
                     elif region == 'hemiWM':
@@ -784,12 +803,18 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = slope
 
+                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
+                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
+                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
+                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_2points' % (vg)] = slope
+
                     val1 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan2' % vg))
                     slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
                     old_l['AV45_PVC_%s_HemiWM_slope_2points' % (vg)] = slope
                 except Exception as e:
                     old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = ''
+                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_2points' % (vg)] = ''
                     old_l['AV45_PVC_%s_HemiWM_slope_2points' % (vg)] = ''
         elif timepoint == 'Scan3':
             # try to calculate slope with 3 points
@@ -805,6 +830,13 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2, val3])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = slope
 
+                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
+                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
+                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan3' % vg))
+                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2, val3])
+                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_3points' % (vg)] = slope
+
+
                     val1 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan2' % vg))
                     val3 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan3' % vg))
@@ -812,6 +844,7 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     old_l['AV45_PVC_%s_HemiWM_slope_3points' % (vg)] = slope
                 except Exception as e:
                     old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = ''
+                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_3points' % (vg)] = ''
                     old_l['AV45_PVC_%s_HemiWM_slope_3points' % (vg)] = ''
         new_lines.append(old_l)
 
@@ -2276,10 +2309,6 @@ def runPipeline():
     addCategories(output_file)
 
 if __name__ == '__main__':
-    
-    addCategories('../FDG_AV45_COGdata_09_28_15.csv')
-    sys.exit(1)
-    
 
 
     now = datetime.now()
@@ -2314,11 +2343,11 @@ if __name__ == '__main__':
     # FDG file
     fdg_file = '../docs/UCBERKELEY_FDG_07_29_15.csv'
     # Rousset output files
-    rousset_matfile_bl_manual = '../output/Rousset_BL/rousset_output_manual.mat'
-    rousset_matfile_scan2_manual = '../output/Rousset_Scan2/rousset_output_manual.mat'
-    rousset_matfile_scan3_manual = '../output/Rousset_Scan3/rousset_output_manual.mat'
-    rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_output_agg.mat'
-    rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_output_agg.mat'
-    rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_output_agg.mat'
+    rousset_matfile_bl_manual = '../output/Rousset_BL/rousset_outputs_manual.mat'
+    rousset_matfile_scan2_manual = '../output/Rousset_Scan2/rousset_outputs_manual.mat'
+    rousset_matfile_scan3_manual = '../output/Rousset_Scan3/rousset_outputs_manual.mat'
+    rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_outputs_agg.mat'
+    rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_outputs_agg.mat'
+    rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_outputs_agg.mat'
 
     runPipeline()
