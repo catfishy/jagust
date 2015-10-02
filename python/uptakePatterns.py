@@ -7,8 +7,15 @@ from sklearn.mixture import GMM, VBGMM, DPGMM
 from collections import defaultdict
 from sklearn.decomposition import PCA
 from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
 
-UPTAKE_KEYS =  ['CTX_LH_CAUDALMIDDLEFRONTAL',
+UPTAKE_KEYS =  ['LEFT-PUTAMEN',
+                'RIGHT-PUTAMEN',
+                'LEFT-CAUDATE',
+                'RIGHT-CAUDATE',
+                'LEFT-PALLIDUM',
+                'RIGHT-PALLIDUM',
+                'CTX_LH_CAUDALMIDDLEFRONTAL',
                 'CTX_LH_LATERALORBITOFRONTAL',
                 'CTX_LH_MEDIALORBITOFRONTAL',
                 'CTX_LH_PARSOPERCULARIS',
@@ -50,7 +57,9 @@ UPTAKE_KEYS =  ['CTX_LH_CAUDALMIDDLEFRONTAL',
 
 def deriveCorticalSummaryUptakePattern(input_data, master_data, lut_dict):
     # only using nontp data
-    uptake_patterns = {}
+    bl_patterns = {}
+    scan2_patterns = {}
+    scan3_patterns = {}
     diagnoses = {}
     summary = {}
     for rid, rows in input_data.iteritems():
@@ -58,42 +67,44 @@ def deriveCorticalSummaryUptakePattern(input_data, master_data, lut_dict):
         if not master_row:
             continue
         diagnoses[rid] = master_row['Init_Diagnosis'].strip()
-        '''
-        # filter out non-normals
-        if diagnoses[rid] != 'N':
+        # filter out AD
+        if diagnoses[rid] in set(['AD', 'LMCI']):
             continue
-        '''
-        for row in rows:
-            '''
-            # filter out positives
-            if float(row['SUMMARYSUVR_WHOLECEREBNORM']) > 1.11:
-                continue
-            '''
-            #wcereb = float(row['WHOLECEREBELLUM']) 
-            #comp_ref = float(row['COMPOSITE_REF'])
+        for i, row in enumerate(sorted(rows, key=lambda x: x['EXAMDATE'])):
+
+            # filter out positives at baseline
+            if i == 0 and float(row['SUMMARYSUVR_WHOLECEREBNORM']) > 1.11:
+                break
+
+            wcereb = float(row['WHOLECEREBELLUM']) 
+            comp_ref = float(row['COMPOSITE_REF'])
             # normalize by either comp_ref or wcereb
             try:
-                pattern = np.array([float(row[_]) for _ in UPTAKE_KEYS])
+                pattern = np.array([float(row[_])/comp_ref for _ in UPTAKE_KEYS])
                 pattern = pattern/float(sum(pattern))
             except:
                 continue
-            date = row['EXAMDATE']
-            uptake_patterns[(rid, date)] = pattern
-            summary[(rid, date)] = float(row['SUMMARYSUVR_WHOLECEREBNORM'])
-    keys = []
-    data = []
-    for k,v in uptake_patterns.iteritems():
-        keys.append(k)
-        data.append(v)
-    data = np.array(data)
-    print data.shape
+            if i == 0:
+                bl_patterns[rid] = pattern
+                summkey = 'BL'
+            elif i == 1:
+                scan2_patterns[rid] = pattern
+                summkey = 'Scan2'
+            elif i == 2:
+                scan3_patterns[rid] = pattern
+                summkey = 'Scan3'
+            summary[(rid, summkey)] = float(row['SUMMARYSUVR_WHOLECEREBNORM'])
+    
+    lut_by_name = {b.lower().strip() : int(a) for a,b in lut_dict.iteritems()}
+    regions = [lut_by_name[_.lower().strip().replace('_','-')] for _ in UPTAKE_KEYS]
 
-    # reverse translate regions
-    lut_by_name = {b.lower().strip().replace('-','_') : int(a) for a,b in lut_dict.iteritems()}
-
-    regions = [[lut_by_name[_.lower().strip()]] for _ in UPTAKE_KEYS]
-
-    return keys, regions, data
+    bl_data = pd.DataFrame.from_dict(bl_patterns, orient='index')
+    scan2_data = pd.DataFrame.from_dict(scan2_patterns, orient='index')
+    scan3_data = pd.DataFrame.from_dict(scan3_patterns, orient='index')
+    bl_data.columns = regions
+    scan2_data.columns = regions
+    scan3_data.columns = regions
+    return summary, bl_data, scan2_data, scan3_data
 
 def deriveRoussetClusterUptakePattern(rousset_data, master_data):
     # parse rousset data
@@ -144,7 +155,6 @@ def deriveRoussetClusterUptakePattern(rousset_data, master_data):
     return keys, regions, data
 
 
-
 if __name__ == "__main__":
     nontp_file = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
     tp_file = '../output/UCBERKELEYAV45_09_25_15_extra.csv'
@@ -168,8 +178,44 @@ if __name__ == "__main__":
         diags[rid] = diag
 
     # get dataset
-    keys, regions, data = deriveCorticalSummaryUptakePattern(nontp_data, master_data, lut_table) # using preprocessed data
-    #keys, regions, data = deriveRoussetClusterUptakePattern(rousset_data, master_data) # using rousset output
+    summary, data_BL, data_Scan2, data_Scan3 = deriveCorticalSummaryUptakePattern(nontp_data, master_data, lut_table) # using preprocessed data
+    data_all = pd.concat([data_BL, data_Scan2, data_Scan3]).as_matrix()
+
+    pca_model = PCA(n_components=0.95, copy=True, whiten=False)
+    pca_model.fit(data_all)
+
+    # get years between BL and Scan2, annualized pattern transitions, annualized summary uptake changes
+    yr_diff = {}
+    uptake_diff = {}
+    pattern_diff = {}
+    for rid in data_Scan2.index:
+        yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+        first_pattern = pca_model.transform(data_BL.loc[rid].as_matrix())[0]
+        second_pattern = pca_model.transform(data_Scan2.loc[rid].as_matrix())[0]
+        pattern_delta = (second_pattern - first_pattern) / yrs
+        uptake_delta = (summary[(rid, 'Scan2')] - summary[(rid, 'BL')]) / yrs
+        yr_diff[rid] = yrs
+        uptake_diff[rid] = uptake_delta
+        pattern_diff[rid] = pattern_delta
+    for rid in data_Scan3.index:
+        yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+        first_pattern = pca_model.transform(data_BL.loc[rid].as_matrix())[0]
+        second_pattern = pca_model.transform(data_Scan3.loc[rid].as_matrix())[0]
+        uptake_delta = (summary[(rid, 'Scan3')] - summary[(rid, 'BL')]) / yrs
+        yr_diff[rid] = yrs
+        uptake_diff[rid] = uptake_delta
+        pattern_diff[rid] = pattern_delta
+
+    points = []
+    for rid, uptake_diff in uptake_diff.iteritems():
+        pattern_diff_abs = np.linalg.norm(pattern_diff[rid], ord=None)
+        points.append((uptake_diff, pattern_diff_abs))
+    x = [_[0] for _ in points]
+    y = [_[1] for _ in points]
+    plt.figure(1)
+    plt.scatter(x,y)
+    plt.show()
+
 
     # PCA
     '''
@@ -186,9 +232,10 @@ if __name__ == "__main__":
     sys.exit(1)
     '''
 
-    
-    ks=range(1,30)
-    gaps, valid_ks = gap(data, nrefs=100, ks=ks, use_pca=False)
+    # Choose number of clusters/components
+    '''
+    ks=range(1,40)
+    gaps, valid_ks = gap(data, nrefs=50, ks=ks, use_pca=False)
     print "GAPS"
     print gaps
     print sorted(valid_ks, key=lambda x: x[1], reverse=True)
@@ -196,11 +243,13 @@ if __name__ == "__main__":
     plt.plot(ks, gaps)
     plt.show()
     sys.exit(1)
-    
+    '''
+    clusters=15
+
 
     # Run GMM 
     '''
-    g = GMM(n_components=1, 
+    g = GMM(n_components=clusters, 
               covariance_type='full', 
               random_state=None, 
               thresh=None, 
@@ -209,16 +258,7 @@ if __name__ == "__main__":
               n_iter=200,
               params='wmc', 
               init_params='wmc')
-    '''
-    g = DPGMM(n_components=1, 
-              covariance_type='full', 
-              alpha=10,
-              tol=0.00001, 
-              min_covar=0.00001, 
-              n_iter=200,
-              params='wmc', 
-              init_params='wmc')
-    g.fit(data)
+    g.fit(data_all)
     print np.round(g.weights_, 2)
     print np.round(g.means_, 2)
     try:
@@ -226,10 +266,21 @@ if __name__ == "__main__":
     except:
         print np.round(g.covars_, 2)
     print g.converged_
-    sys.exit(1)
+    print g.aic(data_all)
+    print g.bic(data_all)
+
+    # convert data to component responsibilities
+    bl_resp = pd.DataFrame(g.predict_proba(data_BL))
+    scan2_resp = pd.DataFrame(g.predict_proba(data_Scan2))
+    scan3_resp = pd.DataFrame(g.predict_proba(data_Scan3))
+    print bl_resp
+    print scan2_resp
+    print scan3_resp
+    '''
+
 
     # Run KMeans
-    clusters=9
+    '''
     model = KMeans(n_clusters=clusters, n_jobs=1, copy_x=True, verbose=True)
     labels = model.fit_predict(data)
     centers = model.cluster_centers_
@@ -240,6 +291,6 @@ if __name__ == "__main__":
 
     for c in centers:
         print c
-
+    '''
     # TODO: MAP CLUSTER CENTERS TO MODEL aparc+aseg, and visualize
 

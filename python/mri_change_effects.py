@@ -186,6 +186,7 @@ if __name__ == "__main__":
 
     
     # plot hemiwm
+    '''
     plt.figure(1)
     x = [_[0] for _ in tp_hemiwm_points]
     y = [_[1] for _ in tp_hemiwm_points]
@@ -209,6 +210,5 @@ if __name__ == "__main__":
     props = dict(boxstyle='round,pad=0.8', facecolor='wheat', alpha=0.7)
     text = "$\\rho=%s$\n$p=%s$" % (rho, p)
     plt.annotate(text, xy=(0.05,0.85), xycoords='axes fraction', bbox=props, fontsize=13)
-
     plt.show()
-    
+    '''
