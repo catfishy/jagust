@@ -52,19 +52,23 @@ STABLE = [89,
           5023,
           4429]
 
-def extractRegionalValuesRousset(data):
+def extractRegionalValuesRousset(data, pvcval=True):
+    if pvcval:
+        key = 'pvcval'
+    else:
+        key = 'nonpvcval'
     data = data['group4']
-    wholecereb = float(data['wholecereb']['pvcval'])
-    bigref = float(data['bigref']['pvcval'])
-    cingulate_uptake = data['cingulate']['pvcval']/wholecereb
+    wholecereb = float(data['wholecereb'][key])
+    bigref = float(data['bigref'][key])
+    cingulate_uptake = data['cingulate'][key]/wholecereb
     cingulate_vol = int(data['cingulate']['size'])
-    parietal_uptake = data['parietal']['pvcval']/wholecereb
+    parietal_uptake = data['parietal'][key]/wholecereb
     parietal_vol = int(data['parietal']['size'])
-    temporal_uptake = data['temporal']['pvcval']/wholecereb
+    temporal_uptake = data['temporal'][key]/wholecereb
     temporal_vol = int(data['temporal']['size'])
-    frontal_uptake = data['frontal']['pvcval']/wholecereb
+    frontal_uptake = data['frontal'][key]/wholecereb
     frontal_vol = int(data['frontal']['size'])
-    composite_uptake = data['composite']['pvcval']/wholecereb
+    composite_uptake = data['composite'][key]/wholecereb
     composite_vol = int(data['composite']['size'])
     uptakes = {'cingulate': cingulate_uptake,
                'parietal': parietal_uptake,
@@ -118,7 +122,7 @@ def extractRegionalValuesAV45(row, lut):
                'composite': composite_vol}
     return uptakes, sizes
 
-def parseRoussetOutputs(bl_file, scan2_file, scan3_file):
+def parseRoussetOutputs(bl_file, scan2_file, scan3_file, pvcval=True):
     group_bl, data_bl_raw = importRoussetResults(bl_file)
     group_scan2, data_scan2_raw = importRoussetResults(scan2_file)
     group_scan3, data_scan3_raw = importRoussetResults(scan3_file)
@@ -126,11 +130,11 @@ def parseRoussetOutputs(bl_file, scan2_file, scan3_file):
     data_scan2 = {}
     data_scan3 = {}
     for k,v in data_bl_raw.iteritems():
-        data_bl[k] = extractRegionalValuesRousset(v)
+        data_bl[k] = extractRegionalValuesRousset(v, pvcval=pvcval)
     for k,v in data_scan2_raw.iteritems():
-        data_scan2[k] = extractRegionalValuesRousset(v)
+        data_scan2[k] = extractRegionalValuesRousset(v, pvcval=pvcval)
     for k,v in data_scan3_raw.iteritems():
-        data_scan3[k] = extractRegionalValuesRousset(v)
+        data_scan3[k] = extractRegionalValuesRousset(v, pvcval=pvcval)
     return data_bl, data_scan2, data_scan3
 
 def parseRoussetResiduals(bl_file, scan2_file, scan3_file):
@@ -172,10 +176,12 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
     vol_parietal_diff = {}
     vol_temporal_diff = {}
     vol_cingulate_diff = {}
+    vol_composite_diff = {}
     uptake_frontal_diff = {}
     uptake_parietal_diff = {}
     uptake_temporal_diff = {}
     uptake_cingulate_diff = {}
+    uptake_composite_diff = {}
 
     for rid, data in data_scan2.iteritems():
         if rid not in rids:
@@ -190,10 +196,12 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
         vol_parietal_diff[rid] = (scan2_sizes['parietal'] - bl_sizes['parietal']) / yrs
         vol_temporal_diff[rid] = (scan2_sizes['temporal'] - bl_sizes['temporal']) / yrs
         vol_cingulate_diff[rid] = (scan2_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+        vol_composite_diff[rid] = (scan2_sizes['composite'] - bl_sizes['composite']) / yrs
         uptake_frontal_diff[rid] = (scan2_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
         uptake_parietal_diff[rid] = (scan2_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
         uptake_temporal_diff[rid] = (scan2_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
         uptake_cingulate_diff[rid] = (scan2_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
+        uptake_composite_diff[rid] = (scan2_uptakes['composite'] - bl_uptakes['composite']) / yrs
     for rid, data in data_scan3.iteritems():
         if rid not in rids:
             continue
@@ -207,19 +215,24 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
         vol_parietal_diff[rid] = (scan3_sizes['parietal'] - bl_sizes['parietal']) / yrs
         vol_temporal_diff[rid] = (scan3_sizes['temporal'] - bl_sizes['temporal']) / yrs
         vol_cingulate_diff[rid] = (scan3_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+        vol_composite_diff[rid] = (scan3_sizes['composite'] - bl_sizes['composite']) / yrs
         uptake_frontal_diff[rid] = (scan3_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
         uptake_parietal_diff[rid] = (scan3_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
         uptake_temporal_diff[rid] = (scan3_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
         uptake_cingulate_diff[rid] = (scan3_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
+        uptake_composite_diff[rid] = (scan3_uptakes['composite'] - bl_uptakes['composite']) / yrs
 
     vol_diff = {'frontal': vol_frontal_diff,
                 'parietal': vol_parietal_diff,
                 'temporal': vol_temporal_diff,
-                'cingulate': vol_cingulate_diff}
+                'cingulate': vol_cingulate_diff,
+                'composite': vol_composite_diff}
     uptake_diff = {'frontal': uptake_frontal_diff,
                    'parietal': uptake_parietal_diff,
                    'temporal': uptake_temporal_diff,
-                   'cingulate': uptake_cingulate_diff}
+                   'cingulate': uptake_cingulate_diff,
+                   'composite': uptake_composite_diff}
+
     return (vol_diff, uptake_diff, yrs_diff)
 
 def percentPlausible(vol_diff, uptake_diff, norm_fits, yrs):
@@ -371,15 +384,76 @@ def fitNormalToUptakeChange(uptake_diff):
         
     return normfits
 
-def stratifySubjects():
+def stratifySubjects(uptake_diff, norm_fits, yrs, diags):
     '''
     Put subjects into groups:
     -> amyloid decreasing, stable, increasing
     -> diag group (N, EMCI, LMCI, AD)
     '''
-    pass
+    frontal_std = {rid: (norm_fits['frontal'][1]/yrs[rid]) for rid in uptake_diff['frontal'].keys()}
+    parietal_std = {rid: (norm_fits['parietal'][1]/yrs[rid]) for rid in uptake_diff['parietal'].keys()}
+    temporal_std = {rid: (norm_fits['temporal'][1]/yrs[rid]) for rid in uptake_diff['temporal'].keys()}
+    cingulate_std = {rid: (norm_fits['cingulate'][1]/yrs[rid]) for rid in uptake_diff['cingulate'].keys()}
+    composite_std = {rid: (norm_fits['composite'][1]/yrs[rid]) for rid in uptake_diff['composite'].keys()}
+    
+    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['frontal'][0]/yrs[rid]), frontal_std[rid]) for rid, val in uptake_diff['frontal'].iteritems()}
+    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['parietal'][0]/yrs[rid]), parietal_std[rid]) for rid, val in uptake_diff['parietal'].iteritems()}
+    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['temporal'][0]/yrs[rid]), temporal_std[rid]) for rid, val in uptake_diff['temporal'].iteritems()}
+    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['cingulate'][0]/yrs[rid]), cingulate_std[rid]) for rid, val in uptake_diff['cingulate'].iteritems()}
+    composite_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['composite'][0]/yrs[rid]), composite_std[rid]) for rid, val in uptake_diff['composite'].iteritems()}
+    
+    #all_region_cdf_mean = {rid: np.mean([frontal_cdf[rid], parietal_cdf[rid], temporal_cdf[rid], cingulate_cdf[rid]]) for rid in frontal_cdf.keys()}
+    all_region_cdf_mean = {rid: composite_cdf[rid] for rid in composite_cdf.keys()}
 
+    # split by longitudinal status
+    increasing = [k for k,v in all_region_cdf_mean.iteritems() if v > 0.66]
+    stable = [k for k,v in all_region_cdf_mean.iteritems() if v <= 0.66 and v >= 0.33]
+    decreasing = [k for k,v in all_region_cdf_mean.iteritems() if v < 0.33]
 
+    # split by diagnosis
+    increasing_n = [k for k in increasing if diags[k] in set(['N', 'SMC'])]
+    stable_n = [k for k in stable if diags[k] in set(['N', 'SMC'])]
+    decreasing_n = [k for k in decreasing if diags[k] in set(['N', 'SMC'])]
+    increasing_emci = [k for k in increasing if diags[k] in set(['EMCI'])]
+    stable_emci = [k for k in stable if diags[k] in set(['EMCI'])]
+    decreasing_emci = [k for k in decreasing if diags[k] in set(['EMCI'])]
+    increasing_lmci = [k for k in increasing if diags[k] in set(['LMCI'])]
+    stable_lmci = [k for k in stable if diags[k] in set(['LMCI'])]
+    decreasing_lmci = [k for k in decreasing if diags[k] in set(['LMCI'])]
+    increasing_ad = [k for k in increasing if diags[k] in set(['AD'])]
+    stable_ad = [k for k in stable if diags[k] in set(['AD'])]
+    decreasing_ad = [k for k in decreasing if diags[k] in set(['AD'])]
+
+    print 'N'
+    print "Decrease: %s" % len(decreasing_n)
+    print "Stable: %s" % len(stable_n)
+    print "Increase: %s" % len(increasing_n)
+    print 'EMCI'
+    print "Decrease: %s" % len(decreasing_emci)
+    print "Stable: %s" % len(stable_emci)
+    print "Increase: %s" % len(increasing_emci)
+    print 'LMCI'
+    print "Decrease: %s" % len(decreasing_lmci)
+    print "Stable: %s" % len(stable_lmci)
+    print "Increase: %s" % len(increasing_lmci)
+    print 'N'
+    print "Decrease: %s" % len(decreasing_ad)
+    print "Stable: %s" % len(stable_ad)
+    print "Increase: %s" % len(increasing_ad)
+
+    data = {'increasing' : {'N': increasing_n,
+                            'EMCI': increasing_emci,
+                            'LMCI': increasing_lmci,
+                            'AD': increasing_ad},
+            'stable' : {'N': stable_n,
+                        'EMCI': stable_emci,
+                        'LMCI': stable_lmci,
+                        'AD': stable_ad},
+            'decreasing': {'N': decreasing_n,
+                           'EMCI': decreasing_emci,
+                           'LMCI': decreasing_lmci,
+                           'AD': decreasing_ad}}
+    return data
 
 if __name__ == "__main__":
     # main files
@@ -423,20 +497,26 @@ if __name__ == "__main__":
     for k,v in group4_residuals.iteritems():
         group4_residuals[k] = np.mean(v)
     res_values = sorted(group4_residuals.iteritems(), key=lambda x: x[1])
+    group4_quantiles = {}
+    for i,(k,v) in enumerate(res_values):
+        qtile = float(i) / float(len(res_values))
+        group4_quantiles[k] = qtile
+
+    # split residuals into quartiles
     values_only = [_[1] for _ in res_values]
-
+    keys_only = [_[0] for _ in res_values]
     quarter = len(res_values) / 4
-    quartile_0 = [k for k,v in res_values[:quarter]]
-    quartile_25 = [k for k,v in res_values[quarter:(quarter*2)]]
-    quartile_50 = [k for k,v in res_values[(quarter*2):(quarter*3)]]
-    quartile_75 = [k for k,v in res_values[(quarter*3):]]
-    quartile_0_vals = [v for k,v in res_values[:quarter]]
-    quartile_25_vals = [v for k,v in res_values[quarter:(quarter*2)]]
-    quartile_50_vals = [v for k,v in res_values[(quarter*2):(quarter*3)]]
-    quartile_75_vals = [v for k,v in res_values[(quarter*3):]]
+    quartile_0 = [_ for _ in keys_only[:quarter]]
+    quartile_25 = [_ for _ in keys_only[quarter:(quarter*2)]]
+    quartile_50 = [_ for _ in keys_only[(quarter*2):(quarter*3)]]
+    quartile_75 = [_ for _ in keys_only[(quarter*3):]]
+    quartile_0_vals = [_ for _ in values_only[:quarter]]
+    quartile_25_vals = [_ for _ in values_only[quarter:(quarter*2)]]
+    quartile_50_vals = [_ for _ in values_only[(quarter*2):(quarter*3)]]
+    quartile_75_vals = [_ for _ in values_only[(quarter*3):]]
 
-
-
+    # graph residuals
+    '''
     pylab.figure()
     n, bins, patches = pylab.hist([values_only],70,histtype='bar',label=['All Residuals'])
     pylab.legend()
@@ -448,11 +528,11 @@ if __name__ == "__main__":
     pylab.legend()
     pylab.show()
     sys.exit(1)
-
-
+    '''
 
     # for PVC
-    data_bl, data_scan2, data_scan3 = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual)
+    data_bl, data_scan2, data_scan3 = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=True)
+    data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=False)
     
     # for TP
     #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)
@@ -460,6 +540,54 @@ if __name__ == "__main__":
     # for nonTP
     #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file_nontp, registry_file, lut_file)
 
+    # graph pvc vs nonpvcval, colored by residual quartile
+    '''
+    points = []
+    for k,v in data_bl.iteritems():
+        pvcval = v[0]['composite']
+        nonpvcval = data_bl_nonpvc[k][0]['composite']
+        res = res_bl[k]['group4']
+        points.append((nonpvcval, pvcval, res))
+    for k,v in data_scan2.iteritems():
+        pvcval = v[0]['composite']
+        nonpvcval = data_scan2_nonpvc[k][0]['composite']
+        res = res_scan2[k]['group4']
+        points.append((nonpvcval, pvcval, res))
+    for k,v in data_scan3.iteritems():
+        pvcval = v[0]['composite']
+        nonpvcval = data_scan3_nonpvc[k][0]['composite']
+        res = res_scan3[k]['group4']
+        points.append((nonpvcval, pvcval, res))
+    points = sorted(points, key=lambda x: x[2])
+    quarter = len(points)/4 
+    x = []
+    y = []
+    c = []
+    for i, (xs,ys,cs) in enumerate(points):
+        if i < quarter:
+            c.append('y')
+        elif i < quarter*2:
+            c.append('g')
+        elif i < quarter*3:
+            c.append('r')
+        else:
+            c.append('b')
+        x.append(xs)
+        y.append(ys)
+
+    slope, intercept, r, p, stderr = linregress(x, y)
+    p = np.poly1d([slope, intercept])
+    yhat = p(x)
+    ydiff = (y-yhat)**2
+    pylab.figure()
+    n, bins, patches = pylab.hist([_ for i,_ in enumerate(ydiff) if c[i] == 'y'],30,normed=1,histtype='step',label=['25 quartile'])
+    n, bins, patches = pylab.hist([_ for i,_ in enumerate(ydiff) if c[i] == 'g'],30,normed=1,histtype='step',label=['50 quartile'])
+    n, bins, patches = pylab.hist([_ for i,_ in enumerate(ydiff) if c[i] == 'r'],30,normed=1,histtype='step',label=['75 quartile'])
+    n, bins, patches = pylab.hist([_ for i,_ in enumerate(ydiff) if c[i] == 'b'],30,normed=1,histtype='step',label=['100 quartile'])
+    pylab.legend()
+    pylab.show()
+    sys.exit(1)
+    '''
 
     # dump the dataset
     '''
@@ -489,16 +617,33 @@ if __name__ == "__main__":
     # find all subjects with longitudinal data
     all_rids = list(set(data_scan2.keys() + data_scan3.keys()))
 
-
     # find scan-rescan variance
-    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(neg_normals, data_bl, data_scan2, data_scan3, master_data, annualize=False)
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(neg_normals, data_bl, data_scan2, {}, master_data, annualize=False)
     norm_fits = fitNormalToUptakeChange(uptake_diff)
     for k,v in norm_fits.iteritems():
         print k
         print v
 
     # find annualized change
-    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl, data_scan2, data_scan3, master_data, annualize=True)
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl, data_scan2, {}, master_data, annualize=True)
+
+    # graph mean residual versus uptake change
+    points = []
+    uptake_diff_composite = uptake_diff['composite']
+    for k,v in uptake_diff_composite.iteritems():
+        res = group4_quantiles[k]
+        points.append((res, v))
+    x = [_[0] for _ in points]
+    y = [_[1] for _ in points]
+    plt.figure()
+    plt.scatter(x,y)
+    plt.show()
+    sys.exit(1)
+
+
+
+    # stratify into subject groups
+    subj_groups = stratifySubjects(uptake_diff, norm_fits, yrs_diff, diags)
 
     # find percent plausible
     percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
@@ -506,20 +651,16 @@ if __name__ == "__main__":
     # plot volume change versus uptake change (marking high amyloid at baseline)
     colors = {}
     for rid in all_rids:
-        if rid in quartile_0:
+        if rid in subj_groups['increasing']['N']:
             c = 'k'
-        else:
-            c = 'w'
-        '''
-        elif rid in quartile_25:
-            c = 'b'
-        elif rid in quartile_50:
+        elif rid in subj_groups['increasing']['EMCI']:
+            c = 'y'
+        elif rid in subj_groups['increasing']['LMCI']:
             c = 'g'
-        elif rid in quartile_75:
+        elif rid in subj_groups['increasing']['AD']:
             c= 'r'
         else:
-            raise Exception("WHAT? %s" % rid)
-        '''
+            c= 'w'
         colors[rid] = c
     plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff)
 
