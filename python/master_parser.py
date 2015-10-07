@@ -1923,9 +1923,9 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     return (new_headers, new_lines)
 
 def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
-    csf_by_subj = importCSF(csf_files)
     registry = importRegistry(registry_file)
-
+    csf_by_subj = importCSF(csf_files, registry)
+    
     # add new headers as needed
     csf_headers = []
     csf_headers += ['CSF_ABETA.%s' % (i+1) for i in range(7)]
@@ -2309,8 +2309,6 @@ def runPipeline():
     addCategories(output_file)
 
 if __name__ == '__main__':
-
-
     now = datetime.now()
     # IO files
     master_file = "../FDG_AV45_COGdata.csv"

@@ -195,15 +195,16 @@ if __name__ == "__main__":
         pattern_delta = (second_pattern - first_pattern) / yrs
         uptake_delta = (summary[(rid, 'Scan2')] - summary[(rid, 'BL')]) / yrs
         yr_diff[rid] = yrs
-        uptake_diff[rid] = uptake_delta
+        uptake_diff[rid] = abs(uptake_delta)
         pattern_diff[rid] = pattern_delta
     for rid in data_Scan3.index:
         yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
         first_pattern = pca_model.transform(data_BL.loc[rid].as_matrix())[0]
         second_pattern = pca_model.transform(data_Scan3.loc[rid].as_matrix())[0]
+        pattern_delta = (second_pattern - first_pattern) / yrs
         uptake_delta = (summary[(rid, 'Scan3')] - summary[(rid, 'BL')]) / yrs
         yr_diff[rid] = yrs
-        uptake_diff[rid] = uptake_delta
+        uptake_diff[rid] = abs(uptake_delta)
         pattern_diff[rid] = pattern_delta
 
     points = []

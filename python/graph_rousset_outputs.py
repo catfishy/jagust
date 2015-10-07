@@ -10,7 +10,6 @@ from scipy import linalg
 import matplotlib as mpl
 
 
-
 def subplot_scatter(data, key, grouping, plot_raw=False):
     scatter_points = []
     for subj, subjdata in data:

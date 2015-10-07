@@ -791,23 +791,26 @@ def importCSF(csf_files, registry=None):
             visitkey = (vc,vc2)
             newdata = {'rundate': rundate,
                        'EXAMDATE': examdate,
+                       'file': csffile,
                        'abeta': abeta,
                        'tau': tau,
-                       'ptau': ptau}
-            if visitkey in data[subj]:
-                data[subj][visitkey].append(newdata)
+                       'ptau': ptau,
+                       'vc': vc,
+                       'vc2' : vc2}
+            if examdate in data[subj]:
+                data[subj][examdate].append(newdata)
             else:
-                data[subj][visitkey] = [newdata]
+                data[subj][examdate] = [newdata]
     # take the timepoint with the most recent run date for each visit
     data = dict(data)
     for k in data.keys():
         userdata = data[k]
         flattened = []
-        for (vc, vc2), inners in userdata.iteritems():
+        for examdate, inners in userdata.iteritems():
             chosen = sorted(inners, key=lambda x: x['rundate'])[-1]
-            chosen.update({'vc': vc, 'vc2': vc2})
             flattened.append(chosen)
-        data[k] = flattened
+        print flattened
+        data[k] = sorted(flattened, key=lambda x: x['EXAMDATE'])
     return data
 
 def importPetMETA(pet_meta_file):

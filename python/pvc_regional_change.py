@@ -1,135 +1,525 @@
+'''
+Analysis of regional longitudinal data from processing streams:
+- Non timepoint specific
+- Timepoint specific
+- PVC (Rousset, group 4, timepoint specific)
+'''
+
+
 from utils import *
 import matplotlib.pyplot as plt
+import copy
+import numpy as np
+import pylab
+from scipy.stats import norm, mannwhitneyu, linregress
 
-def extractRegionalValues(data):
-	wholecereb = float(data['wholecereb']['pvcval'])
-	bigref = float(data['bigref']['pvcval'])
-	cingulate_uptake = data['cingulate']['pvcval']/wholecereb
-	cingulate_vol = data['cingulate']['size']
-	parietal_uptake = data['parietal']['pvcval']/wholecereb
-	parietal_vol = data['parietal']['size']
-	temporal_uptake = data['temporal']['pvcval']/wholecereb
-	temporal_vol = data['temporal']['size']
-	frontal_uptake = data['frontal']['pvcval']/wholecereb
-	frontal_vol = data['frontal']['size']
-	uptakes = {'cingulate': cingulate_uptake,
-			   'parietal': parietal_uptake,
-			   'temporal': temporal_uptake,
-			   'frontal': frontal_uptake}
-	sizes = {'cingulate': cingulate_vol,
-			   'parietal': parietal_vol,
-			   'temporal': temporal_vol,
-			   'frontal': frontal_vol}
-	return uptakes, sizes
 
-master_file = '../FDG_AV45_COGdata_09_25_15.csv'
-master_data = importMaster(master_file)
+STABLE = [89,
+          272,
+          685,
+          923,
+          4018,
+          4032,
+          4041,
+          4043,
+          4050,
+          4076,
+          4084,
+          4148,
+          4158,
+          4164,
+          4173,
+          4200,
+          4208,
+          4213,
+          4218,
+          4224,
+          4369,
+          4382,
+          4393,
+          4410,
+          4427,
+          4453,
+          4505,
+          4506,
+          4516,
+          4545,
+          4643,
+          4739,
+          4762,
+          4795,
+          4878,
+          5023,
+          4429]
 
-diags = {}
-for rid, row in master_data.iteritems():
-    diag = row['Init_Diagnosis'].strip()
-    diags[rid] = diag
+def extractRegionalValuesRousset(data):
+    data = data['group4']
+    wholecereb = float(data['wholecereb']['pvcval'])
+    bigref = float(data['bigref']['pvcval'])
+    cingulate_uptake = data['cingulate']['pvcval']/wholecereb
+    cingulate_vol = int(data['cingulate']['size'])
+    parietal_uptake = data['parietal']['pvcval']/wholecereb
+    parietal_vol = int(data['parietal']['size'])
+    temporal_uptake = data['temporal']['pvcval']/wholecereb
+    temporal_vol = int(data['temporal']['size'])
+    frontal_uptake = data['frontal']['pvcval']/wholecereb
+    frontal_vol = int(data['frontal']['size'])
+    composite_uptake = data['composite']['pvcval']/wholecereb
+    composite_vol = int(data['composite']['size'])
+    uptakes = {'cingulate': cingulate_uptake,
+               'parietal': parietal_uptake,
+               'temporal': temporal_uptake,
+               'frontal': frontal_uptake,
+               'composite': composite_uptake}
+    sizes = {'cingulate': cingulate_vol,
+               'parietal': parietal_vol,
+               'temporal': temporal_vol,
+               'frontal': frontal_vol,
+               'composite': composite_vol}
+    return uptakes, sizes
 
-# Rousset output files
-rousset_matfile_bl_manual = '../output/Rousset_BL/rousset_outputs_manual.mat'
-rousset_matfile_scan2_manual = '../output/Rousset_Scan2/rousset_outputs_manual.mat'
-rousset_matfile_scan3_manual = '../output/Rousset_Scan3/rousset_outputs_manual.mat'
-rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_outputs_agg.mat'
-rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_outputs_agg.mat'
-rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_outputs_agg.mat'
+def extractRoussetResiduals(data):
+    residuals = {}
+    for k,v in data.iteritems():
+        if v is None:
+            continue
+        residuals[k] = v['residuals']['rmse']
+    return residuals
 
-group_bl, data_bl = importRoussetResults(rousset_matfile_bl_manual)
-group_scan2, data_scan2 = importRoussetResults(rousset_matfile_scan2_manual)
-group_scan3, data_scan3 = importRoussetResults(rousset_matfile_scan3_manual)
+def extractRegionalValuesAV45(row, lut):
+    wholecereb = float(row['WHOLECEREBELLUM'])
+    cingulate_uptake = float(row['CINGULATE']) / wholecereb
+    parietal_uptake = float(row['PARIETAL']) / wholecereb
+    temporal_uptake = float(row['TEMPORAL']) / wholecereb
+    frontal_uptake = float(row['FRONTAL']) / wholecereb
+    composite_uptake = float(row['COMPOSITE'])/ wholecereb
+    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
+    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
+    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
+    temporal=[1015,1030,2015,2030]
+    cingulate_size_keys = ["%s_SIZE" % lut[_].replace('-','_').upper().strip() for _ in cingulate]
+    parietal_size_keys = ["%s_SIZE" % lut[_].replace('-','_').upper().strip() for _ in parietal]
+    temporal_size_keys = ["%s_SIZE" % lut[_].replace('-','_').upper().strip() for _ in temporal]
+    frontal_size_keys = ["%s_SIZE" % lut[_].replace('-','_').upper().strip() for _ in frontal]
+    cingulate_vol = sum([float(row[_]) for _ in cingulate_size_keys])
+    parietal_vol = sum([float(row[_]) for _ in parietal_size_keys])
+    temporal_vol = sum([float(row[_]) for _ in temporal_size_keys])
+    frontal_vol = sum([float(row[_]) for _ in frontal_size_keys])
+    composite_vol = sum([cingulate_vol, parietal_vol, temporal_vol, frontal_vol])
+    uptakes = {'cingulate': cingulate_uptake,
+               'parietal': parietal_uptake,
+               'temporal': temporal_uptake,
+               'frontal': frontal_uptake,
+               'composite': composite_uptake}
+    sizes = {'cingulate': cingulate_vol,
+               'parietal': parietal_vol,
+               'temporal': temporal_vol,
+               'frontal': frontal_vol,
+               'composite': composite_vol}
+    return uptakes, sizes
 
-# find annualized
-yr_diff = {}
-vol_frontal_diff = {}
-vol_parietal_diff = {}
-vol_temporal_diff = {}
-vol_cingulate_diff = {}
-uptake_frontal_diff = {}
-uptake_parietal_diff = {}
-uptake_temporal_diff = {}
-uptake_cingulate_diff = {}
+def parseRoussetOutputs(bl_file, scan2_file, scan3_file):
+    group_bl, data_bl_raw = importRoussetResults(bl_file)
+    group_scan2, data_scan2_raw = importRoussetResults(scan2_file)
+    group_scan3, data_scan3_raw = importRoussetResults(scan3_file)
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    for k,v in data_bl_raw.iteritems():
+        data_bl[k] = extractRegionalValuesRousset(v)
+    for k,v in data_scan2_raw.iteritems():
+        data_scan2[k] = extractRegionalValuesRousset(v)
+    for k,v in data_scan3_raw.iteritems():
+        data_scan3[k] = extractRegionalValuesRousset(v)
+    return data_bl, data_scan2, data_scan3
 
-for rid, data in data_scan2.iteritems():
-	yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
-	data = data['group4']
-	residuals = data['residuals']['raw']
-	scan2_uptakes, scan2_sizes = extractRegionalValues(data)
-	bl_uptakes, bl_sizes = extractRegionalValues(data_bl[rid]['group4'])
-	vol_frontal_diff[rid] = (scan2_sizes['frontal'] - bl_sizes['frontal']) / yrs
-	vol_parietal_diff[rid] = (scan2_sizes['parietal'] - bl_sizes['parietal']) / yrs
-	vol_temporal_diff[rid] = (scan2_sizes['temporal'] - bl_sizes['temporal']) / yrs
-	vol_cingulate_diff[rid] = (scan2_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
-	uptake_frontal_diff[rid] = (scan2_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
-	uptake_parietal_diff[rid] = (scan2_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
-	uptake_temporal_diff[rid] = (scan2_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
-	uptake_cingulate_diff[rid] = (scan2_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
+def parseRoussetResiduals(bl_file, scan2_file, scan3_file):
+    group_bl, data_bl_raw = importRoussetResults(bl_file)
+    group_scan2, data_scan2_raw = importRoussetResults(scan2_file)
+    group_scan3, data_scan3_raw = importRoussetResults(scan3_file)
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    for k,v in data_bl_raw.iteritems():
+        data_bl[k] = extractRoussetResiduals(v)
+    for k,v in data_scan2_raw.iteritems():
+        data_scan2[k] = extractRoussetResiduals(v)
+    for k,v in data_scan3_raw.iteritems():
+        data_scan3[k] = extractRoussetResiduals(v)
+    return data_bl, data_scan2, data_scan3
 
-for rid, data in data_scan3.iteritems():
-	yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
-	data = data['group4']
-	residuals = data['residuals']['raw']
-	scan3_uptakes, scan3_sizes = extractRegionalValues(data)
-	bl_uptakes, bl_sizes = extractRegionalValues(data_bl[rid]['group4'])
-	vol_frontal_diff[rid] = (scan3_sizes['frontal'] - bl_sizes['frontal']) / yrs
-	vol_parietal_diff[rid] = (scan3_sizes['parietal'] - bl_sizes['parietal']) / yrs
-	vol_temporal_diff[rid] = (scan3_sizes['temporal'] - bl_sizes['temporal']) / yrs
-	vol_cingulate_diff[rid] = (scan3_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
-	uptake_frontal_diff[rid] = (scan3_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
-	uptake_parietal_diff[rid] = (scan3_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
-	uptake_temporal_diff[rid] = (scan3_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
-	uptake_cingulate_diff[rid] = (scan3_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
+def parseAV45Output(av45_file, registry_file, lut_file):
+    lut_table = importFreesurferLookup(lut_file)
+    registry =  importRegistry(registry_file)
+    data = importAV45(av45_file,registry=registry)
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    for rid, rows in data.iteritems():
+        rows = sorted(rows, key=lambda x: x['EXAMDATE'])
+        if len(rows) > 0:
+            data_bl[rid] = extractRegionalValuesAV45(rows[0], lut_table)
+        if len(rows) > 1:
+            data_scan2[rid] = extractRegionalValuesAV45(rows[1], lut_table)
+        if len(rows) > 2:
+            data_scan3[rid] = extractRegionalValuesAV45(rows[2], lut_table)
+    return data_bl, data_scan2, data_scan3
 
-all_rids = list(set(data_scan2.keys() + data_scan3.keys()))
-colors = []
-for rid in all_rids:
-	if diags[rid] == 'AD':
-		c = 'r'
-	elif diags[rid] == 'N':
-		c = 'g'
-	else:
-		c = 'b'
-	colors.append(c)
+def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_data, annualize=True):
+    # find annualized
+    yrs_diff = {}
+    vol_frontal_diff = {}
+    vol_parietal_diff = {}
+    vol_temporal_diff = {}
+    vol_cingulate_diff = {}
+    uptake_frontal_diff = {}
+    uptake_parietal_diff = {}
+    uptake_temporal_diff = {}
+    uptake_cingulate_diff = {}
 
-frontal_x = []
-frontal_y = []
-for rid in all_rids:
-	frontal_x.append(vol_frontal_diff[rid])
-	frontal_y.append(uptake_frontal_diff[rid])
-parietal_x = []
-parietal_y = []
-for rid in all_rids:
-	parietal_x.append(vol_parietal_diff[rid])
-	parietal_y.append(uptake_parietal_diff[rid])
-temporal_x = []
-temporal_y = []
-for rid in all_rids:
-	temporal_x.append(vol_temporal_diff[rid])
-	temporal_y.append(uptake_temporal_diff[rid])
-cingulate_x = []
-cingulate_y = []
-for rid in all_rids:
-	cingulate_x.append(vol_cingulate_diff[rid])
-	cingulate_y.append(uptake_cingulate_diff[rid])
+    for rid, data in data_scan2.iteritems():
+        if rid not in rids:
+            continue
+        yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+        if not annualize:
+            yrs = 1.0
+        yrs_diff[rid] = yrs
+        scan2_uptakes, scan2_sizes = data
+        bl_uptakes, bl_sizes = data_bl[rid]
+        vol_frontal_diff[rid] = (scan2_sizes['frontal'] - bl_sizes['frontal']) / yrs
+        vol_parietal_diff[rid] = (scan2_sizes['parietal'] - bl_sizes['parietal']) / yrs
+        vol_temporal_diff[rid] = (scan2_sizes['temporal'] - bl_sizes['temporal']) / yrs
+        vol_cingulate_diff[rid] = (scan2_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+        uptake_frontal_diff[rid] = (scan2_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
+        uptake_parietal_diff[rid] = (scan2_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
+        uptake_temporal_diff[rid] = (scan2_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
+        uptake_cingulate_diff[rid] = (scan2_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
+    for rid, data in data_scan3.iteritems():
+        if rid not in rids:
+            continue
+        yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+        if not annualize:
+            yrs = 1.0
+        yrs_diff[rid] = yrs
+        scan3_uptakes, scan3_sizes = data
+        bl_uptakes, bl_sizes = data_bl[rid]
+        vol_frontal_diff[rid] = (scan3_sizes['frontal'] - bl_sizes['frontal']) / yrs
+        vol_parietal_diff[rid] = (scan3_sizes['parietal'] - bl_sizes['parietal']) / yrs
+        vol_temporal_diff[rid] = (scan3_sizes['temporal'] - bl_sizes['temporal']) / yrs
+        vol_cingulate_diff[rid] = (scan3_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+        uptake_frontal_diff[rid] = (scan3_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
+        uptake_parietal_diff[rid] = (scan3_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
+        uptake_temporal_diff[rid] = (scan3_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
+        uptake_cingulate_diff[rid] = (scan3_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
 
-plt.figure(1)
-plt.scatter(frontal_x, frontal_y, c=colors)
-plt.xlabel('Annualized Frontal Size Change')
-plt.ylabel('Annualized Frontal Uptake Change (post PVC)')
-plt.figure(2)
-plt.scatter(parietal_x, parietal_y, c=colors)
-plt.xlabel('Annualized Parietal Size Change')
-plt.ylabel('Annualized Parietal Uptake Change (post PVC)')
-plt.figure(3)
-plt.scatter(temporal_x, temporal_y, c=colors)
-plt.xlabel('Annualized Temporal Size Change')
-plt.ylabel('Annualized Temporal Uptake Change (post PVC)')
-plt.figure(4)
-plt.scatter(cingulate_x, cingulate_y, c=colors)
-plt.xlabel('Annualized Cingulate Size Change')
-plt.ylabel('Annualized Cingulate Uptake Change (post PVC)')
+    vol_diff = {'frontal': vol_frontal_diff,
+                'parietal': vol_parietal_diff,
+                'temporal': vol_temporal_diff,
+                'cingulate': vol_cingulate_diff}
+    uptake_diff = {'frontal': uptake_frontal_diff,
+                   'parietal': uptake_parietal_diff,
+                   'temporal': uptake_temporal_diff,
+                   'cingulate': uptake_cingulate_diff}
+    return (vol_diff, uptake_diff, yrs_diff)
 
-plt.show()
+def percentPlausible(vol_diff, uptake_diff, norm_fits, yrs):
+    '''
+    Determine percentage of dataset that is plausible given two measures:
+    - volume only decreases
+    - amyloid load only increases
+
+    Also determine noise intervals for the proportions, given the scan-rescan errors for each region
+
+    '''
+    # calculate percent with decreasing volume
+    frontal_decreasing = len([rid for rid, val in vol_diff['frontal'].iteritems() if val <= 0.0]) / float(len(vol_diff['frontal']))
+    parietal_decreasing = len([rid for rid, val in vol_diff['parietal'].iteritems() if val <= 0.0]) / float(len(vol_diff['parietal']))
+    temporal_decreasing = len([rid for rid, val in vol_diff['temporal'].iteritems() if val <= 0.0]) / float(len(vol_diff['temporal']))
+    cingulate_decreasing = len([rid for rid, val in vol_diff['cingulate'].iteritems() if val <= 0.0]) / float(len(vol_diff['cingulate']))
+    
+    # calculate percent with increasing uptake
+    # find sampling distr of proportions
+    frontal_std = {rid: (norm_fits['frontal'][1]/yrs[rid]) for rid in uptake_diff['frontal'].keys()}
+    parietal_std = {rid: (norm_fits['parietal'][1]/yrs[rid]) for rid in uptake_diff['parietal'].keys()}
+    temporal_std = {rid: (norm_fits['temporal'][1]/yrs[rid]) for rid in uptake_diff['temporal'].keys()}
+    cingulate_std = {rid: (norm_fits['cingulate'][1]/yrs[rid]) for rid in uptake_diff['cingulate'].keys()}
+    
+    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['frontal'][0] , frontal_std[rid]) for rid, val in uptake_diff['frontal'].iteritems()}
+    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['parietal'][0] , parietal_std[rid]) for rid, val in uptake_diff['parietal'].iteritems()}
+    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['temporal'][0] , temporal_std[rid]) for rid, val in uptake_diff['temporal'].iteritems()}
+    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['cingulate'][0] , cingulate_std[rid]) for rid, val in uptake_diff['cingulate'].iteritems()}
+
+    frontal_n = float(len(uptake_diff['frontal']))
+    frontal_mean = sum(frontal_cdf.values()) / float(len(uptake_diff['frontal']))
+    frontal_std = np.sqrt(sum([(1.0-_)*_ for _ in frontal_cdf.values()]) / (frontal_n**2))
+    parietal_n = float(len(uptake_diff['parietal']))
+    parietal_mean = np.sqrt(sum(parietal_cdf.values()) / float(len(uptake_diff['parietal'])))
+    parietal_std = sum([(1.0-_)*_ for _ in parietal_cdf.values()]) / (parietal_n**2)
+    temporal_n = float(len(uptake_diff['temporal']))
+    temporal_mean = sum(temporal_cdf.values()) / float(len(uptake_diff['temporal']))
+    temporal_std = np.sqrt(sum([(1.0-_)*_ for _ in temporal_cdf.values()]) / (temporal_n**2))
+    cingulate_n = float(len(uptake_diff['cingulate']))
+    cingulate_mean = sum(cingulate_cdf.values()) / float(len(uptake_diff['cingulate']))
+    cingulate_std = np.sqrt(sum([(1.0-_)*_ for _ in cingulate_cdf.values()]) / (cingulate_n**2))
+
+    print "Decreasing Volume"
+    print "frontal: %s" % frontal_decreasing
+    print "parietal: %s" % parietal_decreasing
+    print "temporal: %s" % temporal_decreasing
+    print "cingulate: %s" % cingulate_decreasing
+    print "Increasing Uptake"
+    print "frontal: %s +/- %s" % (frontal_mean, frontal_std)
+    print "parietal: %s +/- %s" % (parietal_mean, parietal_std)
+    print "temporal: %s +/- %s" % (temporal_mean, temporal_std)
+    print "cingulate: %s +/- %s" % (cingulate_mean, cingulate_std)
+
+def plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff):
+    frontal_x = []
+    frontal_y = []
+    frontal_c = []
+
+    for rid in vol_diff['frontal']:
+        frontal_x.append(vol_diff['frontal'][rid])
+        frontal_y.append(uptake_diff['frontal'][rid])
+        frontal_c.append(colors[rid])
+    parietal_x = []
+    parietal_y = []
+    parietal_c = []
+    for rid in vol_diff['parietal']:
+        parietal_x.append(vol_diff['parietal'][rid])
+        parietal_y.append(uptake_diff['parietal'][rid])
+        parietal_c.append(colors[rid])
+    temporal_x = []
+    temporal_y = []
+    temporal_c = []
+    for rid in vol_diff['temporal']:
+        temporal_x.append(vol_diff['temporal'][rid])
+        temporal_y.append(uptake_diff['temporal'][rid])
+        temporal_c.append(colors[rid])
+    cingulate_x = []
+    cingulate_y = []
+    cingulate_c = []
+    for rid in vol_diff['cingulate']:
+        cingulate_x.append(vol_diff['cingulate'][rid])
+        cingulate_y.append(uptake_diff['cingulate'][rid])
+        cingulate_c.append(colors[rid])
+
+    plt.figure(1)
+    plt.scatter(frontal_x, frontal_y, c=frontal_c)
+    plt.xlabel('Annualized Frontal Size Change')
+    plt.ylabel('Annualized Frontal Uptake Change (post PVC)')
+    plt.figure(2)
+    plt.scatter(parietal_x, parietal_y, c=parietal_c)
+    plt.xlabel('Annualized Parietal Size Change')
+    plt.ylabel('Annualized Parietal Uptake Change (post PVC)')
+    plt.figure(3)
+    plt.scatter(temporal_x, temporal_y, c=temporal_c)
+    plt.xlabel('Annualized Temporal Size Change')
+    plt.ylabel('Annualized Temporal Uptake Change (post PVC)')
+    plt.figure(4)
+    plt.scatter(cingulate_x, cingulate_y, c=cingulate_c)
+    plt.xlabel('Annualized Cingulate Size Change')
+    plt.ylabel('Annualized Cingulate Uptake Change (post PVC)')
+    plt.show()
+
+def dumpRegionalDataset(output_file, data_bl, data_scan2, data_scan3, master_data):
+    lines = []
+    for rid, data in data_bl.iteritems():
+        uptakes, sizes = data
+        all_data = {'RID': rid,
+                    'Timepoint': 'BL',
+                    'Yrs_from_BL': 0.0}
+        all_data.update({"%s_suvr" % k :v for k,v in uptakes.iteritems()})
+        all_data.update({"%s_volume" % k :v for k,v in sizes.iteritems()})
+        lines.append(all_data)
+    for rid, data in data_scan2.iteritems():
+        yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+        uptakes, sizes = data
+        all_data = {'RID': rid,
+                    'Timepoint': 'Scan2',
+                    'Yrs_from_BL': yrs}
+        all_data.update({"%s_suvr" % k :v for k,v in uptakes.iteritems()})
+        all_data.update({"%s_volume" % k :v for k,v in sizes.iteritems()})
+        lines.append(all_data)
+    for rid, data in data_scan3.iteritems():
+        yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+        uptakes, sizes = data
+        all_data = {'RID': rid,
+                    'Timepoint': 'Scan3',
+                    'Yrs_from_BL': yrs}
+        all_data.update({"%s_suvr" % k :v for k,v in uptakes.iteritems()})
+        all_data.update({"%s_volume" % k :v for k,v in sizes.iteritems()})
+        lines.append(all_data)
+    df = pd.DataFrame(lines)
+    df.to_csv(output_file,index=False)
+
+def fitNormalToUptakeChange(uptake_diff):
+    '''
+    remove positive data points, and mirror negative datapoints above the origin to get test-retest error distr
+    '''
+    normfits = {}
+    for k,v in uptake_diff.iteritems():
+        values = v.values()
+        '''
+        neg_values = [_ for _ in values if _ <= 0]
+        mirrored_values = [-_ for _ in neg_values if _ < 0]
+        all_values = neg_values + mirrored_values
+        '''
+        all_values = values
+        (mu, std) = norm.fit(all_values)
+        normfits[k] = (mu, std)
+        
+    return normfits
+
+def stratifySubjects():
+    '''
+    Put subjects into groups:
+    -> amyloid decreasing, stable, increasing
+    -> diag group (N, EMCI, LMCI, AD)
+    '''
+    pass
+
+
+
+if __name__ == "__main__":
+    # main files
+    registry_file = "../docs/registry_clean.csv"
+    master_file = '../FDG_AV45_COGdata_09_25_15.csv'
+
+    # tp-specific file
+    av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
+
+    # non tp-specific file
+    av45_file_nontp = "../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv"
+
+    # Rousset output files
+    rousset_matfile_bl_manual = '../output/Rousset_BL/rousset_outputs_manual.mat'
+    rousset_matfile_scan2_manual = '../output/Rousset_Scan2/rousset_outputs_manual.mat'
+    rousset_matfile_scan3_manual = '../output/Rousset_Scan3/rousset_outputs_manual.mat'
+    rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_outputs_agg.mat'
+    rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_outputs_agg.mat'
+    rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_outputs_agg.mat'
+
+    # freesurfer region lookup
+    lut_file = "../FreeSurferColorLUT.txt"
+
+    master_data = importMaster(master_file)
+    diags = {}
+    for rid, row in master_data.iteritems():
+        diag = row['Init_Diagnosis'].strip()
+        diags[rid] = diag
+
+    # grabbing residuals
+    res_bl, res_scan2, res_scan3 = parseRoussetResiduals(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual)
+    res_bl_agg, res_scan2_agg, res_scan3_agg = parseRoussetResiduals(rousset_matfile_bl_agg,rousset_matfile_scan2_agg,rousset_matfile_scan3_agg)    
+    group4_residuals = defaultdict(list)
+    for k,v in res_bl.iteritems():
+        group4_residuals[k].append(v['group4'])
+    for k,v in res_scan2.iteritems():
+        group4_residuals[k].append(v['group4'])
+    for k,v in res_scan3.iteritems():
+        group4_residuals[k].append(v['group4'])
+    group4_residuals = dict(group4_residuals)
+    for k,v in group4_residuals.iteritems():
+        group4_residuals[k] = np.mean(v)
+    res_values = sorted(group4_residuals.iteritems(), key=lambda x: x[1])
+    values_only = [_[1] for _ in res_values]
+
+    quarter = len(res_values) / 4
+    quartile_0 = [k for k,v in res_values[:quarter]]
+    quartile_25 = [k for k,v in res_values[quarter:(quarter*2)]]
+    quartile_50 = [k for k,v in res_values[(quarter*2):(quarter*3)]]
+    quartile_75 = [k for k,v in res_values[(quarter*3):]]
+    quartile_0_vals = [v for k,v in res_values[:quarter]]
+    quartile_25_vals = [v for k,v in res_values[quarter:(quarter*2)]]
+    quartile_50_vals = [v for k,v in res_values[(quarter*2):(quarter*3)]]
+    quartile_75_vals = [v for k,v in res_values[(quarter*3):]]
+
+
+
+    pylab.figure()
+    n, bins, patches = pylab.hist([values_only],70,histtype='bar',label=['All Residuals'])
+    pylab.legend()
+    pylab.figure()
+    n, bins, patches = pylab.hist([quartile_0_vals],70,histtype='step',label=['25 quartile'])
+    n, bins, patches = pylab.hist([quartile_25_vals],70,histtype='step',label=['50 quartile'])
+    n, bins, patches = pylab.hist([quartile_50_vals],70,histtype='step',label=['75 quartile'])
+    n, bins, patches = pylab.hist([quartile_75_vals],70,histtype='step',label=['100 quartile'])
+    pylab.legend()
+    pylab.show()
+    sys.exit(1)
+
+
+
+    # for PVC
+    data_bl, data_scan2, data_scan3 = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual)
+    
+    # for TP
+    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)
+
+    # for nonTP
+    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file_nontp, registry_file, lut_file)
+
+
+    # dump the dataset
+    '''
+    output_file = "../nontp_regional_change.csv"
+    dumpRegionalDataset(output_file, data_bl, data_scan2, data_scan3, master_data)
+    '''
+
+    # find high bl uptake
+    high_bl_uptake = []
+    for rid, data in data_bl.iteritems():
+        uptakes, sizes = data
+        if uptakes['composite'] >= 1.6:
+            high_bl_uptake.append(rid)
+
+    # find negative normals
+    neg_normals = []
+    '''
+    for rid, data in data_bl.iteritems():
+        uptakes, sizes = data
+        if diags[rid] not in set(['SMC', 'N']):
+            continue
+        if uptakes['composite'] <= 1.11:
+            neg_normals.append(rid)
+    '''
+    neg_normals = STABLE
+
+    # find all subjects with longitudinal data
+    all_rids = list(set(data_scan2.keys() + data_scan3.keys()))
+
+
+    # find scan-rescan variance
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(neg_normals, data_bl, data_scan2, data_scan3, master_data, annualize=False)
+    norm_fits = fitNormalToUptakeChange(uptake_diff)
+    for k,v in norm_fits.iteritems():
+        print k
+        print v
+
+    # find annualized change
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl, data_scan2, data_scan3, master_data, annualize=True)
+
+    # find percent plausible
+    percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
+
+    # plot volume change versus uptake change (marking high amyloid at baseline)
+    colors = {}
+    for rid in all_rids:
+        if rid in quartile_0:
+            c = 'k'
+        else:
+            c = 'w'
+        '''
+        elif rid in quartile_25:
+            c = 'b'
+        elif rid in quartile_50:
+            c = 'g'
+        elif rid in quartile_75:
+            c= 'r'
+        else:
+            raise Exception("WHAT? %s" % rid)
+        '''
+        colors[rid] = c
+    plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff)
+
