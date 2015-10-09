@@ -20,6 +20,47 @@ def importRoussetResults(rousset_mat):
     sorted_data = dict(zip(subj_list,result_list))
     return (group_names, sorted_data)
 
+def importRawRoussetResults(rousset_mat):
+    data = loadMATFile(rousset_mat)
+    result_list = [parseResult(_) for _ in data['result_list'][0]]
+    subj_list = data['subj_list'][0]
+    sorted_data = dict(zip(subj_list,result_list))
+    return sorted_data
+
+def parseRawRousset(bl_file, scan2_file, scan3_file):
+    data_bl_raw = importRawRoussetResults(bl_file)
+    data_scan2_raw = importRawRoussetResults(scan2_file)
+    data_scan3_raw = importRawRoussetResults(scan3_file)
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    index_lookup = None
+    for rid, data in data_bl_raw.iteritems():
+        names = [unwrap(_) for _ in data['names']]
+        sizes = [unwrap(_) for _ in data['sizes']]
+        pvcvals = [unwrap(_) for _ in data['pvcvals']]
+        indices = [unwrap(_) for _ in data['indices']]
+        vals = dict(zip(names, pvcvals))
+        if index_lookup is None:
+            index_lookup = dict(zip(names, indices))
+        data_bl[rid] = vals
+    for rid, data in data_scan2_raw.iteritems():
+        names = [unwrap(_) for _ in data['names']]
+        sizes = [unwrap(_) for _ in data['sizes']]
+        pvcvals = [unwrap(_) for _ in data['pvcvals']]
+        indices = [unwrap(_) for _ in data['indices']]
+        vals = dict(zip(names, pvcvals))
+        data_scan2[rid] = vals
+    for rid, data in data_scan2_raw.iteritems():
+        names = [unwrap(_) for _ in data['names']]
+        sizes = [unwrap(_) for _ in data['sizes']]
+        pvcvals = [unwrap(_) for _ in data['pvcvals']]
+        indices = [unwrap(_) for _ in data['indices']]
+        vals = dict(zip(names, pvcvals))
+        data_scan3[rid] = vals
+    return data_bl, data_scan2, data_scan3, index_lookup
+
+
 def unwrap(arg):
     try:
         while len(arg) == 1 and type(arg) in set([list, tuple, np.ndarray]):

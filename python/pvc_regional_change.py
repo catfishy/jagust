@@ -92,11 +92,12 @@ def extractRoussetResiduals(data):
 
 def extractRegionalValuesAV45(row, lut):
     wholecereb = float(row['WHOLECEREBELLUM'])
-    cingulate_uptake = float(row['CINGULATE']) / wholecereb
-    parietal_uptake = float(row['PARIETAL']) / wholecereb
-    temporal_uptake = float(row['TEMPORAL']) / wholecereb
-    frontal_uptake = float(row['FRONTAL']) / wholecereb
-    composite_uptake = float(row['COMPOSITE'])/ wholecereb
+    bigref = float(row['COMPOSITE_REF'])
+    cingulate_uptake = float(row['CINGULATE']) / bigref
+    parietal_uptake = float(row['PARIETAL']) / bigref
+    temporal_uptake = float(row['TEMPORAL']) / bigref
+    frontal_uptake = float(row['FRONTAL']) / bigref
+    composite_uptake = float(row['COMPOSITE'])/ bigref
     frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
     cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
     parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
@@ -121,6 +122,7 @@ def extractRegionalValuesAV45(row, lut):
                'frontal': frontal_vol,
                'composite': composite_vol}
     return uptakes, sizes
+
 
 def parseRoussetOutputs(bl_file, scan2_file, scan3_file, pvcval=True):
     group_bl, data_bl_raw = importRoussetResults(bl_file)
@@ -249,18 +251,20 @@ def percentPlausible(vol_diff, uptake_diff, norm_fits, yrs):
     parietal_decreasing = len([rid for rid, val in vol_diff['parietal'].iteritems() if val <= 0.0]) / float(len(vol_diff['parietal']))
     temporal_decreasing = len([rid for rid, val in vol_diff['temporal'].iteritems() if val <= 0.0]) / float(len(vol_diff['temporal']))
     cingulate_decreasing = len([rid for rid, val in vol_diff['cingulate'].iteritems() if val <= 0.0]) / float(len(vol_diff['cingulate']))
-    
+    composite_decreasing = len([rid for rid, val in vol_diff['composite'].iteritems() if val <= 0.0]) / float(len(vol_diff['composite']))
+
     # calculate percent with increasing uptake
     # find sampling distr of proportions
-    frontal_std = {rid: (norm_fits['frontal'][1]/yrs[rid]) for rid in uptake_diff['frontal'].keys()}
-    parietal_std = {rid: (norm_fits['parietal'][1]/yrs[rid]) for rid in uptake_diff['parietal'].keys()}
-    temporal_std = {rid: (norm_fits['temporal'][1]/yrs[rid]) for rid in uptake_diff['temporal'].keys()}
-    cingulate_std = {rid: (norm_fits['cingulate'][1]/yrs[rid]) for rid in uptake_diff['cingulate'].keys()}
-    
-    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['frontal'][0] , frontal_std[rid]) for rid, val in uptake_diff['frontal'].iteritems()}
-    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['parietal'][0] , parietal_std[rid]) for rid, val in uptake_diff['parietal'].iteritems()}
-    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['temporal'][0] , temporal_std[rid]) for rid, val in uptake_diff['temporal'].iteritems()}
-    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, val - norm_fits['cingulate'][0] , cingulate_std[rid]) for rid, val in uptake_diff['cingulate'].iteritems()}
+    frontal_distr = {rid: (val-norm_fits['frontal'][0], norm_fits['frontal'][1]) for rid, val in uptake_diff['frontal'].iteritems()}
+    parietal_distr = {rid: (val-norm_fits['parietal'][0], norm_fits['parietal'][1]) for rid, val in uptake_diff['parietal'].iteritems()}
+    temporal_distr = {rid: (val-norm_fits['temporal'][0], norm_fits['temporal'][1]) for rid, val in uptake_diff['temporal'].iteritems()}
+    cingulate_distr = {rid: (val-norm_fits['cingulate'][0], norm_fits['cingulate'][1]) for rid, val in uptake_diff['cingulate'].iteritems()}
+    composite_distr = {rid: (val-norm_fits['composite'][0], norm_fits['composite'][1]) for rid, val in uptake_diff['composite'].iteritems()}
+    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in frontal_distr.iteritems()}
+    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in parietal_distr.iteritems()}
+    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in temporal_distr.iteritems()}
+    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in cingulate_distr.iteritems()}
+    composite_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in composite_distr.iteritems()}
 
     frontal_n = float(len(uptake_diff['frontal']))
     frontal_mean = sum(frontal_cdf.values()) / float(len(uptake_diff['frontal']))
@@ -274,17 +278,22 @@ def percentPlausible(vol_diff, uptake_diff, norm_fits, yrs):
     cingulate_n = float(len(uptake_diff['cingulate']))
     cingulate_mean = sum(cingulate_cdf.values()) / float(len(uptake_diff['cingulate']))
     cingulate_std = np.sqrt(sum([(1.0-_)*_ for _ in cingulate_cdf.values()]) / (cingulate_n**2))
+    composite_n = float(len(uptake_diff['composite']))
+    composite_mean = sum(composite_cdf.values()) / float(len(uptake_diff['composite']))
+    composite_std = np.sqrt(sum([(1.0-_)*_ for _ in composite_cdf.values()]) / (composite_n**2))
 
     print "Decreasing Volume"
     print "frontal: %s" % frontal_decreasing
     print "parietal: %s" % parietal_decreasing
     print "temporal: %s" % temporal_decreasing
     print "cingulate: %s" % cingulate_decreasing
+    print "composite: %s" % composite_decreasing
     print "Increasing Uptake"
     print "frontal: %s +/- %s" % (frontal_mean, frontal_std)
     print "parietal: %s +/- %s" % (parietal_mean, parietal_std)
     print "temporal: %s +/- %s" % (temporal_mean, temporal_std)
     print "cingulate: %s +/- %s" % (cingulate_mean, cingulate_std)
+    print "composite: %s +/- %s" % (composite_mean, composite_std)
 
 def plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff):
     frontal_x = []
@@ -384,75 +393,164 @@ def fitNormalToUptakeChange(uptake_diff):
         
     return normfits
 
-def stratifySubjects(uptake_diff, norm_fits, yrs, diags):
+def diagGroupEffects(data, diags):
+    keys = ['frontal', 'parietal', 'temporal', 'cingulate', 'composite']
+    normals = list(set([k for k,v in diags.iteritems() if v in set(['N', 'SMC'])]) & set(data.keys()))
+    ads = list(set([k for k,v in diags.iteritems() if v in set(['AD'])]) & set(data.keys()))
+    results = {}
+    for k in keys:
+        normal = [data[_][0][k] for _ in normals]
+        ad = [data[_][0][k] for _ in ads]
+        u, pvalue = mannwhitneyu(normal, ad, use_continuity=True)
+        u_max = len(normal) * len(ad)
+        rank_biserial = 1.0 - (2*u/u_max)
+        key_result = {'u': u,
+                      'p': pvalue,
+                      'rank_biserial': rank_biserial}
+        results[k] = key_result
+
+    for k,v in results.iteritems():
+        print k
+        print v
+
+
+def stratifySubjects(bl_uptake, uptake_diff, norm_fits, yrs, diags, threshold=1.11, graph=False):
     '''
     Put subjects into groups:
     -> amyloid decreasing, stable, increasing
     -> diag group (N, EMCI, LMCI, AD)
+    -> positivity threshold 
     '''
-    frontal_std = {rid: (norm_fits['frontal'][1]/yrs[rid]) for rid in uptake_diff['frontal'].keys()}
-    parietal_std = {rid: (norm_fits['parietal'][1]/yrs[rid]) for rid in uptake_diff['parietal'].keys()}
-    temporal_std = {rid: (norm_fits['temporal'][1]/yrs[rid]) for rid in uptake_diff['temporal'].keys()}
-    cingulate_std = {rid: (norm_fits['cingulate'][1]/yrs[rid]) for rid in uptake_diff['cingulate'].keys()}
-    composite_std = {rid: (norm_fits['composite'][1]/yrs[rid]) for rid in uptake_diff['composite'].keys()}
-    
-    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['frontal'][0]/yrs[rid]), frontal_std[rid]) for rid, val in uptake_diff['frontal'].iteritems()}
-    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['parietal'][0]/yrs[rid]), parietal_std[rid]) for rid, val in uptake_diff['parietal'].iteritems()}
-    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['temporal'][0]/yrs[rid]), temporal_std[rid]) for rid, val in uptake_diff['temporal'].iteritems()}
-    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['cingulate'][0]/yrs[rid]), cingulate_std[rid]) for rid, val in uptake_diff['cingulate'].iteritems()}
-    composite_cdf = {rid: 1.0 - norm.cdf(0.0, val - (norm_fits['composite'][0]/yrs[rid]), composite_std[rid]) for rid, val in uptake_diff['composite'].iteritems()}
-    
+    print "THRESHOLD: %s" % threshold
+
+
+    frontal_distr = {rid: (val-norm_fits['frontal'][0], norm_fits['frontal'][1]) for rid, val in uptake_diff['frontal'].iteritems()}
+    parietal_distr = {rid: (val-norm_fits['parietal'][0], norm_fits['parietal'][1]) for rid, val in uptake_diff['parietal'].iteritems()}
+    temporal_distr = {rid: (val-norm_fits['temporal'][0], norm_fits['temporal'][1]) for rid, val in uptake_diff['temporal'].iteritems()}
+    cingulate_distr = {rid: (val-norm_fits['cingulate'][0], norm_fits['cingulate'][1]) for rid, val in uptake_diff['cingulate'].iteritems()}
+    composite_distr = {rid: (val-norm_fits['composite'][0], norm_fits['composite'][1]) for rid, val in uptake_diff['composite'].iteritems()}
+    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in frontal_distr.iteritems()}
+    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in parietal_distr.iteritems()}
+    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in temporal_distr.iteritems()}
+    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in cingulate_distr.iteritems()}
+    composite_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in composite_distr.iteritems()}
+
     #all_region_cdf_mean = {rid: np.mean([frontal_cdf[rid], parietal_cdf[rid], temporal_cdf[rid], cingulate_cdf[rid]]) for rid in frontal_cdf.keys()}
     all_region_cdf_mean = {rid: composite_cdf[rid] for rid in composite_cdf.keys()}
+
+    # split by threshold
+    high = [k for k,v in bl_uptake.iteritems() if v[0]['composite'] >= threshold]
+    low = [k for k,v in bl_uptake.iteritems() if v[0]['composite'] < threshold]
 
     # split by longitudinal status
     increasing = [k for k,v in all_region_cdf_mean.iteritems() if v > 0.66]
     stable = [k for k,v in all_region_cdf_mean.iteritems() if v <= 0.66 and v >= 0.33]
     decreasing = [k for k,v in all_region_cdf_mean.iteritems() if v < 0.33]
 
+    # graph histogram of slopes
+    if graph:
+        slope_values = uptake_diff['composite'].values()
+        noise_distr_mean = norm_fits['composite'][0]
+        noise_distr_std = norm_fits['composite'][1]
+        pylab.figure()
+        weights = np.ones_like(slope_values)/float(len(slope_values))
+        n, bins, patches = pylab.hist(slope_values,40,weights=weights,histtype='stepfilled',label=['Composite Annualized Slope'])
+        #pylab.setp(patches, 'facecolor', 'g', 'alpha', 0.75)
+        # add a line showing the noise distribution
+        y = np.array(pylab.normpdf(bins, noise_distr_mean, noise_distr_std))
+        norm_weights = np.ones_like(y)/float(len(y))
+        y *= norm_weights
+        l = pylab.plot(bins, y, 'k--', linewidth=1.5)
+        # first thirds
+        first_third = norm.ppf(0.33, noise_distr_mean, noise_distr_std)
+        second_third = norm.ppf(0.66, noise_distr_mean, noise_distr_std)
+        half = norm.ppf(0.5, noise_distr_mean, noise_distr_std)
+        y_max = max(y)
+        pylab.plot([first_third, first_third],[0,y_max])
+        pylab.plot([second_third, second_third],[0,y_max])
+        pylab.plot([half, half],[0,y_max])
+        pylab.legend()
+        pylab.show()
+
+
+    # mix longitudinal status and threshold
+    increasing_high = list(set(increasing) & set(high))
+    increasing_low = list(set(increasing) & set(low))
+    stable_high = list(set(stable) & set(high))
+    stable_low = list(set(stable) & set(low))
+    decreasing_high = list(set(decreasing) & set(high))
+    decreasing_low = list(set(decreasing) & set(low))
+
     # split by diagnosis
-    increasing_n = [k for k in increasing if diags[k] in set(['N', 'SMC'])]
-    stable_n = [k for k in stable if diags[k] in set(['N', 'SMC'])]
-    decreasing_n = [k for k in decreasing if diags[k] in set(['N', 'SMC'])]
-    increasing_emci = [k for k in increasing if diags[k] in set(['EMCI'])]
-    stable_emci = [k for k in stable if diags[k] in set(['EMCI'])]
-    decreasing_emci = [k for k in decreasing if diags[k] in set(['EMCI'])]
-    increasing_lmci = [k for k in increasing if diags[k] in set(['LMCI'])]
-    stable_lmci = [k for k in stable if diags[k] in set(['LMCI'])]
-    decreasing_lmci = [k for k in decreasing if diags[k] in set(['LMCI'])]
-    increasing_ad = [k for k in increasing if diags[k] in set(['AD'])]
-    stable_ad = [k for k in stable if diags[k] in set(['AD'])]
-    decreasing_ad = [k for k in decreasing if diags[k] in set(['AD'])]
+    increasing_high_n = [k for k in increasing_high if diags[k] in set(['N', 'SMC'])]
+    stable_high_n = [k for k in stable_high if diags[k] in set(['N', 'SMC'])]
+    decreasing_high_n = [k for k in decreasing_high if diags[k] in set(['N', 'SMC'])]
+    increasing_low_n = [k for k in increasing_low if diags[k] in set(['N', 'SMC'])]
+    stable_low_n = [k for k in stable_low if diags[k] in set(['N', 'SMC'])]
+    decreasing_low_n = [k for k in decreasing_low if diags[k] in set(['N', 'SMC'])]
+
+    increasing_high_emci = [k for k in increasing_high if diags[k] in set(['EMCI'])]
+    stable_high_emci = [k for k in stable_high if diags[k] in set(['EMCI'])]
+    decreasing_high_emci = [k for k in decreasing_high if diags[k] in set(['EMCI'])]
+    increasing_low_emci = [k for k in increasing_low if diags[k] in set(['EMCI'])]
+    stable_low_emci = [k for k in stable_low if diags[k] in set(['EMCI'])]
+    decreasing_low_emci = [k for k in decreasing_low if diags[k] in set(['EMCI'])]
+
+    increasing_high_lmci = [k for k in increasing_high if diags[k] in set(['LMCI'])]
+    stable_high_lmci = [k for k in stable_high if diags[k] in set(['LMCI'])]
+    decreasing_high_lmci = [k for k in decreasing_high if diags[k] in set(['LMCI'])]
+    increasing_low_lmci = [k for k in increasing_low if diags[k] in set(['LMCI'])]
+    stable_low_lmci = [k for k in stable_low if diags[k] in set(['LMCI'])]
+    decreasing_low_lmci = [k for k in decreasing_low if diags[k] in set(['LMCI'])]
+
+    increasing_high_ad = [k for k in increasing_high if diags[k] in set(['AD'])]
+    stable_high_ad = [k for k in stable_high if diags[k] in set(['AD'])]
+    decreasing_high_ad = [k for k in decreasing_high if diags[k] in set(['AD'])]
+    increasing_low_ad = [k for k in increasing_low if diags[k] in set(['AD'])]
+    stable_low_ad = [k for k in stable_low if diags[k] in set(['AD'])]
+    decreasing_low_ad = [k for k in decreasing_low if diags[k] in set(['AD'])]
 
     print 'N'
-    print "Decrease: %s" % len(decreasing_n)
-    print "Stable: %s" % len(stable_n)
-    print "Increase: %s" % len(increasing_n)
+    print "Decrease: %s/%s" % (len(decreasing_low_n),len(decreasing_high_n))
+    print "Stable: %s/%s" % (len(stable_low_n),len(stable_high_n))
+    print "Increase: %s/%s" % (len(increasing_low_n),len(increasing_high_n))
     print 'EMCI'
-    print "Decrease: %s" % len(decreasing_emci)
-    print "Stable: %s" % len(stable_emci)
-    print "Increase: %s" % len(increasing_emci)
+    print "Decrease: %s/%s" % (len(decreasing_low_emci),len(decreasing_high_emci))
+    print "Stable: %s/%s" % (len(stable_low_emci),len(stable_high_emci))
+    print "Increase: %s/%s" % (len(increasing_low_emci),len(increasing_high_emci))
     print 'LMCI'
-    print "Decrease: %s" % len(decreasing_lmci)
-    print "Stable: %s" % len(stable_lmci)
-    print "Increase: %s" % len(increasing_lmci)
-    print 'N'
-    print "Decrease: %s" % len(decreasing_ad)
-    print "Stable: %s" % len(stable_ad)
-    print "Increase: %s" % len(increasing_ad)
+    print "Decrease: %s/%s" % (len(decreasing_low_lmci),len(decreasing_high_lmci))
+    print "Stable: %s/%s" % (len(stable_low_lmci),len(stable_high_lmci))
+    print "Increase: %s/%s" % (len(increasing_low_lmci),len(increasing_high_lmci))
+    print 'AD'
+    print "Decrease: %s/%s" % (len(decreasing_low_ad),len(decreasing_high_ad))
+    print "Stable: %s/%s" % (len(stable_low_ad),len(stable_high_ad))
+    print "Increase: %s/%s" % (len(increasing_low_ad),len(increasing_high_ad))
 
-    data = {'increasing' : {'N': increasing_n,
-                            'EMCI': increasing_emci,
-                            'LMCI': increasing_lmci,
-                            'AD': increasing_ad},
-            'stable' : {'N': stable_n,
-                        'EMCI': stable_emci,
-                        'LMCI': stable_lmci,
-                        'AD': stable_ad},
-            'decreasing': {'N': decreasing_n,
-                           'EMCI': decreasing_emci,
-                           'LMCI': decreasing_lmci,
-                           'AD': decreasing_ad}}
+    data = {'increasing_low' : {'N': increasing_low_n,
+                            'EMCI': increasing_low_emci,
+                            'LMCI': increasing_low_lmci,
+                            'AD': increasing_low_ad},
+            'stable_low' : {'N': stable_low_n,
+                        'EMCI': stable_low_emci,
+                        'LMCI': stable_low_lmci,
+                        'AD': stable_low_ad},
+            'decreasing_low': {'N': decreasing_low_n,
+                           'EMCI': decreasing_low_emci,
+                           'LMCI': decreasing_low_lmci,
+                           'AD': decreasing_low_ad},
+            'increasing_high' : {'N': increasing_high_n,
+                            'EMCI': increasing_high_emci,
+                            'LMCI': increasing_high_lmci,
+                            'AD': increasing_high_ad},
+            'stable_high' : {'N': stable_high_n,
+                        'EMCI': stable_high_emci,
+                        'LMCI': stable_high_lmci,
+                        'AD': stable_high_ad},
+            'decreasing_high': {'N': decreasing_high_n,
+                           'EMCI': decreasing_high_emci,
+                           'LMCI': decreasing_high_lmci,
+                           'AD': decreasing_high_ad}}
     return data
 
 if __name__ == "__main__":
@@ -473,15 +571,29 @@ if __name__ == "__main__":
     rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_outputs_agg.mat'
     rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_outputs_agg.mat'
     rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_outputs_agg.mat'
+    rousset_agghigh_raw_bl = '../raw_agghigh_output_BL.mat'
+    rousset_agghigh_raw_scan2 = '../raw_agghigh_output_Scan2.mat'
+    rousset_agghigh_raw_scan3 = '../raw_agghigh_output_Scan3.mat'
+
+    # get cluster values and rates of change
+    '''
+    raw_bl, raw_scan2, raw_scan3, index_lookup = parseRawRousset(rousset_agghigh_raw_bl, 
+                                                                 rousset_agghigh_raw_scan2, 
+                                                                 rousset_agghigh_raw_scan3)
+    for k,v in raw_bl.iteritems():
+        print k 
+        print v
+    sys.exit(1)
+    '''
 
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
-
     master_data = importMaster(master_file)
     diags = {}
     for rid, row in master_data.iteritems():
         diag = row['Init_Diagnosis'].strip()
         diags[rid] = diag
+
 
     # grabbing residuals
     res_bl, res_scan2, res_scan3 = parseRoussetResiduals(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual)
@@ -530,18 +642,15 @@ if __name__ == "__main__":
     sys.exit(1)
     '''
 
+
+    # composite threshold
+    #fit_threshold = 1.11 # for whole cereb (PVC)
+    fit_threshold = 0.79 # for big ref (non PVC)
+
     # for PVC
+    '''
     data_bl, data_scan2, data_scan3 = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=True)
     data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=False)
-    
-    # for TP
-    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)
-
-    # for nonTP
-    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file_nontp, registry_file, lut_file)
-
-    # graph pvc vs nonpvcval, colored by residual quartile
-    '''
     points = []
     for k,v in data_bl.iteritems():
         pvcval = v[0]['composite']
@@ -558,7 +667,24 @@ if __name__ == "__main__":
         nonpvcval = data_scan3_nonpvc[k][0]['composite']
         res = res_scan3[k]['group4']
         points.append((nonpvcval, pvcval, res))
-    points = sorted(points, key=lambda x: x[2])
+    x = [_[0] for _ in points]
+    y = [_[1] for _ in points]
+    slope, intercept, r, p, stderr = linregress(x, y)
+    print slope
+    print intercept
+    p = np.poly1d([slope, intercept])
+    fit_threshold = p(fit_threshold)
+    '''
+    # for TP
+    data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)
+
+    # for nonTP
+    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file_nontp, registry_file, lut_file)
+
+
+
+    # graph pvc vs nonpvcval, colored by residual quartile
+    '''
     quarter = len(points)/4 
     x = []
     y = []
@@ -574,9 +700,6 @@ if __name__ == "__main__":
             c.append('b')
         x.append(xs)
         y.append(ys)
-
-    slope, intercept, r, p, stderr = linregress(x, y)
-    p = np.poly1d([slope, intercept])
     yhat = p(x)
     ydiff = (y-yhat)**2
     pylab.figure()
@@ -602,32 +725,21 @@ if __name__ == "__main__":
         if uptakes['composite'] >= 1.6:
             high_bl_uptake.append(rid)
 
-    # find negative normals
-    neg_normals = []
-    '''
-    for rid, data in data_bl.iteritems():
-        uptakes, sizes = data
-        if diags[rid] not in set(['SMC', 'N']):
-            continue
-        if uptakes['composite'] <= 1.11:
-            neg_normals.append(rid)
-    '''
-    neg_normals = STABLE
-
     # find all subjects with longitudinal data
     all_rids = list(set(data_scan2.keys() + data_scan3.keys()))
 
-    # find scan-rescan variance
-    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(neg_normals, data_bl, data_scan2, {}, master_data, annualize=False)
+    # find scan-rescan annualized noise
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(STABLE, data_bl, data_scan2, data_scan3, master_data, annualize=True)
     norm_fits = fitNormalToUptakeChange(uptake_diff)
     for k,v in norm_fits.iteritems():
         print k
-        print v
+        print "(%.5f, %.5f)" % v
 
     # find annualized change
-    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl, data_scan2, {}, master_data, annualize=True)
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl, data_scan2, data_scan3, master_data, annualize=True)
 
-    # graph mean residual versus uptake change
+    # graph residual quantiles versus uptake change
+    '''
     points = []
     uptake_diff_composite = uptake_diff['composite']
     for k,v in uptake_diff_composite.iteritems():
@@ -639,16 +751,19 @@ if __name__ == "__main__":
     plt.scatter(x,y)
     plt.show()
     sys.exit(1)
-
-
+    '''
 
     # stratify into subject groups
-    subj_groups = stratifySubjects(uptake_diff, norm_fits, yrs_diff, diags)
+    subj_groups = stratifySubjects(data_bl, uptake_diff, norm_fits, yrs_diff, diags, threshold=fit_threshold, graph=False)
 
     # find percent plausible
     percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
 
+    # calculate diagnosis group effects
+    diagGroupEffects(data_bl, diags)
+
     # plot volume change versus uptake change (marking high amyloid at baseline)
+    '''
     colors = {}
     for rid in all_rids:
         if rid in subj_groups['increasing']['N']:
@@ -663,4 +778,5 @@ if __name__ == "__main__":
             c= 'w'
         colors[rid] = c
     plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff)
+    '''
 
