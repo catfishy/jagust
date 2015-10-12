@@ -443,9 +443,9 @@ def stratifySubjects(bl_uptake, uptake_diff, norm_fits, yrs, diags, threshold=1.
     low = [k for k,v in bl_uptake.iteritems() if v[0]['composite'] < threshold]
 
     # split by longitudinal status
-    increasing = [k for k,v in all_region_cdf_mean.iteritems() if v > 0.66]
-    stable = [k for k,v in all_region_cdf_mean.iteritems() if v <= 0.66 and v >= 0.33]
-    decreasing = [k for k,v in all_region_cdf_mean.iteritems() if v < 0.33]
+    increasing = [k for k,v in all_region_cdf_mean.iteritems() if v > 0.5]
+    stable = [k for k,v in all_region_cdf_mean.iteritems() if v <= 0.5 and v >= 0.0]
+    decreasing = [k for k,v in all_region_cdf_mean.iteritems() if v < 0.0]
 
     # graph histogram of slopes
     if graph:
@@ -644,11 +644,11 @@ if __name__ == "__main__":
 
 
     # composite threshold
-    #fit_threshold = 1.11 # for whole cereb (PVC)
-    fit_threshold = 0.79 # for big ref (non PVC)
+    fit_threshold = 1.11 # for whole cereb (PVC)
+    #fit_threshold = 0.79 # for big ref (non PVC)
 
     # for PVC
-    '''
+    
     data_bl, data_scan2, data_scan3 = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=True)
     data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=False)
     points = []
@@ -674,9 +674,9 @@ if __name__ == "__main__":
     print intercept
     p = np.poly1d([slope, intercept])
     fit_threshold = p(fit_threshold)
-    '''
+    
     # for TP
-    data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)
+    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)
 
     # for nonTP
     #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file_nontp, registry_file, lut_file)
@@ -755,6 +755,9 @@ if __name__ == "__main__":
 
     # stratify into subject groups
     subj_groups = stratifySubjects(data_bl, uptake_diff, norm_fits, yrs_diff, diags, threshold=fit_threshold, graph=False)
+    print subj_groups
+    sys.exit(1)
+
 
     # find percent plausible
     percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
