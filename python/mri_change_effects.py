@@ -1,3 +1,7 @@
+'''
+Calculating longitudinal change differences between TP-specific and non-TP-specific processing
+'''
+
 from utils import *
 import numpy as np
 import matplotlib.pyplot as plt

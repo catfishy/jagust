@@ -482,12 +482,12 @@ def stratifySubjects(bl_uptake, uptake_diff, norm_fits, yrs, diags, threshold=1.
     decreasing_low = list(set(decreasing) & set(low))
 
     # split by diagnosis
-    increasing_high_n = [k for k in increasing_high if diags[k] in set(['N', 'SMC'])]
-    stable_high_n = [k for k in stable_high if diags[k] in set(['N', 'SMC'])]
-    decreasing_high_n = [k for k in decreasing_high if diags[k] in set(['N', 'SMC'])]
-    increasing_low_n = [k for k in increasing_low if diags[k] in set(['N', 'SMC'])]
-    stable_low_n = [k for k in stable_low if diags[k] in set(['N', 'SMC'])]
-    decreasing_low_n = [k for k in decreasing_low if diags[k] in set(['N', 'SMC'])]
+    increasing_high_n = [k for k in increasing_high if diags[k] in set(['N'])]
+    stable_high_n = [k for k in stable_high if diags[k] in set(['N'])]
+    decreasing_high_n = [k for k in decreasing_high if diags[k] in set(['N'])]
+    increasing_low_n = [k for k in increasing_low if diags[k] in set(['N'])]
+    stable_low_n = [k for k in stable_low if diags[k] in set(['N'])]
+    decreasing_low_n = [k for k in decreasing_low if diags[k] in set(['N'])]
 
     increasing_high_emci = [k for k in increasing_high if diags[k] in set(['EMCI'])]
     stable_high_emci = [k for k in stable_high if diags[k] in set(['EMCI'])]
@@ -648,7 +648,6 @@ if __name__ == "__main__":
     #fit_threshold = 0.79 # for big ref (non PVC)
 
     # for PVC
-    
     data_bl, data_scan2, data_scan3 = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=True)
     data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=False)
     points = []

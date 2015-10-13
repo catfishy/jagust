@@ -12,6 +12,76 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.decomposition import PCA
 
+def apk(actual, predicted, k=10):
+    """
+    Computes the average precision at k.
+    This function computes the average prescision at k between two lists of
+    items.
+    Parameters
+    ----------
+    actual : list
+             A list of elements that are to be predicted (order doesn't matter)
+    predicted : list
+                A list of predicted elements (order does matter)
+    k : int, optional
+        The maximum number of predicted elements
+    Returns
+    -------
+    score : double
+            The average precision at k over the input lists
+    """
+    if len(predicted)>k:
+        predicted = predicted[:k]
+
+    score = 0.0
+    num_hits = 0.0
+
+    for i,p in enumerate(predicted):
+        if p in actual and p not in predicted[:i]:
+            num_hits += 1.0
+            score += num_hits / (i+1.0)
+
+    if not actual:
+        return 0.0
+
+    return score / min(len(actual), k)
+
+def mapk(actual, predicted, k=10):
+    """
+    Computes the mean average precision at k.
+    This function computes the mean average prescision at k between two lists
+    of lists of items.
+    Parameters
+    ----------
+    actual : list
+             A list of lists of elements that are to be predicted 
+             (order doesn't matter in the lists)
+    predicted : list
+                A list of lists of predicted elements
+                (order matters in the lists)
+    k : int, optional
+        The maximum number of predicted elements
+    Returns
+    -------
+    score : double
+            The mean average precision at k over the input lists
+    """
+    return np.mean([apk(a,p,k) for a,p in zip(actual, predicted)])
+
+def dcg(relevances, rank=20): 
+    relevances = np.asarray(relevances)[:rank] 
+    n_relevances = len(relevances) 
+    if n_relevances == 0: 
+        return 0. 
+    discounts = np.log2(np.arange(n_relevances) + 2) 
+    return np.sum(relevances / discounts) 
+
+def ndcg(relevances, rank=20): 
+    best_dcg = dcg(sorted(relevances, reverse=True), rank) 
+    if best_dcg == 0: 
+        return 0. 
+    return dcg(relevances, rank) / best_dcg
+
 def importRoussetResults(rousset_mat):
     data = loadMATFile(rousset_mat)
     result_list = [parseResult(_) for _ in data['result_list'][0]]
@@ -58,6 +128,11 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         indices = [unwrap(_) for _ in data['indices']]
         vals = dict(zip(names, pvcvals))
         data_scan3[rid] = vals
+    # make sure index_lookup values are lists
+    for k,v in index_lookup.iteritems():
+        if not (isinstance(v, list) or isinstance(v, np.ndarray)):
+            v = [v]
+        index_lookup[k] = v
     return data_bl, data_scan2, data_scan3, index_lookup
 
 
