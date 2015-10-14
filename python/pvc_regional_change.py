@@ -669,10 +669,9 @@ if __name__ == "__main__":
     x = [_[0] for _ in points]
     y = [_[1] for _ in points]
     slope, intercept, r, p, stderr = linregress(x, y)
-    print slope
-    print intercept
     p = np.poly1d([slope, intercept])
     fit_threshold = p(fit_threshold)
+    print "NEW THRESHOLD: %s" % fit_threshold
     
     # for TP
     #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)

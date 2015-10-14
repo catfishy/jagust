@@ -53,7 +53,7 @@ GROUPS = {'increasing_high': {'AD': [4657, 4660, 4153, 4672, 4696, 4195, 4252, 4
                                    4060, 4576, 4580, 4585, 4586, 4076, 4086, 1016]}}
 
 # don't consider regions that include white matter, cerebellum, brainstem
-REGION_BLACKLIST = [2,28,60,80,81,82,41,77,251,252,253,254,255,1004,2004,85,16,7,8,46,47]
+REGION_BLACKLIST = [30,62,2,80,81,82,41,77,251,252,253,254,255,1004,2004,85,16,7,8,46,47]
 REFERENCE_REGIONS = [7,8,46,47]
 
 def getRegionAverageRankings(sorted_uptakes):
@@ -106,23 +106,25 @@ def getMeanAveragePrecision(avg_rank, sorted_uptakes, k):
 def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True):
     ref_regions = [k for k,v in index_lookup.iteritems() if len(list(set(REFERENCE_REGIONS) & set(list(v)))) > 0]
     regions_to_remove = [k for k,v in index_lookup.iteritems() if len(list(set(REGION_BLACKLIST) & set(list(v)))) > 0]
+    # add ref regions
+    regions_to_remove.append('whole_cerebellum')
     index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
     for rid,val in data_bl.iteritems():
         ref_value = 1.0
         if suvr:
-            ref_value = np.mean([float(v) for k,v in val.iteritems() if k in ref_regions])
+            ref_value = val.get('whole_cerebellum',1.0)
         new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
         data_bl[rid] = new_val
     for rid,val in data_scan2.iteritems():
         ref_value = 1.0
         if suvr:
-            ref_value = np.mean([float(v) for k,v in val.iteritems() if k in ref_regions])
+            ref_value = val.get('whole_cerebellum',1.0)
         new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
         data_scan2[rid] = new_val
     for rid,val in data_scan3.iteritems():
         ref_value = 1.0
         if suvr:
-            ref_value = np.mean([float(v) for k,v in val.iteritems() if k in ref_regions])
+            ref_value = val.get('whole_cerebellum',1.0)
         new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
         data_scan3[rid] = new_val
     return data_bl, data_scan2, data_scan3, index_lookup
@@ -135,6 +137,35 @@ def valuesByFreesurferRegion(values_by_group, index_lookup):
         for fsi in fs_indices:
             by_freesurfer_region[fsi] = val
     return by_freesurfer_region
+
+def regionEffectSizesBetweenGroups(group_one, group_two, data, index_lookup):
+    # calculate group one suvr distr
+    group_uptakes_one = {k:[] for k in index_lookup}
+    for rid in group_one:
+        if rid not in data:
+            continue
+        for k in data[rid]:
+            group_uptakes_one[k].append(float(data[rid][k]))
+    # calculate group two suvr distr
+    group_uptakes_two = {k:[] for k in index_lookup}
+    for rid in group_two:
+        if rid not in data:
+            continue
+        for k in data[rid]:
+            group_uptakes_two[k].append(float(data[rid][k]))
+    # calculate effect sizes
+    group_effects = {}
+    for k in index_lookup:
+        one_uptake = group_uptakes_one[k]
+        two_uptake = group_uptakes_two[k]
+
+        u_uptake, pvalue_uptake = mannwhitneyu(one_uptake, two_uptake, use_continuity=True)
+        u_max_uptake = len(one_uptake) * len(two_uptake)
+        rank_biserial_uptake = 1.0 - (2*u_uptake/u_max_uptake)
+
+        to_save = {'pvalue': pvalue_uptake,'rank_biserial': rank_biserial_uptake}
+        group_effects[k] = to_save
+    return group_effects
 
 
 def regionalEffectSizes(subj_group, data_prior, data_post, index_lookup):
@@ -196,23 +227,33 @@ def regionalEffectSizes(subj_group, data_prior, data_post, index_lookup):
 
     return (uptakes_prior, ranks_prior, uptakes_post, ranks_post, group_effects)
 
+def rankSubjects(key_groups, subj, data):
+    avg_ranks = {}
+    for rid in subj:
+        if rid in data:
+            sorted_list = sorted(data[rid].iteritems(), key=lambda x: x[1], reverse=True)
+            key_group_ranks = [i for i,(k,v) in enumerate(sorted_list) if k in key_groups]
+            avg_rank = np.mean(key_group_ranks)
+            avg_ranks[rid] = avg_rank
+    return avg_ranks
+
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
 
-    # # agghigh raw results
-    # bl_file = '../raw_agghigh_output_BL.mat'
-    # scan2_file = '../raw_agghigh_output_Scan2.mat'
-    # scan3_file = '../raw_agghigh_output_Scan3.mat'
-    # data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
-    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
-
-    # group 4 raw results
-    bl_file = '../raw_group4_output_BL.mat'
-    scan2_file = '../raw_group4_output_Scan2.mat'
-    scan3_file = '../raw_group4_output_Scan3.mat'
+    # agghigh raw results
+    bl_file = '../raw_agghigh_output_BL.mat'
+    scan2_file = '../raw_agghigh_output_Scan2.mat'
+    scan3_file = '../raw_agghigh_output_Scan3.mat'
     data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
     data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+
+    # # group 4 raw results
+    # bl_file = '../raw_group4_output_BL.mat'
+    # scan2_file = '../raw_group4_output_Scan2.mat'
+    # scan3_file = '../raw_group4_output_Scan3.mat'
+    # data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
+    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
 
     data_prior = data_bl
     data_post = data_scan2
@@ -220,28 +261,36 @@ if __name__ == "__main__":
 
     line_data = {k:{'regions': [lut_table[_] for _ in v]} for k,v in index_lookup.iteritems()}
 
+    # # identify subjects who rank first in key_groups out of subj_group
+    # subj = GROUPS['increasing_low']['N'] + GROUPS['stable_low']['N']
+    # key_groups = ['Cluster17', 'Cluster36', 'Cluster45']
+    # avg_ranks = rankSubjects(key_groups, subj, data_scan2)
+    # for k,v in sorted(avg_ranks.iteritems(), key=lambda x: x[1]):
+    #     print "%s: %s" % (k,v)
+    # sys.exit(1)
+
     # low normals
     subj_group = GROUPS['increasing_low']['N'] + GROUPS['stable_low']['N']
     (uptakes_prior, ranks_prior, uptakes_post, ranks_post, group_effects) = regionalEffectSizes(subj_group, data_prior, data_post, index_lookup)
     for k,v in uptakes_prior.iteritems():
         line_data[k]['LOW_N_%s' % 'uptakes_prior_mean'] = v[0]
         line_data[k]['LOW_N_%s' % 'uptakes_prior_std'] = v[1]
-    for k,v in ranks_prior.iteritems():
-        line_data[k]['LOW_N_%s' % 'ranks_prior_mean'] = v[0]
-        line_data[k]['LOW_N_%s' % 'ranks_prior_std'] = v[1]
+    # for k,v in ranks_prior.iteritems():
+    #     line_data[k]['LOW_N_%s' % 'ranks_prior_mean'] = v[0]
+    #     line_data[k]['LOW_N_%s' % 'ranks_prior_std'] = v[1]
     for k,v in uptakes_post.iteritems():
         line_data[k]['LOW_N_%s' % 'uptakes_post_mean'] = v[0]
         line_data[k]['LOW_N_%s' % 'uptakes_post_std'] = v[1]
-    for k,v in ranks_post.iteritems():
-        line_data[k]['LOW_N_%s' % 'ranks_post_mean'] = v[0]
-        line_data[k]['LOW_N_%s' % 'ranks_post_std'] = v[1]
+    # for k,v in ranks_post.iteritems():
+    #     line_data[k]['LOW_N_%s' % 'ranks_post_mean'] = v[0]
+    #     line_data[k]['LOW_N_%s' % 'ranks_post_std'] = v[1]
     for k,v in group_effects.iteritems():
         uptake_effect = v['uptake_effect']
-        rank_effect =v['rank_effect']
         for eff_k, eff_v in uptake_effect.iteritems():
             line_data[k]['LOW_N_uptake_effect_%s' % eff_k] = eff_v
-        for eff_k, eff_v in rank_effect.iteritems():
-            line_data[k]['LOW_N_rank_effect_%s' % eff_k] = eff_v
+        # rank_effect =v['rank_effect']
+        # for eff_k, eff_v in rank_effect.iteritems():
+        #     line_data[k]['LOW_N_rank_effect_%s' % eff_k] = eff_v
 
     # low, stable normals
     subj_group = GROUPS['stable_low']['N']
@@ -249,22 +298,22 @@ if __name__ == "__main__":
     for k,v in uptakes_prior.iteritems():
         line_data[k]['STABLE_LOW_N_%s' % 'uptakes_prior_mean'] = v[0]
         line_data[k]['STABLE_LOW_N_%s' % 'uptakes_prior_std'] = v[1]
-    for k,v in ranks_prior.iteritems():
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_prior_mean'] = v[0]
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_prior_std'] = v[1]
+    # for k,v in ranks_prior.iteritems():
+    #     line_data[k]['STABLE_LOW_N_%s' % 'ranks_prior_mean'] = v[0]
+    #     line_data[k]['STABLE_LOW_N_%s' % 'ranks_prior_std'] = v[1]
     for k,v in uptakes_post.iteritems():
         line_data[k]['STABLE_LOW_N_%s' % 'uptakes_post_mean'] = v[0]
         line_data[k]['STABLE_LOW_N_%s' % 'uptakes_post_std'] = v[1]
-    for k,v in ranks_post.iteritems():
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_post_mean'] = v[0]
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_post_std'] = v[1]
+    # for k,v in ranks_post.iteritems():
+    #     line_data[k]['STABLE_LOW_N_%s' % 'ranks_post_mean'] = v[0]
+    #     line_data[k]['STABLE_LOW_N_%s' % 'ranks_post_std'] = v[1]
     for k,v in group_effects.iteritems():
         uptake_effect = v['uptake_effect']
-        rank_effect =v['rank_effect']
         for eff_k, eff_v in uptake_effect.iteritems():
             line_data[k]['STABLE_LOW_N_uptake_effect_%s' % eff_k] = eff_v
-        for eff_k, eff_v in rank_effect.iteritems():
-            line_data[k]['STABLE_LOW_N_rank_effect_%s' % eff_k] = eff_v
+        # rank_effect =v['rank_effect']
+        # for eff_k, eff_v in rank_effect.iteritems():
+        #     line_data[k]['STABLE_LOW_N_rank_effect_%s' % eff_k] = eff_v
 
     # low, increasing normals
     subj_group = GROUPS['increasing_low']['N']
@@ -272,29 +321,64 @@ if __name__ == "__main__":
     for k,v in uptakes_prior.iteritems():
         line_data[k]['INC_LOW_N_%s' % 'uptakes_prior_mean'] = v[0]
         line_data[k]['INC_LOW_N_%s' % 'uptakes_prior_std'] = v[1]
-    for k,v in ranks_prior.iteritems():
-        line_data[k]['INC_LOW_N_%s' % 'ranks_prior_mean'] = v[0]
-        line_data[k]['INC_LOW_N_%s' % 'ranks_prior_std'] = v[1]
+    # for k,v in ranks_prior.iteritems():
+    #     line_data[k]['INC_LOW_N_%s' % 'ranks_prior_mean'] = v[0]
+    #     line_data[k]['INC_LOW_N_%s' % 'ranks_prior_std'] = v[1]
     for k,v in uptakes_post.iteritems():
         line_data[k]['INC_LOW_N_%s' % 'uptakes_post_mean'] = v[0]
         line_data[k]['INC_LOW_N_%s' % 'uptakes_post_std'] = v[1]
-    for k,v in ranks_post.iteritems():
-        line_data[k]['INC_LOW_N_%s' % 'ranks_post_mean'] = v[0]
-        line_data[k]['INC_LOW_N_%s' % 'ranks_post_std'] = v[1]
+    # for k,v in ranks_post.iteritems():
+    #     line_data[k]['INC_LOW_N_%s' % 'ranks_post_mean'] = v[0]
+    #     line_data[k]['INC_LOW_N_%s' % 'ranks_post_std'] = v[1]
     for k,v in group_effects.iteritems():
         uptake_effect = v['uptake_effect']
-        rank_effect =v['rank_effect']
         for eff_k, eff_v in uptake_effect.iteritems():
             line_data[k]['INC_LOW_N_uptake_effect_%s' % eff_k] = eff_v
-        for eff_k, eff_v in rank_effect.iteritems():
-            line_data[k]['INC_LOW_N_rank_effect_%s' % eff_k] = eff_v
+        # rank_effect =v['rank_effect']
+        # for eff_k, eff_v in rank_effect.iteritems():
+        #     line_data[k]['INC_LOW_N_rank_effect_%s' % eff_k] = eff_v
+
+    # effects between INC_LOW and STABLE_LOW
+    inc_vs_low_effects = regionEffectSizesBetweenGroups(GROUPS['increasing_low']['N'], 
+                                                        GROUPS['stable_low']['N'], 
+                                                        data_prior, 
+                                                        index_lookup)
+    for k,v in inc_vs_low_effects.iteritems():
+        for eff_k, eff_v in v.iteritems():
+            line_data[k]['INC_VS_STABLE_uptake_effect_%s' % eff_k] = eff_v
 
     columns = ['Name'] + sorted(line_data.values()[0].keys())
     lines = []
     for k,v in line_data.iteritems():
         v['Name'] = k
         lines.append(v)
-    dumpCSV('../regional_effect_sizes_group4.csv', columns, lines)
+    dumpCSV('../regional_effect_sizes_agghigh.csv', columns, lines)
+
+
+    # write out results to matfile
+    out_file = '../output/fake_aparc_inputs/ALL_LOW_N_mean_suvr.mat'
+    values = {k: v['LOW_N_uptakes_prior_mean'] for k,v in line_data.iteritems()}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
+    out_file = '../output/fake_aparc_inputs/INC_LOW_N_mean_suvr.mat'
+    values = {k: v['INC_LOW_N_uptakes_prior_mean'] for k,v in line_data.iteritems()}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
+    out_file = '../output/fake_aparc_inputs/STABLE_LOW_N_mean_suvr.mat'
+    values = {k: v['STABLE_LOW_N_uptakes_prior_mean'] for k,v in line_data.iteritems()}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
+    out_file = '../output/fake_aparc_inputs/ALL_LOW_N_long_effect.mat'
+    values = {k: v['LOW_N_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
+    out_file = '../output/fake_aparc_inputs/INC_LOW_N_long_effect.mat'
+    values = {k: v['INC_LOW_N_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
+    out_file = '../output/fake_aparc_inputs/STABLE_LOW_N_long_effect.mat'
+    values = {k: v['STABLE_LOW_N_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
+    out_file = '../output/fake_aparc_inputs/INC_VS_STABLE_bl_effect.mat'
+    values = {k: v['INC_VS_STABLE_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
+
+
 
     # # See how ranking similarity varies as function of number of regions considered
     # regions_considered = range(1,len(index_lookup)+1)

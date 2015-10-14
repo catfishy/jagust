@@ -734,8 +734,10 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                             'AV45_PVC_group4_CorticalSummary/Bigref_slope_2points',
                             'AV45_PVC_group4_CorticalSummary/Bigref_slope_3points',
                             'AV45_PVC_group4_HemiWM_slope_2points',
-                            'AV45_PVC_group4_HemiWM_slope_3points'], 
-                'ID': ['RID']}
+                            'AV45_PVC_group4_HemiWM_slope_3points',
+                            'AV45_PVC_agghigh_accumulator.00790',
+                            'AV45_PVC_agghigh_wcereb1.27_BL'], 
+                'RID': ['RID']}
 
 
 
@@ -758,6 +760,9 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
         to_add_headers += ['AV45_PVC_%s_Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
         to_add_headers += ['AV45_PVC_%s_CerebGM_%s' % (vg, tp) for tp in valid_timepoints]
         to_add_headers += ['AV45_PVC_%s_CerebWM_%s' % (vg, tp) for tp in valid_timepoints]
+        if vg == 'agghigh':
+            # SOME HARDCODED THRESHOLDING
+            to_add_headers += ['AV45_PVC_agghigh_accumulator.00790', 'AV45_PVC_agghigh_wcereb1.27_BL']
     after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
 
@@ -790,8 +795,10 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                               pid_key='RID', pet_meta=None)
         new_data = {'%s_%s' % (k, timepoint): v for k,v in new_data.iteritems()}
         old_l.update(new_data)
-        # calculate slopes if possible
-        if timepoint == 'Scan2':
+        if timepoint == 'BL':
+            bl_val = old_l.get('AV45_PVC_agghigh_CorticalSummary/Wholecereb_BL',0.0)
+            old_l['AV45_PVC_agghigh_wcereb1.27_BL'] = 1 if bl_val >= 1.27 else 0
+        elif timepoint == 'Scan2':
             # try to calculate slope with 2 points
             for vg in valid_groupings:
                 try:
@@ -802,6 +809,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
                     slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = slope
+                    if vg == 'agghigh':
+                        old_l['AV45_PVC_agghigh_accumulator.00790'] = 1 if slope >= 0.0079 else 0
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
@@ -829,6 +838,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     val3 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan3' % vg))
                     slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2, val3])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = slope
+                    if vg == 'agghigh':
+                        old_l['AV45_PVC_agghigh_accumulator.00790'] = 1 if slope >= 0.0079 else 0
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))

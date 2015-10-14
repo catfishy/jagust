@@ -24,6 +24,10 @@ filepath = "grouping_1.mat"
 groups_included[filepath] = [i for g in all_groups for i in g]
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
+# create input for fake aparc so we can visualize grouping
+out_file = '../output/fake_aparc_inputs/GROUP1.mat'
+sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
+
 
 left_frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032]
 right_frontal=[2003,2012,2014,2018,2019,2020,2027,2028,2032]
@@ -54,7 +58,9 @@ filepath = "grouping_2.mat"
 groups_included[filepath] = [i for g in all_groups for i in g]
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
-
+# create input for fake aparc so we can visualize grouping
+out_file = '../output/fake_aparc_inputs/GROUP2.mat'
+sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
 
 frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
 parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
@@ -80,6 +86,9 @@ filepath = "grouping_3.mat"
 groups_included[filepath] = [i for g in all_groups for i in g]
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
+# create input for fake aparc so we can visualize grouping
+out_file = '../output/fake_aparc_inputs/GROUP3.mat'
+sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
 
 left_frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032]
 right_frontal=[2003,2012,2014,2018,2019,2020,2027,2028,2032]
@@ -118,6 +127,10 @@ filepath = "grouping_4.mat"
 groups_included[filepath] = [i for g in all_groups for i in g]
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
+# create input for fake aparc so we can visualize grouping
+out_file = '../output/fake_aparc_inputs/GROUP4.mat'
+sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
+
 
 Cluster0=[1021, 2021]
 Cluster1=[2024, 1024, 1022, 2022]
@@ -188,7 +201,9 @@ filepath = "grouping_agghigh.mat"
 groups_included[filepath] = [i for g in all_groups for i in g]
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
-
+# create input for fake aparc so we can visualize grouping
+out_file = '../output/fake_aparc_inputs/GROUP_AGGHIGH.mat'
+sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
 
 Cluster0=[1023, 1026, 2014, 2026, 2010, 2023, 1012, 1010, 2002, 1002, 2012, 1025, 2025, 1014]
 Cluster1=[2, 41, 251]
@@ -230,7 +245,9 @@ filepath = "grouping_agglowtwo.mat"
 groups_included[filepath] = [i for g in all_groups for i in g]
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
-
+# create input for fake aparc so we can visualize grouping
+out_file = '../output/fake_aparc_inputs/GROUP_AGGLOWTWO.mat'
+sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
 
 
 print groups_included

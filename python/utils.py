@@ -98,6 +98,7 @@ def importRawRoussetResults(rousset_mat):
     return sorted_data
 
 def parseRawRousset(bl_file, scan2_file, scan3_file):
+    wcereb_regions = set([7,8,46,47])
     data_bl_raw = importRawRoussetResults(bl_file)
     data_scan2_raw = importRawRoussetResults(scan2_file)
     data_scan3_raw = importRawRoussetResults(scan3_file)
@@ -110,7 +111,14 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         sizes = [unwrap(_) for _ in data['sizes']]
         pvcvals = [unwrap(_) for _ in data['pvcvals']]
         indices = [unwrap(_) for _ in data['indices']]
+        indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
         vals = dict(zip(names, pvcvals))
+        # add whole cereb
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
+        regionvalues = [_[1] for _ in regionsizes]
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['whole_cerebellum'] = sum(regionweights*regionvalues)
         if index_lookup is None:
             index_lookup = dict(zip(names, indices))
         data_bl[rid] = vals
@@ -119,20 +127,29 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         sizes = [unwrap(_) for _ in data['sizes']]
         pvcvals = [unwrap(_) for _ in data['pvcvals']]
         indices = [unwrap(_) for _ in data['indices']]
+        indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
         vals = dict(zip(names, pvcvals))
+        # add whole cereb
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
+        regionvalues = [_[1] for _ in regionsizes]
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['whole_cerebellum'] = sum(regionweights*regionvalues)
         data_scan2[rid] = vals
     for rid, data in data_scan2_raw.iteritems():
         names = [unwrap(_) for _ in data['names']]
         sizes = [unwrap(_) for _ in data['sizes']]
         pvcvals = [unwrap(_) for _ in data['pvcvals']]
         indices = [unwrap(_) for _ in data['indices']]
+        indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
         vals = dict(zip(names, pvcvals))
+        # add whole cereb
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
+        regionvalues = [_[1] for _ in regionsizes]
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['whole_cerebellum'] = sum(regionweights*regionvalues)
         data_scan3[rid] = vals
-    # make sure index_lookup values are lists
-    for k,v in index_lookup.iteritems():
-        if not (isinstance(v, list) or isinstance(v, np.ndarray)):
-            v = [v]
-        index_lookup[k] = v
     return data_bl, data_scan2, data_scan3, index_lookup
 
 
