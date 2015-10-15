@@ -124,7 +124,7 @@ def extractRegionalValuesAV45(row, lut):
     return uptakes, sizes
 
 
-def parseRoussetOutputs(bl_file, scan2_file, scan3_file, pvcval=True):
+def parseRoussetOutputs(bl_file, scan2_file, scan3_file, pvcval=True, grouping='group4'):
     group_bl, data_bl_raw = importRoussetResults(bl_file)
     group_scan2, data_scan2_raw = importRoussetResults(scan2_file)
     group_scan3, data_scan3_raw = importRoussetResults(scan3_file)
@@ -585,6 +585,37 @@ def effectTests(pts1, pts2, name_one, name_two):
     print "(Shapiro) %s: %s\n%s: %s" % (name_one, pvalue_1, name_two, pvalue_2)
     t, pval = ttest_ind(pts1, pts2, equal_var=False)
     print "(TTEST) t: %s\npval: %s" % (t, pval)
+    u, pvalue = mannwhitneyu(pts1, pts2, use_continuity=True)
+    u_max = len(pts1) * len(pts2)
+    rank_biserial = 1.0 - (2*u/u_max)
+    print "(MANNWHITNEY): pval: %s\n rankbiserial: %s" % (pvalue, rank_biserial)
+
+def calculatePVCvsNonPVCSlope(bl_file, scan2_file, scan3_file)
+    # for PVC
+    data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(bl_file,scan2_file,scan3_file, pvcval=True)
+    data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(bl_file,scan2_file,scan3_file, pvcval=False)
+    points = []
+    for k,v in data_bl_pvc.iteritems():
+        pvcval = v[0]['composite']
+        nonpvcval = data_bl_nonpvc[k][0]['composite']
+        res = res_bl[k]['group4']
+        points.append((nonpvcval, pvcval, res))
+    for k,v in data_scan2_pvc.iteritems():
+        pvcval = v[0]['composite']
+        nonpvcval = data_scan2_nonpvc[k][0]['composite']
+        res = res_scan2[k]['group4']
+        points.append((nonpvcval, pvcval, res))
+    for k,v in data_scan3_pvc.iteritems():
+        pvcval = v[0]['composite']
+        nonpvcval = data_scan3_nonpvc[k][0]['composite']
+        res = res_scan3[k]['group4']
+        points.append((nonpvcval, pvcval, res))
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in points], [_[1] for _ in points])
+    p = np.poly1d([slope, intercept])
+    fit_threshold = p(fit_threshold)
+    print "NEW THRESHOLD: %s" % fit_threshold
+
+
 
 if __name__ == "__main__":
     # main files
