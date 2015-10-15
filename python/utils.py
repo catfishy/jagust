@@ -97,6 +97,48 @@ def importRawRoussetResults(rousset_mat):
     sorted_data = dict(zip(subj_list,result_list))
     return sorted_data
 
+
+def parseRawAV45Output(av45_file, registry_file, lut_file):
+    lut_table = importFreesurferLookup(lut_file)
+    registry =  importRegistry(registry_file)
+    data = importAV45(av45_file,registry=registry)
+
+    # build index lookup
+    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
+    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
+    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
+    temporal=[1015,1030,2015,2030]
+    frontal_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in cingulate}
+    cingulate_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in parietal}
+    parietal_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in temporal}
+    temporal_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in frontal}
+    index_lookup = {}
+    index_lookup.update(frontal_keys)
+    index_lookup.update(cingulate_keys)
+    index_lookup.update(parietal_keys)
+    index_lookup.update(temporal_keys)
+
+    # parse data
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    for rid, rows in data.iteritems():
+        rows = sorted(rows, key=lambda x: x['EXAMDATE'])
+        if len(rows) > 0:
+            data_row = rows[0]
+            data_bl[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
+            data_bl[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
+        if len(rows) > 1:
+            data_row = rows[1]
+            data_scan2[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
+            data_scan2[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
+        if len(rows) > 2:
+            data_row = rows[2]
+            data_scan3[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
+            data_scan3[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
+
+    return data_bl, data_scan2, data_scan3, index_lookup
+
 def parseRawRousset(bl_file, scan2_file, scan3_file):
     wcereb_regions = set([7,8,46,47])
     data_bl_raw = importRawRoussetResults(bl_file)

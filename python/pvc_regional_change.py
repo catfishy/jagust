@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import copy
 import numpy as np
 import pylab
-from scipy.stats import norm, mannwhitneyu, linregress
+from scipy.stats import norm, mannwhitneyu, linregress, shapiro, ttest_ind
 
 
 STABLE = [89,
@@ -60,15 +60,15 @@ def extractRegionalValuesRousset(data, pvcval=True):
     data = data['group4']
     wholecereb = float(data['wholecereb'][key])
     bigref = float(data['bigref'][key])
-    cingulate_uptake = data['cingulate'][key]/wholecereb
+    cingulate_uptake = data['cingulate'][key]/bigref
     cingulate_vol = int(data['cingulate']['size'])
-    parietal_uptake = data['parietal'][key]/wholecereb
+    parietal_uptake = data['parietal'][key]/bigref
     parietal_vol = int(data['parietal']['size'])
-    temporal_uptake = data['temporal'][key]/wholecereb
+    temporal_uptake = data['temporal'][key]/bigref
     temporal_vol = int(data['temporal']['size'])
-    frontal_uptake = data['frontal'][key]/wholecereb
+    frontal_uptake = data['frontal'][key]/bigref
     frontal_vol = int(data['frontal']['size'])
-    composite_uptake = data['composite'][key]/wholecereb
+    composite_uptake = data['composite'][key]/bigref
     composite_vol = int(data['composite']['size'])
     uptakes = {'cingulate': cingulate_uptake,
                'parietal': parietal_uptake,
@@ -236,6 +236,32 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
                    'composite': uptake_composite_diff}
 
     return (vol_diff, uptake_diff, yrs_diff)
+
+def percentPlausibleNoNoise(vol_diff, uptake_diff, yrs):
+    # calculate percent with decreasing volume
+    frontal_decreasing = len([rid for rid, val in vol_diff['frontal'].iteritems() if val <= 0.0]) / float(len(vol_diff['frontal']))
+    parietal_decreasing = len([rid for rid, val in vol_diff['parietal'].iteritems() if val <= 0.0]) / float(len(vol_diff['parietal']))
+    temporal_decreasing = len([rid for rid, val in vol_diff['temporal'].iteritems() if val <= 0.0]) / float(len(vol_diff['temporal']))
+    cingulate_decreasing = len([rid for rid, val in vol_diff['cingulate'].iteritems() if val <= 0.0]) / float(len(vol_diff['cingulate']))
+    composite_decreasing = len([rid for rid, val in vol_diff['composite'].iteritems() if val <= 0.0]) / float(len(vol_diff['composite']))
+    # calculate percent increasing uptake
+    frontal_increasing = len([rid for rid, val in uptake_diff['frontal'].iteritems() if val >= 0.0]) / float(len(uptake_diff['frontal']))
+    parietal_increasing = len([rid for rid, val in uptake_diff['parietal'].iteritems() if val >= 0.0]) / float(len(uptake_diff['parietal']))
+    temporal_increasing = len([rid for rid, val in uptake_diff['temporal'].iteritems() if val >= 0.0]) / float(len(uptake_diff['temporal']))
+    cingulate_increasing = len([rid for rid, val in uptake_diff['cingulate'].iteritems() if val >= 0.0]) / float(len(uptake_diff['cingulate']))
+    composite_increasing = len([rid for rid, val in uptake_diff['composite'].iteritems() if val >= 0.0]) / float(len(uptake_diff['composite']))
+    print "Decreasing Volume"
+    print "frontal: %s" % frontal_decreasing
+    print "parietal: %s" % parietal_decreasing
+    print "temporal: %s" % temporal_decreasing
+    print "cingulate: %s" % cingulate_decreasing
+    print "composite: %s" % composite_decreasing
+    print "Increasing Uptake"
+    print "frontal: %s" % frontal_increasing
+    print "parietal: %s" % parietal_increasing
+    print "temporal: %s" % temporal_increasing
+    print "cingulate: %s" % cingulate_increasing
+    print "composite: %s" % composite_increasing
 
 def percentPlausible(vol_diff, uptake_diff, norm_fits, yrs):
     '''
@@ -553,6 +579,13 @@ def stratifySubjects(bl_uptake, uptake_diff, norm_fits, yrs, diags, threshold=1.
                            'AD': decreasing_high_ad}}
     return data
 
+def effectTests(pts1, pts2, name_one, name_two):
+    W_1, pvalue_1 = shapiro(pts1)
+    W_2, pvalue_2 = shapiro(pts2)
+    print "(Shapiro) %s: %s\n%s: %s" % (name_one, pvalue_1, name_two, pvalue_2)
+    t, pval = ttest_ind(pts1, pts2, equal_var=False)
+    print "(TTEST) t: %s\npval: %s" % (t, pval)
+
 if __name__ == "__main__":
     # main files
     registry_file = "../docs/registry_clean.csv"
@@ -644,42 +677,81 @@ if __name__ == "__main__":
 
 
     # composite threshold
-    fit_threshold = 1.11 # for whole cereb (PVC)
-    #fit_threshold = 0.79 # for big ref (non PVC)
+    #fit_threshold = 1.11 # for whole cereb
+    fit_threshold = 0.79 # for big ref (non PVC)
 
     # for PVC
-    data_bl, data_scan2, data_scan3 = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=True)
+    data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=True)
     data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=False)
     points = []
-    for k,v in data_bl.iteritems():
+    for k,v in data_bl_pvc.iteritems():
         pvcval = v[0]['composite']
         nonpvcval = data_bl_nonpvc[k][0]['composite']
         res = res_bl[k]['group4']
         points.append((nonpvcval, pvcval, res))
-    for k,v in data_scan2.iteritems():
+    for k,v in data_scan2_pvc.iteritems():
         pvcval = v[0]['composite']
         nonpvcval = data_scan2_nonpvc[k][0]['composite']
         res = res_scan2[k]['group4']
         points.append((nonpvcval, pvcval, res))
-    for k,v in data_scan3.iteritems():
+    for k,v in data_scan3_pvc.iteritems():
         pvcval = v[0]['composite']
         nonpvcval = data_scan3_nonpvc[k][0]['composite']
         res = res_scan3[k]['group4']
         points.append((nonpvcval, pvcval, res))
-    x = [_[0] for _ in points]
-    y = [_[1] for _ in points]
-    slope, intercept, r, p, stderr = linregress(x, y)
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in points], [_[1] for _ in points])
     p = np.poly1d([slope, intercept])
     fit_threshold = p(fit_threshold)
     print "NEW THRESHOLD: %s" % fit_threshold
     
     # for TP
-    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file, registry_file, lut_file)
+    data_bl_tp, data_scan2_tp, data_scan3_tp = parseAV45Output(av45_file, registry_file, lut_file)
 
     # for nonTP
-    #data_bl, data_scan2, data_scan3 = parseAV45Output(av45_file_nontp, registry_file, lut_file)
+    data_bl_nontp, data_scan2_nontp, data_scan3_nontp = parseAV45Output(av45_file_nontp, registry_file, lut_file)
+
+    # find annualize change
+    all_rids = list(set(data_scan2_nontp.keys() + data_scan3_nontp.keys()))
+    
+    print "Nontp vs TP, 2tp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, {}, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, {}, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'NONTP', 'TP')
+    print "Nontp vs TP, 3tp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_nontp, {}, data_scan3_nontp, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_tp, {}, data_scan3_tp, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'NONTP', 'TP')
+    print "Nontp vs TP, alltp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, data_scan3_nontp, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, data_scan3_tp, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'NONTP', 'TP')
+    print "PVC vs Nontp, 2tp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, {}, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, {}, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'PVC', 'NONTP')
+    print "PVC vs Nontp, 3tp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_pvc, {}, data_scan3_pvc, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_nontp, {}, data_scan3_nontp, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'PVC', 'NONTP')
+    print "PVC vs Nontp, alltp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, data_scan3_nontp, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'PVC', 'NONTP')
+    print "PVC vs TP, 2tp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, {}, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, {}, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'PVC', 'TP')
+    print "PVC vs TP, 3tp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_pvc, {}, data_scan3_pvc, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_tp, {}, data_scan3_tp, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'PVC', 'TP')
+    print "PVC vs TP, alltp"
+    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True)
+    vol_diff_2, uptake_diff_2, yrs_diff_2 = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, data_scan3_tp, master_data, annualize=True)
+    effectTests(uptake_diff_1['composite'].values(), uptake_diff_2['composite'].values(), 'PVC', 'TP')
 
 
+    sys.exit(1)
 
     # graph pvc vs nonpvcval, colored by residual quartile
     '''
@@ -716,25 +788,12 @@ if __name__ == "__main__":
     dumpRegionalDataset(output_file, data_bl, data_scan2, data_scan3, master_data)
     '''
 
-    # find high bl uptake
-    high_bl_uptake = []
-    for rid, data in data_bl.iteritems():
-        uptakes, sizes = data
-        if uptakes['composite'] >= 1.6:
-            high_bl_uptake.append(rid)
-
-    # find all subjects with longitudinal data
-    all_rids = list(set(data_scan2.keys() + data_scan3.keys()))
-
-    # find scan-rescan annualized noise
-    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(STABLE, data_bl, data_scan2, data_scan3, master_data, annualize=True)
-    norm_fits = fitNormalToUptakeChange(uptake_diff)
-    for k,v in norm_fits.iteritems():
-        print k
-        print "(%.5f, %.5f)" % v
-
-    # find annualized change
-    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl, data_scan2, data_scan3, master_data, annualize=True)
+    # # find scan-rescan annualized noise
+    # vol_diff_stable, uptake_diff_stable, yrs_diff_stable = findRegionalAnnualizedChange(STABLE, data_bl, data_scan2, data_scan3, master_data, annualize=True)
+    # norm_fits = fitNormalToUptakeChange(uptake_diff_stable)
+    # for k,v in norm_fits.iteritems():
+    #     print k
+    #     print "(%.5f, %.5f)" % v
 
     # graph residual quantiles versus uptake change
     '''
@@ -754,11 +813,10 @@ if __name__ == "__main__":
     # stratify into subject groups
     subj_groups = stratifySubjects(data_bl, uptake_diff, norm_fits, yrs_diff, diags, threshold=fit_threshold, graph=False)
     print subj_groups
-    sys.exit(1)
-
 
     # find percent plausible
-    percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
+    #percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
+    percentPlausibleNoNoise(vol_diff, uptake_diff, yrs_diff)
 
     # calculate diagnosis group effects
     diagGroupEffects(data_bl, diags)
