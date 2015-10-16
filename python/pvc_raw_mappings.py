@@ -6,6 +6,7 @@ import itertools
 import matplotlib.pyplot as plt
 import pylab
 from scipy.stats import norm, mannwhitneyu, linregress
+from ggplot import *
 
 GROUPS = {'increasing_high': {'AD': [4657, 4660, 4153, 4672, 4696, 4195, 4252, 4258, 4477, 4494, 4500, 4568, 4089], 
                               'EMCI': [4614, 2063, 4624, 2073, 4635, 2077, 2087, 4146, 4149, 4674, 4679, 4680, 2121, 2133, 
@@ -241,6 +242,12 @@ def rankSubjects(key_groups, subj, data):
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
+    master_file = '../FDG_AV45_COGdata_10_15_15.csv'
+    master_data = importMaster(master_file)
+    diags = {}
+    for rid, row in master_data.iteritems():
+        diag = row['Init_Diagnosis'].strip()
+        diags[rid] = diag
 
     # # agghigh raw results
     # bl_file = '../raw_agghigh_output_BL.mat'
@@ -265,6 +272,35 @@ if __name__ == "__main__":
     data_prior = data_bl
     data_post = data_scan2
     data_post.update(data_scan3)
+
+    all_data = []
+    allrids = list(set(data_scan2.keys() + data_scan3.keys()))
+    for rid in allrids:
+        datarow = {'rid': rid,
+                   'diag': diags.get(rid,'')}
+        bl_data = data_bl[rid]
+        scan2_data = data_scan2.get(rid,{})
+        scan3_data = data_scan3.get(rid,{})
+        long_data = {}
+        if scan2_data:
+            yrs = yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+            for k in index_lookup:
+                long_data[k] = scan2_data[k] - bl_data[k] / yrs
+        if scan3_data:
+            yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+            for k in index_lookup:
+                long_data[k] = scan2_data[k] - bl_data[k] / yrs
+        for k,v in bl_data.iteritems():
+            datarow['%s_bl' % k ] = v
+        for k,v in long_data.iteritems():
+            datarow['%s_change' % k] = v
+        all_data.append(datarow)
+    df = pd.DataFrame(all_data)
+    print df
+    outfile = open('../regional_bl_vs_change.json','w')
+    outfile.write(df.to_json())
+    sys.exit(1)
+
 
     line_data = {k:{'regions': [lut_table[_] for _ in v]} for k,v in index_lookup.iteritems()}
 
@@ -363,7 +399,9 @@ if __name__ == "__main__":
 
 
     # # write out results to matfile
-
+    out_file = '../output/fake_aparc_inputs/REGION_INDICES.mat'
+    values = {k: i+1 for i, (k,v) in enumerate(line_data.iteritems())}
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
     out_file = '../output/fake_aparc_inputs/ALL_LOW_N_mean_suvr.mat'
     values = {k: v['LOW_N_uptakes_prior_mean'] for k,v in line_data.iteritems()}
     sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})

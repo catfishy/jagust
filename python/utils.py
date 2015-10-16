@@ -291,11 +291,14 @@ def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
     return gaps, valid_ks
 
 
-def parseCSV(file_path, delimiter=','):
-    data = pd.read_csv(file_path, sep=delimiter, low_memory=False)
-    data.rename(columns=lambda x: x.strip(), inplace=True)
+def parseCSV(file_path, delimiter=',', use_second_line=False):
+    if use_second_line:
+        data = pd.read_csv(file_path, sep=delimiter, low_memory=False, header=[0,1])
+        data.columns = data.columns.get_level_values(1)
+    else:
+        data = pd.read_csv(file_path, sep=delimiter, low_memory=False)
     lines = [dict(data.iloc[i].replace(np.nan, '')) for i in range(len(data))]
-    headers = list(data.columns.values)
+    headers = list(data.columns)
     return (headers, lines)
 
 def createVisitIDLookup(lookupfile):
@@ -1146,13 +1149,14 @@ def importMRI(mri_file, magstrength_filter=None, filter_mprage=True):
 
 
 def importMaster(master_file):
-    headers, lines = parseCSV(master_file)
+    headers, lines = parseCSV(master_file, use_second_line=True)
     data = {}
     for i, line in enumerate(lines):
         # get subject ID
         try:
             subj = int(line['RID'])
         except Exception as e:
+            print line.keys()
             continue
         data[subj] = line
     return data
