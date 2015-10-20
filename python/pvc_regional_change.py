@@ -656,10 +656,7 @@ if __name__ == "__main__":
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
     master_data = importMaster(master_file)
-    diags = {}
-    for rid, row in master_data.iteritems():
-        diag = row['Init_Diagnosis'].strip()
-        diags[rid] = diag
+    diags = extractDiagnosesFromMasterData(master_data)
 
     # grabbing residuals
     '''

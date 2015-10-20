@@ -244,10 +244,7 @@ if __name__ == "__main__":
     lut_table = importFreesurferLookup(lut_file)
     master_file = '../FDG_AV45_COGdata_10_15_15.csv'
     master_data = importMaster(master_file)
-    diags = {}
-    for rid, row in master_data.iteritems():
-        diag = row['Init_Diagnosis'].strip()
-        diags[rid] = diag
+    diags = extractDiagnosesFromMasterData(master_data)
 
     # # agghigh raw results
     # bl_file = '../raw_agghigh_output_BL.mat'

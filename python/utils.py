@@ -290,6 +290,12 @@ def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
 
     return gaps, valid_ks
 
+def extractDiagnosesFromMasterData(master_data):
+    diags = {}
+    for rid, row in master_data.iteritems():
+        diag = row['Init_Diagnosis'].strip()
+        diags[rid] = diag
+    return diags
 
 def parseCSV(file_path, delimiter=',', use_second_line=False):
     if use_second_line:

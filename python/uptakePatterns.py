@@ -156,26 +156,23 @@ def deriveRoussetClusterUptakePattern(rousset_data, master_data):
 
 
 if __name__ == "__main__":
-    nontp_file = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
-    tp_file = '../output/UCBERKELEYAV45_09_25_15_extra.csv'
     registry_file = "../docs/registry_clean.csv"
     master_file = '../FDG_AV45_COGdata_09_25_15.csv'
-
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
-
     registry = importRegistry(registry_file)
+    master_data = importMaster(master_file) 
+    diags = extractDiagnosesFromMasterData(master_data)
+    
+    # load av45 data 
+    nontp_file = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
+    tp_file = '../output/UCBERKELEYAV45_09_25_15_extra.csv'
     tp_data = importAV45(tp_file, av45_nontp_file=None ,registry=registry)
     nontp_data = importAV45(nontp_file, av45_nontp_file=None, registry=registry)
-    master_data = importMaster(master_file) 
+    # rousset_mat = "../raw_agghigh_output.mat"
+    # rousset_data = loadMATFile(rousset_mat)
 
-    rousset_mat = "../raw_agghigh_output.mat"
-    rousset_data = loadMATFile(rousset_mat)
-
-    diags = {}
-    for rid, row in master_data.iteritems():
-        diag = row['Init_Diagnosis'].strip()
-        diags[rid] = diag
+    
 
     # get dataset
     summary, data_BL, data_Scan2, data_Scan3 = deriveCorticalSummaryUptakePattern(nontp_data, master_data, lut_table) # using preprocessed data
