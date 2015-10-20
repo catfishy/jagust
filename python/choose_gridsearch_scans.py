@@ -91,17 +91,6 @@ def main(master_file):
     return (all_N, all_AD)
 
 if __name__ == "__main__":
-    '''
-    # To find low/mid/high scans to run PVC on
-    master = "../FDG_AV45_COGdata_07_28_15.csv"
-    all_N, all_AD = main(master)
-    print "AD: %s" % all_AD
-    print "N: %s" % all_N
-
-    subj = all_N + all_AD
-    print subj
-    sys.exit(1)
-    '''
     # To generate the Rousset SGE input file
     subj_list = ['003-S-0907', '003-S-4152', '011-S-4827', '003-S-2374', '011-S-0021', '011-S-4845', '003-S-4136', '003-S-4081', '011-S-4893', '003-S-1057', '011-S-4906', '003-S-4119', '011-S-4912', '003-S-4350', 
                  '003-S-0908', '003-S-4288', '011-S-4949', '003-S-0981', '003-S-1122', '003-S-1074', '002-S-0413', '009-S-4337', '009-S-4612', '009-S-5027', '011-S-0023', '012-S-4012', '002-S-0685', '009-S-5037', '011-S-2274', '012-S-4026', '002-S-1155', '009-S-4741', '009-S-5125', '011-S-4075', '012-S-4094', 
@@ -147,36 +136,18 @@ if __name__ == "__main__":
                  '127-S-5200', '127-S-5218', '018-S-5240', '027-S-5277', '126-S-5243', '027-S-5170', '027-S-5288', '057-S-5292', '141-S-4711', '141-S-4803', '141-S-4907', '141-S-4976', '153-S-2109', '153-S-2148', '153-S-4077', '153-S-4125', '153-S-4133', '153-S-4139', '153-S-4151', '153-S-4159', '153-S-4172', '153-S-4297', '153-S-4372', '153-S-4621', '153-S-4838', '153-S-5261', '153-S-5267', '941-S-1195', '941-S-1202', '941-S-2060', '941-S-4036', '941-S-4066', '941-S-4100', '941-S-4187', '941-S-4255', 
                  '941-S-4292', '941-S-4365', '941-S-4376', '941-S-4420', '941-S-4764', '941-S-5124', '941-S-5193', '027-S-5083', '027-S-5079', '114-S-2392', '137-S-0668', '128-S-5123', '021-S-0337']
     subj = [int(_.split('-')[-1]) for _ in subj_list]
-    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_Scan2/grouping_2.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_Scan2/grouping_4.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_Scan2/grouping_agghigh.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_Scan2/grouping_agglowtwo.mat']
-    output = 'input_scan2.txt'
-    generate_Rousset_input(subj, groupings, output)
 
-    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_BL/grouping_2.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_BL/grouping_4.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_BL/grouping_agghigh.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_BL/grouping_agglowtwo.mat']
-    output = 'input_bl.txt'
-    generate_Rousset_input(subj, groupings, output)
+    # groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_2.mat',
+    #              '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_4.mat',
+    #              '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_agghigh.mat',
+    #              '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_agglowtwo.mat']
 
-    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_Scan3/grouping_2.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_Scan3/grouping_4.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_Scan3/grouping_agghigh.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_Scan3/grouping_agglowtwo.mat']
-    output = 'input_scan3.txt'
-    
-    generate_Rousset_input(subj, groupings, output)
-    sys.exit(1)
+    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_allregions.mat',
+                 '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_summary.mat']
 
-    '''
-    output = 'input_agglow.txt'
-    generate_Rousset_input(subj, ['/home/jagust/ahorng/matlab/pvc/groupings_082715/grouping_agglow.mat'], output)
-    '''
-
-    '''
-    error_subj = [4022, 4376, 4309, 1202, 5177, 4730, 5261, 4963, 337, 4657, 4621, 4553, 4269, 4356, 4351, 4815, 4420, 4426, 4100, 5132, 5130, 4187, 4907, 5123, 4172, 5119, 4772, 4589, 4077, 4073, 5165, 4294, 5057, 1195, 4258, 4817, 4250, 4255, 4918, 2060, 5170, 5079, 4220, 4292, 4408, 5038, 5267, 2148, 4036, 5031, 4139, 4133, 4433, 4722, 4542, 668, 5236, 5237, 4343, 4438, 4463, 5169, 5109, 55, 4862, 5292, 4660, 2151, 2392, 5214, 5219, 5199, 4160, 5197, 2333, 5093, 4303, 4959, 4151, 4571, 4125, 5067, 5062, 5243, 4232, 4406, 4609, 4976, 778, 4971, 5218, 5099, 4127, 5095, 5288, 5265, 2347, 4925, 4053, 4711, 4159, 4372, 2205, 5196, 5185, 5110, 4446, 4371, 4883, 4816, 4838, 2109, 4764, 5118, 5240, 4598, 2403, 5200, 5209, 4331, 5193, 5194, 4517, 5277, 4211, 4566, 4641, 2314, 5138, 5135, 4803, 4417, 4900, 2391, 5129, 5124, 5127, 4299, 5083, 4297, 4489, 5158, 4066, 4742, 4745, 5154, 4605, 2210, 767, 2373, 4365, 4456, 2130, 4990, 5166, 4281, 4852, 4586]
-    output = 'input_errors.txt'
-    generate_Rousset_input(error_subj, groupings, output)
-    '''
+    timepoints = ['BL', 'Scan2', 'Scan3']
+    for tp in timepoints:
+        cur_groupings = [_ % (tp,) for _ in groupings]
+        print cur_groupings
+        output = 'input_allregions_%s.txt' % tp.lower()
+        generate_Rousset_input(subj, cur_groupings, output)

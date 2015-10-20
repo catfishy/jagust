@@ -653,17 +653,6 @@ if __name__ == "__main__":
     rousset_agghigh_raw_scan2 = '../raw_agghigh_output_Scan2.mat'
     rousset_agghigh_raw_scan3 = '../raw_agghigh_output_Scan3.mat'
 
-    # get cluster values and rates of change
-    '''
-    raw_bl, raw_scan2, raw_scan3, index_lookup = parseRawRousset(rousset_agghigh_raw_bl, 
-                                                                 rousset_agghigh_raw_scan2, 
-                                                                 rousset_agghigh_raw_scan3)
-    for k,v in raw_bl.iteritems():
-        print k 
-        print v
-    sys.exit(1)
-    '''
-
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
     master_data = importMaster(master_file)
@@ -721,17 +710,15 @@ if __name__ == "__main__":
     sys.exit(1)
     '''
 
-    # graph pvc vs non pvc for all the different rousset groupings
-    points_group4, p_group4 = calculatePVCvsNonPVCSlope(rousset_matfile_bl_manual, rousset_matfile_scan2_manual, rousset_matfile_scan3_manual, 'group4')
-    points_group2, p_group2 = calculatePVCvsNonPVCSlope(rousset_matfile_bl_manual, rousset_matfile_scan2_manual, rousset_matfile_scan3_manual, 'group2')
-    points_agglow, p_agglow = calculatePVCvsNonPVCSlope(rousset_matfile_bl_agg, rousset_matfile_scan2_agg, rousset_matfile_scan3_agg, 'agglowtwo')
-    points_agghigh, p_agghigh = calculatePVCvsNonPVCSlope(rousset_matfile_bl_agg, rousset_matfile_scan2_agg, rousset_matfile_scan3_agg, 'agghigh')
-    
-    allpoints_lng = pd.concat([points_group4, points_group2, points_agglow, points_agghigh]).reset_index(drop=True)
-    print allpoints_lng.to_json()
-    sys.exit(1)
-    ggplot(aes(x='NonPVC', y='PVC', colour='grouping'), data=allpoints_lng) + geom_point()
-
+    # # graph pvc vs non pvc for all the different rousset groupings
+    # points_group4, p_group4 = calculatePVCvsNonPVCSlope(rousset_matfile_bl_manual, rousset_matfile_scan2_manual, rousset_matfile_scan3_manual, 'group4')
+    # points_group2, p_group2 = calculatePVCvsNonPVCSlope(rousset_matfile_bl_manual, rousset_matfile_scan2_manual, rousset_matfile_scan3_manual, 'group2')
+    # points_agglow, p_agglow = calculatePVCvsNonPVCSlope(rousset_matfile_bl_agg, rousset_matfile_scan2_agg, rousset_matfile_scan3_agg, 'agglowtwo')
+    # points_agghigh, p_agghigh = calculatePVCvsNonPVCSlope(rousset_matfile_bl_agg, rousset_matfile_scan2_agg, rousset_matfile_scan3_agg, 'agghigh')
+    # allpoints_lng = pd.concat([points_group4, points_group2, points_agglow, points_agghigh]).reset_index(drop=True)
+    # print allpoints_lng.to_json()
+    # sys.exit(1)
+    # ggplot(aes(x='NonPVC', y='PVC', colour='grouping'), data=allpoints_lng) + geom_point()
 
 
     # composite threshold
@@ -743,15 +730,18 @@ if __name__ == "__main__":
     points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl_manual, rousset_matfile_scan2_manual, rousset_matfile_scan3_manual, 'group4')
     fit_threshold = p(fit_threshold)
     print "NEW THRESHOLD: %s" % fit_threshold
+    #vol_diff_pvc, uptake_diff_pvc, yrs_diff_pvc = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True)
 
     # for TP
     data_bl_tp, data_scan2_tp, data_scan3_tp = parseAV45Output(av45_file, registry_file, lut_file)
+    #vol_diff_tp, uptake_diff_tp, yrs_diff_tp = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, data_scan3_tp, master_data, annualize=True)
 
     # for nonTP
     data_bl_nontp, data_scan2_nontp, data_scan3_nontp = parseAV45Output(av45_file_nontp, registry_file, lut_file)
-    all_rids = list(set(data_scan2_nontp.keys() + data_scan3_nontp.keys()))
-    vol_diff_1, uptake_diff_1, yrs_diff_1 = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, data_scan3_nontp, master_data, annualize=True)
+    #vol_diff_nontp, uptake_diff_nontp, yrs_diff_nontp = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, data_scan3_nontp, master_data, annualize=True)
 
+
+    all_rids = list(set(data_scan2_nontp.keys() + data_scan3_nontp.keys()))
 
     # # find scan-rescan annualized noise
     # vol_diff_stable, uptake_diff_stable, yrs_diff_stable = findRegionalAnnualizedChange(STABLE, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True)
@@ -861,34 +851,45 @@ if __name__ == "__main__":
     # plt.show()
 
     # stratify into subject groups
-    vol_diff_stable, uptake_diff_stable, yrs_diff_stable = findRegionalAnnualizedChange(STABLE, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True)
+    vol_diff_stable, uptake_diff_stable, yrs_diff_stable = findRegionalAnnualizedChange(STABLE, data_bl_tp, data_scan2_tp, data_scan3_tp, master_data, annualize=True)
     norm_fits = fitNormalToUptakeChange(uptake_diff_stable)
-    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True)
-    subj_groups = stratifySubjects(data_bl_pvc, uptake_diff, norm_fits, yrs_diff, diags, threshold=fit_threshold, graph=True)
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, data_scan3_tp, master_data, annualize=True)
+    subj_groups = stratifySubjects(data_bl_tp, uptake_diff, norm_fits, yrs_diff, diags, threshold=fit_threshold, graph=False)
+    print subj_groups
     sys.exit(1)
 
-
-
-    # find percent plausible
-    #percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
-    percentPlausibleNoNoise(vol_diff, uptake_diff, yrs_diff)
+    # # find percent plausible
+    # #percentPlausible(vol_diff, uptake_diff, norm_fits, yrs_diff)
+    # percentPlausibleNoNoise(vol_diff, uptake_diff, yrs_diff)
 
     # # calculate diagnosis group effects
     # diagGroupEffects(data_bl, diags)
 
-    # # plot volume change versus uptake change (marking high amyloid at baseline)
-    # colors = {}
-    # for rid in all_rids:
-    #     if rid in subj_groups['increasing']['N']:
-    #         c = 'k'
-    #     elif rid in subj_groups['increasing']['EMCI']:
-    #         c = 'y'
-    #     elif rid in subj_groups['increasing']['LMCI']:
-    #         c = 'g'
-    #     elif rid in subj_groups['increasing']['AD']:
-    #         c= 'r'
-    #     else:
-    #         c= 'w'
-    #     colors[rid] = c
-    # plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff)
+    # plot volume change versus uptake change (marking high amyloid at baseline)
+    data = []
+    group_subjects = {k: [_ for subgroup in v.values() for _ in subgroup] for k,v in subj_groups.iteritems()}
+    for rid in all_rids:
+        data_row = {'rid': rid,
+                    'diag': diags.get(rid,'')}
+        group = None
+        for k,v in group_subjects.iteritems():
+            if rid in v:
+                group = k
+                break
+        if group is None:
+            continue
+        data_row['group'] = group
+        vol_diff_row = vol_diff.get(rid)
+        uptake_diff_row = uptake_diff.get(rid)
+        for k,v in vol_diff.iteritems():
+            data_row["%s_volume_change" % k] = v.get(rid,'')
+        for k,v in uptake_diff.iteritems():
+            data_row["%s_uptake_change" % k] = v.get(rid,'')
+        data.append(data_row)
+    df = pd.DataFrame(data)
+    print df
+    with open('../volumechange_vs_uptake_change.json','w') as outfile:
+        outfile.write(df.to_json())
+
+    #plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff)
 

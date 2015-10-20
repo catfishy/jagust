@@ -285,11 +285,11 @@ if __name__ == "__main__":
         if scan2_data:
             yrs = yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
             for k in index_lookup:
-                long_data[k] = scan2_data[k] - bl_data[k] / yrs
+                long_data[k] = (scan2_data[k] - bl_data[k]) / yrs
         if scan3_data:
             yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
             for k in index_lookup:
-                long_data[k] = scan2_data[k] - bl_data[k] / yrs
+                long_data[k] = (scan2_data[k] - bl_data[k]) / yrs
         for k,v in bl_data.iteritems():
             datarow['%s_bl' % k ] = v
         for k,v in long_data.iteritems():
