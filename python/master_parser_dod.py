@@ -343,14 +343,14 @@ def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
     return (new_headers, new_lines)
 
 
-def syncAV45Data(old_headers, old_lines, av45_file, registry_file, dump_to=None):
+def syncAV45Data(old_headers, old_lines, av45_file, registry_file, diags, dump_to=None):
     '''
     Only take ADNI1 Controls:
     If PID is < 6000, then filter by ADNI1_CONTROLS
     '''
-
     registry = importDODRegistry(registry_file)
     av45_by_subj = importAV45(av45_file, registry=registry)
+    ADNI1_CONTROLS = [rid for rid,diag in diags.iteritems() if diag == 'N']
 
     new_headers = None
     new_lines = []
@@ -567,8 +567,11 @@ def runPipeline():
         new_headers = ['SCRNO', 'Notes']
         new_lines = []
 
+    # get diagnoses
+    diags = extractDiagnosesFromMasterData(importMaster(av45_master_file))
+
     print "\nSYNCING AV45\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=None) # adds new patients
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, diags, dump_to=None) # adds new patients
     print "\nSYNCING APOE\n"
     new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file, dump_to=None)
     print "\nSYNCING ADAS\n"
@@ -594,40 +597,17 @@ def runPipeline():
 
 if __name__ == '__main__':
     now = datetime.now()
-    
-    ADNI1_CONTROLS = [23,31,47,56,58,59,61,69,74,89,96,113,118,120,123,130,138,
-                      159,171,172,173,186,229,257,259,260,272,295,301,311,315,
-                      337,352,413,416,419,441,454,479,498,545,553,602,610,618,
-                      657,668,680,684,685,722,734,741,751,767,842,845,863,886,
-                      896,907,920,923,926,934,969,972,981,984,985,1016,1098,
-                      1190,1195,1206,1232,1261,1280,1286,1352,2201,2392,4003,
-                      4010,4014,4018,4020,4021,4026,4028,4032,4037,4041,4043,
-                      4050,4060,4066,4075,4076,4080,4081,4082,4084,4086,4090,
-                      4092,4093,4097,4100,4103,4104,4105,4119,4120,4121,4125,
-                      4139,4148,4150,4151,4155,4158,4164,4173,4174,4176,4177,
-                      4179,4196,4198,4200,4208,4213,4218,4222,4224,4225,4234,
-                      4254,4255,4262,4266,4269,4270,4275,4276,4277,4278,4279,
-                      4288,4290,4291,4292,4308,4313,4320,4335,4337,4339,4340,
-                      4343,4345,4348,4349,4350,4352,4357,4365,4367,4369,4371,
-                      4372,4376,4382,4384,4385,4386,4387,4388,4389,4391,4393,
-                      4396,4399,4400,4401,4410,4421,4422,4424,4427,4428,4429,
-                      4433,4441,4446,4448,4449,4453,4464,4466,4469,4474,4482,
-                      4483,4485,4488,4491,4496,4499,4503,4505,4506,4508,4512,
-                      4516,4520,4545,4552,4555,4558,4559,4560,4566,4576,4577,
-                      4578,4579,4580,4585,4586,4587,4598,4599,4604,4607,4609,
-                      4612,4616,4620,4632,4637,4638,4643,4644,4645,4649,4652,
-                      4688,4739,4762,4795,4832,4835,4843,4855,4856,4872,4878,
-                      4900,4921,4951,4952,5023,5040]
 
     # IO files
-    master_file = "../DOD_DATA.csv"
+    master_file = "" # not used
     output_file = "../DOD_DATA_%s.csv" % (now.strftime("%m_%d_%y"))
 
     # LOOKUP files
+    av45_master_file = '../FDG_AV45_COGdata_10_15_15.csv'
     registry_file = "../docs/DOD/DOD_REGISTRY.csv"
 
     # AV45 file
-    av45_file = '../output/AV45_DOD_LONI_08.05.15_extra_withcontrols.csv'
+    av45_file = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
     # AVLT file
     avlt_file = "../docs/DOD/NEUROBAT.csv"
     # ADAS file
@@ -650,7 +630,7 @@ if __name__ == '__main__':
     # Elig file
     elig_file = "../docs/DOD/VAELG.csv"
     # ADNI master file
-    adnimaster_file = "../FDG_AV45_COGdata_08_06_15.csv"
+    adnimaster_file = "../FDG_AV45_COGdata_10_15_15.csv"
 
     runPipeline()
 

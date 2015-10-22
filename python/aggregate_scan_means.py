@@ -431,41 +431,39 @@ def findPreprocessOutputFiles(folder_name, nontp=False):
 
 if __name__ == "__main__":
 
-    # for adni av45 nontp
-    output = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
-    registry = importRegistry("../docs/registry_clean.csv") 
-    meta_pet = "../docs/PET_META_LIST_edited.csv"
-    agg_type = 'adni_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
+    # # for adni av45 nontp
+    # output = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
+    # registry = importRegistry("../docs/registry_clean.csv") 
+    # meta_pet = "../docs/PET_META_LIST_edited.csv"
+    # agg_type = 'adni_extra'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
+    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+    #                              meta_pet, registry, agg_type)
     
-    # for adni av45
-    output = '../output/UCBERKELEYAV45_09_25_15_extra.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
-    registry = importRegistry("../docs/registry_clean.csv") 
-    meta_pet = "../docs/PET_META_LIST_edited.csv"
-    agg_type = 'adni_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
-    sys.exit(1)
+    # # for adni av45
+    # output = '../output/UCBERKELEYAV45_09_25_15_extra.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
+    # registry = importRegistry("../docs/registry_clean.csv") 
+    # meta_pet = "../docs/PET_META_LIST_edited.csv"
+    # agg_type = 'adni_extra'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
+    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+    #                              meta_pet, registry, agg_type)
     
 
     # for adni dod (add in adni controls)
-    '''
-    output = '../output/AV45_DOD_LONI_08.05.15_extra_withcontrols.csv'
+    output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
     temp_output = '../output/temp.csv'
-    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_08_05_15'
-    adni_preprocess_folder = '../docs/AV45_preprocess_output_07_08_15_extra'
+    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
+    adni_preprocess_folder = '../docs/AV45_preprocess_output_09_25_15'
     registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
     registry_adni = importRegistry("../docs/registry_clean.csv")
     meta_pet = None
     meta_pet_adni = None
     agg_type = 'dod_extra'
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder)
+    bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder, nontp=True)
     aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
                                  meta_pet, registry, agg_type)
     aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
@@ -474,19 +472,16 @@ if __name__ == "__main__":
     appendCSV(output, temp_output)
     print 'removing'
     removeFile(temp_output)
-    sys.exit(1)
-    '''
 
-    # for adni dod (don't add in adni controls)
-    '''
-    output = '../output/AV45_DOD_LONI_08.05.15_extra.csv'
-    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_08_05_15'
-    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
-    meta_pet = None
-    meta_pet_adni = None
-    agg_type = 'dod_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
-    sys.exit(1)
-    '''
+
+    # # for adni dod (don't add in adni controls)
+    # output = '../output/AV45_DOD_LONI_10.22.15_extra.csv'
+    # preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
+    # registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    # meta_pet = None
+    # meta_pet_adni = None
+    # agg_type = 'dod_extra'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+    #                              meta_pet, registry, agg_type)
+
