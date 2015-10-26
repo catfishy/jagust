@@ -92,6 +92,7 @@ def main(master_file):
 
 if __name__ == "__main__":
     # To generate the Rousset SGE input file
+    dod_subj_list = []
     subj_list = ['003-S-0907', '003-S-4152', '011-S-4827', '003-S-2374', '011-S-0021', '011-S-4845', '003-S-4136', '003-S-4081', '011-S-4893', '003-S-1057', '011-S-4906', '003-S-4119', '011-S-4912', '003-S-4350', 
                  '003-S-0908', '003-S-4288', '011-S-4949', '003-S-0981', '003-S-1122', '003-S-1074', '002-S-0413', '009-S-4337', '009-S-4612', '009-S-5027', '011-S-0023', '012-S-4012', '002-S-0685', '009-S-5037', '011-S-2274', '012-S-4026', '002-S-1155', '009-S-4741', '009-S-5125', '011-S-4075', '012-S-4094', 
                  '002-S-0729', '011-S-4105', '012-S-4128', '003-S-4555', '003-S-4354', '003-S-4441', '012-S-4188', '003-S-4644', '005-S-0546', '009-S-5147', '011-S-4120', '012-S-4545', '005-S-4168', '005-S-2390', 
@@ -142,12 +143,27 @@ if __name__ == "__main__":
     #              '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_agghigh.mat',
     #              '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_agglowtwo.mat']
 
-    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_allregions.mat',
-                 '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_summary.mat']
+    # groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_allregions.mat',
+    #              '/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_summary.mat']
+
+    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_allregions.mat']
+
+    groupings = ['/home/jagust/ahorng/matlab/pvc/groupings_%s/grouping_summary_DOD.mat']
+
+    # timepoints = ['BL', 'Scan2', 'Scan3']
+    # for tp in timepoints:
+    #     cur_groupings = [_ % (tp,) for _ in groupings]
+    #     print cur_groupings
+    #     output = 'input_allregions_%s.txt' % tp.lower()
+    #     generate_Rousset_input(subj, cur_groupings, output)
+
 
     timepoints = ['BL', 'Scan2', 'Scan3']
     for tp in timepoints:
         cur_groupings = [_ % (tp,) for _ in groupings]
         print cur_groupings
-        output = 'input_allregions_%s.txt' % tp.lower()
-        generate_Rousset_input(subj, cur_groupings, output)
+        output = 'input_summary_DOD_%s.txt' % tp.lower()
+        generate_Rousset_input(dod_subj_list, cur_groupings, output)
+
+
+

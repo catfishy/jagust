@@ -486,17 +486,20 @@ def importADNIDiagnosis(diag_file, registry=None):
     diag_headers, diag_lines = parseCSV(diag_file)
     diag_by_subj = defaultdict(list)
     for line in diag_lines:
-        subj = int(line['RID'])
-        viscode = line['VISCODE'].strip().lower()
-        viscode2 = line['VISCODE2'].strip().lower()
-        #if viscode == 'sc' or viscode2 == 'sc':
-        #    continue
+        if 'SCRNO' in line:
+            subj = int(line['SCRNO'])
+        else:
+            subj = int(line['RID'])
+        viscode = line.get('VISCODE','').strip().lower()
+        viscode2 = line.get('VISCODE2','').strip().lower()
+        
         examdate = line['EXAMDATE']
         change = line['DXCHANGE']
-        current = line['DXCURREN']
-        conv = line['DXCONV']
-        conv_type = line['DXCONTYP']
-        rev_type = line['DXREV']
+
+        current = line.get('DXCURREN','')
+        conv = line.get('DXCONV','')
+        conv_type = line.get('DXCONTYP','')
+        rev_type = line.get('DXREV','')
 
         if change != '':
             change = str(int(change))
@@ -911,7 +914,11 @@ def importGD_DOD(gd_file):
     data = defaultdict(dict)
     for line in lines:
         subj = int(line['SCRNO'])
-        gdtotal = int(line['GDTOTAL'])
+        gdtotal = line['GDTOTAL']
+        try:
+            gdtotal = int(gdtotal)
+        except:
+            pass
         data[subj]['gdtotal']  = gdtotal
     return dict(data)
 

@@ -290,8 +290,43 @@ def syncADNIMasterData(old_headers, old_lines, adnimaster_file, dump_to=None):
         dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
+def syncDiagData(old_headers, old_lines, diag_file, dump_to=None):
+    diag_by_subj = importADNIDiagnosis(diag_file, registry=None)
 
+    to_add_headers = ['Diag_%s' % _ for _ in range(5)]
+    to_add_headers += ["Diag_%s_Date" % _ for _ in range(5)]
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
+    new_lines = []
 
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        subj_diags = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+        conversion_dict = {1: 'N',
+                           2: 'MCI',
+                           3: 'AD',
+                           4: 'MCI',
+                           5: 'AD',
+                           6: 'AD',
+                           7: 'N',
+                           8: 'MCI',
+                           9: 'N'}
+
+        new_data = {}
+        subj_dx = [(conversion_dict[_['change']],_['EXAMDATE']) for _ in subj_diags]
+        for i, (dx, dx_date) in enumerate(subj_dx):
+            new_data['Diag_%s' % i] = dx
+            new_data['Diag_%s_Date' % i] = dx_date
+        return new_data
+
+    for i, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, diag_by_subj, extraction_fn, 
+                              pid_key='SCRNO', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
 
 def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
     elig_by_subj = importDODEligibility(elig_file)
@@ -572,6 +607,8 @@ def runPipeline():
 
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, diags, dump_to=None) # adds new patients
+    print "\nSYNCING DIAG\n"
+    new_headers, new_lines = syncDiagData(new_headers, new_lines, diag_file, dump_to=None)
     print "\nSYNCING APOE\n"
     new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file, dump_to=None)
     print "\nSYNCING ADAS\n"
@@ -631,6 +668,8 @@ if __name__ == '__main__':
     elig_file = "../docs/DOD/VAELG.csv"
     # ADNI master file
     adnimaster_file = "../FDG_AV45_COGdata_10_15_15.csv"
+    # diag file
+    diag_file = "../docs/DOD/DXSUM.csv"
 
     runPipeline()
 
