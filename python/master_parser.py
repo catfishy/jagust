@@ -657,86 +657,33 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                                 'AV45_wcereb_Slope_3pts',
                                 'AV45_brainstem_Slope_2pts',
                                 'AV45_brainstem_Slope_3pts'],
-                'AV45_PVC': ['AV45_PVC_agghigh_CorticalSummary/Wholecereb_BL',
-                            'AV45_PVC_agghigh_CorticalSummary/Wholecereb_Scan2',
-                            'AV45_PVC_agghigh_CorticalSummary/Wholecereb_Scan3',
-                            'AV45_PVC_agghigh_CorticalSummary/Bigref_BL',
-                            'AV45_PVC_agghigh_CorticalSummary/Bigref_Scan2',
-                            'AV45_PVC_agghigh_CorticalSummary/Bigref_Scan3',
-                            'AV45_PVC_agghigh_CorticalSummary_slope',
-                            'AV45_PVC_agghigh_CerebGM_BL',
-                            'AV45_PVC_agghigh_CerebGM_Scan2',
-                            'AV45_PVC_agghigh_CerebGM_Scan3',
-                            'AV45_PVC_agghigh_HemiWM/Wholecereb_BL',
-                            'AV45_PVC_agghigh_HemiWM/Wholecereb_Scan2',
-                            'AV45_PVC_agghigh_HemiWM/Wholecereb_Scan3',
-                            'AV45_PVC_grp2_slope',
-                            'AV45_PVC_agghigh_Wholecereb_BL',
-                            'AV45_PVC_agghigh_Wholecereb_Scan2',
-                            'AV45_PVC_agghigh_Wholecereb_Scan3',
-                            'AV45_PVC_agghigh_CerebWM_BL',
-                            'AV45_PVC_agghigh_CerebWM_Scan2',
-                            'AV45_PVC_agghigh_CerebWM_Scan3',
-                            'AV45_PVC_group2_CorticalSummary/Wholecereb_BL',
-                            'AV45_PVC_group2_CorticalSummary/Wholecereb_Scan2',
-                            'AV45_PVC_group2_CorticalSummary/Wholecereb_Scan3',
-                            'AV45_PVC_group2_CorticalSummary/Bigref_BL',
-                            'AV45_PVC_group2_CorticalSummary/Bigref_Scan2',
-                            'AV45_PVC_group2_CorticalSummary/Bigref_Scan3',
-                            'AV45_PVC_group2_CorticalSummary_slope',
-                            'AV45_PVC_group2_CorticalSummary_slope_allposs',
-                            'AV45_PVC_group2_CerebGM_BL',
-                            'AV45_PVC_group2_CerebGM_Scan2',
-                            'AV45_PVC_group2_CerebGM_Scan3',
-                            'AV45_PVC_group2_HemiWM/Wholecereb_BL',
-                            'AV45_PVC_group2_HemiWM/Wholecereb_Scan2',
-                            'AV45_PVC_group2_HemiWM/Wholecereb_Scan3',
-                            'AV45_PVC_group2_Wholecereb_BL',
-                            'AV45_PVC_group2_Wholecereb_Scan2',
-                            'AV45_PVC_group2_Wholecereb_Scan3',
-                            'AV45_PVC_group2_CerebWM_BL',
-                            'AV45_PVC_group2_CerebWM_Scan2',
-                            'AV45_PVC_group2_CerebWM_Scan3',
-                            'AV45_PVC_group4_CorticalSummary/Wholecereb_BL',
-                            'AV45_PVC_group4_CorticalSummary/Wholecereb_Scan2',
-                            'AV45_PVC_group4_CorticalSummary/Wholecereb_Scan3',
-                            'AV45_PVC_group4_CorticalSummary/Bigref_BL',
-                            'AV45_PVC_group4_CorticalSummary/Bigref_Scan2',
-                            'AV45_PVC_group4_CorticalSummary/Bigref_Scan3',
-                            'AV45_PVC_group4_CorticalSummary_slope',
-                            'AV45_PVC_group4_CorticalSummary_slope_allposs',
-                            'AV45_PVC_group4_CerebGM_BL',
-                            'AV45_PVC_group4_CerebGM_Scan2',
-                            'AV45_PVC_group4_CerebGM_Scan3',
-                            'AV45_PVC_group4_HemiWM/Wholecereb_BL',
-                            'AV45_PVC_group4_HemiWM/Wholecereb_Scan2',
-                            'AV45_PVC_group4_HemiWM/Wholecereb_Scan3',
-                            'AV45_PVC_group4_Wholecereb_BL',
-                            'AV45_PVC_group4_Wholecereb_Scan2',
-                            'AV45_PVC_group4_Wholecereb_Scan3',
-                            'AV45_PVC_group4_CerebWM_BL',
-                            'AV45_PVC_group4_CerebWM_Scan2',
-                            'AV45_PVC_group4_CerebWM_Scan3',
-                            'AV45_PVC_agghigh_CorticalSummary_slope_2points',
-                            'AV45_PVC_agghigh_CorticalSummary_slope_3points',
-                            'AV45_PVC_agghigh_CorticalSummary/Bigref_slope_2points',
-                            'AV45_PVC_agghigh_CorticalSummary/Bigref_slope_3points',
-                            'AV45_PVC_agghigh_HemiWM_slope_2points',
-                            'AV45_PVC_agghigh_HemiWM_slope_3points',
-                            'AV45_PVC_group2_CorticalSummary_slope_2points',
-                            'AV45_PVC_group2_CorticalSummary_slope_3points',
-                            'AV45_PVC_group2_CorticalSummary/Bigref_slope_2points',
-                            'AV45_PVC_group2_CorticalSummary/Bigref_slope_3points',
-                            'AV45_PVC_group2_HemiWM_slope_2points',
-                            'AV45_PVC_group2_HemiWM_slope_3points',
-                            'AV45_PVC_group4_CorticalSummary_slope_2points',
-                            'AV45_PVC_group4_CorticalSummary_slope_3points',
-                            'AV45_PVC_group4_CorticalSummary/Bigref_slope_2points',
-                            'AV45_PVC_group4_CorticalSummary/Bigref_slope_3points',
-                            'AV45_PVC_group4_HemiWM_slope_2points',
-                            'AV45_PVC_group4_HemiWM_slope_3points',
-                            'AV45_PVC_agghigh_accumulator.00790',
-                            'AV45_PVC_agghigh_wcereb1.27_BL'], 
+                'AV45_PVC': ['AV45_PVC_summary_CorticalSummary/Wholecereb_BL',
+                            'AV45_PVC_summary_CorticalSummary/Wholecereb_Scan2',
+                            'AV45_PVC_summary_CorticalSummary/Wholecereb_Scan3',
+                            'AV45_PVC_summary_CorticalSummary/Bigref_BL',
+                            'AV45_PVC_summary_CorticalSummary/Bigref_Scan2',
+                            'AV45_PVC_summary_CorticalSummary/Bigref_Scan3',
+                            'AV45_PVC_summary_CorticalSummary_slope',
+                            'AV45_PVC_summary_CerebGM_BL',
+                            'AV45_PVC_summary_CerebGM_Scan2',
+                            'AV45_PVC_summary_CerebGM_Scan3',
+                            'AV45_PVC_summary_HemiWM/Wholecereb_BL',
+                            'AV45_PVC_summary_HemiWM/Wholecereb_Scan2',
+                            'AV45_PVC_summary_HemiWM/Wholecereb_Scan3',
+                            'AV45_PVC_summary_Wholecereb_BL',
+                            'AV45_PVC_summary_Wholecereb_Scan2',
+                            'AV45_PVC_summary_Wholecereb_Scan3',
+                            'AV45_PVC_summary_CerebWM_BL',
+                            'AV45_PVC_summary_CerebWM_Scan2',
+                            'AV45_PVC_summary_CerebWM_Scan3',
+                            'AV45_PVC_summary_CorticalSummary_slope_2points',
+                            'AV45_PVC_summary_CorticalSummary_slope_3points',
+                            'AV45_PVC_summary_CorticalSummary/Bigref_slope_2points',
+                            'AV45_PVC_summary_CorticalSummary/Bigref_slope_3points',
+                            'AV45_PVC_summary_HemiWM_slope_2points',
+                            'AV45_PVC_summary_HemiWM_slope_3points',
+                            'AV45_PVC_summary_accumulator.0081',
+                            'AV45_PVC_summary_wcereb1.27_BL'], 
                 'RID': ['RID']}
 
 
@@ -748,7 +695,7 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
     group_names, sorted_data = importRoussetResults(rousset_matfile)
 
     valid_timepoints = ['BL', 'Scan2', 'Scan3']
-    valid_groupings = ['agghigh', 'group2', 'group4']
+    valid_groupings = ['summary']
     to_add_headers = []
     for vg in valid_groupings:
         to_add_headers += ['AV45_PVC_%s_CorticalSummary/Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
@@ -760,14 +707,14 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
         to_add_headers += ['AV45_PVC_%s_Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
         to_add_headers += ['AV45_PVC_%s_CerebGM_%s' % (vg, tp) for tp in valid_timepoints]
         to_add_headers += ['AV45_PVC_%s_CerebWM_%s' % (vg, tp) for tp in valid_timepoints]
-        if vg == 'agghigh':
+        if vg == 'summary':
             # SOME HARDCODED THRESHOLDING
-            to_add_headers += ['AV45_PVC_agghigh_accumulator.00790', 'AV45_PVC_agghigh_wcereb1.27_BL']
+            to_add_headers += ['AV45_PVC_summary_accumulator.0081', 'AV45_PVC_summary_wcereb1.27_BL']
     after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
-        valid_groupings = ['agghigh', 'group2', 'group4']
+        valid_groupings = ['summary']
         new_subj_data = {}
         for k in subj_row.keys():
             if k in valid_groupings:
@@ -796,8 +743,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
         new_data = {'%s_%s' % (k, timepoint): v for k,v in new_data.iteritems()}
         old_l.update(new_data)
         if timepoint == 'BL':
-            bl_val = old_l.get('AV45_PVC_agghigh_CorticalSummary/Wholecereb_BL',0.0)
-            old_l['AV45_PVC_agghigh_wcereb1.27_BL'] = 1 if bl_val >= 1.27 else 0
+            bl_val = old_l.get('AV45_PVC_summary_CorticalSummary/Wholecereb_BL',0.0)
+            old_l['AV45_PVC_summary_wcereb1.27_BL'] = 1 if bl_val >= 1.27 else 0
         elif timepoint == 'Scan2':
             # try to calculate slope with 2 points
             for vg in valid_groupings:
@@ -809,8 +756,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
                     slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = slope
-                    if vg == 'agghigh':
-                        old_l['AV45_PVC_agghigh_accumulator.00790'] = 1 if slope >= 0.0079 else 0
+                    if vg == 'summary':
+                        old_l['AV45_PVC_summary_accumulator.0081'] = 1 if slope >= 0.0081 else 0
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
@@ -838,8 +785,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     val3 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan3' % vg))
                     slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2, val3])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = slope
-                    if vg == 'agghigh':
-                        old_l['AV45_PVC_agghigh_accumulator.00790'] = 1 if slope >= 0.0079 else 0
+                    if vg == 'summary':
+                        old_l['AV45_PVC_summary_accumulator.0081'] = 1 if slope >= 0.0081 else 0
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
@@ -2291,14 +2238,11 @@ def runPipeline():
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING ROUSSET BL\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl_manual, 'BL', dump_to=None)
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl_agg, 'BL', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
     print "\nSYNCING ROUSSET SCAN2\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2_manual, 'Scan2', dump_to=None)
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2_agg, 'Scan2', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2, 'Scan2', dump_to=None)
     print "\nSYNCING ROUSSET SCAN3\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3_manual, 'Scan3', dump_to=None)
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3_agg, 'Scan3', dump_to=None)
+    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3, 'Scan3', dump_to=None)
     print "\nSYNCING FDG\n"
     new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file, dump_to=None)
     print "\nSYNCING TBMSYN\n"
@@ -2351,12 +2295,10 @@ if __name__ == '__main__':
     gd_file = '../docs/GDSCALE.csv'
     # FDG file
     fdg_file = '../docs/UCBERKELEY_FDG_07_29_15.csv'
+
     # Rousset output files
-    rousset_matfile_bl_manual = '../output/Rousset_BL/rousset_outputs_manual.mat'
-    rousset_matfile_scan2_manual = '../output/Rousset_Scan2/rousset_outputs_manual.mat'
-    rousset_matfile_scan3_manual = '../output/Rousset_Scan3/rousset_outputs_manual.mat'
-    rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_outputs_agg.mat'
-    rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_outputs_agg.mat'
-    rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_outputs_agg.mat'
+    rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
+    rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
+    rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
 
     runPipeline()

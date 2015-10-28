@@ -61,18 +61,22 @@ def extractRegionalValuesRousset(data, grouping, pvcval=True, regional=True):
     data = data[grouping]
     wholecereb = float(data['wholecereb'][key])
     bigref = float(data['bigref'][key])
-    composite_uptake = data['composite'][key]/bigref
+
+    ref = wholecereb
+
+    composite_uptake = data['composite'][key]/ref
     try:
         composite_vol = int(data['composite']['size'])
     except:
         composite_vol = int(data['composite']['volume'])
     uptakes = {'composite': composite_uptake}
     sizes = {'composite': composite_vol}
+    print data.keys()
     if regional:
-        cingulate_uptake = data['cingulate'][key]/bigref
-        parietal_uptake = data['parietal'][key]/bigref
-        temporal_uptake = data['temporal'][key]/bigref
-        frontal_uptake = data['frontal'][key]/bigref
+        cingulate_uptake = data['cingulate'][key]/ref
+        parietal_uptake = data['parietal'][key]/ref
+        temporal_uptake = data['temporal'][key]/ref
+        frontal_uptake = data['frontal'][key]/ref
         try:
             cingulate_vol = int(data['cingulate']['size'])
             parietal_vol = int(data['parietal']['size'])
@@ -182,7 +186,7 @@ def parseAV45Output(av45_file, registry_file, lut_file):
             data_scan3[rid] = extractRegionalValuesAV45(rows[2], lut_table)
     return data_bl, data_scan2, data_scan3
 
-def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_data, annualize=True):
+def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_data, annualize=True, regional=True):
     # find annualized
     yrs_diff = {}
     vol_frontal_diff = {}
@@ -205,15 +209,16 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
         yrs_diff[rid] = yrs
         scan2_uptakes, scan2_sizes = data
         bl_uptakes, bl_sizes = data_bl[rid]
-        vol_frontal_diff[rid] = (scan2_sizes['frontal'] - bl_sizes['frontal']) / yrs
-        vol_parietal_diff[rid] = (scan2_sizes['parietal'] - bl_sizes['parietal']) / yrs
-        vol_temporal_diff[rid] = (scan2_sizes['temporal'] - bl_sizes['temporal']) / yrs
-        vol_cingulate_diff[rid] = (scan2_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+        if regional:
+            vol_frontal_diff[rid] = (scan2_sizes['frontal'] - bl_sizes['frontal']) / yrs
+            vol_parietal_diff[rid] = (scan2_sizes['parietal'] - bl_sizes['parietal']) / yrs
+            vol_temporal_diff[rid] = (scan2_sizes['temporal'] - bl_sizes['temporal']) / yrs
+            vol_cingulate_diff[rid] = (scan2_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+            uptake_frontal_diff[rid] = (scan2_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
+            uptake_parietal_diff[rid] = (scan2_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
+            uptake_temporal_diff[rid] = (scan2_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
+            uptake_cingulate_diff[rid] = (scan2_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
         vol_composite_diff[rid] = (scan2_sizes['composite'] - bl_sizes['composite']) / yrs
-        uptake_frontal_diff[rid] = (scan2_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
-        uptake_parietal_diff[rid] = (scan2_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
-        uptake_temporal_diff[rid] = (scan2_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
-        uptake_cingulate_diff[rid] = (scan2_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
         uptake_composite_diff[rid] = (scan2_uptakes['composite'] - bl_uptakes['composite']) / yrs
     for rid, data in data_scan3.iteritems():
         if rid not in rids:
@@ -224,15 +229,16 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
         yrs_diff[rid] = yrs
         scan3_uptakes, scan3_sizes = data
         bl_uptakes, bl_sizes = data_bl[rid]
-        vol_frontal_diff[rid] = (scan3_sizes['frontal'] - bl_sizes['frontal']) / yrs
-        vol_parietal_diff[rid] = (scan3_sizes['parietal'] - bl_sizes['parietal']) / yrs
-        vol_temporal_diff[rid] = (scan3_sizes['temporal'] - bl_sizes['temporal']) / yrs
-        vol_cingulate_diff[rid] = (scan3_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+        if regional:
+            vol_frontal_diff[rid] = (scan3_sizes['frontal'] - bl_sizes['frontal']) / yrs
+            vol_parietal_diff[rid] = (scan3_sizes['parietal'] - bl_sizes['parietal']) / yrs
+            vol_temporal_diff[rid] = (scan3_sizes['temporal'] - bl_sizes['temporal']) / yrs
+            vol_cingulate_diff[rid] = (scan3_sizes['cingulate'] - bl_sizes['cingulate']) / yrs
+            uptake_frontal_diff[rid] = (scan3_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
+            uptake_parietal_diff[rid] = (scan3_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
+            uptake_temporal_diff[rid] = (scan3_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
+            uptake_cingulate_diff[rid] = (scan3_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
         vol_composite_diff[rid] = (scan3_sizes['composite'] - bl_sizes['composite']) / yrs
-        uptake_frontal_diff[rid] = (scan3_uptakes['frontal'] - bl_uptakes['frontal']) / yrs
-        uptake_parietal_diff[rid] = (scan3_uptakes['parietal'] - bl_uptakes['parietal']) / yrs
-        uptake_temporal_diff[rid] = (scan3_uptakes['temporal'] - bl_uptakes['temporal']) / yrs
-        uptake_cingulate_diff[rid] = (scan3_uptakes['cingulate'] - bl_uptakes['cingulate']) / yrs
         uptake_composite_diff[rid] = (scan3_uptakes['composite'] - bl_uptakes['composite']) / yrs
 
     vol_diff = {'frontal': vol_frontal_diff,
@@ -274,7 +280,7 @@ def percentPlausibleNoNoise(vol_diff, uptake_diff, yrs):
     print "cingulate: %s" % cingulate_increasing
     print "composite: %s" % composite_increasing
 
-def percentPlausible(vol_diff, uptake_diff, norm_fits, yrs):
+def percentPlausible(vol_diff, uptake_diff, norm_fits, regional=False):
     '''
     Determine percentage of dataset that is plausible given two measures:
     - volume only decreases
@@ -283,53 +289,52 @@ def percentPlausible(vol_diff, uptake_diff, norm_fits, yrs):
     Also determine noise intervals for the proportions, given the scan-rescan errors for each region
 
     '''
+    if regional:
+        frontal_decreasing = len([rid for rid, val in vol_diff['frontal'].iteritems() if val <= 0.0]) / float(len(vol_diff['frontal']))
+        parietal_decreasing = len([rid for rid, val in vol_diff['parietal'].iteritems() if val <= 0.0]) / float(len(vol_diff['parietal']))
+        temporal_decreasing = len([rid for rid, val in vol_diff['temporal'].iteritems() if val <= 0.0]) / float(len(vol_diff['temporal']))
+        cingulate_decreasing = len([rid for rid, val in vol_diff['cingulate'].iteritems() if val <= 0.0]) / float(len(vol_diff['cingulate']))
+        frontal_distr = {rid: (val-norm_fits['frontal'][0], norm_fits['frontal'][1]) for rid, val in uptake_diff['frontal'].iteritems()}
+        parietal_distr = {rid: (val-norm_fits['parietal'][0], norm_fits['parietal'][1]) for rid, val in uptake_diff['parietal'].iteritems()}
+        temporal_distr = {rid: (val-norm_fits['temporal'][0], norm_fits['temporal'][1]) for rid, val in uptake_diff['temporal'].iteritems()}
+        cingulate_distr = {rid: (val-norm_fits['cingulate'][0], norm_fits['cingulate'][1]) for rid, val in uptake_diff['cingulate'].iteritems()}
+        frontal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in frontal_distr.iteritems()}
+        parietal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in parietal_distr.iteritems()}
+        temporal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in temporal_distr.iteritems()}
+        cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in cingulate_distr.iteritems()}
+        frontal_n = float(len(uptake_diff['frontal']))
+        frontal_mean = sum(frontal_cdf.values()) / float(len(uptake_diff['frontal']))
+        frontal_std = np.sqrt(sum([(1.0-_)*_ for _ in frontal_cdf.values()]) / (frontal_n**2))
+        parietal_n = float(len(uptake_diff['parietal']))
+        parietal_mean = np.sqrt(sum(parietal_cdf.values()) / float(len(uptake_diff['parietal'])))
+        parietal_std = sum([(1.0-_)*_ for _ in parietal_cdf.values()]) / (parietal_n**2)
+        temporal_n = float(len(uptake_diff['temporal']))
+        temporal_mean = sum(temporal_cdf.values()) / float(len(uptake_diff['temporal']))
+        temporal_std = np.sqrt(sum([(1.0-_)*_ for _ in temporal_cdf.values()]) / (temporal_n**2))
+        cingulate_n = float(len(uptake_diff['cingulate']))
+        cingulate_mean = sum(cingulate_cdf.values()) / float(len(uptake_diff['cingulate']))
+        cingulate_std = np.sqrt(sum([(1.0-_)*_ for _ in cingulate_cdf.values()]) / (cingulate_n**2))
+        print "Decreasing Volume"
+        print "frontal: %s" % frontal_decreasing
+        print "parietal: %s" % parietal_decreasing
+        print "temporal: %s" % temporal_decreasing
+        print "cingulate: %s" % cingulate_decreasing
+        print "Increasing Uptake"
+        print "frontal: %s +/- %s" % (frontal_mean, frontal_std)
+        print "parietal: %s +/- %s" % (parietal_mean, parietal_std)
+        print "temporal: %s +/- %s" % (temporal_mean, temporal_std)
+        print "cingulate: %s +/- %s" % (cingulate_mean, cingulate_std)
+
     # calculate percent with decreasing volume
-    frontal_decreasing = len([rid for rid, val in vol_diff['frontal'].iteritems() if val <= 0.0]) / float(len(vol_diff['frontal']))
-    parietal_decreasing = len([rid for rid, val in vol_diff['parietal'].iteritems() if val <= 0.0]) / float(len(vol_diff['parietal']))
-    temporal_decreasing = len([rid for rid, val in vol_diff['temporal'].iteritems() if val <= 0.0]) / float(len(vol_diff['temporal']))
-    cingulate_decreasing = len([rid for rid, val in vol_diff['cingulate'].iteritems() if val <= 0.0]) / float(len(vol_diff['cingulate']))
     composite_decreasing = len([rid for rid, val in vol_diff['composite'].iteritems() if val <= 0.0]) / float(len(vol_diff['composite']))
-
-    # calculate percent with increasing uptake
-    # find sampling distr of proportions
-    frontal_distr = {rid: (val-norm_fits['frontal'][0], norm_fits['frontal'][1]) for rid, val in uptake_diff['frontal'].iteritems()}
-    parietal_distr = {rid: (val-norm_fits['parietal'][0], norm_fits['parietal'][1]) for rid, val in uptake_diff['parietal'].iteritems()}
-    temporal_distr = {rid: (val-norm_fits['temporal'][0], norm_fits['temporal'][1]) for rid, val in uptake_diff['temporal'].iteritems()}
-    cingulate_distr = {rid: (val-norm_fits['cingulate'][0], norm_fits['cingulate'][1]) for rid, val in uptake_diff['cingulate'].iteritems()}
     composite_distr = {rid: (val-norm_fits['composite'][0], norm_fits['composite'][1]) for rid, val in uptake_diff['composite'].iteritems()}
-    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in frontal_distr.iteritems()}
-    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in parietal_distr.iteritems()}
-    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in temporal_distr.iteritems()}
-    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in cingulate_distr.iteritems()}
     composite_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in composite_distr.iteritems()}
-
-    frontal_n = float(len(uptake_diff['frontal']))
-    frontal_mean = sum(frontal_cdf.values()) / float(len(uptake_diff['frontal']))
-    frontal_std = np.sqrt(sum([(1.0-_)*_ for _ in frontal_cdf.values()]) / (frontal_n**2))
-    parietal_n = float(len(uptake_diff['parietal']))
-    parietal_mean = np.sqrt(sum(parietal_cdf.values()) / float(len(uptake_diff['parietal'])))
-    parietal_std = sum([(1.0-_)*_ for _ in parietal_cdf.values()]) / (parietal_n**2)
-    temporal_n = float(len(uptake_diff['temporal']))
-    temporal_mean = sum(temporal_cdf.values()) / float(len(uptake_diff['temporal']))
-    temporal_std = np.sqrt(sum([(1.0-_)*_ for _ in temporal_cdf.values()]) / (temporal_n**2))
-    cingulate_n = float(len(uptake_diff['cingulate']))
-    cingulate_mean = sum(cingulate_cdf.values()) / float(len(uptake_diff['cingulate']))
-    cingulate_std = np.sqrt(sum([(1.0-_)*_ for _ in cingulate_cdf.values()]) / (cingulate_n**2))
     composite_n = float(len(uptake_diff['composite']))
     composite_mean = sum(composite_cdf.values()) / float(len(uptake_diff['composite']))
     composite_std = np.sqrt(sum([(1.0-_)*_ for _ in composite_cdf.values()]) / (composite_n**2))
-
     print "Decreasing Volume"
-    print "frontal: %s" % frontal_decreasing
-    print "parietal: %s" % parietal_decreasing
-    print "temporal: %s" % temporal_decreasing
-    print "cingulate: %s" % cingulate_decreasing
     print "composite: %s" % composite_decreasing
     print "Increasing Uptake"
-    print "frontal: %s +/- %s" % (frontal_mean, frontal_std)
-    print "parietal: %s +/- %s" % (parietal_mean, parietal_std)
-    print "temporal: %s +/- %s" % (temporal_mean, temporal_std)
-    print "cingulate: %s +/- %s" % (cingulate_mean, cingulate_std)
     print "composite: %s +/- %s" % (composite_mean, composite_std)
 
 def plot_regional_volumechange_vs_uptakechange(colors, vol_diff, uptake_diff):
@@ -451,7 +456,7 @@ def diagGroupEffects(data, diags):
         print v
 
 
-def stratifySubjects(bl_uptake, uptake_diff, norm_fits, yrs, diags, threshold=1.11, graph=False):
+def stratifySubjects(bl_uptake, uptake_diff, norm_fits, diags, threshold=1.11, graph=False):
     '''
     Put subjects into groups:
     -> amyloid decreasing, stable, increasing
@@ -460,19 +465,18 @@ def stratifySubjects(bl_uptake, uptake_diff, norm_fits, yrs, diags, threshold=1.
     '''
     print "THRESHOLD: %s" % threshold
 
+    # frontal_distr = {rid: (val-norm_fits['frontal'][0], norm_fits['frontal'][1]) for rid, val in uptake_diff['frontal'].iteritems()}
+    # parietal_distr = {rid: (val-norm_fits['parietal'][0], norm_fits['parietal'][1]) for rid, val in uptake_diff['parietal'].iteritems()}
+    # temporal_distr = {rid: (val-norm_fits['temporal'][0], norm_fits['temporal'][1]) for rid, val in uptake_diff['temporal'].iteritems()}
+    # cingulate_distr = {rid: (val-norm_fits['cingulate'][0], norm_fits['cingulate'][1]) for rid, val in uptake_diff['cingulate'].iteritems()}
+    # frontal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in frontal_distr.iteritems()}
+    # parietal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in parietal_distr.iteritems()}
+    # temporal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in temporal_distr.iteritems()}
+    # cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in cingulate_distr.iteritems()}
+    # all_region_cdf_mean = {rid: np.mean([frontal_cdf[rid], parietal_cdf[rid], temporal_cdf[rid], cingulate_cdf[rid]]) for rid in frontal_cdf.keys()}
 
-    frontal_distr = {rid: (val-norm_fits['frontal'][0], norm_fits['frontal'][1]) for rid, val in uptake_diff['frontal'].iteritems()}
-    parietal_distr = {rid: (val-norm_fits['parietal'][0], norm_fits['parietal'][1]) for rid, val in uptake_diff['parietal'].iteritems()}
-    temporal_distr = {rid: (val-norm_fits['temporal'][0], norm_fits['temporal'][1]) for rid, val in uptake_diff['temporal'].iteritems()}
-    cingulate_distr = {rid: (val-norm_fits['cingulate'][0], norm_fits['cingulate'][1]) for rid, val in uptake_diff['cingulate'].iteritems()}
     composite_distr = {rid: (val-norm_fits['composite'][0], norm_fits['composite'][1]) for rid, val in uptake_diff['composite'].iteritems()}
-    frontal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in frontal_distr.iteritems()}
-    parietal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in parietal_distr.iteritems()}
-    temporal_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in temporal_distr.iteritems()}
-    cingulate_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in cingulate_distr.iteritems()}
     composite_cdf = {rid: 1.0 - norm.cdf(0.0, mean, std) for rid, (mean, std) in composite_distr.iteritems()}
-
-    #all_region_cdf_mean = {rid: np.mean([frontal_cdf[rid], parietal_cdf[rid], temporal_cdf[rid], cingulate_cdf[rid]]) for rid in frontal_cdf.keys()}
     all_region_cdf_mean = {rid: composite_cdf[rid] for rid in composite_cdf.keys()}
 
     # split by threshold
@@ -499,12 +503,12 @@ def stratifySubjects(bl_uptake, uptake_diff, norm_fits, yrs, diags, threshold=1.
         y *= norm_weights
         l = pylab.plot(bins, y, 'k--', linewidth=1.5, label='Stable Group')
         # first thirds
-        #first_third = norm.ppf(0.33, noise_distr_mean, noise_distr_std)
-        #second_third = norm.ppf(0.66, noise_distr_mean, noise_distr_std)
+        first_third = norm.ppf(0.33, noise_distr_mean, noise_distr_std)
+        second_third = norm.ppf(0.66, noise_distr_mean, noise_distr_std)
         half = norm.ppf(0.5, noise_distr_mean, noise_distr_std)
         y_max = max(y)
-        #pylab.plot([first_third, first_third],[0,y_max])
-        #pylab.plot([second_third, second_third],[0,y_max])
+        pylab.plot([first_third, first_third],[0,y_max])
+        pylab.plot([second_third, second_third],[0,y_max])
         pylab.plot([half, half],[0,y_max], linewidth=4)
         pylab.title('Distribution of Annualized Change (Cortical Summary SUVR)')
         pylab.xlabel('Annualized Change')
@@ -643,15 +647,9 @@ if __name__ == "__main__":
     av45_file_nontp = "../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv"
 
     # Rousset output files
-    rousset_matfile_bl_manual = '../output/Rousset_BL/rousset_outputs_manual.mat'
-    rousset_matfile_scan2_manual = '../output/Rousset_Scan2/rousset_outputs_manual.mat'
-    rousset_matfile_scan3_manual = '../output/Rousset_Scan3/rousset_outputs_manual.mat'
-    rousset_matfile_bl_agg = '../output/Rousset_BL/rousset_outputs_agg.mat'
-    rousset_matfile_scan2_agg = '../output/Rousset_Scan2/rousset_outputs_agg.mat'
-    rousset_matfile_scan3_agg = '../output/Rousset_Scan3/rousset_outputs_agg.mat'
-    rousset_agghigh_raw_bl = '../raw_agghigh_output_BL.mat'
-    rousset_agghigh_raw_scan2 = '../raw_agghigh_output_Scan2.mat'
-    rousset_agghigh_raw_scan3 = '../raw_agghigh_output_Scan3.mat'
+    rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
+    rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
+    rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
 
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
@@ -719,24 +717,32 @@ if __name__ == "__main__":
 
 
     # composite threshold
-    fit_threshold = 0.79 # for big ref
+    fit_threshold = 1.11 # for big ref
 
     # for PVC
-    data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=True, grouping='group4')
-    data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl_manual,rousset_matfile_scan2_manual,rousset_matfile_scan3_manual, pvcval=False, grouping='group4')
-    points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl_manual, rousset_matfile_scan2_manual, rousset_matfile_scan3_manual, 'group4')
+    data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=True, regional=False, grouping='summary')
+    data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=False, regional=False, grouping='summary')
+    points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl, rousset_matfile_scan2, rousset_matfile_scan3, 'summary')
     fit_threshold = p(fit_threshold)
     print "NEW THRESHOLD: %s" % fit_threshold
-    #vol_diff_pvc, uptake_diff_pvc, yrs_diff_pvc = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True)
+    all_rids = list(set(data_scan2_pvc.keys() + data_scan3_pvc.keys()))
+    vol_diff_stable, uptake_diff_stable, yrs_diff_stable = findRegionalAnnualizedChange(STABLE, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True, regional=False)
+    norm_fits = fitNormalToUptakeChange(uptake_diff_stable)
+    print norm_fits
+    vol_diff, uptake_diff, yrs_diff = findRegionalAnnualizedChange(all_rids, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True, regional=False)
+    percentPlausible(vol_diff, uptake_diff, norm_fits)
+    groups = stratifySubjects(data_bl_pvc, uptake_diff, norm_fits, diags, threshold=fit_threshold, graph=False)
+    print groups
+    sys.exit(1)
+
 
     # for TP
     data_bl_tp, data_scan2_tp, data_scan3_tp = parseAV45Output(av45_file, registry_file, lut_file)
-    #vol_diff_tp, uptake_diff_tp, yrs_diff_tp = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, data_scan3_tp, master_data, annualize=True)
+    vol_diff_tp, uptake_diff_tp, yrs_diff_tp = findRegionalAnnualizedChange(all_rids, data_bl_tp, data_scan2_tp, data_scan3_tp, master_data, annualize=True)
 
     # for nonTP
     data_bl_nontp, data_scan2_nontp, data_scan3_nontp = parseAV45Output(av45_file_nontp, registry_file, lut_file)
-    #vol_diff_nontp, uptake_diff_nontp, yrs_diff_nontp = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, data_scan3_nontp, master_data, annualize=True)
-
+    vol_diff_nontp, uptake_diff_nontp, yrs_diff_nontp = findRegionalAnnualizedChange(all_rids, data_bl_nontp, data_scan2_nontp, data_scan3_nontp, master_data, annualize=True)
 
     all_rids = list(set(data_scan2_nontp.keys() + data_scan3_nontp.keys()))
 

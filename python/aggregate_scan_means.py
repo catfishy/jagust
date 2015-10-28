@@ -103,10 +103,7 @@ DOD_FIELDNAMES = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRA
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
 DOD_FIELDNAMES_EXTRA = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
-                  'FRONTAL','FRONTAL_SIZE','CINGULATE','CINGULATE_SIZE','PARIETAL','PARIETAL_SIZE',
-                  'TEMPORAL','TEMPORAL_SIZE','COMPOSITE','COMPOSITE_REF','ERODED_SUBCORTICALWM',
-                  'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
-                  'LEFT-PUTAMEN_SIZE','RIGHT-PUTAMEN_SIZE','LEFT-CAUDATE_SIZE','RIGHT-CAUDATE_SIZE','LEFT-PALLIDUM_SIZE','RIGHT-PALLIDUM_SIZE',
+                  'FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
@@ -145,7 +142,9 @@ ADNI_OMIT_SIZES = ['SCRNO', 'RID', 'PID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'B
                    'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
 ADNI_EXTRA_OMIT_SIZES = ADNI_OMIT_SIZES
 DOD_OMIT_SIZES = ADNI_OMIT_SIZES
-DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'PID','COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
+DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'PID', 'COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER',
+                        'FRONTAL', 'CINGULATE', 'PARIETAL', 'TEMPORAL', 
+                        'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
                         'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                         'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
                         'CEREBELLUMWHITEMATTER']
@@ -453,35 +452,35 @@ if __name__ == "__main__":
     
 
     # for adni dod (add in adni controls)
-    output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
-    temp_output = '../output/temp.csv'
-    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
-    adni_preprocess_folder = '../docs/AV45_preprocess_output_09_25_15'
-    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
-    registry_adni = importRegistry("../docs/registry_clean.csv")
-    meta_pet = None
-    meta_pet_adni = None
-    agg_type = 'dod_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder, nontp=True)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
-    aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
-                                 meta_pet_adni, registry_adni, agg_type)
-    print 'appending'
-    appendCSV(output, temp_output)
-    print 'removing'
-    removeFile(temp_output)
-
-
-    # # for adni dod (don't add in adni controls)
-    # output = '../output/AV45_DOD_LONI_10.22.15_extra.csv'
+    # output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
+    # temp_output = '../output/temp.csv'
     # preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
+    # adni_preprocess_folder = '../docs/AV45_preprocess_output_09_25_15'
     # registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    # registry_adni = importRegistry("../docs/registry_clean.csv")
     # meta_pet = None
     # meta_pet_adni = None
     # agg_type = 'dod_extra'
     # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    # bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder, nontp=True)
     # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
     #                              meta_pet, registry, agg_type)
+    # aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
+    #                              meta_pet_adni, registry_adni, agg_type)
+    # print 'appending'
+    # appendCSV(output, temp_output)
+    # print 'removing'
+    # removeFile(temp_output)
+
+
+    # # for adni dod (don't add in adni controls)
+    output = '../output/AV45_DOD_LONI_10.22.15_extra.csv'
+    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
+    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    meta_pet = None
+    meta_pet_adni = None
+    agg_type = 'dod_extra'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
 

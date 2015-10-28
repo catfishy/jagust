@@ -7,55 +7,64 @@ import matplotlib.pyplot as plt
 import pylab
 from scipy.stats import norm, mannwhitneyu, linregress
 from ggplot import *
+import pandas as pd
 
 GROUPS = {'increasing_high': {'AD': [4657, 4660, 4153, 4672, 4696, 4195, 4252, 4258, 4477, 4494, 4500, 4568, 4089], 
-                              'EMCI': [4614, 2063, 4624, 2073, 4635, 2077, 2087, 4146, 4149, 4674, 4679, 4680, 2121, 2133, 
-                                       4623, 2155, 4764, 2167, 4799, 4235, 2195, 2196, 4259, 2213, 2216, 4272, 2225, 4805, 
-                                       4809, 4816, 4309, 2264, 2274, 4844, 4858, 4351, 4868, 4893, 2336, 4404, 4405, 4415, 
-                                       4419, 2373, 2381, 4944, 4947, 2190, 2390, 2391, 4447, 2403, 2022, 4974, 2109, 4467, 
-                                       4473, 5000, 5007, 4005, 4007, 2037, 4547, 5066, 2045, 2047], 
-                              'LMCI': [4611, 4782, 4631, 4636, 4654, 4675, 4170, 4689, 4189, 4197, 4712, 4713, 112, 4714, 
-                                       126, 4736, 4715, 142, 4240, 4757, 4796, 4042, 702, 4287, 800, 4294, 4815, 729, 1030, 
-                                       1246, 227, 4857, 4363, 4877, 4203, 1300, 4057, 4902, 1074, 4406, 4925, 4414, 4929, 
-                                       1346, 4945, 4444, 4035, 378, 906, 4502, 925, 4510, 4521, 4015, 5047, 4538, 4542, 
-                                       4243, 4562, 994, 4582], 
-                              'N': [4612, 4616, 4120, 31, 545, 4645, 4151, 61, 4176, 4179, 4198, 106, 4225, 130, 166, 173, 
-                                    4270, 4278, 4290, 4291, 717, 1232, 230, 4339, 4343, 778, 4385, 4386, 4400, 4422, 842, 
-                                    4482, 920, 4003, 4014, 1098, 972, 981, 4566, 985, 4081]}, 
+                              'EMCI': [4614, 2063, 4624, 2073, 4635, 2077, 2087, 4146, 4149, 4674, 4679, 4680, 2121, 2133, 4623, 2155, 4764, 2167, 4799, 4235, 2195, 2196, 4259, 2213, 2216, 4272, 2225, 4805, 4809, 4816, 4309, 2264, 2274, 4844, 4858, 4351, 4868, 4893, 2336, 4404, 4405, 4415, 4419, 2373, 2381, 4944, 4947, 2190, 2390, 2391, 4447, 2403, 2022, 4974, 2109, 4467, 4473, 5000, 5007, 4005, 4007, 2037, 4547, 5066, 2045, 2047], 
+                              'LMCI': [4611, 4782, 4631, 4636, 4654, 4675, 4170, 4689, 4189, 4197, 4712, 4713, 112, 4714, 126, 4736, 4715, 142, 4240, 4757, 4796, 4042, 702, 4287, 800, 4294, 4815, 729, 1030, 1246, 227, 4857, 4363, 4877, 4203, 1300, 4057, 4902, 1074, 4406, 4925, 4414, 4929, 1346, 4945, 4444, 4035, 378, 906, 4502, 925, 4510, 4521, 4015, 5047, 4538, 4542, 4243, 4562, 994, 4582], 
+                              'N': [4612, 4616, 4120, 31, 545, 4645, 4151, 61, 4176, 4179, 4198, 106, 4225, 130, 166, 173, 4270, 4278, 4290, 4291, 717, 1232, 230, 4339, 4343, 778, 4385, 4386, 4400, 4422, 842, 4482, 920, 4003, 4014, 1098, 972, 981, 4566, 985, 4081]}, 
           'stable_high': {'AD': [4501, 4641, 4526, 4192, 4591, 4211, 4215], 
                           'EMCI': [2307, 2055, 2068, 4891, 4765, 2079, 4128, 4392, 2100, 4661, 2376, 2380, 4557, 2130, 4188, 2142], 
-                          'LMCI': [4595, 4888, 4250, 1186, 4263, 1066, 4167, 1326, 4936, 4531, 4030, 4928, 4162, 709, 4807, 331, 
-                                   4430, 4311, 1117, 887, 4584, 4458, 1004, 1106, 4596, 4729], 
+                          'LMCI': [4595, 4888, 4250, 1186, 4263, 1066, 4167, 1326, 4936, 4531, 4030, 4928, 4162, 709, 4807, 331, 4430, 4311, 1117, 887, 4584, 4458, 1004, 1106, 4596, 4729], 
                           'N': [4100, 4371, 4262, 4320, 1190]}, 
           'stable_low': {'AD': [4009], 
-                         'EMCI': [2304, 2052, 2074, 4127, 2083, 4160, 4678, 2119, 2146, 4199, 2153, 2164, 4220, 2191, 
-                                  2072, 2200, 2201, 2208, 4380, 2220, 4271, 2245, 2247, 4299, 4813, 4301, 4310, 4312, 
-                                  2301, 2347, 4356, 4876, 4883, 2332, 4917, 2374, 2378, 2395, 4455, 4476, 4268, 4513, 
-                                  4036, 4004, 2010, 4063, 4072, 2027, 2031, 2036], 
-                         'LMCI': [4626, 1052, 4138, 4169, 4187, 4722, 1155, 135, 4750, 4244, 4293, 4769, 4806, 200, 
-                                  722, 746, 4989, 4381, 4395, 4960, 4842, 4543], 
-                         'N': [4103, 4105, 4075, 21, 4632, 4121, 4148, 56, 59, 4158, 4164, 74, 4173, 89, 4200, 4208, 
-                               680, 4269, 4275, 1206, 4292, 4832, 4345, 4350, 4352, 4365, 272, 4369, 4372, 4382, 4384, 
-                               1169, 315, 4491, 4427, 4429, 4446, 4453, 4598, 4469, 4483, 907, 4499, 4505, 416, 419, 
-                               4516, 4021, 4084, 4255, 4545, 4037, 4041, 4043, 4559, 4560, 4579, 4599, 4090, 4604, 4607]}, 
+                         'EMCI': [2304, 2052, 2074, 4127, 2083, 4160, 4678, 2119, 2146, 4199, 2153, 2164, 4220, 2191, 2072, 2200, 2201, 2208, 4380, 2220, 4271, 2245, 2247, 4299, 4813, 4301, 4310, 4312, 2301, 2347, 4356, 4876, 4883, 2332, 4917, 2374, 2378, 2395, 4455, 4476, 4268, 4513, 4036, 4004, 2010, 4063, 4072, 2027, 2031, 2036], 
+                         'LMCI': [4626, 1052, 4138, 4169, 4187, 4722, 1155, 135, 4750, 4244, 4293, 4769, 4806, 200, 722, 746, 4989, 4381, 4395, 4960, 4842, 4543], 
+                         'N': [4103, 4105, 4075, 21, 4632, 4121, 4148, 56, 59, 4158, 4164, 74, 4173, 89, 4200, 4208, 680, 4269, 4275, 1206, 4292, 4832, 4345, 4350, 4352, 4365, 272, 4369, 4372, 4382, 4384, 1169, 315, 4491, 4427, 4429, 4446, 4453, 4598, 4469, 4483, 907, 4499, 4505, 416, 419, 4516, 4021, 4084, 4255, 4545, 4037, 4041, 4043, 4559, 4560, 4579, 4585, 4599, 4090, 4604, 4607]}, 
           'increasing_low': {'AD': [4172, 4676], 
-                             'EMCI': [2061, 4133, 2093, 4143, 4159, 2116, 4168, 2123, 4621, 4281, 4184, 4185, 2148, 2151, 
-                                      4212, 2180, 4742, 2183, 2187, 4237, 4216, 2219, 4780, 2233, 2234, 4285, 2238, 2239, 
-                                      2249, 2263, 4328, 4331, 4360, 4874, 4919, 4898, 2357, 2360, 2363, 4926, 2367, 4417, 
-                                      2379, 4434, 2394, 4443, 2398, 2405, 2407, 4468, 4986, 4512, 4012, 4536, 2002, 4571, 
-                                      2018, 4594, 2042], 
-                             'LMCI': [4114, 4115, 1045, 4061, 4122, 4869, 42, 1122, 1118, 4210, 4723, 4214, 4229, 668, 1187, 
-                                      679, 4777, 4784, 4300, 4817, 225, 4354, 4873, 4741, 1318, 1352, 867, 1414, 4489, 1418, 
-                                      919, 908, 1427, 408, 4767, 4653, 4094], 
-                             'N': [4620, 23, 4637, 4643, 4649, 4150, 58, 69, 4177, 602, 610, 618, 113, 4213, 120, 4218, 123, 
-                                   4222, 4739, 4234, 4119, 4762, 4254, 159, 685, 4795, 4313, 741, 1261, 751, 767, 1280, 260, 
-                                   4357, 4878, 4367, 4387, 4388, 4389, 4393, 4396, 301, 4399, 311, 4410, 4441, 4448, 4466, 
-                                   4843, 4485, 4496, 4503, 923, 413, 926, 5023, 4520, 4082, 4018, 4020, 4028, 4032, 4552, 
-                                   4060, 4576, 4580, 4585, 4586, 4076, 4086, 1016]}}
+                             'EMCI': [2061, 4133, 2093, 4143, 4159, 2116, 4168, 2123, 4621, 4281, 4184, 4185, 2148, 2151, 4212, 2180, 4742, 2183, 2187, 4237, 4216, 2219, 4780, 2233, 2234, 4285, 2238, 2239, 2249, 2263, 4328, 4331, 4360, 4874, 4919, 4898, 2357, 2360, 2363, 4926, 2367, 4417, 2379, 4434, 2394, 4443, 2398, 2405, 2407, 4468, 4986, 4512, 4012, 4536, 2002, 4571, 2018, 4594, 2042], 
+                             'LMCI': [4114, 4115, 1045, 4061, 4122, 4869, 42, 1122, 1118, 4210, 4723, 4214, 4229, 668, 1187, 679, 4777, 4784, 4300, 4817, 225, 4354, 4873, 4741, 1318, 1352, 867, 1414, 4489, 1418, 919, 908, 1427, 408, 4767, 4653, 4094], 
+                             'N': [4620, 23, 4637, 4643, 4649, 4150, 58, 69, 4177, 602, 610, 618, 113, 4213, 120, 4218, 123, 4222, 4739, 4234, 4119, 4762, 4254, 159, 685, 4795, 4313, 741, 1261, 751, 767, 1280, 260, 4357, 4878, 4367, 4387, 4388, 4389, 4393, 4396, 301, 4399, 311, 4410, 4441, 4448, 4466, 4843, 4485, 4496, 4503, 923, 413, 926, 5023, 4520, 4082, 4018, 4020, 4028, 4032, 4552, 4060, 4576, 4580, 4586, 4076, 4086, 1016]}}
 
 # don't consider regions that include white matter, cerebellum, brainstem
 REGION_BLACKLIST = [30,62,2,80,81,82,41,77,251,252,253,254,255,1004,2004,85,16,7,8,46,47]
 REFERENCE_REGIONS = [7,8,46,47]
+
+def generateBathroomTilePlot(bl_vs_change_json):
+    df = pd.read_json(bl_vs_change_json)
+    summary_regions = ['ctx-lh-parsorbitalis','ctx-rh-parsorbitalis','ctx-rh-lateralorbitofrontal',
+                       'ctx-lh-lateralorbitofrontal','ctx-rh-frontalpole','ctx-rh-parstriangularis',
+                       'ctx-lh-frontalpole','ctx-lh-parstriangularis','ctx-lh-caudalanteriorcingulate',
+                       'ctx-rh-rostralmiddlefrontal','ctx-lh-caudalmiddlefrontal',
+                       'ctx-rh-caudalanteriorcingulate','ctx-rh-rostralanteriorcingulate',
+                       'ctx-lh-rostralmiddlefrontal','ctx-rh-caudalmiddlefrontal',
+                       'ctx-lh-superiorparietal','ctx-rh-isthmuscingulate',
+                       'ctx-lh-rostralanteriorcingulate','ctx-rh-parsopercularis',
+                       'ctx-rh-superiorparietal','ctx-lh-parsopercularis',
+                       'ctx-rh-medialorbitofrontal','ctx-lh-isthmuscingulate',
+                       'ctx-lh-supramarginal','ctx-lh-inferiorparietal','ctx-rh-supramarginal',
+                       'ctx-lh-superiorfrontal','ctx-rh-superiorfrontal','ctx-rh-middletemporal',
+                       'ctx-lh-middletemporal','ctx-rh-inferiorparietal','ctx-rh-superiortemporal',
+                       'ctx-lh-posteriorcingulate','ctx-lh-precuneus','ctx-lh-medialorbitofrontal',
+                       'ctx-lh-superiortemporal','ctx-rh-posteriorcingulate','ctx-rh-precuneus']
+    ordering = {x:i for i,x in enumerate(summary_regions)}
+    rank_by = summary_regions # could take subset of cortical summary regions
+    subjects = GROUPS['increasing_low']['N']
+    df = df[df['rid'].isin(subjects)]
+
+    baseline_keys = ["%s_bl" % _ for _ in rank_by]
+    change_keys = ["%s_change" % _ for _ in summary_regions]
+    df['rank'] = df[baseline_keys].mean(axis=1)
+
+    keep_keys = ['rid', 'rank'] + change_keys
+    df = df[keep_keys]
+    df_long = pd.melt(df,id_vars=['rank'],value_vars=change_keys)
+
+    # sort change
+    df_long['variable'] = [_.replace('_change','') for _ in df_long['variable']]
+    df_long['variable'] = ['%s_%s' % (str(ordering[_]).zfill(2),_) for _ in df_long['variable']]
+
+    print ggplot(aes(x='variable',y='rank'),data=df_long)+geom_tile(aes(fill='value'))+theme(axis_text_x=element_text(angle=270,size=8), axis_text_y=element_text(size=6))
 
 def getRegionAverageRankings(sorted_uptakes):
     sorted_regions = [[k for k,v in sorted_values] for sorted_values in sorted_uptakes]
@@ -114,7 +123,7 @@ def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=
         ref_value = 1.0
         if suvr:
             ref_value = val.get('whole_cerebellum',1.0)
-        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
+        new_val = {k: v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
         data_bl[rid] = new_val
     for rid,val in data_scan2.iteritems():
         ref_value = 1.0
@@ -193,9 +202,9 @@ def regionalEffectSizes(subj_group, data_prior, data_post, index_lookup):
     group_ranks_post = {k:[] for k in index_lookup}
     for rid in subj_group:
         if rid in data_post:
-            sorted_uptakes_post.append(sorted(data_post[rid].iteritems(), key=lambda x: x[1], reverse=True))
-            for k in data_post[rid]:
-                group_uptakes_post[k].append(float(data_post[rid][k]))
+            sorted_uptakes_post.append(sorted(data_post[rid].iteritems(), key=lambda x: x[1][0], reverse=True))
+            for k,(v,yrs) in data_post[rid].iteritems():
+                group_uptakes_post[k].append(float(v))
     uptakes_post = {k: (np.mean(v),np.std(v)) for k,v in group_uptakes_post.iteritems()}
     # calculate post rank distr
     for sorted_list in sorted_uptakes_post:
@@ -240,63 +249,59 @@ def rankSubjects(key_groups, subj, data):
     return avg_ranks
 
 if __name__ == "__main__":
+
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
-    master_file = '../FDG_AV45_COGdata_10_15_15.csv'
+    master_file = '../FDG_AV45_COGdata_10_27_15.csv'
     master_data = importMaster(master_file)
     diags = extractDiagnosesFromMasterData(master_data)
 
-    # # agghigh raw results
-    # bl_file = '../raw_agghigh_output_BL.mat'
-    # scan2_file = '../raw_agghigh_output_Scan2.mat'
-    # scan3_file = '../raw_agghigh_output_Scan3.mat'
-    # data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
-    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+    # make bathroom tile plot
+    bl_vs_change_json = '../pvcsummary_bl_vs_change.json'
+    generateBathroomTilePlot(bl_vs_change_json)
+    sys.exit(1)
 
-    # # group 4 raw results
-    # bl_file = '../raw_group4_output_BL.mat'
-    # scan2_file = '../raw_group4_output_Scan2.mat'
-    # scan3_file = '../raw_group4_output_Scan3.mat'
-    # data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
-    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
-
-    # tp-specific results
-    av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
-    registry_file = "../docs/registry_clean.csv"
-    data_bl, data_scan2, data_scan3, index_lookup = parseRawAV45Output(av45_file, registry_file, lut_file)
+    # summary raw results
+    bl_file = '../output/Rousset_BL/raw_summary_output_BL.mat'
+    scan2_file = '../output/Rousset_Scan2/raw_summary_output_Scan2.mat'
+    scan3_file = '../output/Rousset_Scan3/raw_summary_output_Scan3.mat'
+    data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
     data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
 
+    # # tp-specific results
+    # av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
+    # registry_file = "../docs/registry_clean.csv"
+    # data_bl, data_scan2, data_scan3, index_lookup = parseRawAV45Output(av45_file, registry_file, lut_file)
+    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+
     data_prior = data_bl
-    data_post = data_scan2
-    data_post.update(data_scan3)
+    data_post = {}
+    for rid, datarow in data_scan2.iteritems():
+        yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+        withyrs = {k:(v,yrs) for k,v in datarow.iteritems()}
+        data_post[rid] = withyrs
+    for rid, datarow in data_scan3.iteritems():
+        yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+        withyrs = {k:(v,yrs) for k,v in datarow.iteritems()}
+        data_post[rid] = withyrs
 
     all_data = []
-    allrids = list(set(data_scan2.keys() + data_scan3.keys()))
-    for rid in allrids:
+    for rid, post_data in data_post.iteritems():
         datarow = {'rid': rid,
                    'diag': diags.get(rid,'')}
         bl_data = data_bl[rid]
-        scan2_data = data_scan2.get(rid,{})
-        scan3_data = data_scan3.get(rid,{})
         long_data = {}
-        if scan2_data:
-            yrs = yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
-            for k in index_lookup:
-                long_data[k] = (scan2_data[k] - bl_data[k]) / yrs
-        if scan3_data:
-            yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
-            for k in index_lookup:
-                long_data[k] = (scan2_data[k] - bl_data[k]) / yrs
+        for k in index_lookup:
+            post_val, yrs = post_data[k]
+            long_data[k] = (post_val - bl_data[k]) / yrs
         for k,v in bl_data.iteritems():
             datarow['%s_bl' % k ] = v
         for k,v in long_data.iteritems():
             datarow['%s_change' % k] = v
         all_data.append(datarow)
     df = pd.DataFrame(all_data)
-    print df
-    outfile = open('../regional_bl_vs_change.json','w')
+    outfile = open('../pvcsummary_bl_vs_change.json','w')
     outfile.write(df.to_json())
-    sys.exit(1)
 
 
     line_data = {k:{'regions': [lut_table[_] for _ in v]} for k,v in index_lookup.iteritems()}
@@ -392,8 +397,8 @@ if __name__ == "__main__":
     for k,v in line_data.iteritems():
         v['Name'] = k
         lines.append(v)
-    dumpCSV('../regional_effect_sizes_tpspecific.csv', columns, lines)
-
+    dumpCSV('../pvcsummary_regional_effect_sizes.csv', columns, lines)
+    sys.exit(1)
 
     # # write out results to matfile
     out_file = '../output/fake_aparc_inputs/REGION_INDICES.mat'

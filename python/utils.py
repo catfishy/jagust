@@ -178,7 +178,7 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         regionweights = regionweights / float(sum(regionweights))
         vals['whole_cerebellum'] = sum(regionweights*regionvalues)
         data_scan2[rid] = vals
-    for rid, data in data_scan2_raw.iteritems():
+    for rid, data in data_scan3_raw.iteritems():
         names = [unwrap(_) for _ in data['names']]
         sizes = [unwrap(_) for _ in data['sizes']]
         pvcvals = [unwrap(_) for _ in data['pvcvals']]
