@@ -11,6 +11,58 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.decomposition import PCA
+from sklearn.mixture import GMM
+from scipy.stats import norm
+
+try:
+    plt.style.use('ggplot')
+except:
+    pass
+pd.options.display.mpl_style = 'default'
+
+'''
+import pandas as pd; from utils import fitGMM_1D
+df = pd.read_csv('../pvcsummary_bl_patterns_and_change.csv')
+fitGMM_1D(df['ctx-lh-middletemporal_change'],2,graph=True)
+'''
+
+def fitGMM_1D(data, components, graph=False):
+    wrapped = [[_] for _ in data]
+    g = GMM(n_components=components,
+            covariance_type='full',
+            params='wmc',
+            init_params='wmc')
+    g.fit(wrapped)
+
+    if graph:
+        plt.figure()
+        ax = plt.subplot(1,1,1)
+
+        # assume one dimensional data
+        means = [_[0] for _ in g.means_]
+        covars = [_[0] for _ in g.covars_]
+        weights = g.weights_
+        stds = [np.sqrt(_[0]) for _ in covars]
+        data.plot(kind='kde', legend=True)
+        x = np.linspace(data.min(), data.max(), 100)
+        for m,s,w in zip(means,stds,weights):
+            f = norm.pdf(x,m,s)*w
+            plt.plot(x,f,label="Norm(%.3f, %.3f), Weight: %.3f" % (m,s,w))
+        # find halfway line
+        pdiffs = []
+        for a in np.linspace(data.min(), data.max(), 1000):
+            pone, ptwo = tuple(g.predict_proba([a])[0])
+            if a > 0 and pone > 0.4 and ptwo > 0.4 and pone < 0.6 and ptwo < 0.6:
+                pdiffs.append((a,abs(pone-ptwo)))
+        halfway = sorted(pdiffs,key=lambda x: x[1])[0]
+        print halfway
+        halfway_line = plt.axvline(x=halfway[0], color='r', label='50/50 Split: %.3f' % halfway[0])
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles, labels)
+        plt.show()
+
+    return (g.weights_, g.means_, g.covars_)
+
 
 def apk(actual, predicted, k=10):
     """
