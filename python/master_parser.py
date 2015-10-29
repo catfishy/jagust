@@ -51,8 +51,8 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                                   'AV45_2_Date',
                                   'AV45_3_Date',
                                   'AV451_time',
-                                  'AV45_1_2_Diff (Yrs)',
-                                  'AV45_1_3_Diff (yrs)',
+                                  'AV45_1_2_Diff',
+                                  'AV45_1_3_Diff',
                                   'AV45_TP_SPECIFIC_BL',
                                   'AV45_TP_SPECIFIC_SCAN2',
                                   'AV45_TP_SPECIFIC_SCAN3'],
@@ -744,12 +744,16 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
         old_l.update(new_data)
         if timepoint == 'BL':
             bl_val = old_l.get('AV45_PVC_summary_CorticalSummary/Wholecereb_BL',0.0)
-            old_l['AV45_PVC_summary_wcereb1.27_BL'] = 1 if bl_val >= 1.27 else 0
+            try:
+                old_l['AV45_PVC_summary_wcereb1.27_BL'] = 1 if float(bl_val) >= 1.27 else 0
+                print "%s -> %s" % (bl_val, old_l['AV45_PVC_summary_wcereb1.27_BL'])
+            except ValueError as e:
+                old_l['AV45_PVC_summary_wcereb1.27_BL'] = ''
         elif timepoint == 'Scan2':
             # try to calculate slope with 2 points
             for vg in valid_groupings:
                 try:
-                    diff1 = float(old_l.get('AV45_1_2_Diff (Yrs)'))
+                    diff1 = float(old_l.get('AV45_1_2_Diff'))
                     x = [0.0, diff1]
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
@@ -776,8 +780,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
             # try to calculate slope with 3 points
             for vg in valid_groupings:
                 try:
-                    diff1 = float(old_l.get('AV45_1_2_Diff (Yrs)'))
-                    diff2 = float(old_l.get('AV45_1_3_Diff (yrs)'))
+                    diff1 = float(old_l.get('AV45_1_2_Diff'))
+                    diff2 = float(old_l.get('AV45_1_3_Diff'))
                     x = [0.0, diff1, diff2]
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
@@ -1364,8 +1368,8 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
                     'Age@AV45': av45_age,
                     'Age@AV45_2' : av45_age2,
                     'Age@AV45_3' : av45_age3,
-                    'AV45_1_2_Diff (Yrs)': av45_1_2_diff,
-                    'AV45_1_3_Diff (yrs)': av45_1_3_diff,
+                    'AV45_1_2_Diff': av45_1_2_diff,
+                    'AV45_1_3_Diff': av45_1_3_diff,
                     'MCItoADConv(fromav45)': '0',
                     'MCItoADConvDate': '',
                     'MCItoADconv_': '',
@@ -1638,7 +1642,7 @@ def parseAV45Entries(old_headers, subj_av45):
                  all_brainstem_keys,
                  all_wmratio_keys]
     all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
-    new_headers = rearrangeHeaders(old_headers, all_av45_keys, after='AV45_1_3_Diff (yrs)')
+    new_headers = rearrangeHeaders(old_headers, all_av45_keys, after='AV45_1_3_Diff')
 
     data = {k:'' for k in all_av45_keys}
     wm70_0 = None
@@ -2182,7 +2186,6 @@ def eliminateColumns(headers, lines):
     to_remove += ['AVLT_DATE.%s' % (i+1) for i in range(11)]
     to_remove += ['TBMSyn_DATE.%s' % (i+1) for i in range(11)]
 
-
     for tm in to_remove:
         while tm in headers:
             headers.remove(tm)
@@ -2230,7 +2233,7 @@ def addCategories(output_file):
 
 def runPipeline():
     # syncing pipeline
-    new_headers, new_lines = parseCSV(master_file)
+    new_headers, new_lines = parseCSV(master_file, use_second_line=True)
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
     print "\nSYNCING AV45\n"
@@ -2265,40 +2268,41 @@ def runPipeline():
 
 if __name__ == '__main__':
     now = datetime.now()
+
     # IO files
-    master_file = "../FDG_AV45_COGdata.csv"
+    master_file = "../FDG_AV45_COGdata_10_27_15.csv"
     output_file = "../FDG_AV45_COGdata_%s.csv" % (now.strftime("%m_%d_%y"))
-    # LOOKUP files
-    registry_file = "../docs/registry_clean.csv"
-    arm_file = "../docs/ARM.csv"
-    pet_meta_file = "../docs/PET_META_LIST_edited.csv"
-    demog_file = "../docs/PTDEMOG.csv"
-    # AV45 File
+    
+    # ADNI docs
+    registry_file = "../docs/ADNI/REGISTRY.csv"
+    arm_file = "../docs/ADNI/ARM.csv"
+    pet_meta_file = "../docs/ADNI/PET_META_LIST.csv"
+    demog_file = "../docs/ADNI/PTDEMOG.csv"
+    diagnosis_file = '../docs/ADNI/DXSUM_PDXCONV_ADNIALL.csv'
+    csf_files = ['../docs/ADNI/UPENNBIOMK5_10_31_13.csv',
+                 '../docs/ADNI/UPENNBIOMK6_07_02_13.csv',
+                 '../docs/ADNI/UPENNBIOMK7.csv',
+                 '../docs/ADNI/UPENNBIOMK8.csv']
+    wmh_file = '../docs/ADNI/UCD_ADNI2_WMH_10_26_15.csv'
+    fdg_file = '../docs/ADNI/UCBERKELEYFDG_07_30_15.csv'
+    
+    # Output files
     av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
     av45_nontp_file = "../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv"
-    # MMSE files
-    mmse_file = "../cog_tests/MMSE.csv"
-    # ADAS-COG files
-    adni1_adas_file = '../cog_tests/ADASSCORES.csv'
-    adnigo2_adas_file = '../cog_tests/ADAS_ADNIGO2.csv'
-    # Neuropsychological Battery file
-    neuro_battery_file = '../cog_tests/NEUROBAT.csv'
-    # Diagnosis file
-    diagnosis_file = '../docs/DXSUM_PDXCONV_ADNIALL.csv'
-    # TBMsyn file
-    tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
-    # CSF files
-    csf_files = ['../docs/UPENNBIOMK5_firstset.csv','../docs/UPENNBIOMK6_secondset.csv','../docs/UPENNBIOMK7_thirdset.csv','../docs/UPENNBIOMK8_fourthset.csv']
-    # WMH file
-    wmh_file = '../docs/UCD_ADNI2_WMH_03_12_15.csv'
-    # GD file
-    gd_file = '../docs/GDSCALE.csv'
-    # FDG file
-    fdg_file = '../docs/UCBERKELEY_FDG_07_29_15.csv'
-
-    # Rousset output files
     rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
     rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
     rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
 
+
+    # Cog files
+    mmse_file = "../cog_tests/MMSE.csv"
+    adni1_adas_file = '../cog_tests/ADASSCORES.csv'
+    adnigo2_adas_file = '../cog_tests/ADAS_ADNIGO2.csv'
+    neuro_battery_file = '../cog_tests/NEUROBAT.csv'
+    gd_file = '../cog_tests/GDSCALE.csv'
+    
+    # MR files
+    tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
+
+    # Run pipeline
     runPipeline()

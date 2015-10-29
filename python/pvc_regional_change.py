@@ -203,7 +203,7 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
     for rid, data in data_scan2.iteritems():
         if rid not in rids:
             continue
-        yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+        yrs = float(master_data[rid]['AV45_1_2_Diff'])
         if not annualize:
             yrs = 1.0
         yrs_diff[rid] = yrs
@@ -223,7 +223,7 @@ def findRegionalAnnualizedChange(rids, data_bl, data_scan2, data_scan3, master_d
     for rid, data in data_scan3.iteritems():
         if rid not in rids:
             continue
-        yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+        yrs = float(master_data[rid]['AV45_1_3_Diff'])
         if not annualize:
             yrs = 1.0
         yrs_diff[rid] = yrs
@@ -397,7 +397,7 @@ def dumpRegionalDataset(output_file, data_bl, data_scan2, data_scan3, master_dat
         all_data.update({"%s_volume" % k :v for k,v in sizes.iteritems()})
         lines.append(all_data)
     for rid, data in data_scan2.iteritems():
-        yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+        yrs = float(master_data[rid]['AV45_1_2_Diff'])
         uptakes, sizes = data
         all_data = {'RID': rid,
                     'Timepoint': 'Scan2',
@@ -406,7 +406,7 @@ def dumpRegionalDataset(output_file, data_bl, data_scan2, data_scan3, master_dat
         all_data.update({"%s_volume" % k :v for k,v in sizes.iteritems()})
         lines.append(all_data)
     for rid, data in data_scan3.iteritems():
-        yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+        yrs = float(master_data[rid]['AV45_1_3_Diff'])
         uptakes, sizes = data
         all_data = {'RID': rid,
                     'Timepoint': 'Scan3',

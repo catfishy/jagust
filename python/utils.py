@@ -419,11 +419,7 @@ def importRegistry(registry_file, include_all=False):
         date_str = data['EXAMDATE'].strip().lower()
         date = None
         try:
-            date = datetime.strptime(date_str,'%Y-%m-%d')
-        except Exception as e:
-            pass
-        try:
-            date = datetime.strptime(date_str,'%m/%d/%y')
+            date = parseDate(date_str)
         except Exception as e:
             pass
         if not include_all and date is None:
@@ -450,7 +446,7 @@ def importDODRegistry(dod_registry_file):
         date_string = data['EXAMDATE']
         if date_string == '':
             continue
-        date = datetime.strptime(date_string,'%Y-%m-%d')
+        date = parseDate(date_string)
         registry[subj].append({'VISCODE': viscode,
                                'EXAMDATE': date,
                                'update_stamp': data['update_stamp'],
@@ -513,7 +509,7 @@ def importADNIDiagnosis(diag_file, registry=None):
             rev_type = str(int(rev_type)).replace('-4','').strip()
 
         if examdate:
-            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+            examdate = parseDate(examdate)
         else:
             subj_listings = registry[subj]
             for listing in subj_listings:
@@ -625,7 +621,7 @@ def importFDG(fdg_file):
         subj = int(line['RID'])
         vc = line['VISCODE']
         vc2 = line['VISCODE2']
-        date = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
+        date = parseDate(line['EXAMDATE'])
         roiname = line['ROINAME']
         mean = float(line['MEAN'])
         by_subj[subj].append({'vc': vc,
@@ -644,7 +640,7 @@ def importExtractedFDG(fdg_file, registry):
         subj = line['PTID']
         subj_id = int(subj.split('_')[-1])
         date_str = line['DATE'].strip().split(' ')[0].strip()
-        examdate = datetime.strptime(date_str,'%Y-%m-%d')
+        examdate = parseDate(date_str)
         subject_registry = registry.get(subj_id,[])
         if len(subject_registry) == 0:
             raise Exception("NO SUBJECT REGISTRY")
@@ -715,10 +711,7 @@ def importDemog(demog_file):
         edu = int(edu) if edu != '' else edu
         dob = None
         if 'PTDOB' in line:
-            try:
-                dob = datetime.strptime(line['PTDOB'].replace('--','01'),'%m/%d/%Y')
-            except:
-                dob = datetime.strptime(line['PTDOB'].replace('--','01'),'%m/%d/%y')
+            dob = parseDate(line['PTDOB'])
         elif 'PTDOBMM' in line and 'PTDOBYY' in line:
             year = line['PTDOBYY']
             month = line['PTDOBMM']
@@ -753,7 +746,7 @@ def importMMSE(mmse_file, registry=None):
             if date is None:
                 print "Could not find visit in registry: %s, %s, %s" % (subj, vs, vs2)
         else:
-            date = datetime.strptime(date_string,'%m/%d/%y')
+            date = parseDate(date_string)
         if date is not None:
             mmse_by_subject[subj].append((date,line))
     mmse_by_subject = dict(mmse_by_subject)
@@ -780,7 +773,7 @@ def importAVLT(avlt_file, registry=None):
             viscode2 = ''
         examdate = line.get('EXAMDATE','')
         if examdate != '':
-            examdate = datetime.strptime(examdate,'%Y-%m-%d')
+            examdate = parseDate(examdate)
         elif registry is not None:
             examdate = findVisitDate(registry, subj, viscode, viscode2)
             if not examdate:
@@ -818,7 +811,7 @@ def importADASCog(adni1_file, adnigo2_file, registry=None):
     for line in adni1_lines:
         subj = int(line['RID'])
         viscode = line['VISCODE'].strip().lower()
-        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        examdate = parseDate(line['EXAMDATE'])
         totscore = float(line['TOTAL11'])
         if totscore < 0:
             totscore = ''
@@ -865,9 +858,9 @@ def importTBMSyn(tbm_file):
         vc = line['VISCODE'].strip().lower()
         vc2 = line['VISCODE2'].strip().lower()
         vcbl = line['VISCODE2BL'].strip().lower()
-        bl_examdate = datetime.strptime(line['EXAMDATEBL'],'%Y-%m-%d')
+        bl_examdate = parseDate(line['EXAMDATEBL'])
         score = float(line['TBMSYNSCOR'])
-        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        examdate = parseDate(line['EXAMDATE'])
         data[subj].append({'VISCODE': vc,
                            'VISCODE2': vc2,
                            'VISCODEBL': vcbl,
@@ -892,11 +885,8 @@ def importWMH(wmh_file):
         try:
             vc2 = line['VISCODE2'].strip().lower()
         except:
-            vc2 = ''
-        try:
-            examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
-        except:
-            examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+            vc2 = '' 
+        examdate = parseDate(line['EXAMDATE'])
         wmh = float(line['WHITMATHYP'])
         icv = float(line['ICV'])
         wmh_percent = wmh/icv
@@ -930,7 +920,7 @@ def importGD(gd_file, registry=None):
         vc = line['VISCODE'].strip()
         vc2 = line['VISCODE2'].strip()
         try:
-            examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+            examdate = parseDate(line['EXAMDATE'])
         except:
             examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else None
         if examdate is None:
@@ -955,16 +945,13 @@ def importCSF(csf_files, registry=None):
             else:
                 subj = int(line['RID'])
             vc = line['VISCODE'].strip().lower()
-            try:
-                rundate = datetime.strptime(line['RUNDATE'],'%m/%d/%y')
-            except:
-                rundate = datetime.strptime(line['RUNDATE'],'%Y-%m-%d')
+            rundate = parseDate(line['RUNDATE'])
             try:
                 vc2 = line['VISCODE2'].strip().lower()
             except:
                 vc2 = ''
             try:
-                examdate = datetime.strptime(line['EXAMDATE'],'%m/%d/%y')
+                examdate = parseDate(line['EXAMDATE'])
             except:
                 examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else None
             try:
@@ -1009,7 +996,7 @@ def importPetMETA(pet_meta_file):
     pets = defaultdict(list)
     for row in lines:
         subj = int(row['Subject'].split('_')[-1].strip())
-        new_date = datetime.strptime(row['Scan Date'], '%m/%d/%y')
+        new_date = parseDate(row['Scan Date'])
         pets[subj].append(new_date)
     pets = dict(pets)
     for k in pets.keys():
@@ -1048,7 +1035,7 @@ def importARM(arm_file):
         status = data['ARM']
         if status == '':
             continue
-        userdate = datetime.strptime(data['USERDATE'],'%Y-%m-%d')
+        userdate = parseDate(data['USERDATE'])
         # convert status
         status_str = translation[status]
         arms[subj].append({'USERDATE': userdate,
@@ -1082,10 +1069,7 @@ def importDODMRI(mri_file):
             continue
         if conducted == 0:
             continue
-        try:
-            date = datetime.strptime(line['EXAMDATE'], '%Y-%m-%d')
-        except:
-            date = datetime.strptime(line['EXAMDATE'], '%m/%d/%y')
+        date = parseDate(line['EXAMDATE'])
         data[subj].append(date)
 
     # sort
@@ -1136,11 +1120,7 @@ def importMRI(mri_file, magstrength_filter=None, filter_mprage=True):
 
         date = None
         try:
-            date = datetime.strptime(new_date,'%Y-%m-%d')
-        except Exception as e:
-            pass
-        try:
-            date = datetime.strptime(new_date,'%m/%d/%y')
+            date = parseDate(new_date)
         except Exception as e:
             pass
         if date is None:
@@ -1188,12 +1168,12 @@ def importBSI(bsi_file, include_failed=False):
             continue
         elif line['KMNDBCBBSI'] == '':
             # a baseline scan
-            bl_examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+            bl_examdate = parseDate(line['EXAMDATE'])
             bl_examdates[subj] = bl_examdate
             continue
         vc = line['VISCODE'].strip().lower()
         vc2 = line['VISCODE2'].strip().lower()
-        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        examdate = parseDate(line['EXAMDATE'])
         dbcb_bsi = line['DBCBBSI']
         kmndbcb_bsi = line['KMNDBCBBSI']
         v_bsi = line['VBSI']
@@ -1249,10 +1229,7 @@ def importAV45(av45_file, av45_nontp_file=None ,registry=None):
             viscode2 = ''
         examdate = line.get('EXAMDATE',None)
         if examdate:
-            try:
-                examdate = datetime.strptime(examdate,'%Y-%m-%d')
-            except:
-                examdate = datetime.strptime(examdate,'%m/%d/%y')
+            examdate = parseDate(examdate)
         elif registry is not None:
             examdate = findVisitDate(registry, subj, viscode, viscode2)
         if not examdate:
@@ -1283,10 +1260,7 @@ def importAV45(av45_file, av45_nontp_file=None ,registry=None):
             viscode2 = ''
         examdate = line.get('EXAMDATE',None)
         if examdate:
-            try:
-                examdate = datetime.strptime(examdate,'%Y-%m-%d')
-            except:
-                examdate = datetime.strptime(examdate,'%m/%d/%y')
+            examdate = parseDate(examdate)
         elif registry is not None:
             examdate = findVisitDate(registry, subj, viscode, viscode2)
         if not examdate:
@@ -1312,7 +1286,7 @@ def importCrossSectionFreesurfer(crossfree_file, include_failed=False):
         subj = int(line['RID'])
         vc = line['VISCODE'].strip().lower()
         vc2 = line['VISCODE2'].strip().lower()
-        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        examdate = parseDate(line['EXAMDATE'])
         inner_data = {k: v for k,v in line.iteritems() if k.startswith('ST') and k not in set(['STATUS'])}
         data[subj].append({'VISCODE': vc,
                            'VISCODE2': vc2,
@@ -1336,7 +1310,7 @@ def importLongitudinalFreesurfer(longfree_file, include_failed = False):
         subj = int(line['RID'])
         vc = line['VISCODE'].strip().lower()
         vc2 = line['VISCODE2'].strip().lower()
-        examdate = datetime.strptime(line['EXAMDATE'],'%Y-%m-%d')
+        examdate = parseDate(line['EXAMDATE'])
         inner_data = {k: v for k,v in line.iteritems() if k.startswith('ST') and k not in set(['STATUS'])}
         data[subj].append({'VISCODE': vc,
                            'VISCODE2': vc2,
@@ -1345,6 +1319,13 @@ def importLongitudinalFreesurfer(longfree_file, include_failed = False):
     print "LONG FREESURFER failed: %s" % failed
     return dict(data)
 
+
+def parseDate(date_str):
+    try:
+        date = datetime.strptime(date_str,'%Y-%m-%d')
+    except ValueError as e:
+        date = datetime.strptime(date_str, '%m/%d/%y')
+    return date
 
 def dumpCSV(file_path, headers, lines):
     print "DUMPING OUTPUT TO %s" % (file_path)

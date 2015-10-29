@@ -277,11 +277,11 @@ if __name__ == "__main__":
     data_prior = data_bl
     data_post = {}
     for rid, datarow in data_scan2.iteritems():
-        yrs = float(master_data[rid]['AV45_1_2_Diff (Yrs)'])
+        yrs = float(master_data[rid]['AV45_1_2_Diff'])
         withyrs = {k:(v,yrs) for k,v in datarow.iteritems()}
         data_post[rid] = withyrs
     for rid, datarow in data_scan3.iteritems():
-        yrs = float(master_data[rid]['AV45_1_3_Diff (yrs)'])
+        yrs = float(master_data[rid]['AV45_1_3_Diff'])
         withyrs = {k:(v,yrs) for k,v in datarow.iteritems()}
         data_post[rid] = withyrs
 
