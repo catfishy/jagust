@@ -13,6 +13,7 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.mixture import GMM
 from scipy.stats import norm
+from ggplot import *
 
 try:
     plt.style.use('ggplot')
@@ -25,6 +26,25 @@ import pandas as pd; from utils import fitGMM_1D
 df = pd.read_csv('../pvcsummary_bl_patterns_and_change.csv')
 fitGMM_1D(df['ctx-lh-middletemporal_change'],2,graph=True)
 '''
+
+'''
+import pandas as pd; from utils import scatterWithConfidence
+df = pd.read_json('../pvcsummary_bl_vs_change.json')
+keys = [_.replace('_bl','') for _ in df.columns if '_bl' in _ and 'ctx' in _]
+for k in keys:
+    xkey = '%s_bl' % k
+    ykey = '%s_change' % k
+    label = k
+    scatterWithConfidence(df, label, xkey, ykey, '../plots/%s_pvc_bl_vs_change.png' % k)
+'''
+
+def scatterWithConfidence(df, label, xkey, ykey, output):
+    p = ggplot(aes(x=xkey, y=ykey), data=df) + \
+                 geom_point(color='lightblue') + \
+                 stat_smooth(color='black', se=True) + \
+                 ggtitle(label)
+    ggsave(p, output)
+
 
 def fitGMM_1D(data, components, graph=False):
     wrapped = [[_] for _ in data]
