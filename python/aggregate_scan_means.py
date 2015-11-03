@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 import copy
 import codecs
 from glob import glob
+import pandas as pd
 
 from utils import *
 
@@ -411,11 +412,57 @@ def additionalCalculations(headers, mean_values, size_values, agg_type):
         pass
     return (headers, mean_values, size_values)
 
+def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates):
+    # read into dataframes
+    bl_means_df = pd.read_csv(bl_means)
+    v2_means_df = pd.read_csv(v2_means)
+    v3_means_df = pd.read_csv(v3_means)
+    bl_sizes_df = pd.read_csv(bl_sizes)
+    v2_sizes_df = pd.read_csv(v2_sizes)
+    v3_sizes_df = pd.read_csv(v3_sizes)
+    # convert headers
+    bl_means_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in bl_means_df.columns]
+    v2_means_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v2_means_df.columns]
+    v3_means_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v3_means_df.columns]
+    bl_sizes_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in bl_sizes_df.columns]
+    v2_sizes_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v2_sizes_df.columns]
+    v3_sizes_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v3_sizes_df.columns]
+    # add exam dates
+    bl_means_df['EXAMDATE'] = ''
+    v2_means_df['EXAMDATE'] = ''
+    v3_means_df['EXAMDATE'] = ''
 
-def findPreprocessOutputFiles(folder_name, nontp=False):
+    # fill in exam dates
+    for i in bl_means_df.index:
+        bl_means_df.ix[i,'EXAMDATE'] = pet_dates[bl_means_df.ix[i,'RID']][0].strftime('%m/%d/%Y')
+    for i in v2_means_df.index:
+        v2_means_df.ix[i,'EXAMDATE'] = pet_dates[v2_means_df.ix[i,'RID']][1].strftime('%m/%d/%Y')
+    for i in v3_means_df.index:
+        v3_means_df.ix[i,'EXAMDATE'] = pet_dates[v3_means_df.ix[i,'RID']][2].strftime('%m/%d/%Y')
+
+    # merge sizes
+    bl_means_df = bl_means_df.merge(bl_sizes_df, on='RID', suffixes=['','_SIZE'])
+    v2_means_df = v2_means_df.merge(v2_sizes_df, on='RID', suffixes=['','_SIZE'])
+    v3_means_df = v3_means_df.merge(v3_sizes_df, on='RID', suffixes=['','_SIZE'])
+
+    # concat visits
+    all_rows = pd.concat((bl_means_df, v2_means_df, v3_means_df), axis=0)
+    all_rows.set_index(['RID', 'EXAMDATE'], inplace=True)
+    all_rows = all_rows.sort_index()
+
+    print all_rows.columns
+    print all_rows.shape
+
+    return all_rows
+
+
+
+def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
     addon = "_nontp" if nontp else ""
     for filename in os.listdir(folder_name):
+        if allregions and 'allregions' not in filename:
+            continue
         if "BL%s_means" % addon in filename:
             bl_means = os.path.join(folder_name, filename)
         elif "V2%s_means" % addon in filename:
@@ -431,12 +478,30 @@ def findPreprocessOutputFiles(folder_name, nontp=False):
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 if __name__ == "__main__":
+    lut_file = "../FreeSurferColorLUT.txt"
+    meta_pet = "../docs/ADNI/PET_META_LIST.csv"
+    lut_table = importFreesurferLookup(lut_file)
+
+    # for adni av45 nontp all regions
+    output = '../output/UCBERKELEYAV45_11_02_15_allregions_nontp.csv'
+    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_02_15'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
+    pet_dates = importPetMETA(meta_pet)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
+    df.to_csv(output)
+
+    # # for adni av45 all regions
+    # output = '../output/UCBERKELEYAV45_11_02_15_allregions.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_11_02_15'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
+    # pet_dates = importPetMETA(meta_pet)
+    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
+    # df.to_csv(output)
 
     # # for adni av45 nontp
     # output = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
     # preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
-    # registry = importRegistry("../docs/registry_clean.csv") 
-    # meta_pet = "../docs/PET_META_LIST_edited.csv"
+    # registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
     # agg_type = 'adni_extra'
     # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
     # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
@@ -445,34 +510,33 @@ if __name__ == "__main__":
     # # for adni av45
     # output = '../output/UCBERKELEYAV45_09_25_15_extra.csv'
     # preprocess_folder =  '../docs/AV45_preprocess_output_09_25_15'
-    # registry = importRegistry("../docs/registry_clean.csv") 
-    # meta_pet = "../docs/PET_META_LIST_edited.csv"
+    # registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
     # agg_type = 'adni_extra'
     # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
     # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
     #                              meta_pet, registry, agg_type)
     
 
-    # for adni dod (add in adni controls)
-    output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
-    temp_output = '../output/temp.csv'
-    preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
-    adni_preprocess_folder = '../docs/AV45_preprocess_output_09_25_15'
-    registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
-    registry_adni = importRegistry("../docs/ADNI/REGISTRY.csv")
-    meta_pet = None
-    meta_pet_adni = None
-    agg_type = 'dod_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder, nontp=True)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
-    aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
-                                 meta_pet_adni, registry_adni, agg_type)
-    print 'appending'
-    appendCSV(output, temp_output)
-    print 'removing'
-    removeFile(temp_output)
+    # # for adni dod (add in adni controls)
+    # output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
+    # temp_output = '../output/temp.csv'
+    # preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
+    # adni_preprocess_folder = '../docs/AV45_preprocess_output_09_25_15'
+    # registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    # registry_adni = importRegistry("../docs/ADNI/REGISTRY.csv")
+    # meta_pet = None
+    # meta_pet_adni = None
+    # agg_type = 'dod_extra'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
+    # bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder, nontp=True)
+    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+    #                              meta_pet, registry, agg_type)
+    # aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
+    #                              meta_pet_adni, registry_adni, agg_type)
+    # print 'appending'
+    # appendCSV(output, temp_output)
+    # print 'removing'
+    # removeFile(temp_output)
 
 
     # # # for adni dod (don't add in adni controls, for uploading)

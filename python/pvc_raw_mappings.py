@@ -116,25 +116,30 @@ def getMeanAveragePrecision(avg_rank, sorted_uptakes, k):
 def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True):
     ref_regions = [k for k,v in index_lookup.iteritems() if len(list(set(REFERENCE_REGIONS) & set(list(v)))) > 0]
     regions_to_remove = [k for k,v in index_lookup.iteritems() if len(list(set(REGION_BLACKLIST) & set(list(v)))) > 0]
+    regions_to_remove += ['whole_cerebellum', 'composite_ref']
+    
     # add ref regions
-    regions_to_remove.append('whole_cerebellum')
+    #ref_key = 'whole_cerebellum'
+    ref_key = 'composite_ref'
+    
+    regions_to_remove.append(ref_key)
     index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
     for rid,val in data_bl.iteritems():
         ref_value = 1.0
         if suvr:
-            ref_value = val.get('whole_cerebellum',1.0)
+            ref_value = val.get(ref_key,1.0)
         new_val = {k: v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
         data_bl[rid] = new_val
     for rid,val in data_scan2.iteritems():
         ref_value = 1.0
         if suvr:
-            ref_value = val.get('whole_cerebellum',1.0)
+            ref_value = val.get(ref_key,1.0)
         new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
         data_scan2[rid] = new_val
     for rid,val in data_scan3.iteritems():
         ref_value = 1.0
         if suvr:
-            ref_value = val.get('whole_cerebellum',1.0)
+            ref_value = val.get(ref_key,1.0)
         new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
         data_scan3[rid] = new_val
     return data_bl, data_scan2, data_scan3, index_lookup
@@ -249,17 +254,16 @@ def rankSubjects(key_groups, subj, data):
     return avg_ranks
 
 if __name__ == "__main__":
-
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
     master_file = '../FDG_AV45_COGdata_10_27_15.csv'
     master_data = importMaster(master_file)
     diags = extractDiagnosesFromMasterData(master_data)
 
-    # make bathroom tile plot
-    bl_vs_change_json = '../pvcsummary_bl_vs_change.json'
-    generateBathroomTilePlot(bl_vs_change_json)
-    sys.exit(1)
+    # # make bathroom tile plot
+    # bl_vs_change_json = '../pvcsummary_bl_vs_change.json'
+    # generateBathroomTilePlot(bl_vs_change_json)
+    # sys.exit(1)
 
     # summary raw results
     bl_file = '../output/Rousset_BL/raw_summary_output_BL.mat'
@@ -300,8 +304,8 @@ if __name__ == "__main__":
             datarow['%s_change' % k] = v
         all_data.append(datarow)
     df = pd.DataFrame(all_data)
-    outfile = open('../pvcsummary_bl_vs_change.json','w')
-    outfile.write(df.to_json())
+    df.to_json('../pvcsummary_bl_vs_change.json')
+    sys.exit(1)
 
 
     line_data = {k:{'regions': [lut_table[_] for _ in v]} for k,v in index_lookup.iteritems()}

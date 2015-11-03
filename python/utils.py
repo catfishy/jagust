@@ -13,6 +13,9 @@ import pandas as pd
 from sklearn.decomposition import PCA
 from sklearn.mixture import GMM
 from scipy.stats import norm
+from scipy.signal import savgol_filter
+import statsmodels.api as sm
+from scipy.ndimage import gaussian_filter1d
 from ggplot import *
 
 try:
@@ -32,11 +35,64 @@ import pandas as pd; from utils import scatterWithConfidence
 df = pd.read_json('../pvcsummary_bl_vs_change.json')
 keys = [_.replace('_bl','') for _ in df.columns if '_bl' in _ and 'ctx' in _]
 for k in keys:
-    xkey = '%s_bl' % k
+    # xkey = '%s_bl' % k
+    xkey = 'cortical_summary_bl'
     ykey = '%s_change' % k
     label = k
     scatterWithConfidence(df, label, xkey, ykey, '../plots/%s_pvc_bl_vs_change.png' % k)
 '''
+'''
+import pandas as pd; from utils import fitLine; import numpy as np; import matplotlib.pyplot as plt
+df = pd.read_json('../pvcsummary_bl_vs_change.json')
+
+keys = [_.replace('_bl','') for _ in df.columns if '_bl' in _ and 'ctx' in _]
+xnew = np.linspace(df['cortical_summary_bl'].min(),df['cortical_summary_bl'].max(), 200)
+plt.figure(1)
+groups = {'high':[],'mid':[],'low':[]}
+positivity = {}
+for k in keys:
+    xkey = 'cortical_summary_bl'
+    ykey = '%s_change' % k
+    label = k
+    xfit,yfit = fitLine(df, xkey, ykey)
+    test = 0.57305707080000001
+    ytest = [y for x,y in zip(xfit,yfit) if x == test][0]
+    ypos = [x for x,y in zip(xfit,yfit) if y >= 0][0]
+    positivity[label] = ypos
+    if ytest > 0.0:
+        groups['high'].append(label)
+        color = 'r'
+    elif ytest > -0.00005:
+        groups['mid'].append(label)
+        color = 'k'
+    else:
+        groups['low'].append(label)
+        color = 'b'
+    plt.plot(xfit,yfit,color=color,label=label)
+
+pos_items = positivity.items()
+pos_items = sorted(pos_items,key=lambda x: x[1])
+for x in pos_items:
+    print x
+
+print groups
+'''
+
+def fitLine(df, xkey, ykey):
+    curdf = df[[xkey, ykey]]
+    curdf = curdf.sort(columns=xkey)
+    x = curdf[xkey].tolist()
+    y = curdf[ykey].tolist()
+    
+    # use lowess
+    lowess = sm.nonparametric.lowess(y,x,frac=0.4)
+    lowess_x, lowess_y = (lowess[:,0], lowess[:,1])
+
+    # use gaussian filter
+    gf = gaussian_filter1d(y, sigma=80, order=1, mode='reflect')
+    gauss_x, gauss_y = (x, gf)
+    
+    return (gauss_x, gauss_y)
 
 def scatterWithConfidence(df, label, xkey, ykey, output):
     p = ggplot(aes(x=xkey, y=ykey), data=df) + \
@@ -212,7 +268,14 @@ def parseRawAV45Output(av45_file, registry_file, lut_file):
     return data_bl, data_scan2, data_scan3, index_lookup
 
 def parseRawRousset(bl_file, scan2_file, scan3_file):
+    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
+    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
+    temporal=[1015,1030,2015,2030]
+    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
     wcereb_regions = set([7,8,46,47])
+    bigref_regions = set([2,41,7,8,46,47,16])
+    summary_regions = set(frontal+parietal+temporal+cingulate)
+
     data_bl_raw = importRawRoussetResults(bl_file)
     data_scan2_raw = importRawRoussetResults(scan2_file)
     data_scan3_raw = importRawRoussetResults(scan3_file)
@@ -227,14 +290,30 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         indices = [unwrap(_) for _ in data['indices']]
         indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
         vals = dict(zip(names, pvcvals))
+
         # add whole cereb
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
-        regionvalues = [_[1] for _ in regionsizes]
+        regionvalues = np.array([_[1] for _ in regionsizes])
         regionweights = np.array([_[0] for _ in regionsizes])
         regionweights = regionweights / float(sum(regionweights))
         vals['whole_cerebellum'] = sum(regionweights*regionvalues)
+        # add bigref
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & bigref_regions) > 0]
+        regionvalues = np.array([_[1] for _ in regionsizes])
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['composite_ref'] = sum(regionweights*regionvalues)
+        # add cortical summary
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & summary_regions) > 0]
+        regionvalues = np.array([_[1] for _ in regionsizes])
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['cortical_summary'] = sum(regionweights*regionvalues)
+
         if index_lookup is None:
             index_lookup = dict(zip(names, indices))
+            index_lookup['cortical_summary'] = list(summary_regions)
+
         data_bl[rid] = vals
     for rid, data in data_scan2_raw.iteritems():
         names = [unwrap(_) for _ in data['names']]
@@ -243,12 +322,26 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         indices = [unwrap(_) for _ in data['indices']]
         indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
         vals = dict(zip(names, pvcvals))
+
         # add whole cereb
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
         regionvalues = [_[1] for _ in regionsizes]
         regionweights = np.array([_[0] for _ in regionsizes])
         regionweights = regionweights / float(sum(regionweights))
         vals['whole_cerebellum'] = sum(regionweights*regionvalues)
+        # add bigref
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & bigref_regions) > 0]
+        regionvalues = np.array([_[1] for _ in regionsizes])
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['composite_ref'] = sum(regionweights*regionvalues)
+        # add cortical summary
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & summary_regions) > 0]
+        regionvalues = np.array([_[1] for _ in regionsizes])
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['cortical_summary'] = sum(regionweights*regionvalues)
+
         data_scan2[rid] = vals
     for rid, data in data_scan3_raw.iteritems():
         names = [unwrap(_) for _ in data['names']]
@@ -257,12 +350,26 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         indices = [unwrap(_) for _ in data['indices']]
         indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
         vals = dict(zip(names, pvcvals))
+
         # add whole cereb
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
         regionvalues = [_[1] for _ in regionsizes]
         regionweights = np.array([_[0] for _ in regionsizes])
         regionweights = regionweights / float(sum(regionweights))
         vals['whole_cerebellum'] = sum(regionweights*regionvalues)
+        # add bigref
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & bigref_regions) > 0]
+        regionvalues = np.array([_[1] for _ in regionsizes])
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['composite_ref'] = sum(regionweights*regionvalues)
+        # add cortical summary
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & summary_regions) > 0]
+        regionvalues = np.array([_[1] for _ in regionsizes])
+        regionweights = np.array([_[0] for _ in regionsizes])
+        regionweights = regionweights / float(sum(regionweights))
+        vals['cortical_summary'] = sum(regionweights*regionvalues)
+
         data_scan3[rid] = vals
     return data_bl, data_scan2, data_scan3, index_lookup
 
@@ -1067,12 +1174,15 @@ def importPetMETA(pet_meta_file):
     headers, lines = parseCSV(pet_meta_file)
     pets = defaultdict(list)
     for row in lines:
+        # filter
+        if row['Sequence'].strip() != 'AV45 Coreg, Avg, Std Img and Vox Siz, Uniform Resolution':
+            continue
         subj = int(row['Subject'].split('_')[-1].strip())
         new_date = parseDate(row['Scan Date'])
         pets[subj].append(new_date)
     pets = dict(pets)
     for k in pets.keys():
-        pets[k] = sorted(pets[k])
+        pets[k] = sorted(list(set(pets[k])))
     return pets
 
 def importARM(arm_file):
