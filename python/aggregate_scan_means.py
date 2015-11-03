@@ -490,13 +490,13 @@ if __name__ == "__main__":
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
     df.to_csv(output)
 
-    # # for adni av45 all regions
-    # output = '../output/UCBERKELEYAV45_11_02_15_allregions.csv'
-    # preprocess_folder =  '../docs/AV45_preprocess_output_11_02_15'
-    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
-    # pet_dates = importPetMETA(meta_pet)
-    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
-    # df.to_csv(output)
+    # for adni av45 all regions
+    output = '../output/UCBERKELEYAV45_11_02_15_allregions.csv'
+    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_02_15'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
+    pet_dates = importPetMETA(meta_pet)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
+    df.to_csv(output)
 
     # # for adni av45 nontp
     # output = '../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv'
