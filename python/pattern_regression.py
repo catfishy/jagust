@@ -85,9 +85,9 @@ plt.show()
 
 # GMM
 patterns_only = pattern_df_pca[keys]
-g = DPGMM(n_components=10, 
+g = DPGMM(n_components=20, 
           covariance_type='diag',
-          alpha=5,
+          alpha=10,
           tol=1e-10,
           random_state=None, 
           params='wmc', 
