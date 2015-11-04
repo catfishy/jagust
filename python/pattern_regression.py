@@ -85,12 +85,15 @@ plt.show()
 
 # GMM
 patterns_only = pattern_df_pca[keys]
-g = DPGMM(n_components=1, 
+g = DPGMM(n_components=10, 
           covariance_type='diag',
-          alpha=1000000,
+          alpha=5,
+          tol=1e-10,
           random_state=None, 
           params='wmc', 
           init_params='wmc',
           verbose=True)
 g.fit(patterns_only)
+y_ = g.predict(patterns_only)
+print y_
 print "%s: %s" % (g.n_components, g.aic(patterns_only))
