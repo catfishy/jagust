@@ -178,7 +178,7 @@ if __name__ == "__main__":
     summary, data_BL, data_Scan2, data_Scan3 = deriveCorticalSummaryUptakePattern(nontp_data, master_data, lut_table) # using preprocessed data
     data_all = pd.concat([data_BL, data_Scan2, data_Scan3]).as_matrix()
 
-    pca_model = PCA(n_components=0.95, copy=True, whiten=False)
+    pca_model = PCA(n_components=0.99, copy=True, whiten=False)
     pca_model.fit(data_all)
 
     # get years between BL and Scan2, annualized pattern transitions, annualized summary uptake changes

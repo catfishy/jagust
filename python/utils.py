@@ -44,54 +44,88 @@ for k in keys:
 '''
 import pandas as pd; from utils import fitLine; import numpy as np; import matplotlib.pyplot as plt
 df = pd.read_json('../pvcsummary_bl_vs_change.json')
-
+df = df[df['cortical_summary_bl']<1.36]
+df = df[df['cortical_summary_bl']>0.5]
 keys = [_.replace('_bl','') for _ in df.columns if '_bl' in _ and 'ctx' in _]
 xnew = np.linspace(df['cortical_summary_bl'].min(),df['cortical_summary_bl'].max(), 200)
 plt.figure(1)
 groups = {'high':[],'mid':[],'low':[]}
-positivity = {}
+testpts = [0.50131866629999999,
+           0.5500176993,
+           0.60029965890000003,
+           0.65183440459999997,
+           0.70266162240000007,
+           0.75155736560000008,
+           0.80735474860000001,
+           0.84944201800000008,
+           0.90135566740000006,
+           0.95089355310000001,
+           1.0093468031999999,
+           1.0530114480999999,
+           1.1023878562,
+           1.1575373425,
+           1.2002348844999999,
+           1.2509682801999999,
+           1.3011045959,
+           1.3513167401000001]
+test_ranks = {_:[] for _ in testpts}
+halfway_line = plt.axvline(x=0.897, color='k', label='Threshold')
 for k in keys:
     xkey = 'cortical_summary_bl'
     ykey = '%s_change' % k
     label = k
-    xfit,yfit = fitLine(df, xkey, ykey)
-    test = 0.57305707080000001
-    ytest = [y for x,y in zip(xfit,yfit) if x == test][0]
-    ypos = [x for x,y in zip(xfit,yfit) if y >= 0][0]
-    positivity[label] = ypos
-    if ytest > 0.0:
-        groups['high'].append(label)
-        color = 'r'
-    elif ytest > -0.00005:
-        groups['mid'].append(label)
-        color = 'k'
-    else:
-        groups['low'].append(label)
-        color = 'b'
-    plt.plot(xfit,yfit,color=color,label=label)
+    xfit,yfit = fitLine(df, xkey, ykey, order=0)
+    # test = 0.57305707080000001
+    # ypos = [x for x,y in zip(xfit,yfit) if y >= 0][0]
+    # positivity[label] = ypos
+    # if ytest > 0.0:
+    #     groups['high'].append(label)
+    #     color = 'r'
+    # elif ytest > -0.00005:
+    #     groups['mid'].append(label)
+    #     color = 'k'
+    # else:
+    #     groups['low'].append(label)
+    #     color = 'b'
+    color = 'k'
+    ytest = None
+    for i, cur_test in enumerate(testpts):
+        cur_ytest = [y for x,y in zip(xfit,yfit) if x == cur_test][0]
+        if i == 1:
+            ytest = cur_ytest
+        test_ranks[cur_test].append((cur_ytest,k))
+    plt.plot(xfit,yfit,label=label)
 
-pos_items = positivity.items()
-pos_items = sorted(pos_items,key=lambda x: x[1])
-for x in pos_items:
-    print x
 
-print groups
+rows = {}
+for i in testpts:
+    print "BL STATUS: %s" % i
+    sortedvals = sorted(test_ranks[i],key=lambda x: x[0], reverse=True)
+    new_row = dict(enumerate([b for a,b in sortedvals]))
+    new_row_vals = dict(enumerate([a for a,b in sortedvals]))
+    rows['%.2f' % i] = new_row
+    rows['%.2f_val' % i] = new_row_vals
+
+output = '../regionalchange_order0.csv'
+out_df = pd.DataFrame(rows)
+out_df.to_csv(output)
+
 '''
 
-def fitLine(df, xkey, ykey):
+def fitLine(df, xkey, ykey, order=0):
     curdf = df[[xkey, ykey]]
     curdf = curdf.sort(columns=xkey)
     x = curdf[xkey].tolist()
     y = curdf[ykey].tolist()
     
-    # use lowess
-    lowess = sm.nonparametric.lowess(y,x,frac=0.4)
-    lowess_x, lowess_y = (lowess[:,0], lowess[:,1])
-
     # use gaussian filter
-    gf = gaussian_filter1d(y, sigma=80, order=1, mode='reflect')
+    gf = gaussian_filter1d(y, sigma=50, order=order, mode='reflect')
     gauss_x, gauss_y = (x, gf)
-    
+
+    # # use lowess
+    # lowess = sm.nonparametric.lowess(gauss_y,gauss_x,frac=0.35)
+    # lowess_x, lowess_y = (lowess[:,0], lowess[:,1])
+
     return (gauss_x, gauss_y)
 
 def scatterWithConfidence(df, label, xkey, ykey, output):

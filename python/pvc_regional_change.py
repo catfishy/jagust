@@ -62,7 +62,7 @@ def extractRegionalValuesRousset(data, grouping, pvcval=True, regional=True):
     wholecereb = float(data['wholecereb'][key])
     bigref = float(data['bigref'][key])
 
-    ref = wholecereb
+    ref = bigref
 
     composite_uptake = data['composite'][key]/ref
     try:
@@ -638,7 +638,7 @@ def calculatePVCvsNonPVCSlope(bl_file, scan2_file, scan3_file, grouping):
 if __name__ == "__main__":
     # main files
     registry_file = "../docs/registry_clean.csv"
-    master_file = '../FDG_AV45_COGdata_10_15_15.csv'
+    master_file = '../FDG_AV45_COGdata_10_28_15.csv'
 
     # tp-specific file
     av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
@@ -717,7 +717,7 @@ if __name__ == "__main__":
 
 
     # composite threshold
-    fit_threshold = 1.11 # for big ref
+    fit_threshold = 0.79 # for big ref
 
     # for PVC
     data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=True, regional=False, grouping='summary')
