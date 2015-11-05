@@ -1497,18 +1497,21 @@ def importUCSFCrossSectionalFreesurfer(in_file, version='', include_failed=False
     # left hippocampus volume: ST29SV
     # intracranial volume: ST10CV
     key_columns = ['RID','VISCODE', 'VISCODE2']
-    filtered = df[key_columns]
-    filtered.set_index('RID',inplace=True)
-    filtered.loc[:,'EXAMDATE'] = pd.to_datetime(df.loc[:,'EXAMDATE'], errors='coerce', infer_datetime_format=True)
+    filtered = df[key_columns].copy()
+    print df.columns
+    parsed_dates = parseAllDates(df['EXAMDATE'].tolist())
+    filtered.loc[:,'EXAMDATE'] = parsed_dates
     filtered.loc[:,'LEFT_HCV'] = df.loc[:,'ST29SV']
     filtered.loc[:,'RIGHT_HCV'] = df.loc[:,'ST88SV']
     filtered.loc[:,'HCV'] = df[['ST88SV','ST29SV']].sum(axis=1)
     filtered.loc[:,'ICV'] = df.loc[:,'ST10CV']
-    if 'FLGSTRENG' in df.columns:
+    if 'FLDSTRENG' in df.columns:
         filtered.loc[:,'FLDSTRENG'] = df.loc[:,'FLDSTRENG']
     else:
         filtered.loc[:,'FLDSTRENG'] = '?'
     filtered.loc[:,'version'] = version
+    filtered = filtered.dropna(subset=['EXAMDATE'])
+    filtered.set_index('RID',inplace=True)
     data = defaultdict(list)
     for rid, row in filtered.iterrows():
         data[rid].append(dict(row))
@@ -1568,6 +1571,16 @@ def parseDate(date_str):
     except ValueError as e:
         date = datetime.strptime(date_str, '%m/%d/%y')
     return date
+
+def parseAllDates(date_str_list):
+    parsed = []
+    for d in date_str_list:
+        try:
+            new_date = parseDate(d)
+        except:
+            new_date = np.nan
+        parsed.append(new_date)
+    return parsed
 
 def dumpCSV(file_path, headers, lines):
     print "DUMPING OUTPUT TO %s" % (file_path)

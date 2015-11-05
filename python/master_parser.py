@@ -450,20 +450,8 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSL_postAV45_5',
                         'FSL_postAV45_6',
                         'FSL_postAV45_7',
-                        'FSL_MRI_STRENGTH_1',
-                        'FSL_MRI_STRENGTH_2',
-                        'FSL_MRI_STRENGTH_3',
-                        'FSL_MRI_STRENGTH_4',
-                        'FSL_MRI_STRENGTH_5',
-                        'FSL_MRI_STRENGTH_6',
-                        'FSL_MRI_STRENGTH_7',
-                        'FSL_FSVERSION_1',
-                        'FSL_FSVERSION_2',
-                        'FSL_FSVERSION_3',
-                        'FSL_FSVERSION_4',
-                        'FSL_FSVERSION_5',
-                        'FSL_FSVERSION_6',
-                        'FSL_FSVERSION_7',
+                        'FSL_MRI_STRENGTH',
+                        'FSL_FSVERSION',
                         'LatVent_Diff',
                         'FrontalVol_diff',
                         'CingulateVol_diff',
@@ -2129,8 +2117,7 @@ def syncUCSFFreesurferData(old_headers, old_lines, ucsf_file_1, ucsf_file_2, dum
     to_add_headers += ['FSL_ICV_%s' % (i+1) for i in range(7)]
     to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(7)]
     to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_MRI_STRENGTH', 'FSL_FSVERSION']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
@@ -2156,8 +2143,8 @@ def syncUCSFFreesurferData(old_headers, old_lines, ucsf_file_1, ucsf_file_2, dum
                 new_data['FSL_ICV_%s' % (i+1)] = datapoint['ICV']
                 new_data['FSL_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
                 new_data['FSL_postAV45_%s' % (i+1)] = timediff
-                new_data['FSL_FSVERSION_%s' % (i+1)] = datapoint['version']
-                new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+                new_data['FSL_FSVERSION'] = datapoint['version']
+                new_data['FSL_MRI_STRENGTH'] = datapoint['FLDSTRENG']
         return new_data
 
     new_lines = []
