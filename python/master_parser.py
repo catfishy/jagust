@@ -9,8 +9,10 @@ tr -d '\000' < file1 > file2
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
-from scipy import stats, optimize
+from scipy import optimize
+from scipy.stats import linregress
 import numpy as np
+import itertools
 
 from utils import *
 
@@ -406,13 +408,62 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                              'AV45_MCItoAD_ConvTime',
                              'Baseline_MCItoAD_ConvTime',
                              'BD MM-YY'],
-                'MRI': ['Hippocampal_Volume_3months',
-                        'Left_Volume',
-                        'Right_Volume',
-                        'ICV',
-                        'Hippocampal_Volume_normalizd',
-                        'HippVol_norm_BIN0.0047',
-                        'ICV_pchange(yrs)',
+                'MRI': ['FSL_LeftHC_Vol_1',
+                        'FSL_LeftHC_Vol_2',
+                        'FSL_LeftHC_Vol_3',
+                        'FSL_LeftHC_Vol_4',
+                        'FSL_LeftHC_Vol_5',
+                        'FSL_LeftHC_Vol_6',
+                        'FSL_LeftHC_Vol_7',
+                        'FSL_RightHC_Vol_1',
+                        'FSL_RightHC_Vol_2',
+                        'FSL_RightHC_Vol_3',
+                        'FSL_RightHC_Vol_4',
+                        'FSL_RightHC_Vol_5',
+                        'FSL_RightHC_Vol_6',
+                        'FSL_RightHC_Vol_7',
+                        'FSL_HC_Vol_1',
+                        'FSL_HC_Vol_2',
+                        'FSL_HC_Vol_3',
+                        'FSL_HC_Vol_4',
+                        'FSL_HC_Vol_5',
+                        'FSL_HC_Vol_6',
+                        'FSL_HC_Vol_7',
+                        'FSL_ICV_1',
+                        'FSL_ICV_2',
+                        'FSL_ICV_3',
+                        'FSL_ICV_4',
+                        'FSL_ICV_5',
+                        'FSL_ICV_6',
+                        'FSL_ICV_7',
+                        'FSL_HC/ICV_1',
+                        'FSL_HC/ICV_2',
+                        'FSL_HC/ICV_3',
+                        'FSL_HC/ICV_4',
+                        'FSL_HC/ICV_5',
+                        'FSL_HC/ICV_6',
+                        'FSL_HC/ICV_7',
+                        'FSL_postAV45_1',
+                        'FSL_postAV45_2',
+                        'FSL_postAV45_3',
+                        'FSL_postAV45_4',
+                        'FSL_postAV45_5',
+                        'FSL_postAV45_6',
+                        'FSL_postAV45_7',
+                        'FSL_MRI_STRENGTH_1',
+                        'FSL_MRI_STRENGTH_2',
+                        'FSL_MRI_STRENGTH_3',
+                        'FSL_MRI_STRENGTH_4',
+                        'FSL_MRI_STRENGTH_5',
+                        'FSL_MRI_STRENGTH_6',
+                        'FSL_MRI_STRENGTH_7',
+                        'FSL_FSVERSION_1',
+                        'FSL_FSVERSION_2',
+                        'FSL_FSVERSION_3',
+                        'FSL_FSVERSION_4',
+                        'FSL_FSVERSION_5',
+                        'FSL_FSVERSION_6',
+                        'FSL_FSVERSION_7',
                         'LatVent_Diff',
                         'FrontalVol_diff',
                         'CingulateVol_diff',
@@ -758,19 +809,19 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
-                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
+                    slope, intercept, r, p, stderr = linregress(x, [val1, val2])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = slope
                     if vg == 'summary':
                         old_l['AV45_PVC_summary_accumulator.0081'] = 1 if slope >= 0.0081 else 0
 
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
-                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
+                    slope, intercept, r, p, stderr = linregress(x, [val1, val2])
                     old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_2points' % (vg)] = slope
 
                     val1 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan2' % vg))
-                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2])
+                    slope, intercept, r, p, stderr = linregress(x, [val1, val2])
                     old_l['AV45_PVC_%s_HemiWM_slope_2points' % (vg)] = slope
                 except Exception as e:
                     old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = ''
@@ -787,7 +838,7 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
                     val3 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan3' % vg))
-                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2, val3])
+                    slope, intercept, r, p, stderr = linregress(x, [val1, val2, val3])
                     old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = slope
                     if vg == 'summary':
                         old_l['AV45_PVC_summary_accumulator.0081'] = 1 if slope >= 0.0081 else 0
@@ -795,14 +846,14 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan3' % vg))
-                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2, val3])
+                    slope, intercept, r, p, stderr = linregress(x, [val1, val2, val3])
                     old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_3points' % (vg)] = slope
 
 
                     val1 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_BL' % vg))
                     val2 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan2' % vg))
                     val3 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan3' % vg))
-                    slope, intercept, r, p, stderr = stats.linregress(x, [val1, val2, val3])
+                    slope, intercept, r, p, stderr = linregress(x, [val1, val2, val3])
                     old_l['AV45_PVC_%s_HemiWM_slope_3points' % (vg)] = slope
                 except Exception as e:
                     old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = ''
@@ -884,7 +935,7 @@ def syncGDData(old_headers, old_lines, gd_file, registry_file, dump_to=None):
             post_av45_points = np.array(post_av45_points)
             post_times = post_av45_points[:,0]
             post_values = post_av45_points[:,1]
-            slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            slope, intercept, r, p, stderr = linregress(post_times, post_values)
             new_subj_data['GD_slope'] = slope
         else:
             new_subj_data['GD_slope'] = ''
@@ -988,13 +1039,13 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         # get slopes
         '''
         if len(all_values) >= 2:
-            slope, intercept, r, p, stderr = stats.linregress(all_times, all_values)
+            slope, intercept, r, p, stderr = linregress(all_times, all_values)
             new_subj_data['ADAS_slope_all'] = slope
         else:
             new_subj_data['ADAS_slope_all'] = ''
             '''
         if len(post_values) >= 2:
-            slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            slope, intercept, r, p, stderr = linregress(post_times, post_values)
             new_subj_data['ADASslope_postAV45'] = slope
         else:
             new_subj_data['ADASslope_postAV45'] = ''
@@ -1105,7 +1156,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         if len(post_av45_points) >= 2:
             post_times = [_[0] for _ in post_av45_points]
             post_values = [_[1] for _ in post_av45_points]
-            slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            slope, intercept, r, p, stderr = linregress(post_times, post_values)
             new_subj_data['MMSEslope_postAV45'] = slope
 
         # fill in the blanks
@@ -1221,7 +1272,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         # get slopes
         if len(all_values) >= 2:
             try:
-                slope, intercept, r, p, stderr = stats.linregress(all_times, all_values)
+                slope, intercept, r, p, stderr = linregress(all_times, all_values)
             except Exception as e:
                 print "%s vs %s" % (all_times, all_values)
                 raise e
@@ -1229,7 +1280,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         else:
             new_subj_data['AVLT_slope_all'] = ''
         if len(post_values) >= 2:
-            slope, intercept, r, p, stderr = stats.linregress(post_times, post_values)
+            slope, intercept, r, p, stderr = linregress(post_times, post_values)
             new_subj_data['AVLTslope_postAV45'] = slope
         else:
             new_subj_data['AVLTslope_postAV45'] = ''
@@ -1712,40 +1763,40 @@ def parseAV45Entries(old_headers, subj_av45):
             if i == 1:
                 data['AV45_TP_SPECIFIC_SCAN2'] = tp_spec
                 times = exam_timedeltas[:2]
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in bigref_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in bigref_keys[:2]])
                 data['AV45_BigRef_Slope_2pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_keys[:2]])
                 data['AV45_WM70_Slope_2pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in cerebg_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in cerebg_keys[:2]])
                 data['AV45_cerebg_Slope_2pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wcereb_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wcereb_keys[:2]])
                 data['AV45_wcereb_Slope_2pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in brainstem_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in brainstem_keys[:2]])
                 data['AV45_brainstem_Slope_2pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_composite_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_composite_keys[:2]])
                 data['AV45_WM70/composite_Slope_2pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_cerebg_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_cerebg_keys[:2]])
                 data['AV45_WM70/cerebg_Slope_2pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_wcereb_keys[:2]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_wcereb_keys[:2]])
                 data['AV45_WM70/wcereb_Slope_2pts'] = slope
             if i == 2:
                 data['AV45_TP_SPECIFIC_SCAN3'] = tp_spec
                 times = exam_timedeltas[:3]
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in bigref_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in bigref_keys[:3]])
                 data['AV45_BigRef_Slope_3pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_keys[:3]])
                 data['AV45_WM70_Slope_3pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in cerebg_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in cerebg_keys[:3]])
                 data['AV45_cerebg_Slope_3pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wcereb_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wcereb_keys[:3]])
                 data['AV45_wcereb_Slope_3pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in brainstem_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in brainstem_keys[:3]])
                 data['AV45_brainstem_Slope_3pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_composite_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_composite_keys[:3]])
                 data['AV45_WM70/composite_Slope_3pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_cerebg_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_cerebg_keys[:3]])
                 data['AV45_WM70/cerebg_Slope_3pts'] = slope
-                slope, intercept, r, p, stderr = stats.linregress(times, [data[_] for _ in wm70_wcereb_keys[:3]])
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_wcereb_keys[:3]])
                 data['AV45_WM70/wcereb_Slope_3pts'] = slope
     return (new_headers, data)
 
@@ -1791,7 +1842,7 @@ def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
         if len(slope_points) >= 2:
             raw_dates = [_[0] for _ in slope_points]
             raw_scores = [_[1] for _ in slope_points]
-            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            slope, intercept, r, p, stderr = linregress(raw_dates, raw_scores)
             new_data['FDG_postAV45_slope'] = slope
             new_data['FDG_postAV45_followuptime'] = raw_dates[-1]
         else:
@@ -1859,7 +1910,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
             raw_scores = [_[1] for _ in slope_points]
             diff_dates = [0.0] + raw_dates
             diff_scores = [0.0] + raw_scores
-            #slope, intercept, r, p, stderr = stats.linregress(diff_dates, diff_scores)
+            #slope, intercept, r, p, stderr = linregress(diff_dates, diff_scores)
             output = optimize.fmin(lambda b, x, y: ((b*x-y)**2).sum(), x0=0.1, args=(diff_dates, diff_scores))
             new_data['TBMSyn_SLOPE'] = output[0]
             new_data['TBMSyn_slope_followuptime'] = raw_dates[-1]
@@ -2031,17 +2082,17 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
         if len(ptau_slope_points) >= 2:
             raw_dates = [_[0] for _ in ptau_slope_points]
             raw_scores = [_[1] for _ in ptau_slope_points]
-            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            slope, intercept, r, p, stderr = linregress(raw_dates, raw_scores)
             new_data['CSF_PTAU_slope'] = slope
         if len(tau_slope_points) >= 2:
             raw_dates = [_[0] for _ in tau_slope_points]
             raw_scores = [_[1] for _ in tau_slope_points]
-            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            slope, intercept, r, p, stderr = linregress(raw_dates, raw_scores)
             new_data['CSF_TAU_slope'] = slope
         if len(abeta_slope_points) >= 2:
             raw_dates = [_[0] for _ in abeta_slope_points]
             raw_scores = [_[1] for _ in abeta_slope_points]
-            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            slope, intercept, r, p, stderr = linregress(raw_dates, raw_scores)
             new_data['CSF_ABETA_slope'] = slope
         return new_data
 
@@ -2058,6 +2109,70 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
         dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
+
+def syncUCSFFreesurferData(old_headers, old_lines, ucsf_file_1, ucsf_file_2, dump_to=None):
+    fs_by_subj_one = importUCSFCrossSectionalFreesurfer(ucsf_file_1[1], version=ucsf_file_1[0], include_failed=False)
+    fs_by_subj_two = importUCSFCrossSectionalFreesurfer(ucsf_file_2[1], version=ucsf_file_2[0], include_failed=False)
+    fs_by_subj = {}
+    for k,v in itertools.chain(fs_by_subj_one.iteritems(), fs_by_subj_two.iteritems()):
+        if k not in fs_by_subj:
+            fs_by_subj[k] = v
+        else:
+            fs_by_subj[k] = fs_by_subj[k] + v
+
+    print fs_by_subj.keys()
+
+    to_add_headers = []
+    to_add_headers += ['FSL_LeftHC_Vol_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_RightHC_Vol_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_HC_Vol_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_ICV_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(7)]
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        subj_fs = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+        new_data = {}
+        slope_points = []
+        bl_icv = subj_fs[0]['ICV']
+        for i in range(7):
+            if i < len(subj_fs):
+                datapoint = subj_fs[i]
+                examdate = datapoint['EXAMDATE']
+                try:
+                    timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
+                    if timediff <= -(90.0/365.0):
+                        timediff = ''
+                except:
+                    print "BAD EXAMDATE"
+                    continue
+                new_data['FSL_LeftHC_Vol_%s' % (i+1)] = datapoint['LEFT_HCV']
+                new_data['FSL_RightHC_Vol_%s' % (i+1)] = datapoint['RIGHT_HCV']
+                new_data['FSL_HC_Vol_%s' % (i+1)] = datapoint['HCV']
+                new_data['FSL_ICV_%s' % (i+1)] = datapoint['ICV']
+                new_data['FSL_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
+                new_data['FSL_postAV45_%s' % (i+1)] = timediff
+                new_data['FSL_FSVERSION_%s' % (i+1)] = datapoint['version']
+                new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+        return new_data
+
+    new_lines = []
+    for old_l in old_lines:
+        new_data = updateLine(old_l, fs_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None, decimal_places=5)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
 
 def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
     wmh_by_subj = importWMH(wmh_file)
@@ -2096,7 +2211,7 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
         if len(slope_points) >= 2:
             raw_dates = [_[0] for _ in slope_points]
             raw_scores = [_[1] for _ in slope_points]
-            slope, intercept, r, p, stderr = stats.linregress(raw_dates, raw_scores)
+            slope, intercept, r, p, stderr = linregress(raw_dates, raw_scores)
             new_data['WMH_slope'] = slope
         return new_data
 
@@ -2175,7 +2290,14 @@ def eliminateColumns(headers, lines):
                  'ADAS_slope_all',
                  'FDG_slope',
                  'TBMSyn_SLOPE',
-                 'TBMSyn_slope_followuptime']
+                 'TBMSyn_slope_followuptime',
+                 'Hippocampal_Volume_3months',
+                 'Left_Volume',
+                 'Right_Volume',
+                 'ICV',
+                 'Hippocampal_Volume_normalizd',
+                 'HippVol_norm_BIN0.0047',
+                 'ICV_pchange(yrs)',]
     to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
     to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
     to_remove += ['TAU.%s' % (i+1) for i in range(7)]
@@ -2240,6 +2362,8 @@ def runPipeline():
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, av45_nontp_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
+    print "\nSYNCING UCSF FreeSurfer\n"
+    new_headers, new_lines = syncUCSFFreesurferData(new_headers, new_lines, ucsf_file_4_4, ucsf_file_5_1, dump_to=None)
     print "\nSYNCING ROUSSET BL\n"
     new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
     print "\nSYNCING ROUSSET SCAN2\n"
@@ -2293,7 +2417,6 @@ if __name__ == '__main__':
     rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
     rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
 
-
     # Cog files
     mmse_file = "../cog_tests/MMSE.csv"
     adni1_adas_file = '../cog_tests/ADASSCORES.csv'
@@ -2303,6 +2426,8 @@ if __name__ == '__main__':
     
     # MR files
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
+    ucsf_file_4_4 = ('4.4','../mr_docs/UCSF/longitudinal/UCSFFSL_11_02_15.csv')
+    ucsf_file_5_1 = ('5.1','../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_11_02_15.csv')
 
     # Run pipeline
     runPipeline()

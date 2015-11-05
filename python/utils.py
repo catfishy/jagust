@@ -1488,6 +1488,32 @@ def importAV45(av45_file, av45_nontp_file=None ,registry=None):
 
     return dict(av45_by_subj)
 
+def importUCSFCrossSectionalFreesurfer(in_file, version='', include_failed=False):
+    df = pd.read_csv(in_file)
+    if not include_failed:
+        df = df[df['OVERALLQC'].isin(['Pass','Partial'])]
+    # get relevant columns
+    # right hippocampus volume: ST88SV
+    # left hippocampus volume: ST29SV
+    # intracranial volume: ST10CV
+    key_columns = ['RID','VISCODE', 'VISCODE2']
+    filtered = df[key_columns]
+    filtered.set_index('RID',inplace=True)
+    filtered.loc[:,'EXAMDATE'] = pd.to_datetime(df.loc[:,'EXAMDATE'], errors='coerce', infer_datetime_format=True)
+    filtered.loc[:,'LEFT_HCV'] = df.loc[:,'ST29SV']
+    filtered.loc[:,'RIGHT_HCV'] = df.loc[:,'ST88SV']
+    filtered.loc[:,'HCV'] = df[['ST88SV','ST29SV']].sum(axis=1)
+    filtered.loc[:,'ICV'] = df.loc[:,'ST10CV']
+    if 'FLGSTRENG' in df.columns:
+        filtered.loc[:,'FLDSTRENG'] = df.loc[:,'FLDSTRENG']
+    else:
+        filtered.loc[:,'FLDSTRENG'] = '?'
+    filtered.loc[:,'version'] = version
+    data = defaultdict(list)
+    for rid, row in filtered.iterrows():
+        data[rid].append(dict(row))
+    return data
+
 def importCrossSectionFreesurfer(crossfree_file, include_failed=False):
     headers, lines = parseCSV(crossfree_file)
     data = defaultdict(list)
