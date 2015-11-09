@@ -408,34 +408,38 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                              'AV45_MCItoAD_ConvTime',
                              'Baseline_MCItoAD_ConvTime',
                              'BD MM-YY'],
-                'MRI': ['FSL_LeftHC_Vol_1',
-                        'FSL_LeftHC_Vol_2',
-                        'FSL_LeftHC_Vol_3',
-                        'FSL_LeftHC_Vol_4',
-                        'FSL_LeftHC_Vol_5',
-                        'FSL_LeftHC_Vol_6',
-                        'FSL_LeftHC_Vol_7',
-                        'FSL_RightHC_Vol_1',
-                        'FSL_RightHC_Vol_2',
-                        'FSL_RightHC_Vol_3',
-                        'FSL_RightHC_Vol_4',
-                        'FSL_RightHC_Vol_5',
-                        'FSL_RightHC_Vol_6',
-                        'FSL_RightHC_Vol_7',
-                        'FSL_HC_Vol_1',
-                        'FSL_HC_Vol_2',
-                        'FSL_HC_Vol_3',
-                        'FSL_HC_Vol_4',
-                        'FSL_HC_Vol_5',
-                        'FSL_HC_Vol_6',
-                        'FSL_HC_Vol_7',
-                        'FSL_ICV_1',
-                        'FSL_ICV_2',
-                        'FSL_ICV_3',
-                        'FSL_ICV_4',
-                        'FSL_ICV_5',
-                        'FSL_ICV_6',
-                        'FSL_ICV_7',
+                'MRI': ['FSX_HC/ICV_1',
+                        'FSX_HC/ICV_2',
+                        'FSX_HC/ICV_3',
+                        'FSX_HC/ICV_4',
+                        'FSX_HC/ICV_5',
+                        'FSX_HC/ICV_6',
+                        'FSX_HC/ICV_7',
+                        'FSX_HC/ICV_8',
+                        'FSX_postAV45_1',
+                        'FSX_postAV45_2',
+                        'FSX_postAV45_3',
+                        'FSX_postAV45_4',
+                        'FSX_postAV45_5',
+                        'FSX_postAV45_6',
+                        'FSX_postAV45_7',
+                        'FSX_postAV45_8',
+                        'FSX_MRI_STRENGTH_1',
+                        'FSX_MRI_STRENGTH_2',
+                        'FSX_MRI_STRENGTH_3',
+                        'FSX_MRI_STRENGTH_4',
+                        'FSX_MRI_STRENGTH_5',
+                        'FSX_MRI_STRENGTH_6',
+                        'FSX_MRI_STRENGTH_7',
+                        'FSX_MRI_STRENGTH_8',
+                        'FSX_FSVERSION_1',
+                        'FSX_FSVERSION_2',
+                        'FSX_FSVERSION_3',
+                        'FSX_FSVERSION_4',
+                        'FSX_FSVERSION_5',
+                        'FSX_FSVERSION_6',
+                        'FSX_FSVERSION_7',
+                        'FSX_FSVERSION_8',
                         'FSL_HC/ICV_1',
                         'FSL_HC/ICV_2',
                         'FSL_HC/ICV_3',
@@ -443,6 +447,7 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSL_HC/ICV_5',
                         'FSL_HC/ICV_6',
                         'FSL_HC/ICV_7',
+                        'FSL_HC/ICV_8',
                         'FSL_postAV45_1',
                         'FSL_postAV45_2',
                         'FSL_postAV45_3',
@@ -450,8 +455,23 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSL_postAV45_5',
                         'FSL_postAV45_6',
                         'FSL_postAV45_7',
-                        'FSL_MRI_STRENGTH',
-                        'FSL_FSVERSION',
+                        'FSL_postAV45_8',
+                        'FSL_MRI_STRENGTH_1',
+                        'FSL_MRI_STRENGTH_2',
+                        'FSL_MRI_STRENGTH_3',
+                        'FSL_MRI_STRENGTH_4',
+                        'FSL_MRI_STRENGTH_5',
+                        'FSL_MRI_STRENGTH_6',
+                        'FSL_MRI_STRENGTH_7',
+                        'FSL_MRI_STRENGTH_8',
+                        'FSL_FSVERSION_1',
+                        'FSL_FSVERSION_2',
+                        'FSL_FSVERSION_3',
+                        'FSL_FSVERSION_4',
+                        'FSL_FSVERSION_5',
+                        'FSL_FSVERSION_6',
+                        'FSL_FSVERSION_7',
+                        'FSL_FSVERSION_8',
                         'LatVent_Diff',
                         'FrontalVol_diff',
                         'CingulateVol_diff',
@@ -2098,33 +2118,123 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
 
     return (new_headers, new_lines)
 
-def syncUCSFFreesurferData(old_headers, old_lines, ucsf_file_1, ucsf_file_2, dump_to=None):
-    fs_by_subj_one = importUCSFCrossSectionalFreesurfer(ucsf_file_1[1], version=ucsf_file_1[0], include_failed=False)
-    fs_by_subj_two = importUCSFCrossSectionalFreesurfer(ucsf_file_2[1], version=ucsf_file_2[0], include_failed=False)
+def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None):
+    fs_by_subj_list = [importUCSFFreesurfer(filename, version=fsversion, mristrength=strength, include_failed=False) for fsversion,strength,filename in ucsf_files]
     fs_by_subj = {}
-    for k,v in itertools.chain(fs_by_subj_one.iteritems(), fs_by_subj_two.iteritems()):
+    for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
         if k not in fs_by_subj:
             fs_by_subj[k] = v
         else:
             fs_by_subj[k] = fs_by_subj[k] + v
 
-    print fs_by_subj.keys()
-
     to_add_headers = []
-    to_add_headers += ['FSL_LeftHC_Vol_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_RightHC_Vol_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_HC_Vol_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_ICV_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_MRI_STRENGTH', 'FSL_FSVERSION']
+    to_add_headers += ['FSX_HC/ICV_%s' % (i+1) for i in range(8)]
+    to_add_headers += ['FSX_postAV45_%s' % (i+1) for i in range(8)]
+    to_add_headers += ['FSX_MRI_STRENGTH_%s' % (i+1) for i in range(8)]
+    to_add_headers += ['FSX_FSVERSION_%s' % (i+1) for i in range(8)]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        subj_fs = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+        # take care of scans on the same date
+        by_date = defaultdict(list)
+        for scan in subj_row:
+            by_date[scan['EXAMDATE']].append(scan)
+        subj_fs = []
+        for scandate in sorted(by_date.keys()):
+            scans_on_date = by_date[scandate]
+            if len(scans_on_date) == 1:
+                subj_fs.append(scans_on_date[0])
+            else:
+                # average if possible, else take first one
+                if len(set([_['FLDSTRENG'] for _ in scans_on_date])) == 1 and len(set([_['version'] for _ in scans_on_date])) == 1:
+                    avg_row = {}
+                    avg_row['EXAMDATE'] = scandate
+                    avg_row['ICV'] = np.mean([float(_['ICV']) for _ in scans_on_date])
+                    avg_row['HCV'] = np.mean([float(_['HCV']) for _ in scans_on_date])
+                    avg_row['FLDSTRENG'] = scans_on_date[0]['FLDSTRENG']
+                    avg_row['version'] = scans_on_date[0]['version']
+                else:
+                    avg_row = scans_on_date[0]
+                subj_fs.append(avg_row)
+
         new_data = {}
         slope_points = []
+        bl_icv = subj_fs[0]['ICV']
+        for i in range(8):
+            if i < len(subj_fs):
+                datapoint = subj_fs[i]
+                examdate = datapoint['EXAMDATE']
+                try:
+                    timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
+                    if timediff <= -(90.0/365.0):
+                        timediff = ''
+                except:
+                    print "BAD EXAMDATE"
+                    continue
+                new_data['FSX_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
+                new_data['FSX_postAV45_%s' % (i+1)] = timediff
+                new_data['FSX_FSVERSION_%s' % (i+1)] = datapoint['version']
+                new_data['FSX_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+        return new_data
+
+    new_lines = []
+    for old_l in old_lines:
+        new_data = updateLine(old_l, fs_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None, decimal_places=5)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+
+def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, dump_to=None):
+    fs_by_subj_list = [importUCSFFreesurfer(filename, version=fsversion, mristrength=strength, include_failed=False) for fsversion,strength,filename in ucsf_files]
+    fs_by_subj = {}
+    for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
+        if k not in fs_by_subj:
+            fs_by_subj[k] = v
+        else:
+            fs_by_subj[k] = fs_by_subj[k] + v
+
+    to_add_headers = []
+    to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(7)]
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        # take care of scans on the same date
+        by_date = defaultdict(list)
+        for scan in subj_row:
+            by_date[scan['EXAMDATE']].append(scan)
+        subj_fs = []
+        for scandate in sorted(by_date.keys()):
+            scans_on_date = by_date[scandate]
+            if len(scans_on_date) == 1:
+                subj_fs.append(scans_on_date[0])
+            else:
+                if len(set([_['FLDSTRENG'] for _ in scans_on_date])) == 1 and len(set([_['version'] for _ in scans_on_date])) == 1:
+                    # average
+                    avg_row = {}
+                    avg_row['EXAMDATE'] = scandate
+                    avg_row['ICV'] = np.mean([float(_['ICV']) for _ in scans_on_date])
+                    avg_row['HCV'] = np.mean([float(_['HCV']) for _ in scans_on_date])
+                    avg_row['FLDSTRENG'] = scans_on_date[0]['FLDSTRENG']
+                    avg_row['version'] = scans_on_date[0]['version']
+                else:
+                    avg_row = scans_on_date[0]
+                subj_fs.append(avg_row)
+
+        new_data = {}
+        slope_points = []
+        print subj_fs
         bl_icv = subj_fs[0]['ICV']
         for i in range(7):
             if i < len(subj_fs):
@@ -2137,14 +2247,10 @@ def syncUCSFFreesurferData(old_headers, old_lines, ucsf_file_1, ucsf_file_2, dum
                 except:
                     print "BAD EXAMDATE"
                     continue
-                new_data['FSL_LeftHC_Vol_%s' % (i+1)] = datapoint['LEFT_HCV']
-                new_data['FSL_RightHC_Vol_%s' % (i+1)] = datapoint['RIGHT_HCV']
-                new_data['FSL_HC_Vol_%s' % (i+1)] = datapoint['HCV']
-                new_data['FSL_ICV_%s' % (i+1)] = datapoint['ICV']
                 new_data['FSL_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
                 new_data['FSL_postAV45_%s' % (i+1)] = timediff
-                new_data['FSL_FSVERSION'] = datapoint['version']
-                new_data['FSL_MRI_STRENGTH'] = datapoint['FLDSTRENG']
+                new_data['FSL_FSVERSION_%s' % (i+1)] = datapoint['version']
+                new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
         return new_data
 
     new_lines = []
@@ -2349,8 +2455,10 @@ def runPipeline():
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, av45_nontp_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
-    print "\nSYNCING UCSF FreeSurfer\n"
-    new_headers, new_lines = syncUCSFFreesurferData(new_headers, new_lines, ucsf_file_4_4, ucsf_file_5_1, dump_to=None)
+    print "\nSYNCING UCSF LONG FreeSurfer\n"
+    new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, dump_to=None)
+    print "\nSYCNING UCSF CROSS FreeSurfer"
+    new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, dump_to=None)
     print "\nSYNCING ROUSSET BL\n"
     new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
     print "\nSYNCING ROUSSET SCAN2\n"
@@ -2413,8 +2521,11 @@ if __name__ == '__main__':
     
     # MR files
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
-    ucsf_file_4_4 = ('4.4','../mr_docs/UCSF/longitudinal/UCSFFSL_11_02_15.csv')
-    ucsf_file_5_1 = ('5.1','../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_11_02_15.csv')
+    ucsf_long_files = [('4.4','1.5','../mr_docs/UCSF/longitudinal/UCSFFSL_11_02_15.csv'),
+                       ('5.1','1.5','../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_11_02_15.csv')]
+    ucsf_cross_files = [('4.3','1.5','../mr_docs/UCSF/cross_section/UCSFFSX_11_02_15.csv'),
+                        ('5.1','1.5','../mr_docs/UCSF/cross_section/UCSFFSX51_11_02_15.csv'),
+                        ('5.1','3.0','../mr_docs/UCSF/cross_section/UCSFFSX51_ADNI1_3T_11_02_15.csv')]
 
     # Run pipeline
     runPipeline()

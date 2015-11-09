@@ -1488,15 +1488,19 @@ def importAV45(av45_file, av45_nontp_file=None ,registry=None):
 
     return dict(av45_by_subj)
 
-def importUCSFCrossSectionalFreesurfer(in_file, version='', include_failed=False):
+def importUCSFFreesurfer(in_file, version='', mristrength='?', include_failed=False, as_df=False):
     df = pd.read_csv(in_file)
     if not include_failed:
         df = df[df['OVERALLQC'].isin(['Pass','Partial'])]
+    if 'IMAGETYPE' in df.columns:
+        df = df[df['IMAGETYPE']=='Non-Accelerated T1']
     # get relevant columns
     # right hippocampus volume: ST88SV
     # left hippocampus volume: ST29SV
     # intracranial volume: ST10CV
-    key_columns = ['RID','VISCODE', 'VISCODE2']
+    key_columns = ['RID','VISCODE']
+    if 'VISCODE2' in df.columns:
+        key_columns.append('VISCODE2')
     filtered = df[key_columns].copy()
     print df.columns
     parsed_dates = parseAllDates(df['EXAMDATE'].tolist())
@@ -1508,14 +1512,17 @@ def importUCSFCrossSectionalFreesurfer(in_file, version='', include_failed=False
     if 'FLDSTRENG' in df.columns:
         filtered.loc[:,'FLDSTRENG'] = df.loc[:,'FLDSTRENG']
     else:
-        filtered.loc[:,'FLDSTRENG'] = '?'
+        filtered.loc[:,'FLDSTRENG'] = mristrength
     filtered.loc[:,'version'] = version
     filtered = filtered.dropna(subset=['EXAMDATE'])
     filtered.set_index('RID',inplace=True)
-    data = defaultdict(list)
-    for rid, row in filtered.iterrows():
-        data[rid].append(dict(row))
-    return data
+    if as_df:
+        return filtered
+    else:
+        data = defaultdict(list)
+        for rid, row in filtered.iterrows():
+            data[rid].append(dict(row))
+        return data
 
 def importCrossSectionFreesurfer(crossfree_file, include_failed=False):
     headers, lines = parseCSV(crossfree_file)
