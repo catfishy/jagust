@@ -416,6 +416,10 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSX_HC/ICV_6',
                         'FSX_HC/ICV_7',
                         'FSX_HC/ICV_8',
+                        'FSX_HC/ICV_9',
+                        'FSX_HC/ICV_10',
+                        'FSX_HC/ICV_11',
+                        'FSX_HC/ICV_12',
                         'FSX_postAV45_1',
                         'FSX_postAV45_2',
                         'FSX_postAV45_3',
@@ -424,6 +428,13 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSX_postAV45_6',
                         'FSX_postAV45_7',
                         'FSX_postAV45_8',
+                        'FSX_postAV45_9',
+                        'FSX_postAV45_10',
+                        'FSX_postAV45_11',
+                        'FSX_postAV45_12',
+                        'FSX_postAV45_count',
+                        'FSX_HC/ICV_slope',
+                        'FSX_HC/ICV_BL_3months',
                         'FSX_MRI_STRENGTH_1',
                         'FSX_MRI_STRENGTH_2',
                         'FSX_MRI_STRENGTH_3',
@@ -440,6 +451,10 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSX_FSVERSION_6',
                         'FSX_FSVERSION_7',
                         'FSX_FSVERSION_8',
+                        'FSX_FSVERSION_9',
+                        'FSX_FSVERSION_10',
+                        'FSX_FSVERSION_11',
+                        'FSX_FSVERSION_12',
                         'FSL_HC/ICV_1',
                         'FSL_HC/ICV_2',
                         'FSL_HC/ICV_3',
@@ -456,6 +471,9 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSL_postAV45_6',
                         'FSL_postAV45_7',
                         'FSL_postAV45_8',
+                        'FSL_postAV45_count',
+                        'FSL_HC/ICV_slope',
+                        'FSL_HC/ICV_BL_3months',
                         'FSL_MRI_STRENGTH_1',
                         'FSL_MRI_STRENGTH_2',
                         'FSL_MRI_STRENGTH_3',
@@ -715,7 +733,22 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                                 'AV45_wcereb_Slope_2pts',
                                 'AV45_wcereb_Slope_3pts',
                                 'AV45_brainstem_Slope_2pts',
-                                'AV45_brainstem_Slope_3pts'],
+                                'AV45_brainstem_Slope_3pts',
+                                'AV45_WMratio_Slope_2pts',
+                                'AV45_WMratio_Slope_3pts',
+                                'AV45_WMratio_Slope',
+                                'AV45_Frontal/BigRef_Slope_2pts',
+                                'AV45_Frontal/BigRef_Slope_3pts',
+                                'AV45_Frontal/BigRef_Slope',
+                                'AV45_Cingulate/BigRef_Slope_2pts',
+                                'AV45_Cingulate/BigRef_Slope_3pts',
+                                'AV45_Cingulate/BigRef_Slope',
+                                'AV45_Parietal/BigRef_Slope_2pts',
+                                'AV45_Parietal/BigRef_Slope_3pts',
+                                'AV45_Parietal/BigRef_Slope',
+                                'AV45_Temporal/BigRef_Slope_2pts',
+                                'AV45_Temporal/BigRef_Slope_3pts',
+                                'AV45_Temporal/BigRef_Slope'],
                 'AV45_PVC': ['AV45_PVC_summary_CorticalSummary/Wholecereb_BL',
                             'AV45_PVC_summary_CorticalSummary/Wholecereb_Scan2',
                             'AV45_PVC_summary_CorticalSummary/Wholecereb_Scan3',
@@ -742,7 +775,9 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                             'AV45_PVC_summary_HemiWM_slope_2points',
                             'AV45_PVC_summary_HemiWM_slope_3points',
                             'AV45_PVC_summary_accumulator.0081',
-                            'AV45_PVC_summary_wcereb1.27_BL'], 
+                            'AV45_PVC_summary_wcereb1.27_BL',
+                            'AV45_PVC_summary_CorticalSummary/Bigref_slope',
+                            'AV45_PVC_summary_HemiWM_slope'],
                 'RID': ['RID']}
 
 
@@ -1527,7 +1562,8 @@ def syncAV45Data(old_headers, old_lines, av45_file, av45_nontp_file, registry_fi
     for the possibility of introducing new subjects via the dataset being synced in
     '''
     registry = importRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, av45_nontp_file=av45_nontp_file, registry=registry)
+    av45_by_subj = importAV45(av45_file, av45_nontp_file, registry=registry)
+    print "SUBJECTS WITH AV45: %s" % len(av45_by_subj)
     new_headers = None
     new_lines = []
     old_subjects = set([])
@@ -1539,7 +1575,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, av45_nontp_file, registry_fi
             continue
         old_subjects.add(subj)
         if subj not in av45_by_subj:
-            print "No AV45 data for %s" % subj
+            #print "No AV45 data for %s" % subj
             new_lines.append(old_l)
             continue
 
@@ -1650,19 +1686,24 @@ def parseAV45Entries(old_headers, subj_av45):
                       ["%s_pchange" % _ for _ in wmratio_keys[1:]] + \
                       ["%s_pchange_ABS" % _ for _ in wmratio_keys[1:]] + \
                       ["%s_diff" % _ for _ in wmratio_keys[1:]] + \
-                      ["%s_diff_ABS" % _ for _ in wmratio_keys[1:]]
+                      ["%s_diff_ABS" % _ for _ in wmratio_keys[1:]] + \
+                      ['AV45_WMratio_Slope_2pts', 'AV45_WMratio_Slope_3pts']
     all_frontal_bigref_keys = frontal_bigref_keys + \
                       ["%s_pchange" % _ for _ in frontal_bigref_keys[1:]] + \
-                      ["%s_diff" % _ for _ in frontal_bigref_keys[1:]]
+                      ["%s_diff" % _ for _ in frontal_bigref_keys[1:]] + \
+                      ['AV45_Frontal/BigRef_Slope_2pts', 'AV45_Frontal/BigRef_Slope_3pts']
     all_cingulate_bigref_keys = cingulate_bigref_keys + \
                       ["%s_pchange" % _ for _ in cingulate_bigref_keys[1:]] + \
-                      ["%s_diff" % _ for _ in cingulate_bigref_keys[1:]]
+                      ["%s_diff" % _ for _ in cingulate_bigref_keys[1:]] + \
+                      ['AV45_Cingulate/BigRef_Slope_2pts', 'AV45_Cingulate/BigRef_Slope_3pts']
     all_parietal_bigref_keys = parietal_bigref_keys + \
                       ["%s_pchange" % _ for _ in parietal_bigref_keys[1:]] + \
-                      ["%s_diff" % _ for _ in parietal_bigref_keys[1:]]
+                      ["%s_diff" % _ for _ in parietal_bigref_keys[1:]] + \
+                      ['AV45_Parietal/BigRef_Slope_2pts', 'AV45_Parietal/BigRef_Slope_3pts']
     all_temporal_bigref_keys = temporal_bigref_keys + \
                       ["%s_pchange" % _ for _ in temporal_bigref_keys[1:]] + \
-                      ["%s_diff" % _ for _ in temporal_bigref_keys[1:]]
+                      ["%s_diff" % _ for _ in temporal_bigref_keys[1:]] + \
+                      ['AV45_Temporal/BigRef_Slope_2pts', 'AV45_Temporal/BigRef_Slope_3pts']
     all_av45_key_lists = [all_tp_keys,
                           all_wm70_composite_keys,
                           all_wm70_cerebg_keys,
@@ -1787,6 +1828,16 @@ def parseAV45Entries(old_headers, subj_av45):
                 data['AV45_WM70/cerebg_Slope_2pts'] = slope
                 slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_wcereb_keys[:2]])
                 data['AV45_WM70/wcereb_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wmratio_keys[:2]])
+                data['AV45_WMratio_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in frontal_bigref_keys[:2]])
+                data['AV45_Frontal/BigRef_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in cingulate_bigref_keys[:2]])
+                data['AV45_Cingulate/BigRef_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in parietal_bigref_keys[:2]])
+                data['AV45_Parietal/BigRef_Slope_2pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in temporal_bigref_keys[:2]])
+                data['AV45_Temporal/BigRef_Slope_2pts'] = slope
             if i == 2:
                 data['AV45_TP_SPECIFIC_SCAN3'] = tp_spec
                 times = exam_timedeltas[:3]
@@ -1806,6 +1857,16 @@ def parseAV45Entries(old_headers, subj_av45):
                 data['AV45_WM70/cerebg_Slope_3pts'] = slope
                 slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wm70_wcereb_keys[:3]])
                 data['AV45_WM70/wcereb_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in wmratio_keys[:3]])
+                data['AV45_WMratio_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in frontal_bigref_keys[:3]])
+                data['AV45_Frontal/BigRef_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in cingulate_bigref_keys[:3]])
+                data['AV45_Cingulate/BigRef_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in parietal_bigref_keys[:3]])
+                data['AV45_Parietal/BigRef_Slope_3pts'] = slope
+                slope, intercept, r, p, stderr = linregress(times, [data[_] for _ in temporal_bigref_keys[:3]])
+                data['AV45_Temporal/BigRef_Slope_3pts'] = slope
     return (new_headers, data)
 
 def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
@@ -2119,6 +2180,8 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
     return (new_headers, new_lines)
 
 def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None):
+    tmpts = 12
+
     fs_by_subj_list = [importUCSFFreesurfer(filename, version=fsversion, mristrength=strength, include_failed=False) for fsversion,strength,filename in ucsf_files]
     fs_by_subj = {}
     for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
@@ -2128,10 +2191,12 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None
             fs_by_subj[k] = fs_by_subj[k] + v
 
     to_add_headers = []
-    to_add_headers += ['FSX_HC/ICV_%s' % (i+1) for i in range(8)]
-    to_add_headers += ['FSX_postAV45_%s' % (i+1) for i in range(8)]
-    to_add_headers += ['FSX_MRI_STRENGTH_%s' % (i+1) for i in range(8)]
-    to_add_headers += ['FSX_FSVERSION_%s' % (i+1) for i in range(8)]
+    to_add_headers += ['FSX_HC/ICV_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSX_postAV45_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSX_postAV45_count', 'FSX_HC/ICV_slope', 'FSX_HC/ICV_BL_3months']
+    #to_add_headers += ['FSX_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSX_FSVERSION_%s' % (i+1) for i in range(tmpts)]
+
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
@@ -2158,24 +2223,37 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None
                     avg_row = scans_on_date[0]
                 subj_fs.append(avg_row)
 
+        if len(subj_fs) > tmpts:
+            raise Exception("INCREASE NUMBER OF FSX TIMEPOINTS TO > %s" % (len(subj_fs)))
+
         new_data = {}
         slope_points = []
         bl_icv = subj_fs[0]['ICV']
-        for i in range(8):
+        for i in range(tmpts):
             if i < len(subj_fs):
                 datapoint = subj_fs[i]
                 examdate = datapoint['EXAMDATE']
+                hc_icv = datapoint['HCV']/bl_icv
                 try:
                     timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
                     if timediff <= -(90.0/365.0):
                         timediff = ''
+                    if timediff != '':
+                        slope_points.append((timediff, hc_icv))
                 except:
                     print "BAD EXAMDATE"
                     continue
-                new_data['FSX_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
+                if timediff != '' and abs(timediff) <= (90.0/365.0) and 'FSX_HC/ICV_BL_3months' not in new_data:
+                    new_data['FSX_HC/ICV_BL_3months'] = hc_icv
+                new_data['FSX_HC/ICV_%s' % (i+1)] = hc_icv
                 new_data['FSX_postAV45_%s' % (i+1)] = timediff
                 new_data['FSX_FSVERSION_%s' % (i+1)] = datapoint['version']
-                new_data['FSX_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+                #new_data['FSX_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+        
+        # calc slope
+        new_data['FSX_postAV45_count'] = len(slope_points)
+        new_data['FSX_HC/ICV_slope'] = slope(slope_points)
+        
         return new_data
 
     new_lines = []
@@ -2193,6 +2271,8 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None
 
 
 def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, dump_to=None):
+    tmpts = 8
+
     fs_by_subj_list = [importUCSFFreesurfer(filename, version=fsversion, mristrength=strength, include_failed=False) for fsversion,strength,filename in ucsf_files]
     fs_by_subj = {}
     for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
@@ -2202,10 +2282,11 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, dump_to=None)
             fs_by_subj[k] = fs_by_subj[k] + v
 
     to_add_headers = []
-    to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(7)]
-    to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(7)]
+    to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSL_postAV45_count', 'FSL_HC/ICV_slope', 'FSL_HC/ICV_BL_3months']
+    #to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(tmpts)]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
@@ -2232,25 +2313,36 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, dump_to=None)
                     avg_row = scans_on_date[0]
                 subj_fs.append(avg_row)
 
+        if len(subj_fs) > tmpts:
+            raise Exception("INCREASE NUMBER OF FSL TIMEPOINTS TO > %s" % (len(subj_fs)))
+
         new_data = {}
         slope_points = []
-        print subj_fs
-        bl_icv = subj_fs[0]['ICV']
-        for i in range(7):
+        bl_icv = float(subj_fs[0]['ICV'])
+        for i in range(tmpts):
             if i < len(subj_fs):
                 datapoint = subj_fs[i]
                 examdate = datapoint['EXAMDATE']
+                hc_icv = datapoint['HCV']/bl_icv
                 try:
                     timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
                     if timediff <= -(90.0/365.0):
                         timediff = ''
+                    if timediff != '':
+                        slope_points.append((timediff, hc_icv))
                 except:
                     print "BAD EXAMDATE"
                     continue
+                if timediff != '' and abs(timediff) <= (90.0/365.0) and 'FSL_HC/ICV_BL_3months' not in new_data:
+                    new_data['FSL_HC/ICV_BL_3months'] = hc_icv
                 new_data['FSL_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
                 new_data['FSL_postAV45_%s' % (i+1)] = timediff
                 new_data['FSL_FSVERSION_%s' % (i+1)] = datapoint['version']
-                new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+                #new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+        # Calculate slope
+        new_data['FSL_postAV45_count'] = len(slope_points)
+        new_data['FSL_HC/ICV_slope'] = slope(slope_points)
+
         return new_data
 
     new_lines = []
@@ -2301,11 +2393,7 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
                 new_data['WMH_postAV45.%s' % (i+1)] = ''
                 new_data['WMH_WHITMATHYP.%s' % (i+1)] = ''
         # calculate slope
-        if len(slope_points) >= 2:
-            raw_dates = [_[0] for _ in slope_points]
-            raw_scores = [_[1] for _ in slope_points]
-            slope, intercept, r, p, stderr = linregress(raw_dates, raw_scores)
-            new_data['WMH_slope'] = slope
+        new_data['WMH_slope'] = slope(slope_points)
         return new_data
 
     new_lines = []
@@ -2446,6 +2534,26 @@ def addCategories(output_file):
     df.columns = [cats, df.columns]
     df.to_csv(output_file, index=False)
 
+def mergeSlopes(output_file):
+    # merge 2/3 point slope columns into one column (replacing 2pt slopes where 3pt slopes are available)
+    # add merged column in after 3 point column
+    df = pd.read_csv(output_file, low_memory=False)
+    twopoint_cols = [i for i in df.columns if '2pts' in i or '2points' in i]
+    threepoint_cols = [i for i in df.columns if '3pts' in i or '3points' in i]
+    for two_col in twopoint_cols:
+        # find three point col
+        new_col = two_col.replace('_2pts','').replace('_2points','')
+        if new_col in df.columns:
+            continue
+        three_col = two_col.replace('2pts','3pts').replace('2points', '3points')
+        if three_col not in threepoint_cols:
+            print "Could not find 3 point slope column for %s" % (three_col,)
+            continue
+        three_col_ind = df.columns.get_loc(three_col)
+        df.insert(three_col_ind+1, new_col, df.loc[:,two_col])
+        df[new_col].update(df[three_col])
+    df.to_csv(output_file, index=False)
+
 def runPipeline():
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file, use_second_line=True)
@@ -2482,7 +2590,8 @@ def runPipeline():
     print "\nSYNCING WMH\n"
     new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, registry_file, dump_to=output_file)
 
-    # add categories
+    # postprocessing
+    mergeSlopes(output_file)
     addCategories(output_file)
 
 if __name__ == '__main__':
@@ -2506,8 +2615,9 @@ if __name__ == '__main__':
     fdg_file = '../docs/ADNI/UCBERKELEYFDG_07_30_15.csv'
     
     # Output files
-    av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
-    av45_nontp_file = "../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv"
+    #av45_file = "../output/UCBERKELEYAV45_11_09_15_extra.csv"
+    av45_file = None
+    av45_nontp_file = "../output/UCBERKELEYAV45_11_09_15_extra_nontp.csv"
     rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
     rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
     rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
@@ -2524,8 +2634,8 @@ if __name__ == '__main__':
     ucsf_long_files = [('4.4','1.5','../mr_docs/UCSF/longitudinal/UCSFFSL_11_02_15.csv'),
                        ('5.1','1.5','../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_11_02_15.csv')]
     ucsf_cross_files = [('4.3','1.5','../mr_docs/UCSF/cross_section/UCSFFSX_11_02_15.csv'),
-                        ('5.1','1.5','../mr_docs/UCSF/cross_section/UCSFFSX51_11_02_15.csv'),
-                        ('5.1','3.0','../mr_docs/UCSF/cross_section/UCSFFSX51_ADNI1_3T_11_02_15.csv')]
+                        ('5.1','1.5','../mr_docs/UCSF/cross_section/UCSFFSX51_11_02_15.csv')]
+                        #('5.1','3.0','../mr_docs/UCSF/cross_section/UCSFFSX51_ADNI1_3T_11_02_15.csv')]
 
     # Run pipeline
     runPipeline()

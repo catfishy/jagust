@@ -1,28 +1,39 @@
 import sys
 import csv
 import os
-import scipy.io as sio
-from scipy.spatial.distance import euclidean
-from sklearn.cluster import KMeans, AgglomerativeClustering
 from collections import defaultdict
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 import itertools
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+from ggplot import *
+
+import scipy.io as sio
+from scipy.spatial.distance import euclidean
+from scipy.stats import linregress, norm
+from scipy.signal import savgol_filter
+from scipy.ndimage import gaussian_filter1d
+
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.mixture import GMM
-from scipy.stats import norm
-from scipy.signal import savgol_filter
 import statsmodels.api as sm
-from scipy.ndimage import gaussian_filter1d
-from ggplot import *
 
 try:
     plt.style.use('ggplot')
 except:
     pass
 pd.options.display.mpl_style = 'default'
+
+FRONTAL=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
+PARIETAL=[1008,1025,1029,1031,2008,2025,2029,2031]
+TEMPORAL=[1015,1030,2015,2030]
+CINGULATE=[1002,1010,1023,1026,2002,2010,2023,2026]
+WHOLECEREBELLUM = [7,8,46,47]
+BIGREF = [2,41,7,8,46,47,16]
+SUMMARY = FRONTAL+PARIETAL+TEMPORAL+CINGULATE
+
 
 '''
 import pandas as pd; from utils import fitGMM_1D
@@ -260,25 +271,48 @@ def importRawRoussetResults(rousset_mat):
     return sorted_data
 
 
+def parseAllRegionOutput(all_region_file, lut_file):
+    blacklist = ['RID', 'EXAMDATE']
+    lut_table = importFreesurferLookup(lut_file)
+    lut_reverse = {v.upper().replace('-','_'):k for k,v in lut_table.iteritems()}
+    df = pd.read_csv(all_region_file)
+
+    index_lookup = {k:[lut_reverse[k]] for k in df.columns if k not in blacklist and 'SIZE' not in k}
+    wcereb_names = [lut_table[_].upper().replace('-','_') for _ in WHOLECEREBELLUM]
+    wcereb_sizes = ['%s_SIZE' % _ for _ in wcereb_names]
+    bigref_names = [lut_table[_].upper().replace('-','_') for _ in BIGREF]
+    bigref_sizes = ['%s_SIZE' % _ for _ in bigref_names]
+
+    # calculate reference regions
+    for i in df.index:
+        wcereb_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(wcereb_names, wcereb_sizes)]
+        df.loc[i,'whole_cerebellum'] = weightedMean(wcereb_pts)
+        bigref_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(bigref_names, bigref_sizes)]
+        df.loc[i,'composite_ref'] = weightedMean(bigref_pts)
+        df.loc[i,'EXAMDATE'] = parseDate(df.loc[i,'EXAMDATE'])
+
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    grouped = df.groupby(by=['RID'])
+    for rid, rows in grouped:
+        rows = rows.sort(columns=['EXAMDATE']).reset_index(drop=True)
+        if len(rows)>=1:
+            data_bl[rid] = {k:v for k,v in dict(rows.iloc[0]).iteritems() if k not in blacklist and 'SIZE' not in k}
+        if len(rows)>=2:
+            data_scan2[rid] = {k:v for k,v in dict(rows.iloc[1]).iteritems() if k not in blacklist and 'SIZE' not in k}
+        if len(rows)>=3:
+            data_scan3[rid] = {k:v for k,v in dict(rows.iloc[2]).iteritems() if k not in blacklist and 'SIZE' not in k}
+    return data_bl, data_scan2, data_scan3, index_lookup
+
+
 def parseRawAV45Output(av45_file, registry_file, lut_file):
     lut_table = importFreesurferLookup(lut_file)
     registry =  importRegistry(registry_file)
-    data = importAV45(av45_file,registry=registry)
+    data = importAV45(av45_file, None, registry=registry)
 
-    # build index lookup
-    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
-    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
-    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
-    temporal=[1015,1030,2015,2030]
-    frontal_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in cingulate}
-    cingulate_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in parietal}
-    parietal_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in temporal}
-    temporal_keys = {lut_table[_].replace('-','_').upper().strip(): [_] for _ in frontal}
-    index_lookup = {}
-    index_lookup.update(frontal_keys)
-    index_lookup.update(cingulate_keys)
-    index_lookup.update(parietal_keys)
-    index_lookup.update(temporal_keys)
+    # save column names
+    index_lookup = {lut_table[code].upper().replace('-','_'):[code] for code in SUMMARY}
 
     # parse data
     data_bl = {}
@@ -302,14 +336,6 @@ def parseRawAV45Output(av45_file, registry_file, lut_file):
     return data_bl, data_scan2, data_scan3, index_lookup
 
 def parseRawRousset(bl_file, scan2_file, scan3_file):
-    frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
-    parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
-    temporal=[1015,1030,2015,2030]
-    cingulate=[1002,1010,1023,1026,2002,2010,2023,2026]
-    wcereb_regions = set([7,8,46,47])
-    bigref_regions = set([2,41,7,8,46,47,16])
-    summary_regions = set(frontal+parietal+temporal+cingulate)
-
     data_bl_raw = importRawRoussetResults(bl_file)
     data_scan2_raw = importRawRoussetResults(scan2_file)
     data_scan3_raw = importRawRoussetResults(scan3_file)
@@ -326,27 +352,18 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         vals = dict(zip(names, pvcvals))
 
         # add whole cereb
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
-        regionvalues = np.array([_[1] for _ in regionsizes])
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['whole_cerebellum'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
+        vals['whole_cerebellum'] = weightedMean(regionsizes)
         # add bigref
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & bigref_regions) > 0]
-        regionvalues = np.array([_[1] for _ in regionsizes])
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['composite_ref'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
+        vals['composite_ref'] = weightedMean(regionsizes)
         # add cortical summary
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & summary_regions) > 0]
-        regionvalues = np.array([_[1] for _ in regionsizes])
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['cortical_summary'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
+        vals['cortical_summary'] = weightedMean(regionsizes)
 
         if index_lookup is None:
             index_lookup = dict(zip(names, indices))
-            index_lookup['cortical_summary'] = list(summary_regions)
+            index_lookup['cortical_summary'] = list(set(SUMMARY))
 
         data_bl[rid] = vals
     for rid, data in data_scan2_raw.iteritems():
@@ -358,23 +375,14 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         vals = dict(zip(names, pvcvals))
 
         # add whole cereb
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
-        regionvalues = [_[1] for _ in regionsizes]
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['whole_cerebellum'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
+        vals['whole_cerebellum'] = weightedMean(regionsizes)
         # add bigref
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & bigref_regions) > 0]
-        regionvalues = np.array([_[1] for _ in regionsizes])
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['composite_ref'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
+        vals['composite_ref'] = weightedMean(regionsizes)
         # add cortical summary
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & summary_regions) > 0]
-        regionvalues = np.array([_[1] for _ in regionsizes])
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['cortical_summary'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
+        vals['cortical_summary'] = weightedMean(regionsizes)
 
         data_scan2[rid] = vals
     for rid, data in data_scan3_raw.iteritems():
@@ -386,23 +394,14 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         vals = dict(zip(names, pvcvals))
 
         # add whole cereb
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & wcereb_regions) > 0]
-        regionvalues = [_[1] for _ in regionsizes]
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['whole_cerebellum'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
+        vals['whole_cerebellum'] = weightedMean(regionsizes)
         # add bigref
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & bigref_regions) > 0]
-        regionvalues = np.array([_[1] for _ in regionsizes])
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['composite_ref'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
+        vals['composite_ref'] = weightedMean(regionsizes)
         # add cortical summary
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & summary_regions) > 0]
-        regionvalues = np.array([_[1] for _ in regionsizes])
-        regionweights = np.array([_[0] for _ in regionsizes])
-        regionweights = regionweights / float(sum(regionweights))
-        vals['cortical_summary'] = sum(regionweights*regionvalues)
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
+        vals['cortical_summary'] = weightedMean(regionsizes)
 
         data_scan3[rid] = vals
     return data_bl, data_scan2, data_scan3, index_lookup
@@ -1418,75 +1417,66 @@ def importBSI(bsi_file, include_failed=False):
     return dict(data)
 
 
-def importAV45(av45_file, av45_nontp_file=None ,registry=None):
-    av45_headers, av45_lines = parseCSV(av45_file)
+def importAV45(av45_tp_file, av45_nontp_file, registry=None):
+    if av45_tp_file:
+        # PARSE TIMEPOINT SPECIFIC DATA
+        tp_df = pd.read_csv(av45_tp_file)
+        tp_df.loc[:,'TP_SPECIFIC'] = True
+        for i in tp_df.index:
+            raw_date = tp_df.loc[i,'EXAMDATE']
+            date = None
+            if raw_date:
+                date = parseDate(raw_date)
+            else:
+                print "Can't find examdate: %s" % i
+                date = np.nan
+            tp_df.loc[i,'EXAMDATE'] = date
+        # remove rows with no date
+        tp_df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
+    else:
+        tp_df = None
 
     if av45_nontp_file:
-        av45_nontp_headers, av45_nontp_lines = parseCSV(av45_nontp_file)
+        # PARSE TIMEPOINT SPECIFIC DATA
+        nontp_df = pd.read_csv(av45_nontp_file)
+        nontp_df.loc[:,'TP_SPECIFIC'] = False
+        for i in nontp_df.index:
+            raw_date = nontp_df.loc[i,'EXAMDATE']
+            date = None
+            if raw_date:
+                date = parseDate(raw_date)
+            else:
+                print "Can't find examdate: %s" % i
+                date = np.nan
+            nontp_df.loc[i,'EXAMDATE'] = date
+        # remove rows with no date
+        nontp_df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
     else:
-        av45_nontp_headers = []
-        av45_nontp_lines = []
+        nontp_df = None
 
-    av45_by_subj = defaultdict(list)
-    for line in av45_lines:
-        if 'SCRNO' in line:
-            subj = int(line.pop('SCRNO',None))
-        elif 'RID' in line:
-            subj = int(line.pop('RID',None))
-        elif 'PID' in line:
-            subj = int(line.pop('PID',None))
-        else:
-            raise Exception("Can't find subject column in AV45 file")
+    if tp_df is not None and nontp_df is not None:
+        all_df = pd.concat((tp_df, nontp_df))
+    elif tp_df is not None:
+        all_df = tp_df
+    elif nontp_df is not None:
+        all_df = nontp_df
+    else:
+        raise Exception("No input file given")
 
-        viscode = line['VISCODE'].strip().lower()
-        if 'VISCODE2' in line:
-            viscode2 = line['VISCODE2'].strip().lower()
-        else:
-            viscode2 = ''
-        examdate = line.get('EXAMDATE',None)
-        if examdate:
-            examdate = parseDate(examdate)
-        elif registry is not None:
-            examdate = findVisitDate(registry, subj, viscode, viscode2)
-        if not examdate:
-            print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-            #continue
-        line['EXAMDATE'] = examdate
-        line['TP_SPECIFIC'] = True
-        av45_by_subj[subj].append(line)
-
-    # add in nontp data if given
-    for line in av45_nontp_lines:
-        if 'SCRNO' in line:
-            subj = int(line.pop('SCRNO',None))
-        elif 'RID' in line:
-            subj = int(line.pop('RID',None))
-        elif 'PID' in line:
-            subj = int(line.pop('PID',None))
-        else:
-            raise Exception("Can't find subject column in AV45 file")
-
-        if subj in av45_by_subj:
-            continue
-
-        viscode = line['VISCODE'].strip().lower()
-        if 'VISCODE2' in line:
-            viscode2 = line['VISCODE2'].strip().lower()
-        else:
-            viscode2 = ''
-        examdate = line.get('EXAMDATE',None)
-        if examdate:
-            examdate = parseDate(examdate)
-        elif registry is not None:
-            examdate = findVisitDate(registry, subj, viscode, viscode2)
-        if not examdate:
-            print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-            #continue
-        line['EXAMDATE'] = examdate
-        line['TP_SPECIFIC'] = False
-        av45_by_subj[subj].append(line)
-
-    return dict(av45_by_subj)
+    # set id
+    if 'SCRNO' in all_df.columns:
+        group_col = 'SCRNO'
+    elif 'RID' in all_df.columns:
+        group_col = 'RID'
+    elif 'PID' in all_df.columns:
+        group_col = 'PID'
+    else:
+        raise Exception("Can't find subject column")
+    grouped = all_df.groupby(by=[group_col])
+    av45_by_subj = {}
+    for key, val in grouped:
+        av45_by_subj[key] = [dict(_) for i,_ in val.iterrows()]
+    return av45_by_subj
 
 def importUCSFFreesurfer(in_file, version='', mristrength='?', include_failed=False, as_df=False):
     df = pd.read_csv(in_file)
@@ -1571,13 +1561,36 @@ def importLongitudinalFreesurfer(longfree_file, include_failed = False):
     print "LONG FREESURFER failed: %s" % failed
     return dict(data)
 
+def slope(points):
+    '''
+    Expects list of (x,y) points
+    '''
+    print "SLOPE CALLED WITH: %s" % (points,)
+    if len(points) >= 2:
+        x = [_[0] for _ in points]
+        y = [_[1] for _ in points]
+        slope, intercept, r, p, stderr = linregress(x,y)
+        return slope
+    return None
+
+def weightedMean(points):
+    '''
+    Expects list of (weight,value) points
+    '''
+    weights = np.array([_[0] for _ in points])
+    values = np.array([_[1] for _ in points])
+    weights = weights / float(sum(weights))
+    return sum(weights*values)
 
 def parseDate(date_str):
-    try:
-        date = datetime.strptime(date_str,'%Y-%m-%d')
-    except ValueError as e:
-        date = datetime.strptime(date_str, '%m/%d/%y')
-    return date
+    formats = ['%Y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
+    for f in formats:
+        try:
+            date = datetime.strptime(date_str,f)
+            return date
+        except:
+            pass
+    raise Exception("Cannot parse date: %s" % date_str)
 
 def parseAllDates(date_str_list):
     parsed = []

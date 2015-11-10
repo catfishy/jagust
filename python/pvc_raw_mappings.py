@@ -119,8 +119,8 @@ def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=
     regions_to_remove += ['whole_cerebellum', 'composite_ref']
     
     # add ref regions
-    #ref_key = 'whole_cerebellum'
-    ref_key = 'composite_ref'
+    ref_key = 'whole_cerebellum'
+    #ref_key = 'composite_ref'
     
     regions_to_remove.append(ref_key)
     index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
@@ -153,7 +153,7 @@ def valuesByFreesurferRegion(values_by_group, index_lookup):
             by_freesurfer_region[fsi] = val
     return by_freesurfer_region
 
-def regionEffectSizesBetweenGroups(group_one, group_two, data, index_lookup):
+def regionEffectSizesBetweenGroups(group_prefix, group_one, group_two, data, index_lookup):
     # calculate group one suvr distr
     group_uptakes_one = {k:[] for k in index_lookup}
     for rid in group_one:
@@ -180,8 +180,13 @@ def regionEffectSizesBetweenGroups(group_one, group_two, data, index_lookup):
 
         to_save = {'pvalue': pvalue_uptake,'rank_biserial': rank_biserial_uptake}
         group_effects[k] = to_save
-    return group_effects
-
+    line_data = defaultdict(dict)
+    for k,v in group_effects.iteritems():
+        for eff_k, eff_v in v.iteritems():
+            line_data[k]['%s_uptake_effect_%s' % (group_prefix,eff_k)] = eff_v
+    df = pd.DataFrame(dict(line_data)).T
+    df.index.name = 'Region'
+    return df
 
 def regionalEffectSizes(subj_group, data_prior, data_post, index_lookup):
     # calculate prior suvr/rank distr
@@ -238,7 +243,6 @@ def regionalEffectSizes(subj_group, data_prior, data_post, index_lookup):
                                      'rank_biserial': rank_biserial_uptake},
                    'rank_effect': {'pvalue': pvalue_rank,
                                    'rank_biserial': rank_biserial_rank}}
-        print to_save
         group_effects[k] = to_save
 
     return (uptakes_prior, ranks_prior, uptakes_post, ranks_post, group_effects)
@@ -253,6 +257,32 @@ def rankSubjects(key_groups, subj, data):
             avg_ranks[rid] = avg_rank
     return avg_ranks
 
+def regionalRanksToLines(subj_group, group_prefix, data_prior, data_post, index_lookup):
+    line_data = defaultdict(dict)
+    (uptakes_prior, ranks_prior, uptakes_post, ranks_post, group_effects) = regionalEffectSizes(subj_group, data_prior, data_post, index_lookup)
+    for k,v in uptakes_prior.iteritems():
+        line_data[k]['%s_%s' % (group_prefix,'uptakes_prior_mean')] = v[0]
+        line_data[k]['%s_%s' % (group_prefix,'uptakes_prior_std')] = v[1]
+    for k,v in ranks_prior.iteritems():
+        line_data[k]['%s_%s' % (group_prefix,'ranks_prior_mean')] = v[0]
+        line_data[k]['%s_%s' % (group_prefix,'ranks_prior_std')] = v[1]
+    for k,v in uptakes_post.iteritems():
+        line_data[k]['%s_%s' % (group_prefix,'uptakes_post_mean')] = v[0]
+        line_data[k]['%s_%s' % (group_prefix,'uptakes_post_std')] = v[1]
+    for k,v in ranks_post.iteritems():
+        line_data[k]['%s_%s' % (group_prefix,'ranks_post_mean')] = v[0]
+        line_data[k]['%s_%s' % (group_prefix,'ranks_post_std')] = v[1]
+    for k,v in group_effects.iteritems():
+        uptake_effect = v['uptake_effect']
+        for eff_k, eff_v in uptake_effect.iteritems():
+            line_data[k]['%s_uptake_effect_%s' % (group_prefix,eff_k)] = eff_v
+        rank_effect =v['rank_effect']
+        for eff_k, eff_v in rank_effect.iteritems():
+            line_data[k]['%s_rank_effect_%s' % (group_prefix,eff_k)] = eff_v
+    df = pd.DataFrame(dict(line_data)).T
+    df.index.name = 'Region'
+    return df
+
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
@@ -265,18 +295,32 @@ if __name__ == "__main__":
     # generateBathroomTilePlot(bl_vs_change_json)
     # sys.exit(1)
 
-    # summary raw results
-    bl_file = '../output/Rousset_BL/raw_summary_output_BL.mat'
-    scan2_file = '../output/Rousset_Scan2/raw_summary_output_Scan2.mat'
-    scan3_file = '../output/Rousset_Scan3/raw_summary_output_Scan3.mat'
+    # # summary pvc results
+    # bl_file = '../output/Rousset_BL/raw_summary_output_BL.mat'
+    # scan2_file = '../output/Rousset_Scan2/raw_summary_output_Scan2.mat'
+    # scan3_file = '../output/Rousset_Scan3/raw_summary_output_Scan3.mat'
+    # data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
+    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+
+    # # summary tp-specific results
+    # av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
+    # registry_file = "../docs/ADNI/REGISTRY.csv"
+    # data_bl, data_scan2, data_scan3, index_lookup = parseRawAV45Output(av45_file, registry_file, lut_file)
+    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+
+    # allregion pvc results
+    bl_file = '../output/Rousset_BL/raw_allregions_output_BL.mat'
+    scan2_file = '../output/Rousset_Scan2/raw_allregions_output_Scan2.mat'
+    scan3_file = '../output/Rousset_Scan3/raw_allregions_output_Scan3.mat'
     data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
     data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
 
-    # # tp-specific results
-    # av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
-    # registry_file = "../docs/registry_clean.csv"
-    # data_bl, data_scan2, data_scan3, index_lookup = parseRawAV45Output(av45_file, registry_file, lut_file)
+    # # allregion tp-specific results
+    # av45_file = "../output/UCBERKELEYAV45_11_02_15_allregions.csv"
+    # registry_file = "../docs/ADNI/REGISTRY.csv"
+    # data_bl, data_scan2, data_scan3, index_lookup = parseAllRegionOutput(av45_file, lut_file)
     # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+
 
     data_prior = data_bl
     data_post = {}
@@ -289,26 +333,23 @@ if __name__ == "__main__":
         withyrs = {k:(v,yrs) for k,v in datarow.iteritems()}
         data_post[rid] = withyrs
 
-    all_data = []
-    for rid, post_data in data_post.iteritems():
-        datarow = {'rid': rid,
-                   'diag': diags.get(rid,'')}
-        bl_data = data_bl[rid]
-        long_data = {}
-        for k in index_lookup:
-            post_val, yrs = post_data[k]
-            long_data[k] = (post_val - bl_data[k]) / yrs
-        for k,v in bl_data.iteritems():
-            datarow['%s_bl' % k ] = v
-        for k,v in long_data.iteritems():
-            datarow['%s_change' % k] = v
-        all_data.append(datarow)
-    df = pd.DataFrame(all_data)
-    df.to_json('../pvcsummary_bl_vs_change.json')
-    sys.exit(1)
-
-
-    line_data = {k:{'regions': [lut_table[_] for _ in v]} for k,v in index_lookup.iteritems()}
+    # all_data = []
+    # for rid, post_data in data_post.iteritems():
+    #     datarow = {'rid': rid,
+    #                'diag': diags.get(rid,'')}
+    #     bl_data = data_bl[rid]
+    #     long_data = {}
+    #     for k in index_lookup:
+    #         post_val, yrs = post_data[k]
+    #         long_data[k] = (post_val - bl_data[k]) / yrs
+    #     for k,v in bl_data.iteritems():
+    #         datarow['%s_bl' % k ] = v
+    #     for k,v in long_data.iteritems():
+    #         datarow['%s_change' % k] = v
+    #     all_data.append(datarow)
+    # df = pd.DataFrame(all_data)
+    # df.to_json('../pvcsummary_bl_vs_change.json')
+    # sys.exit(1)
 
     # # identify subjects who rank first in key_groups out of subj_group
     # subj = GROUPS['increasing_low']['N'] + GROUPS['stable_low']['N']
@@ -320,91 +361,27 @@ if __name__ == "__main__":
 
     # low normals
     subj_group = GROUPS['increasing_low']['N'] + GROUPS['stable_low']['N']
-    (uptakes_prior, ranks_prior, uptakes_post, ranks_post, group_effects) = regionalEffectSizes(subj_group, data_prior, data_post, index_lookup)
-    for k,v in uptakes_prior.iteritems():
-        line_data[k]['LOW_N_%s' % 'uptakes_prior_mean'] = v[0]
-        line_data[k]['LOW_N_%s' % 'uptakes_prior_std'] = v[1]
-    for k,v in ranks_prior.iteritems():
-        line_data[k]['LOW_N_%s' % 'ranks_prior_mean'] = v[0]
-        line_data[k]['LOW_N_%s' % 'ranks_prior_std'] = v[1]
-    for k,v in uptakes_post.iteritems():
-        line_data[k]['LOW_N_%s' % 'uptakes_post_mean'] = v[0]
-        line_data[k]['LOW_N_%s' % 'uptakes_post_std'] = v[1]
-    for k,v in ranks_post.iteritems():
-        line_data[k]['LOW_N_%s' % 'ranks_post_mean'] = v[0]
-        line_data[k]['LOW_N_%s' % 'ranks_post_std'] = v[1]
-    for k,v in group_effects.iteritems():
-        uptake_effect = v['uptake_effect']
-        for eff_k, eff_v in uptake_effect.iteritems():
-            line_data[k]['LOW_N_uptake_effect_%s' % eff_k] = eff_v
-        rank_effect =v['rank_effect']
-        for eff_k, eff_v in rank_effect.iteritems():
-            line_data[k]['LOW_N_rank_effect_%s' % eff_k] = eff_v
-
+    low_normals_df = regionalRanksToLines(subj_group, 'LOW_N', data_prior, data_post, index_lookup)
     # low, stable normals
     subj_group = GROUPS['stable_low']['N']
-    (uptakes_prior, ranks_prior, uptakes_post, ranks_post, group_effects) = regionalEffectSizes(subj_group, data_prior, data_post, index_lookup)
-    for k,v in uptakes_prior.iteritems():
-        line_data[k]['STABLE_LOW_N_%s' % 'uptakes_prior_mean'] = v[0]
-        line_data[k]['STABLE_LOW_N_%s' % 'uptakes_prior_std'] = v[1]
-    for k,v in ranks_prior.iteritems():
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_prior_mean'] = v[0]
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_prior_std'] = v[1]
-    for k,v in uptakes_post.iteritems():
-        line_data[k]['STABLE_LOW_N_%s' % 'uptakes_post_mean'] = v[0]
-        line_data[k]['STABLE_LOW_N_%s' % 'uptakes_post_std'] = v[1]
-    for k,v in ranks_post.iteritems():
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_post_mean'] = v[0]
-        line_data[k]['STABLE_LOW_N_%s' % 'ranks_post_std'] = v[1]
-    for k,v in group_effects.iteritems():
-        uptake_effect = v['uptake_effect']
-        for eff_k, eff_v in uptake_effect.iteritems():
-            line_data[k]['STABLE_LOW_N_uptake_effect_%s' % eff_k] = eff_v
-        rank_effect =v['rank_effect']
-        for eff_k, eff_v in rank_effect.iteritems():
-            line_data[k]['STABLE_LOW_N_rank_effect_%s' % eff_k] = eff_v
-
+    stable_low_normals_df = regionalRanksToLines(subj_group, 'STABLE_LOW_N', data_prior, data_post, index_lookup)
     #low, increasing normals
     subj_group = GROUPS['increasing_low']['N']
-    (uptakes_prior, ranks_prior, uptakes_post, ranks_post, group_effects) = regionalEffectSizes(subj_group, data_prior, data_post, index_lookup)
-    for k,v in uptakes_prior.iteritems():
-        line_data[k]['INC_LOW_N_%s' % 'uptakes_prior_mean'] = v[0]
-        line_data[k]['INC_LOW_N_%s' % 'uptakes_prior_std'] = v[1]
-    for k,v in ranks_prior.iteritems():
-        line_data[k]['INC_LOW_N_%s' % 'ranks_prior_mean'] = v[0]
-        line_data[k]['INC_LOW_N_%s' % 'ranks_prior_std'] = v[1]
-    for k,v in uptakes_post.iteritems():
-        line_data[k]['INC_LOW_N_%s' % 'uptakes_post_mean'] = v[0]
-        line_data[k]['INC_LOW_N_%s' % 'uptakes_post_std'] = v[1]
-    for k,v in ranks_post.iteritems():
-        line_data[k]['INC_LOW_N_%s' % 'ranks_post_mean'] = v[0]
-        line_data[k]['INC_LOW_N_%s' % 'ranks_post_std'] = v[1]
-    for k,v in group_effects.iteritems():
-        uptake_effect = v['uptake_effect']
-        for eff_k, eff_v in uptake_effect.iteritems():
-            line_data[k]['INC_LOW_N_uptake_effect_%s' % eff_k] = eff_v
-        rank_effect =v['rank_effect']
-        for eff_k, eff_v in rank_effect.iteritems():
-            line_data[k]['INC_LOW_N_rank_effect_%s' % eff_k] = eff_v
-
+    inc_low_normals_df = regionalRanksToLines(subj_group, 'INC_LOW_N', data_prior, data_post, index_lookup)
     #effects between INC_LOW and STABLE_LOW
-    inc_vs_low_effects = regionEffectSizesBetweenGroups(GROUPS['increasing_low']['N'], 
+    inc_vs_low_effects_df = regionEffectSizesBetweenGroups('INC_VS_STABLE',
+                                                        GROUPS['increasing_low']['N'], 
                                                         GROUPS['stable_low']['N'], 
                                                         data_prior, 
                                                         index_lookup)
-    for k,v in inc_vs_low_effects.iteritems():
-        for eff_k, eff_v in v.iteritems():
-            line_data[k]['INC_VS_STABLE_uptake_effect_%s' % eff_k] = eff_v
-
-    columns = ['Name'] + sorted(line_data.values()[0].keys())
-    lines = []
-    for k,v in line_data.iteritems():
-        v['Name'] = k
-        lines.append(v)
-    dumpCSV('../pvcsummary_regional_effect_sizes.csv', columns, lines)
+    # save
+    low_normals_df.loc[:,'regions'] = [[lut_table[_] for _ in index_lookup[region_name]] for region_name in low_normals_df.index]
+    low_normals_df.to_csv('../pvc_allregions_regional_ranks.csv')
     sys.exit(1)
 
-    # # write out results to matfile
+
+
+    # # write out results to matfile (group visualizing)
     out_file = '../output/fake_aparc_inputs/REGION_INDICES.mat'
     values = {k: i+1 for i, (k,v) in enumerate(line_data.iteritems())}
     sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
