@@ -1497,7 +1497,10 @@ def importUCSFFreesurfer(in_file, version='', mristrength='?', include_failed=Fa
         # at least 6 qc columns passed
         qc_df = df.loc[:,QC_cols] == "Pass"
         passed = qc_df.sum(axis=1) >= 6
+        before = len(df.index)
         df = df[passed]
+        after = len(df.index)
+        print "%s: FAILED 6/8 QC: %s/%s" % (in_file, before-after, before)
 
     if 'IMAGETYPE' in df.columns:
         df = df[df['IMAGETYPE']=='Non-Accelerated T1']
