@@ -622,29 +622,20 @@ def updateLine(old_line, new_data, extraction_fn,
 
 
 def importRegistry(registry_file, include_all=False):
-    headers, lines = parseCSV(registry_file)
-    registry = defaultdict(list)
-    for data in lines:
-        if not include_all and data['EXAMDATE'] == '':
-            continue
-        subj = int(data['RID'])
-        date_str = data['EXAMDATE'].strip().lower()
-        date = None
-        try:
-            date = parseDate(date_str)
-        except Exception as e:
-            pass
-        if not include_all and date is None:
-            continue
-        registry[subj].append({'VISCODE': data['VISCODE'].strip().lower(),
-                               'VISCODE2': data['VISCODE2'].strip().lower(),
-                               'EXAMDATE': date,
-                               'update_stamp': data['update_stamp']})
-    registry = dict(registry)
-    for k in registry.keys():
-        new_val = sorted(registry[k], key=lambda x: x['EXAMDATE'])
-        registry[k] = new_val
-    return registry
+    df = pd.read_csv(registry_file,low_memory=False)
+    df = df.loc[:,['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']]
+    df['VISCODE2'] = df['VISCODE2'].fillna('')
+    df['VISCODE'] = df['VISCODE'].fillna('')
+    df.loc[:,'VISCODE'] = df.loc[:,'VISCODE'].apply(lambda x: x.lower().strip())
+    df.loc[:,'VISCODE2'] = df.loc[:,'VISCODE2'].apply(lambda x: x.lower().strip())
+    df.loc[:,'EXAMDATE'] = parseAllDates(df.loc[:,'EXAMDATE'])
+    if not include_all:
+        df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
+    grouped = df.groupby(by=['RID'])
+    by_subj = {}
+    for key, val in grouped:
+        by_subj[key] = sorted([dict(_) for i,_ in val.iterrows()], key=lambda x: x['EXAMDATE'])
+    return by_subj
 
 def importDODRegistry(dod_registry_file):
     headers, lines = parseCSV(dod_registry_file)
@@ -987,7 +978,7 @@ def importAVLT(avlt_file, registry=None):
         if examdate != '':
             examdate = parseDate(examdate)
         elif registry is not None:
-            examdate = findVisitDate(registry, subj, viscode, viscode2)
+            examdate = findVisitDate(registry, subj, [viscode, viscode2])
             if not examdate:
                 print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
                 continue
@@ -1050,7 +1041,7 @@ def importADASCog(adni1_file, adnigo2_file, registry=None):
             totscore = ''
         examdate = None
         if registry is not None:
-            examdate = findVisitDate(registry, subj, viscode, viscode2)
+            examdate = findVisitDate(registry, subj, [viscode, viscode2])
         if examdate is None:
             print "No exam date for %s (%s, %s)" % (subj, viscode, viscode2)
             continue
@@ -1110,6 +1101,26 @@ def importWMH(wmh_file):
                            'wmh_percent': wmh_percent})
     return dict(data)
 
+def importUW(uw_file, registry=None):
+    df = pd.read_csv(uw_file, low_memory=False)
+    df['EXAMDATE'] = df['EXAMDATE'].fillna('')
+    for i in df.index:
+        raw_date = df.loc[i,'EXAMDATE']
+        if raw_date == '':
+            # try to find date from viscode
+            date = findVisitDate(registry, df.loc[i,'RID'], [df.loc[i,'VISCODE']]) if registry is not None else None
+            if date is None:
+                date = np.nan
+        else:
+            date = parseDate(raw_date)
+        df.loc[i,'EXAMDATE'] = date
+    df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
+    
+    grouped = df.groupby(by=['RID'])
+    by_subj = {}
+    for key, val in grouped:
+        by_subj[key] = [dict(_) for i,_ in val.iterrows()]
+    return by_subj
 
 def importGD_DOD(gd_file):
     headers, lines = parseCSV(gd_file)
@@ -1134,7 +1145,7 @@ def importGD(gd_file, registry=None):
         try:
             examdate = parseDate(line['EXAMDATE'])
         except:
-            examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else None
+            examdate = findVisitDate(registry, subj, [vc, vc2]) if registry is not None else None
         if examdate is None:
             print "Couldn't find GD examdate for %s, %s, %s" % (subj, vc, vc2)
             continue
@@ -1165,7 +1176,7 @@ def importCSF(csf_files, registry=None):
             try:
                 examdate = parseDate(line['EXAMDATE'])
             except:
-                examdate = findVisitDate(registry, subj, vc, vc2) if registry is not None else None
+                examdate = findVisitDate(registry, subj, [vc, vc2]) if registry is not None else None
             try:
                 abeta = float(line['ABETA'])
             except:
@@ -1479,9 +1490,15 @@ def importAV45(av45_tp_file, av45_nontp_file, registry=None):
     return av45_by_subj
 
 def importUCSFFreesurfer(in_file, version='', mristrength='?', include_failed=False, as_df=False):
+    QC_cols = ['TEMPQC','FRONTQC','PARQC','INSULAQC','OCCQC','BGQC','CWMQC','VENTQC']
     df = pd.read_csv(in_file)
     if not include_failed:
         df = df[df['OVERALLQC'].isin(['Pass','Partial'])]
+        # at least 6 qc columns passed
+        qc_df = df.loc[:,QC_cols] == "Pass"
+        passed = qc_df.sum(axis=1) >= 6
+        df = df[passed]
+
     if 'IMAGETYPE' in df.columns:
         df = df[df['IMAGETYPE']=='Non-Accelerated T1']
     # get relevant columns
@@ -1492,7 +1509,6 @@ def importUCSFFreesurfer(in_file, version='', mristrength='?', include_failed=Fa
     if 'VISCODE2' in df.columns:
         key_columns.append('VISCODE2')
     filtered = df[key_columns].copy()
-    print df.columns
     parsed_dates = parseAllDates(df['EXAMDATE'].tolist())
     filtered.loc[:,'EXAMDATE'] = parsed_dates
     filtered.loc[:,'LEFT_HCV'] = df.loc[:,'ST29SV']
@@ -1565,7 +1581,6 @@ def slope(points):
     '''
     Expects list of (x,y) points
     '''
-    print "SLOPE CALLED WITH: %s" % (points,)
     if len(points) >= 2:
         x = [_[0] for _ in points]
         y = [_[1] for _ in points]
@@ -1582,7 +1597,9 @@ def weightedMean(points):
     weights = weights / float(sum(weights))
     return sum(weights*values)
 
-def parseDate(date_str):
+def parseDate(date_str, registry=None):
+    if date_str == '':
+        raise Exception("Blank date string")
     formats = ['%Y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
     for f in formats:
         try:
@@ -1626,17 +1643,15 @@ def rearrangeHeaders(new_headers, to_add, after=None):
         new_headers = new_headers[:idx] + to_add + new_headers[idx:]
     return new_headers
 
-def findVisitDate(registry, subj, vc, vc2):
-    subj_listings = registry.get(subj,[])
-    examdate = None
-    for listing in subj_listings:
-        if vc2 != '' and listing['VISCODE'] == vc and listing['VISCODE2'] == vc2:
-            examdate = listing['EXAMDATE']
+def findVisitDate(registry, subj, viscodes):
+    vcs = set([_.lower().strip() for _ in viscodes])
+    subj_registry = registry.get(subj,[])
+    date = None
+    for reg_row in subj_registry:
+        if reg_row['VISCODE'] in vcs or reg_row['VISCODE2'] in vcs:
+            date = reg_row['EXAMDATE']
             break
-        elif vc2 == '' and listing['VISCODE'] == vc:
-            examdate = listing['EXAMDATE']
-            break
-    return examdate
+    return date
 
 def appendCSV(csv1, csv2):
     '''
