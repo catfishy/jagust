@@ -26,9 +26,7 @@ GROUPS = {'increasing_high': {'AD': [4657, 4660, 4153, 4672, 4696, 4195, 4252, 4
                              'LMCI': [4114, 4115, 1045, 4061, 4122, 4869, 42, 1122, 1118, 4210, 4723, 4214, 4229, 668, 1187, 679, 4777, 4784, 4300, 4817, 225, 4354, 4873, 4741, 1318, 1352, 867, 1414, 4489, 1418, 919, 908, 1427, 408, 4767, 4653, 4094], 
                              'N': [4620, 23, 4637, 4643, 4649, 4150, 58, 69, 4177, 602, 610, 618, 113, 4213, 120, 4218, 123, 4222, 4739, 4234, 4119, 4762, 4254, 159, 685, 4795, 4313, 741, 1261, 751, 767, 1280, 260, 4357, 4878, 4367, 4387, 4388, 4389, 4393, 4396, 301, 4399, 311, 4410, 4441, 4448, 4466, 4843, 4485, 4496, 4503, 923, 413, 926, 5023, 4520, 4082, 4018, 4020, 4028, 4032, 4552, 4060, 4576, 4580, 4586, 4076, 4086, 1016]}}
 
-# don't consider regions that include white matter, cerebellum, brainstem
-REGION_BLACKLIST = [30,62,2,80,81,82,41,77,251,252,253,254,255,1004,2004,85,16,7,8,46,47]
-REFERENCE_REGIONS = [7,8,46,47]
+REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1004,2004,85,24,14,15,72,4,43,75,76]
 
 def generateBathroomTilePlot(bl_vs_change_json):
     df = pd.read_json(bl_vs_change_json)
@@ -114,15 +112,11 @@ def getMeanAveragePrecision(avg_rank, sorted_uptakes, k):
     '''
 
 def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True):
-    ref_regions = [k for k,v in index_lookup.iteritems() if len(list(set(REFERENCE_REGIONS) & set(list(v)))) > 0]
     regions_to_remove = [k for k,v in index_lookup.iteritems() if len(list(set(REGION_BLACKLIST) & set(list(v)))) > 0]
-    regions_to_remove += ['whole_cerebellum', 'composite_ref']
-    
-    # add ref regions
+
     ref_key = 'whole_cerebellum'
     #ref_key = 'composite_ref'
-    
-    regions_to_remove.append(ref_key)
+
     index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
     for rid,val in data_bl.iteritems():
         ref_value = 1.0
@@ -286,7 +280,7 @@ def regionalRanksToLines(subj_group, group_prefix, data_prior, data_post, index_
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
-    master_file = '../FDG_AV45_COGdata_10_27_15.csv'
+    master_file = '../FDG_AV45_COGdata_11_10_15.csv'
     master_data = importMaster(master_file)
     diags = extractDiagnosesFromMasterData(master_data)
 
@@ -313,43 +307,73 @@ if __name__ == "__main__":
     scan2_file = '../output/Rousset_Scan2/raw_allregions_output_Scan2.mat'
     scan3_file = '../output/Rousset_Scan3/raw_allregions_output_Scan3.mat'
     data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
-    data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+    data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
 
-    # # allregion tp-specific results
-    # av45_file = "../output/UCBERKELEYAV45_11_02_15_allregions.csv"
+    # # allregion nontp results
+    # av45_file = "../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv"
     # registry_file = "../docs/ADNI/REGISTRY.csv"
     # data_bl, data_scan2, data_scan3, index_lookup = parseAllRegionOutput(av45_file, lut_file)
-    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
+    # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
 
+    all_data = []
+    for rid, bl_row in data_bl.iteritems():
+        master_row = master_data[rid]
+        diag_1 = master_row['Diag@AV45_long']
+        diag_2 = master_row['Diag@AV45_2_long']
+        diag_3 = master_row['Diag@AV45_3_long']
+        # bl row
+        bl_datarow = {'rid': rid,
+                      'diag': diag_1,
+                      'timepoint': 'BL'}
+        bl_datarow.update({k:bl_row[k] for k in index_lookup})
+        all_data.append(bl_datarow)
+        if rid in data_scan2:
+            scan2_row = data_scan2[rid]
+            scan2_datarow = {'rid': rid,
+                             'diag': diag_2,
+                             'timepoint': 'SCAN2'}
+            scan2_datarow.update({k:scan2_row[k] for k in index_lookup})
+            all_data.append(scan2_datarow)
+        if rid in data_scan3:
+            scan3_row = data_scan3[rid]
+            scan3_datarow = {'rid': rid,
+                             'diag': diag_3,
+                             'timepoint': 'SCAN3'}
+            scan3_datarow.update({k:scan3_row[k] for k in index_lookup})
+            all_data.append(scan3_datarow)
+    df = pd.DataFrame(all_data)
+    df.to_csv('../datasets/pvc_allregions_uptake.csv', index=False)
 
     data_prior = data_bl
     data_post = {}
     for rid, datarow in data_scan2.iteritems():
         yrs = float(master_data[rid]['AV45_1_2_Diff'])
+        new_diag = master_data[rid]['Diag@AV45_2_long']
         withyrs = {k:(v,yrs) for k,v in datarow.iteritems()}
-        data_post[rid] = withyrs
+        data_post[rid] = (withyrs, new_diag)
     for rid, datarow in data_scan3.iteritems():
         yrs = float(master_data[rid]['AV45_1_3_Diff'])
+        new_diag = master_data[rid]['Diag@AV45_3_long']
         withyrs = {k:(v,yrs) for k,v in datarow.iteritems()}
-        data_post[rid] = withyrs
+        data_post[rid] = (withyrs, new_diag)
 
-    # all_data = []
-    # for rid, post_data in data_post.iteritems():
-    #     datarow = {'rid': rid,
-    #                'diag': diags.get(rid,'')}
-    #     bl_data = data_bl[rid]
-    #     long_data = {}
-    #     for k in index_lookup:
-    #         post_val, yrs = post_data[k]
-    #         long_data[k] = (post_val - bl_data[k]) / yrs
-    #     for k,v in bl_data.iteritems():
-    #         datarow['%s_bl' % k ] = v
-    #     for k,v in long_data.iteritems():
-    #         datarow['%s_change' % k] = v
-    #     all_data.append(datarow)
-    # df = pd.DataFrame(all_data)
-    # df.to_json('../pvcsummary_bl_vs_change.json')
-    # sys.exit(1)
+    all_data = []
+    for rid, (post_data, diag_post) in data_post.iteritems():
+        datarow = {'rid': rid,
+                   'diag_prior': diags.get(rid,''),
+                   'diag_post': diag_post}
+        prior_data = data_bl[rid]
+        for k in index_lookup:
+            k_f = k.upper().replace('-','_')
+            post_val, yrs = post_data[k]
+            annual_change = (post_val - prior_data[k]) / yrs
+            datarow['%s_post' % k_f] = post_val
+            datarow['%s_change' % k_f] = annual_change
+            datarow['%s_prior' % k_f] = prior_data[k]
+        all_data.append(datarow)
+    df = pd.DataFrame(all_data)
+    df.to_csv('../datasets/pvc_allregions_uptake_change.csv', index=False)
+    sys.exit(1)
 
     # # identify subjects who rank first in key_groups out of subj_group
     # subj = GROUPS['increasing_low']['N'] + GROUPS['stable_low']['N']

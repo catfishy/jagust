@@ -32,6 +32,7 @@ TEMPORAL=[1015,1030,2015,2030]
 CINGULATE=[1002,1010,1023,1026,2002,2010,2023,2026]
 WHOLECEREBELLUM = [7,8,46,47]
 BIGREF = [2,41,7,8,46,47,16]
+WHITEMATTER = [2,41]
 SUMMARY = FRONTAL+PARIETAL+TEMPORAL+CINGULATE
 
 
@@ -276,19 +277,32 @@ def parseAllRegionOutput(all_region_file, lut_file):
     lut_table = importFreesurferLookup(lut_file)
     lut_reverse = {v.upper().replace('-','_'):k for k,v in lut_table.iteritems()}
     df = pd.read_csv(all_region_file)
-
+    df = df.fillna(0.0)
     index_lookup = {k:[lut_reverse[k]] for k in df.columns if k not in blacklist and 'SIZE' not in k}
+
     wcereb_names = [lut_table[_].upper().replace('-','_') for _ in WHOLECEREBELLUM]
     wcereb_sizes = ['%s_SIZE' % _ for _ in wcereb_names]
     bigref_names = [lut_table[_].upper().replace('-','_') for _ in BIGREF]
     bigref_sizes = ['%s_SIZE' % _ for _ in bigref_names]
+    summary_names = [lut_table[_].upper().replace('-','_') for _ in SUMMARY]
+    summary_sizes = ['%s_SIZE' % _ for _ in summary_names]
+    wm_names = [lut_table[_].upper().replace('-','_') for _ in WHITEMATTER]
+    wm_sizes = ['%s_SIZE' % _ for _ in wm_names]
 
-    # calculate reference regions
+    # calculate aggregate regions
     for i in df.index:
         wcereb_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(wcereb_names, wcereb_sizes)]
         df.loc[i,'whole_cerebellum'] = weightedMean(wcereb_pts)
+        index_lookup['whole_cerebellum'] = WHOLECEREBELLUM
         bigref_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(bigref_names, bigref_sizes)]
         df.loc[i,'composite_ref'] = weightedMean(bigref_pts)
+        index_lookup['composite_ref'] = BIGREF
+        summary_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(summary_names, summary_sizes)]
+        df.loc[i,'cortical_summary'] = weightedMean(summary_pts)
+        index_lookup['cortical_summary'] = SUMMARY
+        wm_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(wm_names, wm_sizes)]
+        df.loc[i,'white_matter'] = weightedMean(wm_pts)
+        index_lookup['white_matter'] = WHITEMATTER
         df.loc[i,'EXAMDATE'] = parseDate(df.loc[i,'EXAMDATE'])
 
     data_bl = {}
@@ -360,10 +374,16 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         # add cortical summary
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
         vals['cortical_summary'] = weightedMean(regionsizes)
+        # add white matter
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
+        vals['white_matter'] = weightedMean(regionsizes)
 
         if index_lookup is None:
             index_lookup = dict(zip(names, indices))
-            index_lookup['cortical_summary'] = list(set(SUMMARY))
+            index_lookup['cortical_summary'] = SUMMARY
+            index_lookup['whole_cerebellum'] = WHOLECEREBELLUM
+            index_lookup['composite_ref'] = BIGREF
+            index_lookup['white_matter'] = WHITEMATTER
 
         data_bl[rid] = vals
     for rid, data in data_scan2_raw.iteritems():
@@ -383,6 +403,9 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         # add cortical summary
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
         vals['cortical_summary'] = weightedMean(regionsizes)
+        # add white matter
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
+        vals['white_matter'] = weightedMean(regionsizes)
 
         data_scan2[rid] = vals
     for rid, data in data_scan3_raw.iteritems():
@@ -402,6 +425,9 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
         # add cortical summary
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
         vals['cortical_summary'] = weightedMean(regionsizes)
+        # add white matter
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
+        vals['white_matter'] = weightedMean(regionsizes)
 
         data_scan3[rid] = vals
     return data_bl, data_scan2, data_scan3, index_lookup

@@ -173,13 +173,12 @@ result_keys = ['cortical_summary_bl',
                'diag']
 
 # read in data
-pattern_csv = '../pvcsummary_bl_patterns_and_change.csv'
-bl_csv = '../pvcsummary_bl_vs_change.json'
+pattern_csv = '../datasets/pvcsummary_bl_patterns_and_change.csv'
+bl_csv = '../datasets/pvcsummary_bl_vs_change.json'
 raw_df = pd.read_json(bl_csv)
 raw_df.set_index('rid', inplace=True)
 df = pd.read_csv(pattern_csv)
 df.set_index('rid',inplace=True)
-
 
 pattern_df = df[pattern_keys]
 result_df = df[result_keys]
@@ -219,7 +218,7 @@ pattern_df_kpca = pattern_df_kpca.merge(result_df, left_index=True, right_index=
 
 # GMM
 raw_patterns_only = pattern_df_raw[raw_keys]
-raw_alpha_to_clusters = gmm_sweep_alpha(30, raw_patterns_only, covar_type='diag')
+raw_alpha_to_clusters = gmm_sweep_alpha(30, raw_patterns_only, covar_type='full')
 print sorted(raw_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
 pca_patterns_only = pattern_df_pca[pca_keys]

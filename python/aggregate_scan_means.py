@@ -488,39 +488,39 @@ if __name__ == "__main__":
     meta_pet = "../docs/ADNI/PET_META_LIST.csv"
     lut_table = importFreesurferLookup(lut_file)
 
-    # # for adni av45 nontp all regions
-    # output = '../output/UCBERKELEYAV45_11_02_15_allregions_nontp.csv'
-    # preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_02_15'
-    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
-    # pet_dates = importPetMETA(meta_pet)
-    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
-    # df.to_csv(output)
+    # for adni av45 nontp all regions
+    output = '../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv'
+    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
+    pet_dates = importPetMETA(meta_pet)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
+    df.to_csv(output)
 
-    # # for adni av45 all regions
-    # output = '../output/UCBERKELEYAV45_11_02_15_allregions.csv'
-    # preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_02_15'
-    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
-    # pet_dates = importPetMETA(meta_pet)
-    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
-    # df.to_csv(output)
+    # for adni av45 all regions
+    output = '../output/UCBERKELEYAV45_11_09_15_allregions.csv'
+    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
+    pet_dates = importPetMETA(meta_pet)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
+    df.to_csv(output)
 
-    # for adni av45 nontp
-    output = '../output/UCBERKELEYAV45_11_09_15_extra_nontp.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_11_09_15'
-    registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
-    agg_type = 'adni_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
+    # # for adni av45 nontp
+    # output = '../output/UCBERKELEYAV45_11_09_15_extra_nontp.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_11_09_15'
+    # registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
+    # agg_type = 'adni_extra'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
+    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+    #                              meta_pet, registry, agg_type)
     
-    # for adni av45
-    output = '../output/UCBERKELEYAV45_11_09_15_extra.csv'
-    preprocess_folder =  '../docs/AV45_preprocess_output_11_09_15'
-    registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
-    agg_type = 'adni_extra'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
-    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-                                 meta_pet, registry, agg_type)
+    # # for adni av45
+    # output = '../output/UCBERKELEYAV45_11_09_15_extra.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_11_09_15'
+    # registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
+    # agg_type = 'adni_extra'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
+    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+    #                              meta_pet, registry, agg_type)
     
 
     # # for adni dod (add in adni controls)
