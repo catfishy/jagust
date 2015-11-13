@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 from scipy.stats import f_oneway
 from __future__ import division
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import itertools
 
 from sklearn.mixture import GMM, VBGMM, DPGMM
@@ -13,6 +14,8 @@ from sklearn.cross_validation import LeaveOneOut
 from sklearn.mixture import GMM, VBGMM, DPGMM
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import StandardScaler
+
+pd.options.display.mpl_style = 'default'
 
 def sample(data):
     return data[np.random.randint(0,len(data),(1,len(data)))[0]]
@@ -43,7 +46,7 @@ def bootstrap_mean(vals, nboot=10000):
     return np.mean(tboot)
 
 
-def gmm_sweep_alpha(components, data, covar_type='diag'):
+def gmm_sweep_alpha(components, data, covar_type='full'):
     # model selection for alpha by looking at lower bound on marginal likelihood, or log prob of X under model
     alphas = [0.005, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
     alpha_to_clusters = {}
@@ -51,7 +54,7 @@ def gmm_sweep_alpha(components, data, covar_type='diag'):
         clusters = []
         scores = []
         print a
-        for i in range(6):
+        for i in range(5):
             g = DPGMM(n_components=components, 
                       covariance_type=covar_type,
                       alpha=a,
@@ -92,98 +95,37 @@ def group_comparisons(df, groups, keys):
     return data
 
 # extract patterns and summary value, summary change
-pattern_keys = ['ctx-lh-caudalanteriorcingulate_bl',
-                'ctx-lh-caudalmiddlefrontal_bl',
-                'ctx-lh-frontalpole_bl',
-                'ctx-lh-inferiorparietal_bl',
-                'ctx-lh-isthmuscingulate_bl',
-                'ctx-lh-lateralorbitofrontal_bl',
-                'ctx-lh-medialorbitofrontal_bl',
-                'ctx-lh-middletemporal_bl',
-                'ctx-lh-parsopercularis_bl',
-                'ctx-lh-parsorbitalis_bl',
-                'ctx-lh-parstriangularis_bl',
-                'ctx-lh-posteriorcingulate_bl',
-                'ctx-lh-precuneus_bl',
-                'ctx-lh-rostralanteriorcingulate_bl',
-                'ctx-lh-rostralmiddlefrontal_bl',
-                'ctx-lh-superiorfrontal_bl',
-                'ctx-lh-superiorparietal_bl',
-                'ctx-lh-superiortemporal_bl',
-                'ctx-lh-supramarginal_bl',
-                'ctx-rh-caudalanteriorcingulate_bl',
-                'ctx-rh-caudalmiddlefrontal_bl',
-                'ctx-rh-frontalpole_bl',
-                'ctx-rh-inferiorparietal_bl',
-                'ctx-rh-isthmuscingulate_bl',
-                'ctx-rh-lateralorbitofrontal_bl',
-                'ctx-rh-medialorbitofrontal_bl',
-                'ctx-rh-middletemporal_bl',
-                'ctx-rh-parsopercularis_bl',
-                'ctx-rh-parsorbitalis_bl',
-                'ctx-rh-parstriangularis_bl',
-                'ctx-rh-posteriorcingulate_bl',
-                'ctx-rh-precuneus_bl',
-                'ctx-rh-rostralanteriorcingulate_bl',
-                'ctx-rh-rostralmiddlefrontal_bl',
-                'ctx-rh-superiorfrontal_bl',
-                'ctx-rh-superiorparietal_bl',
-                'ctx-rh-superiortemporal_bl',
-                'ctx-rh-supramarginal_bl']
-rchange_keys = ['ctx-lh-caudalanteriorcingulate_change',
-                'ctx-lh-caudalmiddlefrontal_change',
-                'ctx-lh-frontalpole_change',
-                'ctx-lh-inferiorparietal_change',
-                'ctx-lh-isthmuscingulate_change',
-                'ctx-lh-lateralorbitofrontal_change',
-                'ctx-lh-medialorbitofrontal_change',
-                'ctx-lh-middletemporal_change',
-                'ctx-lh-parsopercularis_change',
-                'ctx-lh-parsorbitalis_change',
-                'ctx-lh-parstriangularis_change',
-                'ctx-lh-posteriorcingulate_change',
-                'ctx-lh-precuneus_change',
-                'ctx-lh-rostralanteriorcingulate_change',
-                'ctx-lh-rostralmiddlefrontal_change',
-                'ctx-lh-superiorfrontal_change',
-                'ctx-lh-superiorparietal_change',
-                'ctx-lh-superiortemporal_change',
-                'ctx-lh-supramarginal_change',
-                'ctx-rh-caudalanteriorcingulate_change',
-                'ctx-rh-caudalmiddlefrontal_change',
-                'ctx-rh-frontalpole_change',
-                'ctx-rh-inferiorparietal_change',
-                'ctx-rh-isthmuscingulate_change',
-                'ctx-rh-lateralorbitofrontal_change',
-                'ctx-rh-medialorbitofrontal_change',
-                'ctx-rh-middletemporal_change',
-                'ctx-rh-parsopercularis_change',
-                'ctx-rh-parsorbitalis_change',
-                'ctx-rh-parstriangularis_change',
-                'ctx-rh-posteriorcingulate_change',
-                'ctx-rh-precuneus_change',
-                'ctx-rh-rostralanteriorcingulate_change',
-                'ctx-rh-rostralmiddlefrontal_change',
-                'ctx-rh-superiorfrontal_change',
-                'ctx-rh-superiorparietal_change',
-                'ctx-rh-superiortemporal_change',
-                'ctx-rh-supramarginal_change']
-result_keys = ['cortical_summary_bl', 
-               'cortical_summary_change',
-               'diag']
+pattern_keys = ['BRAIN_STEM_prior', 'CTX_LH_BANKSSTS_prior', 'CTX_LH_CAUDALANTERIORCINGULATE_prior', 'CTX_LH_CAUDALMIDDLEFRONTAL_prior', 'CTX_LH_CUNEUS_prior', 'CTX_LH_ENTORHINAL_prior', 'CTX_LH_FRONTALPOLE_prior', 'CTX_LH_FUSIFORM_prior', 'CTX_LH_INFERIORPARIETAL_prior', 'CTX_LH_INFERIORTEMPORAL_prior', 'CTX_LH_INSULA_prior', 'CTX_LH_ISTHMUSCINGULATE_prior', 'CTX_LH_LATERALOCCIPITAL_prior', 'CTX_LH_LATERALORBITOFRONTAL_prior', 'CTX_LH_LINGUAL_prior', 'CTX_LH_MEDIALORBITOFRONTAL_prior', 'CTX_LH_MIDDLETEMPORAL_prior', 'CTX_LH_PARACENTRAL_prior', 'CTX_LH_PARAHIPPOCAMPAL_prior', 'CTX_LH_PARSOPERCULARIS_prior', 'CTX_LH_PARSORBITALIS_prior', 'CTX_LH_PARSTRIANGULARIS_prior', 'CTX_LH_PERICALCARINE_prior', 'CTX_LH_POSTCENTRAL_prior', 'CTX_LH_POSTERIORCINGULATE_prior', 'CTX_LH_PRECENTRAL_prior', 'CTX_LH_PRECUNEUS_prior', 'CTX_LH_ROSTRALANTERIORCINGULATE_prior', 'CTX_LH_ROSTRALMIDDLEFRONTAL_prior', 'CTX_LH_SUPERIORFRONTAL_prior', 'CTX_LH_SUPERIORPARIETAL_prior', 'CTX_LH_SUPERIORTEMPORAL_prior', 'CTX_LH_SUPRAMARGINAL_prior', 'CTX_LH_TEMPORALPOLE_prior', 'CTX_LH_TRANSVERSETEMPORAL_prior', 'CTX_LH_UNKNOWN_prior', 'CTX_RH_BANKSSTS_prior', 'CTX_RH_CAUDALANTERIORCINGULATE_prior', 'CTX_RH_CAUDALMIDDLEFRONTAL_prior', 'CTX_RH_CUNEUS_prior', 'CTX_RH_ENTORHINAL_prior', 'CTX_RH_FRONTALPOLE_prior', 'CTX_RH_FUSIFORM_prior', 'CTX_RH_INFERIORPARIETAL_prior', 'CTX_RH_INFERIORTEMPORAL_prior', 'CTX_RH_INSULA_prior', 'CTX_RH_ISTHMUSCINGULATE_prior', 'CTX_RH_LATERALOCCIPITAL_prior', 'CTX_RH_LATERALORBITOFRONTAL_prior', 'CTX_RH_LINGUAL_prior', 'CTX_RH_MEDIALORBITOFRONTAL_prior', 'CTX_RH_MIDDLETEMPORAL_prior', 'CTX_RH_PARACENTRAL_prior', 'CTX_RH_PARAHIPPOCAMPAL_prior', 'CTX_RH_PARSOPERCULARIS_prior', 'CTX_RH_PARSORBITALIS_prior', 'CTX_RH_PARSTRIANGULARIS_prior', 'CTX_RH_PERICALCARINE_prior', 'CTX_RH_POSTCENTRAL_prior', 'CTX_RH_POSTERIORCINGULATE_prior', 'CTX_RH_PRECENTRAL_prior', 'CTX_RH_PRECUNEUS_prior', 'CTX_RH_ROSTRALANTERIORCINGULATE_prior', 'CTX_RH_ROSTRALMIDDLEFRONTAL_prior', 'CTX_RH_SUPERIORFRONTAL_prior', 'CTX_RH_SUPERIORPARIETAL_prior', 'CTX_RH_SUPERIORTEMPORAL_prior', 'CTX_RH_SUPRAMARGINAL_prior', 'CTX_RH_TEMPORALPOLE_prior', 'CTX_RH_TRANSVERSETEMPORAL_prior', 'CTX_RH_UNKNOWN_prior', 'LEFT_ACCUMBENS_AREA_prior', 'LEFT_AMYGDALA_prior', 'LEFT_CAUDATE_prior', 'LEFT_CEREBELLUM_CORTEX_prior', 'LEFT_CEREBELLUM_WHITE_MATTER_prior', 'LEFT_CEREBRAL_WHITE_MATTER_prior', 'LEFT_HIPPOCAMPUS_prior', 'LEFT_PALLIDUM_prior', 'LEFT_PUTAMEN_prior', 'LEFT_THALAMUS_PROPER_prior', 'LEFT_VENTRALDC_prior', 'RIGHT_ACCUMBENS_AREA_prior', 'RIGHT_AMYGDALA_prior', 'RIGHT_CAUDATE_prior', 'RIGHT_CEREBELLUM_CORTEX_prior', 'RIGHT_CEREBELLUM_WHITE_MATTER_prior', 'RIGHT_CEREBRAL_WHITE_MATTER_prior', 'RIGHT_HIPPOCAMPUS_prior', 'RIGHT_PALLIDUM_prior', 'RIGHT_PUTAMEN_prior', 'RIGHT_THALAMUS_PROPER_prior', 'RIGHT_VENTRALDC_prior']
+post_keys = [_.replace('_prior','_post') for _ in pattern_keys]
+rchange_keys = [_.replace('_prior','_change') for _ in pattern_keys]
+result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
 
 # read in data
-pattern_csv = '../datasets/pvcsummary_bl_patterns_and_change.csv'
-bl_csv = '../datasets/pvcsummary_bl_vs_change.json'
-raw_df = pd.read_json(bl_csv)
-raw_df.set_index('rid', inplace=True)
-df = pd.read_csv(pattern_csv)
-df.set_index('rid',inplace=True)
+ref_key = 'COMPOSITE_REF'
+patterns_csv = '../datasets/pvc_allregions_uptake_change.csv'
+raw_df = pd.read_csv(patterns_csv)
+# convert to SUVR units and calculate change
+priors = [_ for _ in raw_df.columns if '_prior' in _ and 'diag' not in _]
+prior_ref = raw_df.loc[:,'%s_prior' % ref_key]
+raw_df[priors] = raw_df[priors].divide(prior_ref,axis='index')
+posts = [_ for _ in raw_df.columns if '_post' in _ and 'diag' not in _]
+post_ref = raw_df.loc[:,'%s_post' % ref_key]
+raw_df[posts] = raw_df[posts].divide(post_ref,axis='index')
+yrs = raw_df['yrs']
+for prior_key in priors:
+    post_key = prior_key.replace('_prior','_post')
+    change_key = prior_key.replace('_prior','_change')
+    raw_df[change_key] = (raw_df[post_key]-raw_df[prior_key]).divide(yrs,axis='index')
 
-pattern_df = df[pattern_keys]
-result_df = df[result_keys]
-rchange_df = df[rchange_keys]
+# convert to patterns
+pattern_df = raw_df[pattern_keys].copy()
+pattern_df = pattern_df.divide(pattern_df.sum(axis=1),axis=0)
+pattern_post_df = raw_df[post_keys].copy()
+pattern_post_df = pattern_post_df.divide(pattern_post_df.sum(axis=1),axis=0)
+
 uptake_df = raw_df[pattern_keys]
+result_df = raw_df[result_keys]
+rchange_df = raw_df[rchange_keys]
 
 # Scale in original space
 scaler = StandardScaler().fit(pattern_df)
@@ -218,19 +160,19 @@ pattern_df_kpca = pattern_df_kpca.merge(result_df, left_index=True, right_index=
 
 # GMM
 raw_patterns_only = pattern_df_raw[raw_keys]
-raw_alpha_to_clusters = gmm_sweep_alpha(30, raw_patterns_only, covar_type='full')
+raw_alpha_to_clusters = gmm_sweep_alpha(30, raw_patterns_only, covar_type='diag')
 print sorted(raw_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
 pca_patterns_only = pattern_df_pca[pca_keys]
-pca_alpha_to_clusters = gmm_sweep_alpha(20, pca_patterns_only)
+pca_alpha_to_clusters = gmm_sweep_alpha(20, pca_patterns_only, covar_type='diag')
 print sorted(pca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
 kpca_patterns_only = pattern_df_kpca[kpca_keys]
-kpca_alpha_to_clusters = gmm_sweep_alpha(50, kpca_patterns_only)
+kpca_alpha_to_clusters = gmm_sweep_alpha(50, kpca_patterns_only, covar_type='diag')
 print sorted(kpca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
 # Cluster
-alpha = 5
+alpha = 10
 components = 30
 models_scores = {}
 patterns_only = raw_patterns_only
@@ -271,7 +213,7 @@ for g in groups:
     members = result_df[result_df['membership']==g]
     if len(members) < 15:
         continue
-    diags = dict(Counter(members['diag'].tolist()))
+    diags = dict(Counter(members['diag_prior'].tolist()))
     print "Group %s" % g
     print "\tN: %s" % diags.get('N',0)
     #print "\tSMC: %s" % diags.get('SMC',0)
@@ -329,11 +271,22 @@ for ck in change_keys:
 
 effects_df = effects_df.ix[:,columns]
 
+big_groups = [_ for _ in groups if len(result_df[result_df['membership']==_]) > 15]
+
+# plot baseline value versus change scatter plot
+fig, ax = plt.subplots(1)
+cmap = cm.get_cmap('gist_rainbow')
+big_group_result_df = result_df[result_df['membership'].isin(big_groups)]
+ax.scatter(big_group_result_df['CORTICAL_SUMMARY_prior'],big_group_result_df['CORTICAL_SUMMARY_change'],c=big_group_result_df['membership'],cmap=cmap,s=50)
+plt.legend()
+plt.show()
+
 
 # plot against summary uptake/change values
-summary_bl_long = pd.melt(result_df, id_vars='membership',value_vars='cortical_summary_bl')
-summary_change_long = pd.melt(result_df, id_vars='membership',value_vars='cortical_summary_change')
-plt.figure()
+summary_prior_long = pd.melt(result_df, id_vars='membership',value_vars='CORTICAL_SUMMARY_prior')
+summary_change_long = pd.melt(result_df, id_vars='membership',value_vars='CORTICAL_SUMMARY_change')
+summary_post_long = pd.melt(result_df, id_vars='membership',value_vars='CORTICAL_SUMMARY_post')
+plt.figure(1)
 for g in groups:
     members = summary_change_long[summary_change_long['membership']==g]
     if len(members) < 15:
@@ -343,6 +296,7 @@ for g in groups:
 
 plt.legend()
 plt.show()
+
 
 # plot against regional change
 rchange_members = rchange_df.merge(result_df, left_index=True, right_index=True)

@@ -302,47 +302,47 @@ if __name__ == "__main__":
     # data_bl, data_scan2, data_scan3, index_lookup = parseRawAV45Output(av45_file, registry_file, lut_file)
     # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
 
-    # allregion pvc results
-    bl_file = '../output/Rousset_BL/raw_allregions_output_BL.mat'
-    scan2_file = '../output/Rousset_Scan2/raw_allregions_output_Scan2.mat'
-    scan3_file = '../output/Rousset_Scan3/raw_allregions_output_Scan3.mat'
-    data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
-    data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
-
-    # # allregion nontp results
-    # av45_file = "../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv"
-    # registry_file = "../docs/ADNI/REGISTRY.csv"
-    # data_bl, data_scan2, data_scan3, index_lookup = parseAllRegionOutput(av45_file, lut_file)
+    # # allregion pvc results
+    # bl_file = '../output/Rousset_BL/raw_allregions_output_BL.mat'
+    # scan2_file = '../output/Rousset_Scan2/raw_allregions_output_Scan2.mat'
+    # scan3_file = '../output/Rousset_Scan3/raw_allregions_output_Scan3.mat'
+    # data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
     # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
 
-    all_data = []
-    for rid, bl_row in data_bl.iteritems():
-        master_row = master_data[rid]
-        diag_1 = master_row['Diag@AV45_long']
-        diag_2 = master_row['Diag@AV45_2_long']
-        diag_3 = master_row['Diag@AV45_3_long']
-        # bl row
-        bl_datarow = {'rid': rid,
-                      'diag': diag_1,
-                      'timepoint': 'BL'}
-        bl_datarow.update({k:bl_row[k] for k in index_lookup})
-        all_data.append(bl_datarow)
-        if rid in data_scan2:
-            scan2_row = data_scan2[rid]
-            scan2_datarow = {'rid': rid,
-                             'diag': diag_2,
-                             'timepoint': 'SCAN2'}
-            scan2_datarow.update({k:scan2_row[k] for k in index_lookup})
-            all_data.append(scan2_datarow)
-        if rid in data_scan3:
-            scan3_row = data_scan3[rid]
-            scan3_datarow = {'rid': rid,
-                             'diag': diag_3,
-                             'timepoint': 'SCAN3'}
-            scan3_datarow.update({k:scan3_row[k] for k in index_lookup})
-            all_data.append(scan3_datarow)
-    df = pd.DataFrame(all_data)
-    df.to_csv('../datasets/pvc_allregions_uptake.csv', index=False)
+    # allregion nontp results
+    av45_file = "../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv"
+    registry_file = "../docs/ADNI/REGISTRY.csv"
+    data_bl, data_scan2, data_scan3, index_lookup = parseAllRegionOutput(av45_file, lut_file)
+    data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
+
+    # all_data = []
+    # for rid, bl_row in data_bl.iteritems():
+    #     master_row = master_data[rid]
+    #     diag_1 = master_row['Diag@AV45_long']
+    #     diag_2 = master_row['Diag@AV45_2_long']
+    #     diag_3 = master_row['Diag@AV45_3_long']
+    #     # bl row
+    #     bl_datarow = {'rid': rid,
+    #                   'diag': diag_1,
+    #                   'timepoint': 'BL'}
+    #     bl_datarow.update({k:bl_row[k] for k in index_lookup})
+    #     all_data.append(bl_datarow)
+    #     if rid in data_scan2:
+    #         scan2_row = data_scan2[rid]
+    #         scan2_datarow = {'rid': rid,
+    #                          'diag': diag_2,
+    #                          'timepoint': 'SCAN2'}
+    #         scan2_datarow.update({k:scan2_row[k] for k in index_lookup})
+    #         all_data.append(scan2_datarow)
+    #     if rid in data_scan3:
+    #         scan3_row = data_scan3[rid]
+    #         scan3_datarow = {'rid': rid,
+    #                          'diag': diag_3,
+    #                          'timepoint': 'SCAN3'}
+    #         scan3_datarow.update({k:scan3_row[k] for k in index_lookup})
+    #         all_data.append(scan3_datarow)
+    # df = pd.DataFrame(all_data)
+    # df.to_csv('../datasets/pvc_allregions_uptake.csv', index=False)
 
     data_prior = data_bl
     data_post = {}
@@ -368,11 +368,11 @@ if __name__ == "__main__":
             post_val, yrs = post_data[k]
             annual_change = (post_val - prior_data[k]) / yrs
             datarow['%s_post' % k_f] = post_val
-            datarow['%s_change' % k_f] = annual_change
+            datarow['yrs'] = yrs
             datarow['%s_prior' % k_f] = prior_data[k]
         all_data.append(datarow)
     df = pd.DataFrame(all_data)
-    df.to_csv('../datasets/pvc_allregions_uptake_change.csv', index=False)
+    df.to_csv('../datasets/nontp_allregions_uptake_change.csv', index=False)
     sys.exit(1)
 
     # # identify subjects who rank first in key_groups out of subj_group
