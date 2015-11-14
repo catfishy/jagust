@@ -79,8 +79,6 @@ def group_comparisons(df, groups, keys):
     for group1, group2 in itertools.combinations(groups,2):
         group1_members = df[df['membership']==group1]
         group2_members = df[df['membership']==group2]
-        if len(group1_members) < 15 or len(group2_members) < 15:
-            continue
         print "GRP %s (%s) vs GRP %s (%s)" % (group1, len(group1_members), group2, len(group2_members))
         for i, key in enumerate(keys):
             group1_vals = group1_members[key].tolist()
@@ -95,15 +93,17 @@ def group_comparisons(df, groups, keys):
     return data
 
 # extract patterns and summary value, summary change
-pattern_keys = ['BRAIN_STEM_prior', 'CTX_LH_BANKSSTS_prior', 'CTX_LH_CAUDALANTERIORCINGULATE_prior', 'CTX_LH_CAUDALMIDDLEFRONTAL_prior', 'CTX_LH_CUNEUS_prior', 'CTX_LH_ENTORHINAL_prior', 'CTX_LH_FRONTALPOLE_prior', 'CTX_LH_FUSIFORM_prior', 'CTX_LH_INFERIORPARIETAL_prior', 'CTX_LH_INFERIORTEMPORAL_prior', 'CTX_LH_INSULA_prior', 'CTX_LH_ISTHMUSCINGULATE_prior', 'CTX_LH_LATERALOCCIPITAL_prior', 'CTX_LH_LATERALORBITOFRONTAL_prior', 'CTX_LH_LINGUAL_prior', 'CTX_LH_MEDIALORBITOFRONTAL_prior', 'CTX_LH_MIDDLETEMPORAL_prior', 'CTX_LH_PARACENTRAL_prior', 'CTX_LH_PARAHIPPOCAMPAL_prior', 'CTX_LH_PARSOPERCULARIS_prior', 'CTX_LH_PARSORBITALIS_prior', 'CTX_LH_PARSTRIANGULARIS_prior', 'CTX_LH_PERICALCARINE_prior', 'CTX_LH_POSTCENTRAL_prior', 'CTX_LH_POSTERIORCINGULATE_prior', 'CTX_LH_PRECENTRAL_prior', 'CTX_LH_PRECUNEUS_prior', 'CTX_LH_ROSTRALANTERIORCINGULATE_prior', 'CTX_LH_ROSTRALMIDDLEFRONTAL_prior', 'CTX_LH_SUPERIORFRONTAL_prior', 'CTX_LH_SUPERIORPARIETAL_prior', 'CTX_LH_SUPERIORTEMPORAL_prior', 'CTX_LH_SUPRAMARGINAL_prior', 'CTX_LH_TEMPORALPOLE_prior', 'CTX_LH_TRANSVERSETEMPORAL_prior', 'CTX_LH_UNKNOWN_prior', 'CTX_RH_BANKSSTS_prior', 'CTX_RH_CAUDALANTERIORCINGULATE_prior', 'CTX_RH_CAUDALMIDDLEFRONTAL_prior', 'CTX_RH_CUNEUS_prior', 'CTX_RH_ENTORHINAL_prior', 'CTX_RH_FRONTALPOLE_prior', 'CTX_RH_FUSIFORM_prior', 'CTX_RH_INFERIORPARIETAL_prior', 'CTX_RH_INFERIORTEMPORAL_prior', 'CTX_RH_INSULA_prior', 'CTX_RH_ISTHMUSCINGULATE_prior', 'CTX_RH_LATERALOCCIPITAL_prior', 'CTX_RH_LATERALORBITOFRONTAL_prior', 'CTX_RH_LINGUAL_prior', 'CTX_RH_MEDIALORBITOFRONTAL_prior', 'CTX_RH_MIDDLETEMPORAL_prior', 'CTX_RH_PARACENTRAL_prior', 'CTX_RH_PARAHIPPOCAMPAL_prior', 'CTX_RH_PARSOPERCULARIS_prior', 'CTX_RH_PARSORBITALIS_prior', 'CTX_RH_PARSTRIANGULARIS_prior', 'CTX_RH_PERICALCARINE_prior', 'CTX_RH_POSTCENTRAL_prior', 'CTX_RH_POSTERIORCINGULATE_prior', 'CTX_RH_PRECENTRAL_prior', 'CTX_RH_PRECUNEUS_prior', 'CTX_RH_ROSTRALANTERIORCINGULATE_prior', 'CTX_RH_ROSTRALMIDDLEFRONTAL_prior', 'CTX_RH_SUPERIORFRONTAL_prior', 'CTX_RH_SUPERIORPARIETAL_prior', 'CTX_RH_SUPERIORTEMPORAL_prior', 'CTX_RH_SUPRAMARGINAL_prior', 'CTX_RH_TEMPORALPOLE_prior', 'CTX_RH_TRANSVERSETEMPORAL_prior', 'CTX_RH_UNKNOWN_prior', 'LEFT_ACCUMBENS_AREA_prior', 'LEFT_AMYGDALA_prior', 'LEFT_CAUDATE_prior', 'LEFT_CEREBELLUM_CORTEX_prior', 'LEFT_CEREBELLUM_WHITE_MATTER_prior', 'LEFT_CEREBRAL_WHITE_MATTER_prior', 'LEFT_HIPPOCAMPUS_prior', 'LEFT_PALLIDUM_prior', 'LEFT_PUTAMEN_prior', 'LEFT_THALAMUS_PROPER_prior', 'LEFT_VENTRALDC_prior', 'RIGHT_ACCUMBENS_AREA_prior', 'RIGHT_AMYGDALA_prior', 'RIGHT_CAUDATE_prior', 'RIGHT_CEREBELLUM_CORTEX_prior', 'RIGHT_CEREBELLUM_WHITE_MATTER_prior', 'RIGHT_CEREBRAL_WHITE_MATTER_prior', 'RIGHT_HIPPOCAMPUS_prior', 'RIGHT_PALLIDUM_prior', 'RIGHT_PUTAMEN_prior', 'RIGHT_THALAMUS_PROPER_prior', 'RIGHT_VENTRALDC_prior']
-post_keys = [_.replace('_prior','_post') for _ in pattern_keys]
-rchange_keys = [_.replace('_prior','_change') for _ in pattern_keys]
+pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL', 'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE', 'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL', 'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_LH_UNKNOWN', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE', 'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL', 'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL', 'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS', 'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS', 'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL', 'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'CTX_RH_UNKNOWN', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX', 'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER', 'LEFT_VENTRALDC', 'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER', 'RIGHT_VENTRALDC']
+prior_keys = ['%s_prior' % _ for _ in pattern_keys]
+post_keys = ['%s_post' % _ for _ in pattern_keys]
+rchange_keys = ['%s_change' % _ for _ in pattern_keys]
 result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
 
 # read in data
 ref_key = 'COMPOSITE_REF'
 patterns_csv = '../datasets/pvc_allregions_uptake_change.csv'
 raw_df = pd.read_csv(patterns_csv)
+raw_df.set_index('rid',inplace=True,drop=True)
 # convert to SUVR units and calculate change
 priors = [_ for _ in raw_df.columns if '_prior' in _ and 'diag' not in _]
 prior_ref = raw_df.loc[:,'%s_prior' % ref_key]
@@ -118,45 +118,50 @@ for prior_key in priors:
     raw_df[change_key] = (raw_df[post_key]-raw_df[prior_key]).divide(yrs,axis='index')
 
 # convert to patterns
-pattern_df = raw_df[pattern_keys].copy()
-pattern_df = pattern_df.divide(pattern_df.sum(axis=1),axis=0)
-pattern_post_df = raw_df[post_keys].copy()
-pattern_post_df = pattern_post_df.divide(pattern_post_df.sum(axis=1),axis=0)
+pattern_prior_df = raw_df[prior_keys].copy()
+pattern_prior_df.columns = [_.replace('_prior','') for _ in pattern_prior_df.columns]
+pattern_prior_df = pattern_prior_df.divide(pattern_prior_df.sum(axis=1),axis=0)
+pattern_prior_df['timepoint'] = 'prior'
+pattern_prior_df.set_index(raw_df.index, inplace=True)
+pattern_prior_df.set_index('timepoint', append=True, inplace=True)
 
-uptake_df = raw_df[pattern_keys]
+pattern_post_df = raw_df[post_keys].copy()
+pattern_post_df.columns = [_.replace('_post','') for _ in pattern_post_df.columns]
+pattern_post_df = pattern_post_df.divide(pattern_post_df.sum(axis=1),axis=0)
+pattern_post_df['timepoint'] = 'post'
+pattern_post_df.set_index(raw_df.index, inplace=True)
+pattern_post_df.set_index('timepoint', append=True, inplace=True)
+
+
+# concat prior and post patterns
+pattern_df = pd.concat((pattern_prior_df,pattern_post_df))
+uptake_prior_df = raw_df[prior_keys]
+uptake_prior_df.columns = [_.replace('_prior','') for _ in uptake_prior_df.columns]
+uptake_post_df = raw_df[post_keys]
+uptake_post_df.columns = [_.replace('_post','') for _ in uptake_post_df.columns]
 result_df = raw_df[result_keys]
 rchange_df = raw_df[rchange_keys]
 
 # Scale in original space
 scaler = StandardScaler().fit(pattern_df)
 pattern_df_raw = pd.DataFrame(scaler.transform(pattern_df))
+pattern_df_raw.set_index(pattern_df.index, inplace=True)
 raw_keys = pattern_df_raw.columns
-pattern_df_raw['rid'] = result_df.index
-pattern_df_raw.set_index('rid', inplace=True)
-pattern_df_raw = pattern_df_raw.merge(result_df, left_index=True, right_index=True)
 
 # convert to PCA space + whiten(scale)
 pca_model = PCA(n_components=len(pattern_df.columns), copy=True, whiten=True)
 pattern_df_pca = pd.DataFrame(pca_model.fit_transform(pattern_df))
 pattern_df_pca.set_index(pattern_df.index, inplace=True)
 pca_keys = pattern_df_pca.columns
-pattern_df_pca = pattern_df_pca.merge(result_df, left_index=True, right_index=True)
 
 # convert to Kernel PCA Projection and scale
-kpca_model = KernelPCA(n_components=None,
-                       kernel='rbf', 
-                       fit_inverse_transform=True, 
-                       gamma=1,
-                       alpha=1.0)
+kpca_model = KernelPCA(n_components=None,kernel='rbf',fit_inverse_transform=False,gamma=1,alpha=1.0)
 X_kpca = kpca_model.fit_transform(pattern_df)
-X_back = kpca_model.inverse_transform(X_kpca)
 pattern_df_kpca = pd.DataFrame(X_kpca)
-kpca_keys = pattern_df_kpca.columns
 scaler = StandardScaler().fit(pattern_df_kpca)
 pattern_df_kpca = pd.DataFrame(scaler.transform(pattern_df_kpca))
-pattern_df_kpca['rid'] = result_df.index
-pattern_df_kpca.set_index('rid', inplace=True)
-pattern_df_kpca = pattern_df_kpca.merge(result_df, left_index=True, right_index=True)
+pattern_df_kpca.set_index(pattern_df.index, inplace=True)
+kpca_keys = pattern_df_kpca.columns
 
 # GMM
 raw_patterns_only = pattern_df_raw[raw_keys]
@@ -172,11 +177,11 @@ kpca_alpha_to_clusters = gmm_sweep_alpha(50, kpca_patterns_only, covar_type='dia
 print sorted(kpca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
 # Cluster
-alpha = 10
+alpha = 30
 components = 30
 models_scores = {}
 patterns_only = raw_patterns_only
-for i in range(10):
+for i in range(20):
     g = DPGMM(n_components=components, 
               covariance_type='diag',
               alpha=alpha,
@@ -201,19 +206,30 @@ best_score = max(models_scores.keys())
 best_model = models_scores[best_score]
 y_ = best_model.predict(patterns_only)
 probs = best_model.predict_proba(patterns_only)
-for c in set(y_):
-    print c
-    print '\t%s' % len([_ for _ in y_ if _ == c])
+
+# add membership to result df and determine significant clusters
+y_df = pd.DataFrame(y_)
+y_df.columns = ['group']
+y_df.set_index(patterns_only.index, inplace=True)
+for rid in result_df.index:
+    result_df.loc[rid,'membership_prior'] = y_df.loc[(rid,'prior'),'group']
+    result_df.loc[rid,'membership_post'] = y_df.loc[(rid,'post'),'group']
 
 groups = list(set(y_))
-result_df.loc[:,'membership'] = y_[:]
+big_groups = []
+for g in groups:
+    prior_members = set(result_df[result_df.membership_prior==g].index)
+    post_members = set(result_df[result_df.membership_post==g].index)
+    allmembers = len(prior_members | post_members)
+    print "%s: %s" % (g,allmembers)
+    if allmembers >= 10:
+        big_groups.append(g)
 
 # print group diagnoses
-for g in groups:
-    members = result_df[result_df['membership']==g]
-    if len(members) < 15:
-        continue
-    diags = dict(Counter(members['diag_prior'].tolist()))
+for g in big_groups:
+    members_prior = result_df[result_df['membership_prior']==g]['diag_prior'].tolist()
+    members_post = result_df[result_df['membership_post']==g]['diag_post'].tolist()
+    diags = dict(Counter(members_prior+members_post))
     print "Group %s" % g
     print "\tN: %s" % diags.get('N',0)
     #print "\tSMC: %s" % diags.get('SMC',0)
@@ -224,15 +240,23 @@ for g in groups:
 
 # between group bootstrap hypothesis test for summary/regional change
 change_members = rchange_df.merge(result_df, left_index=True, right_index=True)
+change_members['membership'] = change_members['membership_prior']
 change_keys = rchange_keys
 #change_keys = ['cortical_summary_change']
-change_pvalues = group_comparisons(change_members, groups, change_keys)
+change_pvalues = group_comparisons(change_members, big_groups, change_keys)
 
 # between group bootstrap hypothesis test for summary/regional uptake
-uptake_members = uptake_df.merge(result_df, left_index=True, right_index=True)
+# merge uptakes
+uptake_members_prior = uptake_prior_df.merge(result_df[['membership_prior','CORTICAL_SUMMARY_prior']], left_index=True, right_index=True)
+uptake_members_prior['membership'] = uptake_members_prior['membership_prior']
+uptake_members_prior['CORTICAL_SUMMARY'] = uptake_members_prior['CORTICAL_SUMMARY_prior']
+uptake_members_post = uptake_post_df.merge(result_df[['membership_post','CORTICAL_SUMMARY_post']], left_index=True, right_index=True)
+uptake_members_post['membership'] = uptake_members_post['membership_post']
+uptake_members_post['CORTICAL_SUMMARY'] = uptake_members_post['CORTICAL_SUMMARY_post']
+uptake_members = pd.concat((uptake_members_prior,uptake_members_post))
+#uptake_keys = ['CORTICAL_SUMMARY']
 uptake_keys = pattern_keys
-#uptake_keys = ['cortical_summary_bl']
-uptake_pvalues = group_comparisons(uptake_members, groups, uptake_keys)
+uptake_pvalues = group_comparisons(uptake_members, big_groups, pattern_keys)
 
 # aggregate effects
 effects = []
@@ -271,27 +295,34 @@ for ck in change_keys:
 
 effects_df = effects_df.ix[:,columns]
 
-big_groups = [_ for _ in groups if len(result_df[result_df['membership']==_]) > 15]
 
 # plot baseline value versus change scatter plot
 fig, ax = plt.subplots(1)
 cmap = cm.get_cmap('gist_rainbow')
-big_group_result_df = result_df[result_df['membership'].isin(big_groups)]
-ax.scatter(big_group_result_df['CORTICAL_SUMMARY_prior'],big_group_result_df['CORTICAL_SUMMARY_change'],c=big_group_result_df['membership'],cmap=cmap,s=50)
+big_group_result_df = result_df[result_df['membership_prior'].isin(big_groups)]
+ax.scatter(big_group_result_df['CORTICAL_SUMMARY_prior'],big_group_result_df['CORTICAL_SUMMARY_change'],c=big_group_result_df['membership_prior'],cmap=cmap,s=50)
 plt.legend()
 plt.show()
 
 
-# plot against summary uptake/change values
-summary_prior_long = pd.melt(result_df, id_vars='membership',value_vars='CORTICAL_SUMMARY_prior')
-summary_change_long = pd.melt(result_df, id_vars='membership',value_vars='CORTICAL_SUMMARY_change')
-summary_post_long = pd.melt(result_df, id_vars='membership',value_vars='CORTICAL_SUMMARY_post')
+# plot against summary uptake values
+summary_prior_long = pd.melt(result_df, id_vars=['membership_prior'], value_vars='CORTICAL_SUMMARY_prior')
+summary_post_long = pd.melt(result_df, id_vars=['membership_post'], value_vars='CORTICAL_SUMMARY_post')
 plt.figure(1)
-for g in groups:
-    members = summary_change_long[summary_change_long['membership']==g]
-    if len(members) < 15:
-        print "Cluster %s has only %s members" % (g, len(members))
-        continue
+for g in big_groups:
+    prior_members = summary_prior_long[summary_prior_long.membership_prior==g][['variable','value']]
+    post_members = summary_post_long[summary_post_long.membership_post==g][['variable','value']]
+    members = pd.concat((prior_members,post_members))
+    members['value'].plot(kind='kde', label=g, alpha=0.5)
+
+plt.legend()
+plt.show()
+
+# plot against summary change values
+summary_change_long = pd.melt(result_df, id_vars=['membership_prior'], value_vars='CORTICAL_SUMMARY_change')
+plt.figure(1)
+for g in big_groups:
+    members = summary_change_long[summary_change_long.membership_prior==g]
     members['value'].plot(kind='kde', label=g, alpha=0.5)
 
 plt.legend()
@@ -311,7 +342,7 @@ for i,rchange_key in enumerate(rchange_keys):
     plt.legend()
 
 # plot against regional bl value
-uptake_members = uptake_df.merge(result_df, left_index=True, right_index=True)
+uptake_members = uptake_prior_df.merge(result_df, left_index=True, right_index=True)
 for i,pattern_key in enumerate(pattern_keys):
     long = pd.melt(uptake_members, id_vars='membership', value_vars=pattern_key)
     plt.figure(i+1)
