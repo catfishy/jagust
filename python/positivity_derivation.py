@@ -37,19 +37,20 @@ wm_wcereb.columns = ['wm_wcereb']
 wm_vs_summary = wm_wcereb.merge(summary_wcereb, left_index=True, right_index=True)
 
 # 1D GMM
+input_df = summary_wcereb
 g_1 = GMM(n_components=2, 
         covariance_type='full',
         tol=1e-6,
         n_iter=700,
         params='wmc', 
         init_params='wmc')
-g_1.fit(summary_bigref)
+g_1.fit(input_df)
 # calculate prob, disregard weights
-lpr = log_multivariate_normal_density(summary_bigref,g_1.means_,g_1.covars_,g_1.covariance_type)
+lpr = log_multivariate_normal_density(input_df,g_1.means_,g_1.covars_,g_1.covariance_type)
 logprob = logsumexp(lpr,axis=1)
 responsibilities = np.exp(lpr - logprob[:, np.newaxis])
 probs = pd.DataFrame(responsibilities)
-probs.set_index(summary_bigref.index,inplace=True)
+probs.set_index(input_df.index,inplace=True)
 probs.columns = ['prob_0','prob_1']
 probs.loc[:,'color'] = 'k'
 probs.loc[probs.prob_0>=0.90, 'color'] = 'r'
@@ -59,8 +60,8 @@ delta= 0.0001
 x = np.arange(0.5, 1.2, delta)
 mu_1, sigma_1 = (g_1.means_[0][0],np.sqrt(g_1.covars_[0][0]))
 mu_2, sigma_2 = (g_1.means_[1][0],np.sqrt(g_1.covars_[1][0]))
-intervals_1 = norm.interval(0.99,loc=mu_1,scale=sigma_1)
-intervals_2 = norm.interval(0.99,loc=mu_2,scale=sigma_2)
+intervals_1 = norm.interval(0.95,loc=mu_1,scale=sigma_1)
+intervals_2 = norm.interval(0.95,loc=mu_2,scale=sigma_2)
 interval_1_x = np.arange(intervals_1[0][0],intervals_1[1][0],delta)
 interval_2_x = np.arange(intervals_2[0][0],intervals_2[1][0],delta)
 print intervals_1
@@ -69,11 +70,11 @@ Z1 = mlab.normpdf(x,mu_1,sigma_1)
 Z2 = mlab.normpdf(x,mu_2,sigma_2)
 Z = (Z2-Z1)
 diffpts = zip(x,Z)
-diffpts = [(a,b) for a,b in diffpts if a > 0.6 and a < 1.0]
+diffpts = [(a,b) for a,b in diffpts if a > 0.8 and a < 1.4]
 zeropt = sorted(diffpts, key=lambda x: abs(x[1]))[0][0]
 min_interval = min(intervals_1[1][0],intervals_2[1][0])
 max_interval = max(intervals_1[0][0],intervals_2[0][0])
-summary_bigref.plot(kind='density')
+input_df.plot(kind='density')
 plt.plot(x,Z1,label='gaussian one')
 plt.plot(x,Z2,label='gaussian two')
 plt.plot(x,Z,label='gaussian diff')

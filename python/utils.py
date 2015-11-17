@@ -1698,6 +1698,8 @@ def removeFile(filename):
     except OSError:
         print "File to remove does not exist"
 
+def saveFakeAparcInput(out_file, values, index_lookup):
+    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
 
 def printROIGrouping(names, groupings, lut_file):
     data = importFreesurferLookup(lut_file)

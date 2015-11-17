@@ -15,6 +15,8 @@ from sklearn.mixture import GMM, VBGMM, DPGMM
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import StandardScaler
 
+from utils import saveFakeAparcInput, importFreesurferLookup
+
 pd.options.display.mpl_style = 'default'
 
 def sample(data):
@@ -44,7 +46,6 @@ def bootstrap_mean(vals, nboot=10000):
         sboot = sample(vals)
         tboot[i] = np.mean(sboot)
     return np.mean(tboot)
-
 
 def gmm_sweep_alpha(components, data, covar_type='full'):
     # model selection for alpha by looking at lower bound on marginal likelihood, or log prob of X under model
@@ -134,7 +135,7 @@ pattern_post_df.set_index('timepoint', append=True, inplace=True)
 
 
 # concat prior and post patterns
-pattern_df = pd.concat((pattern_prior_df,pattern_post_df))
+pattern_df_raw = pd.concat((pattern_prior_df,pattern_post_df))
 uptake_prior_df = raw_df[prior_keys]
 uptake_prior_df.columns = [_.replace('_prior','') for _ in uptake_prior_df.columns]
 uptake_post_df = raw_df[post_keys]
@@ -148,33 +149,33 @@ pattern_df_raw = pd.DataFrame(scaler.transform(pattern_df))
 pattern_df_raw.set_index(pattern_df.index, inplace=True)
 raw_keys = pattern_df_raw.columns
 
-# convert to PCA space + whiten(scale)
-pca_model = PCA(n_components=len(pattern_df.columns), copy=True, whiten=True)
-pattern_df_pca = pd.DataFrame(pca_model.fit_transform(pattern_df))
-pattern_df_pca.set_index(pattern_df.index, inplace=True)
-pca_keys = pattern_df_pca.columns
+# # convert to PCA space + whiten(scale)
+# pca_model = PCA(n_components=len(pattern_df.columns), copy=True, whiten=True)
+# pattern_df_pca = pd.DataFrame(pca_model.fit_transform(pattern_df))
+# pattern_df_pca.set_index(pattern_df.index, inplace=True)
+# pca_keys = pattern_df_pca.columns
 
-# convert to Kernel PCA Projection and scale
-kpca_model = KernelPCA(n_components=None,kernel='rbf',fit_inverse_transform=False,gamma=1,alpha=1.0)
-X_kpca = kpca_model.fit_transform(pattern_df)
-pattern_df_kpca = pd.DataFrame(X_kpca)
-scaler = StandardScaler().fit(pattern_df_kpca)
-pattern_df_kpca = pd.DataFrame(scaler.transform(pattern_df_kpca))
-pattern_df_kpca.set_index(pattern_df.index, inplace=True)
-kpca_keys = pattern_df_kpca.columns
+# # convert to Kernel PCA Projection and scale
+# kpca_model = KernelPCA(n_components=None,kernel='rbf',fit_inverse_transform=False,gamma=1,alpha=1.0)
+# X_kpca = kpca_model.fit_transform(pattern_df)
+# pattern_df_kpca = pd.DataFrame(X_kpca)
+# scaler = StandardScaler().fit(pattern_df_kpca)
+# pattern_df_kpca = pd.DataFrame(scaler.transform(pattern_df_kpca))
+# pattern_df_kpca.set_index(pattern_df.index, inplace=True)
+# kpca_keys = pattern_df_kpca.columns
 
 # GMM
 raw_patterns_only = pattern_df_raw[raw_keys]
 raw_alpha_to_clusters = gmm_sweep_alpha(30, raw_patterns_only, covar_type='diag')
 print sorted(raw_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
-pca_patterns_only = pattern_df_pca[pca_keys]
-pca_alpha_to_clusters = gmm_sweep_alpha(20, pca_patterns_only, covar_type='diag')
-print sorted(pca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
+# pca_patterns_only = pattern_df_pca[pca_keys]
+# pca_alpha_to_clusters = gmm_sweep_alpha(20, pca_patterns_only, covar_type='diag')
+# print sorted(pca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
-kpca_patterns_only = pattern_df_kpca[kpca_keys]
-kpca_alpha_to_clusters = gmm_sweep_alpha(50, kpca_patterns_only, covar_type='diag')
-print sorted(kpca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
+# kpca_patterns_only = pattern_df_kpca[kpca_keys]
+# kpca_alpha_to_clusters = gmm_sweep_alpha(50, kpca_patterns_only, covar_type='diag')
+# print sorted(kpca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
 # Cluster
 alpha = 30
@@ -207,7 +208,7 @@ best_model = models_scores[best_score]
 y_ = best_model.predict(patterns_only)
 probs = best_model.predict_proba(patterns_only)
 
-# add membership to result df and determine significant clusters
+# add membership to result df
 y_df = pd.DataFrame(y_)
 y_df.columns = ['group']
 y_df.set_index(patterns_only.index, inplace=True)
@@ -215,6 +216,7 @@ for rid in result_df.index:
     result_df.loc[rid,'membership_prior'] = y_df.loc[(rid,'prior'),'group']
     result_df.loc[rid,'membership_post'] = y_df.loc[(rid,'post'),'group']
 
+# determine big groups
 groups = list(set(y_))
 big_groups = []
 for g in groups:
@@ -225,28 +227,21 @@ for g in groups:
     if allmembers >= 10:
         big_groups.append(g)
 
-# print group diagnoses
+# print group diagnostic conversions
 for g in big_groups:
-    members_prior = result_df[result_df['membership_prior']==g]['diag_prior'].tolist()
-    members_post = result_df[result_df['membership_post']==g]['diag_post'].tolist()
-    diags = dict(Counter(members_prior+members_post))
-    print "Group %s" % g
-    print "\tN: %s" % diags.get('N',0)
-    #print "\tSMC: %s" % diags.get('SMC',0)
-    print "\tEMCI: %s" % diags.get('EMCI',0)
-    print "\tLCMI: %s" % diags.get('LMCI',0)
-    print "\tAD: %s" % diags.get('AD',0)
+    conversions = {}
+    members_prior = result_df[result_df['membership_prior']==g]
+    diag_by_subj = members_prior[['diag_prior','diag_post']].T.to_dict()
+    changes = defaultdict(int)
+    for subj, diags in diag_by_subj.iteritems():
+        changes[(diags['diag_prior'],diags['diag_post'])] += 1
+    print g
+    for key in sorted(changes.keys()):
+        print "%s: %s" % (key, changes[key]/len(diag_by_subj))
 
-
-# between group bootstrap hypothesis test for summary/regional change
+# merge results with regional change and uptakes
 change_members = rchange_df.merge(result_df, left_index=True, right_index=True)
 change_members['membership'] = change_members['membership_prior']
-change_keys = rchange_keys
-#change_keys = ['cortical_summary_change']
-change_pvalues = group_comparisons(change_members, big_groups, change_keys)
-
-# between group bootstrap hypothesis test for summary/regional uptake
-# merge uptakes
 uptake_members_prior = uptake_prior_df.merge(result_df[['membership_prior','CORTICAL_SUMMARY_prior']], left_index=True, right_index=True)
 uptake_members_prior['membership'] = uptake_members_prior['membership_prior']
 uptake_members_prior['CORTICAL_SUMMARY'] = uptake_members_prior['CORTICAL_SUMMARY_prior']
@@ -254,9 +249,85 @@ uptake_members_post = uptake_post_df.merge(result_df[['membership_post','CORTICA
 uptake_members_post['membership'] = uptake_members_post['membership_post']
 uptake_members_post['CORTICAL_SUMMARY'] = uptake_members_post['CORTICAL_SUMMARY_post']
 uptake_members = pd.concat((uptake_members_prior,uptake_members_post))
-#uptake_keys = ['CORTICAL_SUMMARY']
+pattern_prior_df = pattern_df.xs('prior',level='timepoint')
+pattern_post_df = pattern_df.xs('post',level='timepoint')
+pattern_members_prior = pattern_prior_df.merge(result_df[['membership_prior','CORTICAL_SUMMARY_prior']], left_index=True, right_index=True)
+pattern_members_post = pattern_post_df.merge(result_df[['membership_post','CORTICAL_SUMMARY_post']], left_index=True, right_index=True)
+pattern_members_prior['membership'] = pattern_members_prior['membership_prior']
+pattern_members_prior['CORTICAL_SUMMARY'] = pattern_members_prior['CORTICAL_SUMMARY_prior']
+pattern_members_post['membership'] = pattern_members_post['membership_post']
+pattern_members_post['CORTICAL_SUMMARY'] = pattern_members_post['CORTICAL_SUMMARY_post']
+pattern_members = pd.concat((pattern_members_prior,pattern_members_post))
+
+# save group patterns and change as fake aparc inputs (for visualizing)
+lut_file = "../FreeSurferColorLUT.txt"
+lut_table = importFreesurferLookup(lut_file)
+index_lookup = {v.replace('-','_').upper():[k] for k,v in lut_table.iteritems()}
+aparc_input_template = "../output/fake_aparc_inputs/dpgmm_alpha30_comp30_group_%s_%s"
+for g in big_groups:
+    out_file_pattern = aparc_input_template % (g, 'pattern')
+    out_file_change = aparc_input_template % (g, 'change')
+    out_file_uptake = aparc_input_template % (g, 'uptake')
+    pattern_values = pattern_members[pattern_members['membership']==g][pattern_keys].mean().to_dict()
+    uptake_values = uptake_members[uptake_members['membership']==g][pattern_keys].mean().to_dict()
+    change_values = change_members[change_members['membership']==g][rchange_keys].mean().to_dict()
+    change_values = {k.replace('_change',''):v for k,v in change_values.iteritems()}
+    saveFakeAparcInput(out_file_pattern, pattern_values, index_lookup)
+    saveFakeAparcInput(out_file_change, change_values, index_lookup)
+    saveFakeAparcInput(out_file_uptake, uptake_values, index_lookup)
+
+
+# between group bootstrap hypothesis test for summary/regional change
+change_keys = rchange_keys
+change_pvalues = group_comparisons(change_members, big_groups, change_keys)
+flattened = []
+for k,v in change_pvalues.iteritems():
+    row = {}
+    grp1, grp2 = k
+    row['GROUP1'] = grp1
+    row['GROUP2'] = grp2
+    for k_reg, v_reg in v.iteritems():
+        p_reg, m1_reg, m2_reg = v_reg
+        row['%s_%s' % ('PVALUE', k_reg)] = p_reg
+        row['%s_%s' % ('MEAN1', k_reg)] = m1_reg
+        row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
+    flattened.append(row)
+flattened_change_df = pd.DataFrame(flattened)
+
+# between group bootstrap hypothesis test for summary/regional uptake
 uptake_keys = pattern_keys
 uptake_pvalues = group_comparisons(uptake_members, big_groups, pattern_keys)
+flattened = []
+for k,v in uptake_pvalues.iteritems():
+    row = {}
+    grp1, grp2 = k
+    row['GROUP1'] = grp1
+    row['GROUP2'] = grp2
+    for k_reg, v_reg in v.iteritems():
+        p_reg, m1_reg, m2_reg = v_reg
+        row['%s_%s' % ('PVALUE', k_reg)] = p_reg
+        row['%s_%s' % ('MEAN1', k_reg)] = m1_reg
+        row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
+    flattened.append(row)
+flattened_uptake_df = pd.DataFrame(flattened)
+
+# between group bootstrap hypothesis test for summary/regional patterns
+pattern_pvalues = group_comparisons(pattern_members, big_groups, pattern_keys)
+flattened = []
+for k,v in pattern_pvalues.iteritems():
+    row = {}
+    grp1, grp2 = k
+    row['GROUP1'] = grp1
+    row['GROUP2'] = grp2
+    for k_reg, v_reg in v.iteritems():
+        p_reg, m1_reg, m2_reg = v_reg
+        row['%s_%s' % ('PVALUE', k_reg)] = p_reg
+        row['%s_%s' % ('MEAN1', k_reg)] = m1_reg
+        row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
+    flattened.append(row)
+flattened_pattern_df = pd.DataFrame(flattened)
+
+
 
 # aggregate effects
 effects = []
