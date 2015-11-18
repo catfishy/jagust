@@ -293,6 +293,9 @@ for k,v in change_pvalues.iteritems():
         row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
     flattened.append(row)
 flattened_change_df = pd.DataFrame(flattened)
+flattened_change_df.columns = [_.replace('_change','') for _ in flattened_change_df.columns]
+flattened_change_df.loc[:,'TYPE'] = 'change'
+flattened_change_df.set_index(['GROUP1','GROUP2','TYPE'],inplace=True)
 
 # between group bootstrap hypothesis test for summary/regional uptake
 uptake_keys = pattern_keys
@@ -310,6 +313,8 @@ for k,v in uptake_pvalues.iteritems():
         row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
     flattened.append(row)
 flattened_uptake_df = pd.DataFrame(flattened)
+flattened_uptake_df.loc[:,'TYPE'] = 'uptake'
+flattened_uptake_df.set_index(['GROUP1','GROUP2','TYPE'],inplace=True)
 
 # between group bootstrap hypothesis test for summary/regional patterns
 pattern_pvalues = group_comparisons(pattern_members, big_groups, pattern_keys)
@@ -326,7 +331,12 @@ for k,v in pattern_pvalues.iteritems():
         row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
     flattened.append(row)
 flattened_pattern_df = pd.DataFrame(flattened)
+flattened_pattern_df.loc[:,'TYPE'] = 'pattern'
+flattened_pattern_df.set_index(['GROUP1','GROUP2','TYPE'],inplace=True)
 
+change_pvalues = flattened_change_df[[_ for _ in flattened_change_df.columns if 'PVALUE' in _]]
+uptake_pvalues = flattened_uptake_df[[_ for _ in flattened_uptake_df.columns if 'PVALUE' in _]]
+pattern_pvalues = flattened_pattern_df[[_ for _ in flattened_pattern_df.columns if 'PVALUE' in _]]
 
 
 # aggregate effects
