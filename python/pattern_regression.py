@@ -15,9 +15,14 @@ from sklearn.mixture import GMM, VBGMM, DPGMM
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import StandardScaler
 
-from utils import saveFakeAparcInput, importFreesurferLookup
+from utils import saveFakeAparcInput, importFreesurferLookup, importMaster
 
 pd.options.display.mpl_style = 'default'
+
+def importCogSlopes():
+    master_file = '../FDG_AV45_COGdata_11_10_15.csv'
+    master_data = importMaster(master_file)
+
 
 def sample(data):
     return data[np.random.randint(0,len(data),(1,len(data)))[0]]
@@ -227,17 +232,32 @@ for g in groups:
     if allmembers >= 10:
         big_groups.append(g)
 
-# print group diagnostic conversions
+# print group diagnostic/pattern/positivity conversions
+threshold = 0.79
+diags = ['N', 'EMCI', 'LMCI', 'AD']
+conversions = {}
 for g in big_groups:
-    conversions = {}
+    cur_conversions = {}
+    conversions[g] = {}
     members_prior = result_df[result_df['membership_prior']==g]
-    diag_by_subj = members_prior[['diag_prior','diag_post']].T.to_dict()
-    changes = defaultdict(int)
-    for subj, diags in diag_by_subj.iteritems():
-        changes[(diags['diag_prior'],diags['diag_post'])] += 1
-    print g
-    for key in sorted(changes.keys()):
-        print "%s: %s" % (key, changes[key]/len(diag_by_subj))
+    count = float(len(members_prior.index))
+    cur_conversions['count'] = int(count)
+    # diagnostic conversions
+    for diag1, diag2 in itertools.product(diags,repeat=2):
+        cur_conversions['%s-%s' % (diag1, diag2)] = len(members_prior[(members_prior.diag_prior==diag1) & (members_prior.diag_post==diag2)].index)/count
+    # positivity conversions
+    cur_conversions['neg-neg'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior<threshold) & (members_prior.CORTICAL_SUMMARY_post<threshold)].index)/count
+    cur_conversions['neg-pos'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior<threshold) & (members_prior.CORTICAL_SUMMARY_post>=threshold)].index)/count
+    cur_conversions['pos-pos'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior>=threshold) & (members_prior.CORTICAL_SUMMARY_post>=threshold)].index)/count
+    cur_conversions['pos-neg'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior>=threshold) & (members_prior.CORTICAL_SUMMARY_post<threshold)].index)/count
+    # pattern conversions
+    for g2 in big_groups:
+        cur_conversions[g2] = len(members_prior[members_prior.membership_post==g2].index)/count
+    conversions[g] = cur_conversions
+
+conversions = pd.DataFrame(conversions).T
+conversions.index.name = 'pattern'
+
 
 # merge results with regional change and uptakes
 change_members = rchange_df.merge(result_df, left_index=True, right_index=True)
