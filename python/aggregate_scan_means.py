@@ -27,7 +27,7 @@ import pandas as pd
 
 from utils import *
 
-ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAINSTEM','WHOLECEREBELLUM',
+ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                    'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
@@ -343,9 +343,11 @@ def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes,
             sorted_subj_reg = sorted(subj_reg, key=lambda x: abs(x['EXAMDATE']-date).days)
             metadata = sorted_subj_reg[0]
 
-            if (date-metadata['EXAMDATE']).days > 60:
+            if (date-metadata['EXAMDATE']).days > 120:
+                # don't accept the visit codes
                 print "%s, %s: %s, %s -> %s days" % (rid, vis, metadata, date, (date-metadata['EXAMDATE']).days)
-                metadata = {k:'' for k in metadata.keys()}
+                metadata['VISCODE'] = ''
+                metadata['VISCODE2'] = ''
                 
             # overwrite with actual date
             metadata['EXAMDATE'] = date
@@ -438,13 +440,13 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     v2_means_df['EXAMDATE'] = ''
     v3_means_df['EXAMDATE'] = ''
 
-    # fill in exam dates
+    # fill in exam dates (presorted)
     for i in bl_means_df.index:
-        bl_means_df.ix[i,'EXAMDATE'] = pet_dates[bl_means_df.ix[i,'RID']][0].strftime('%m/%d/%Y')
+        bl_means_df.ix[i,'EXAMDATE'] = pet_dates[bl_means_df.ix[i,'RID']][0].strftime('%m/%d/%y')
     for i in v2_means_df.index:
-        v2_means_df.ix[i,'EXAMDATE'] = pet_dates[v2_means_df.ix[i,'RID']][1].strftime('%m/%d/%Y')
+        v2_means_df.ix[i,'EXAMDATE'] = pet_dates[v2_means_df.ix[i,'RID']][1].strftime('%m/%d/%y')
     for i in v3_means_df.index:
-        v3_means_df.ix[i,'EXAMDATE'] = pet_dates[v3_means_df.ix[i,'RID']][2].strftime('%m/%d/%Y')
+        v3_means_df.ix[i,'EXAMDATE'] = pet_dates[v3_means_df.ix[i,'RID']][2].strftime('%m/%d/%y')
 
     # merge sizes
     bl_means_df = bl_means_df.merge(bl_sizes_df, on='RID', suffixes=['','_SIZE'])
@@ -461,7 +463,21 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
 
     return all_rows
 
-
+def mergeRegularWithAllRegions(regular_output, allregions_output, output_file):
+    regular_df = pd.read_csv(regular_output)
+    allregions_df = pd.read_csv(allregions_output)
+    regular_df.set_index(['RID','EXAMDATE'],inplace=True)
+    allregions_df.set_index(['RID','EXAMDATE'],inplace=True)
+    # specify columns to merge
+    merge_columns = [_ for _ in allregions_df.columns if _ not in regular_df.columns]
+    merge_columns = sorted(merge_columns)
+    merge_df = allregions_df[merge_columns]
+    all_df = regular_df.merge(merge_df, left_index=True, right_index=True, how='outer')
+    stamps = all_df['update_stamp']
+    all_df.drop('update_stamp', axis=1, inplace=True)
+    all_df.insert(len(all_df.columns), 'update_stamp',stamps)
+    all_df.to_csv(output_file, float_format='%.4f')
+    
 
 def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
@@ -488,40 +504,58 @@ if __name__ == "__main__":
     meta_pet = "../docs/ADNI/PET_META_LIST.csv"
     lut_table = importFreesurferLookup(lut_file)
 
-    # for adni av45 nontp all regions
-    output = '../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv'
-    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
-    pet_dates = importPetMETA(meta_pet)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
-    df.to_csv(output)
+    # # for adni av45 nontp all regions
+    # output = '../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv'
+    # preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
+    # pet_dates = importPetMETA(meta_pet)
+    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
+    # df.to_csv(output)
+    # output = '../output/UCBERKELEYAV45_11_09_15_allregions.csv'
+    # preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
+    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
+    # pet_dates = importPetMETA(meta_pet)
+    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
+    # df.to_csv(output)
 
-    # for adni av45 all regions
-    output = '../output/UCBERKELEYAV45_11_09_15_allregions.csv'
-    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
-    pet_dates = importPetMETA(meta_pet)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
-    df.to_csv(output)
-
-    # # for adni av45 nontp
-    # output = '../output/UCBERKELEYAV45_11_09_15_extra_nontp.csv'
-    # preprocess_folder =  '../docs/AV45_preprocess_output_11_09_15'
+    # # for adni av45 EXTRA
+    # output = '../output/UCBERKELEYAV45_11_19_15_extra_nontp.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_11_19_15'
     # registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
     # agg_type = 'adni_extra'
     # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
     # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
     #                              meta_pet, registry, agg_type)
-    
-    # # for adni av45
-    # output = '../output/UCBERKELEYAV45_11_09_15_extra.csv'
-    # preprocess_folder =  '../docs/AV45_preprocess_output_11_09_15'
+    # output = '../output/UCBERKELEYAV45_11_19_15_extra.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_11_19_15'
     # registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
     # agg_type = 'adni_extra'
     # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
     # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
     #                              meta_pet, registry, agg_type)
-    
+
+    # for adni av45 REGULAR
+    output = '../output/UCBERKELEYAV45_11_19_15_nontp.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_11_19_15'
+    registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
+    agg_type = 'adni'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
+    output = '../output/UCBERKELEYAV45_11_19_15.csv'
+    preprocess_folder =  '../docs/AV45_preprocess_output_11_19_15'
+    registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
+    agg_type = 'adni'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False)
+    aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
+                                 meta_pet, registry, agg_type)
+
+    # merge the two
+    regular_output = '../output/UCBERKELEYAV45_11_19_15_nontp.csv'
+    allregions_output = '../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv'
+    output = '../output/UCBERKELEY_11_19_15_allregions_nontp.csv'
+    mergeRegularWithAllRegions(regular_output, allregions_output, output)
+
 
     # # for adni dod (add in adni controls)
     # output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
