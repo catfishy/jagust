@@ -52,10 +52,10 @@ ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER',
                    'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                    'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                    'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAINSTEM','WHOLECEREBELLUM',
+ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAIN_STEM','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
-                   'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
+                   'LEFT_PUTAMEN','RIGHT_PUTAMEN','LEFT_CAUDATE','RIGHT_CAUDATE','LEFT_PALLIDUM','RIGHT_PALLIDUM',
                    'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                    'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
                    'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
@@ -78,7 +78,7 @@ ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMA
                    'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                    'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                    'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-DOD_FIELDNAMES = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+DOD_FIELDNAMES = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
                   'FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
@@ -103,11 +103,11 @@ DOD_FIELDNAMES = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRA
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
-DOD_FIELDNAMES_EXTRA = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+DOD_FIELDNAMES_EXTRA = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
                   'FRONTAL','FRONTAL_SIZE','CINGULATE','CINGULATE_SIZE','PARIETAL','PARIETAL_SIZE','TEMPORAL','TEMPORAL_SIZE',
                   'COMPOSITE','COMPOSITE_REF','ERODED_SUBCORTICALWM',
-                  'LEFT-PUTAMEN','RIGHT-PUTAMEN','LEFT-CAUDATE','RIGHT-CAUDATE','LEFT-PALLIDUM','RIGHT-PALLIDUM',
-                  'LEFT-PUTAMEN_SIZE','RIGHT-PUTAMEN_SIZE','LEFT-CAUDATE_SIZE','RIGHT-CAUDATE_SIZE','LEFT-PALLIDUM_SIZE','RIGHT-PALLIDUM_SIZE',
+                  'LEFT_PUTAMEN','RIGHT_PUTAMEN','LEFT_CAUDATE','RIGHT_CAUDATE','LEFT_PALLIDUM','RIGHT_PALLIDUM',
+                  'LEFT_PUTAMEN_SIZE','RIGHT_PUTAMEN_SIZE','LEFT_CAUDATE_SIZE','RIGHT_CAUDATE_SIZE','LEFT_PALLIDUM_SIZE','RIGHT_PALLIDUM_SIZE',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
@@ -131,6 +131,7 @@ DOD_FIELDNAMES_EXTRA = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
+'''
 ADNI_OMIT = ['LEFT_CEREBELLUM_CORTEX',
              'RIGHT_CEREBELLUM_CORTEX',
              'LEFT_UNSEGMENTEDWHITEMATTER',
@@ -151,7 +152,7 @@ DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'PID', 'COMPOSITE', 'ERODED_SUBCORTICALW
                         'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                         'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
                         'CEREBELLUMWHITEMATTER']
-
+'''
 
 
 def readHeaderAndLines(csv_file, limit=None):
@@ -374,19 +375,6 @@ def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes,
         writer.writerow(data)
 
 def additionalCalculations(headers, mean_values, size_values, agg_type):
-    '''
-        SUMMARYSUVR_WHOLECEREBNORM
-        SUMMARYSUVR_COMPOSITE_REFNORM
-        COMPOSITE_REF
-        SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF
-        SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF
-
-        VISCODE
-        VISCODE2
-        EXAMDATE
-
-        update_stamp
-    '''
     composite = float(mean_values['COMPOSITE'])
     wholecereb = float(mean_values['WHOLECEREBELLUM'])
     cerebWM = (float(mean_values['LEFT_UNSEGMENTEDWHITEMATTER']) + float(mean_values['RIGHT_UNSEGMENTEDWHITEMATTER']))/2.0 #- float(mean_values['CEREBELLUMGREYMATTER'])
@@ -420,7 +408,105 @@ def additionalCalculations(headers, mean_values, size_values, agg_type):
         pass
     return (headers, mean_values, size_values)
 
-def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates):
+
+def DFWeightedMean(df, keys):
+    size_keys = ['%s_SIZE' % _ for _ in keys]
+    sizes = df.loc[:,size_keys].sum(axis=1)
+    ratios = df.loc[:,size_keys].divide(sizes, axis=0)
+    ratios.columns = [_.replace('_SIZE','') for _ in ratios.columns]
+    means = df.loc[:,keys].multiply(ratios).sum(axis=1)
+    return (means, sizes)
+
+def additionalTauCalculations(df):
+    pass
+
+def additionalAV45Calculations(df, lut_table, keys=None):
+    '''
+    Do additional calculations
+    If keys given, filter/sort by the list of keys before outputting
+    '''
+    cerebg = [translateColumn(_, lut_table) for _ in CEREBG]
+    cerebw = [translateColumn(_, lut_table) for _ in CEREBW]
+    cerebl = [translateColumn(_, lut_table) for _ in CEREBL]
+    cerebr = [translateColumn(_, lut_table) for _ in CEREBR]
+    frontal = [translateColumn(_, lut_table) for _ in FRONTAL]
+    parietal = [translateColumn(_, lut_table) for _ in PARIETAL]
+    temporal = [translateColumn(_, lut_table) for _ in TEMPORAL]
+    cingulate = [translateColumn(_, lut_table) for _ in CINGULATE]
+    wcereb = [translateColumn(_, lut_table) for _ in WHOLECEREBELLUM]
+    compref = ['ERODED_SUBCORTICALWM', 'BRAINSTEM', 'WHOLECEREBELLUM']
+
+    # calculate composite
+    frontal_means, frontal_sizes = DFWeightedMean(df, frontal)
+    parietal_means, parietal_sizes = DFWeightedMean(df, parietal)
+    cingulate_means, cingulate_sizes = DFWeightedMean(df, cingulate)
+    temporal_means, temporal_sizes = DFWeightedMean(df, temporal)
+    df.loc[:,'FRONTAL'] = frontal_means
+    df.loc[:,'FRONTAL_SIZE'] = frontal_sizes
+    df.loc[:,'PARIETAL'] = parietal_means
+    df.loc[:,'PARIETAL_SIZE'] = parietal_sizes
+    df.loc[:,'CINGULATE'] = cingulate_means
+    df.loc[:,'CINGULATE_SIZE'] = cingulate_sizes
+    df.loc[:,'TEMPORAL'] = temporal_means
+    df.loc[:,'TEMPORAL_SIZE'] = temporal_sizes
+    df.loc[:,'COMPOSITE_SIZE'] = frontal_sizes + parietal_sizes + cingulate_sizes + temporal_sizes
+    df.loc[:,'COMPOSITE'] = pd.DataFrame([frontal_means,parietal_means,cingulate_means,temporal_means]).mean()
+    
+    # calculate cereb white
+    means, sizes = DFWeightedMean(df, cerebw)
+    df.loc[:,'CEREBELLUMWHITEMATTER_SIZE'] = sizes
+    df.loc[:,'CEREBELLUMWHITEMATTER'] = means
+
+    # calculate cereb gray
+    means, sizes = DFWeightedMean(df, cerebg)
+    df.loc[:,'CEREBELLUMGREYMATTER_SIZE'] = sizes
+    df.loc[:,'CEREBELLUMGREYMATTER'] = means
+
+    # calculate whole cerebellum
+    left_means, left_sizes = DFWeightedMean(df, cerebl)
+    right_means, right_sizes = DFWeightedMean(df, cerebr)
+    df.loc[:,'WHOLECEREBELLUM_SIZE'] = left_sizes + right_sizes
+    df.loc[:,'WHOLECEREBELLUM'] = pd.DataFrame([left_means,right_means]).mean()
+
+    # calculate composite ref
+    df.loc[:,'COMPOSITE_REF_SIZE'] = df.loc[:,['%s_SIZE' % _ for _ in compref]].sum(axis=1)
+    df.loc[:,'COMPOSITE_REF'] = df.loc[:,compref].mean()
+
+    # SUVR'S
+    df.loc[:,'SUMMARYSUVR_WHOLECEREBNORM'] = df.loc[:,'COMPOSITE'].divide(df.loc[:,'WHOLECEREBELLUM'], axis=0)
+    df.loc[:,'SUMMARYSUVR_COMPOSITE_REFNORM'] = df.loc[:,'COMPOSITE'].divide(df.loc[:,'COMPOSITE_REF'], axis=0)
+
+    # thresholds
+    df.loc[:,'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF'] = (df.loc[:,'SUMMARYSUVR_WHOLECEREBNORM'] >= 1.11).astype(int)
+    df.loc[:,'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] = (df.loc[:,'SUMMARYSUVR_COMPOSITE_REFNORM'] >= 0.79).astype(int)
+
+    if keys:
+        df = df.loc[:,keys]
+
+    return df
+
+def translateColumn(orig, lut_table):
+    try:
+        val = int(orig)
+        if val == 0:
+            return 'RID'
+        return lut_table[val].replace('-','_').upper()
+    except Exception as e:
+        print e
+        pass
+    return orig
+
+def getVisitCode(rid, date, registry, cutoff=60):
+    regs = sorted(registry.get(rid,[]), key=lambda x: abs(x['EXAMDATE']-date).days)
+    vc = vc2 = ''
+    if len(regs) > 0:
+        metadata = regs[0]
+        if abs(date-metadata['EXAMDATE']).days <= cutoff:
+            vc = metadata['VISCODE']
+            vc2 = metadata['VISCODE2']
+    return (vc, vc2)
+
+def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, registry):
     # read into dataframes
     bl_means_df = pd.read_csv(bl_means)
     v2_means_df = pd.read_csv(v2_means)
@@ -429,24 +515,39 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     v2_sizes_df = pd.read_csv(v2_sizes)
     v3_sizes_df = pd.read_csv(v3_sizes)
     # convert headers
-    bl_means_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in bl_means_df.columns]
-    v2_means_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v2_means_df.columns]
-    v3_means_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v3_means_df.columns]
-    bl_sizes_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in bl_sizes_df.columns]
-    v2_sizes_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v2_sizes_df.columns]
-    v3_sizes_df.columns = ['RID' if int(_)==0 else lut_table[int(_)].replace('-','_').upper() for _ in v3_sizes_df.columns]
+    bl_means_df.columns = [translateColumn(_, lut_table) for _ in bl_means_df.columns]
+    v2_means_df.columns = [translateColumn(_, lut_table) for _ in v2_means_df.columns]
+    v3_means_df.columns = [translateColumn(_, lut_table) for _ in v3_means_df.columns]
+    bl_sizes_df.columns = [translateColumn(_, lut_table) for _ in bl_sizes_df.columns]
+    v2_sizes_df.columns = [translateColumn(_, lut_table) for _ in v2_sizes_df.columns]
+    v3_sizes_df.columns = [translateColumn(_, lut_table) for _ in v3_sizes_df.columns]
     # add exam dates
     bl_means_df['EXAMDATE'] = ''
     v2_means_df['EXAMDATE'] = ''
     v3_means_df['EXAMDATE'] = ''
 
-    # fill in exam dates (presorted)
+    # fill in exam dates + visit codes
     for i in bl_means_df.index:
-        bl_means_df.ix[i,'EXAMDATE'] = pet_dates[bl_means_df.ix[i,'RID']][0].strftime('%m/%d/%y')
+        rid = bl_means_df.ix[i,'RID']
+        date = pet_dates[rid][0]
+        vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+        bl_means_df.ix[i,'EXAMDATE'] = date
+        bl_means_df.ix[i,'VISCODE'] = vc
+        bl_means_df.ix[i,'VISCODE2'] = vc2
     for i in v2_means_df.index:
-        v2_means_df.ix[i,'EXAMDATE'] = pet_dates[v2_means_df.ix[i,'RID']][1].strftime('%m/%d/%y')
+        rid = v2_means_df.ix[i,'RID']
+        date = pet_dates[rid][1]
+        vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+        v2_means_df.ix[i,'EXAMDATE'] = date
+        v2_means_df.ix[i,'VISCODE'] = vc
+        v2_means_df.ix[i,'VISCODE2'] = vc2
     for i in v3_means_df.index:
-        v3_means_df.ix[i,'EXAMDATE'] = pet_dates[v3_means_df.ix[i,'RID']][2].strftime('%m/%d/%y')
+        rid = v3_means_df.ix[i,'RID']
+        date = pet_dates[rid][2]
+        vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+        v3_means_df.ix[i,'EXAMDATE'] = date
+        v3_means_df.ix[i,'VISCODE'] = vc
+        v3_means_df.ix[i,'VISCODE2'] = vc2
 
     # merge sizes
     bl_means_df = bl_means_df.merge(bl_sizes_df, on='RID', suffixes=['','_SIZE'])
@@ -455,13 +556,13 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
 
     # concat visits
     all_rows = pd.concat((bl_means_df, v2_means_df, v3_means_df), axis=0)
-    all_rows.set_index(['RID', 'EXAMDATE'], inplace=True)
-    all_rows = all_rows.sort_index()
-
-    print all_rows.columns
+    all_rows.reset_index(inplace=True, drop=True)
+    all_rows.sort(['RID','EXAMDATE'], inplace=True)
+    all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%m/%d/%y'))
+    print list(all_rows.columns)
     print all_rows.shape
-
     return all_rows
+
 
 def mergeRegularWithAllRegions(regular_output, allregions_output, output_file):
     regular_df = pd.read_csv(regular_output)
@@ -478,7 +579,6 @@ def mergeRegularWithAllRegions(regular_output, allregions_output, output_file):
     all_df.insert(len(all_df.columns), 'update_stamp',stamps)
     all_df.to_csv(output_file, float_format='%.4f')
     
-
 def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
     addon = "_nontp" if nontp else ""
@@ -500,27 +600,41 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 if __name__ == "__main__":
+
+    '''
+    IF DOD, RID -> SCRNO
+    '''
+
     lut_file = "../FreeSurferColorLUT.txt"
     meta_pet = "../docs/ADNI/PET_META_LIST.csv"
     lut_table = importFreesurferLookup(lut_file)
+    adni_registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
 
-    # # for adni av45 nontp all regions
-    # output = '../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv'
-    # preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
-    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
-    # pet_dates = importPetMETA(meta_pet)
-    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
-    # df.to_csv(output)
-    # output = '../output/UCBERKELEYAV45_11_09_15_allregions.csv'
-    # preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
-    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
-    # pet_dates = importPetMETA(meta_pet)
-    # df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates)
-    # df.to_csv(output)
+    # for adni av45 nontp (all regions,regular, both)
+    regular_output = '../output/UCBERKELEYAV45_11_19_15_nontp.csv'
+    allregions_output = '../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv'
+    merged_output = '../output/UCBERKELEY_11_19_15_allregions_nontp.csv'
+    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
+    pet_dates = importPetMETA(meta_pet)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, adni_registry)
+    df.to_csv(output,index=False,float_format='%.4f')
+    full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
+    full_df.to_csv('../testfulldf.csv',index=False,float_format='%.4f')
+    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
+    sys.exit(1)
 
-    # # for adni av45 EXTRA
-    # output = '../output/UCBERKELEYAV45_11_19_15_extra_nontp.csv'
-    # preprocess_folder =  '../docs/AV45_preprocess_output_11_19_15'
+    # for adni av45 all regions
+    output = '../output/UCBERKELEYAV45_11_09_15_allregions.csv'
+    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_09_15'
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
+    pet_dates = importPetMETA(meta_pet)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, adni_registry)
+    df.to_csv(output)
+
+    # # for adni av45 nontp
+    # output = '../output/UCBERKELEYAV45_11_09_15_extra_nontp.csv'
+    # preprocess_folder =  '../docs/AV45_preprocess_output_11_09_15'
     # registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
     # agg_type = 'adni_extra'
     # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True)
