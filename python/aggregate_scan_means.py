@@ -27,7 +27,7 @@ import pandas as pd
 
 from utils import *
 
-ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAINSTEM','WHOLECEREBELLUM',
+ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                    'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
@@ -78,7 +78,7 @@ ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMA
                    'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                    'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                    'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-DOD_FIELDNAMES = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
+DOD_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
                   'FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
@@ -103,7 +103,7 @@ DOD_FIELDNAMES = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRA
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
-DOD_FIELDNAMES_EXTRA = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
+DOD_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
                   'FRONTAL','FRONTAL_SIZE','CINGULATE','CINGULATE_SIZE','PARIETAL','PARIETAL_SIZE','TEMPORAL','TEMPORAL_SIZE',
                   'COMPOSITE','COMPOSITE_REF','ERODED_SUBCORTICALWM',
                   'LEFT_PUTAMEN','RIGHT_PUTAMEN','LEFT_CAUDATE','RIGHT_CAUDATE','LEFT_PALLIDUM','RIGHT_PALLIDUM',
@@ -131,6 +131,17 @@ DOD_FIELDNAMES_EXTRA = ['SCRNO','RID','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER
                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
+TAU_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE',
+                  'BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
+                  'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
+                  'CEREBELLUMGREYMATTER', 'CEREBELLUMGREYMATTER_SIZE']
+DOD_TAU_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE',
+                      'BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
+                      'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
+                      'CEREBELLUMGREYMATTER', 'CEREBELLUMGREYMATTER_SIZE']
+
+
+
 '''
 ADNI_OMIT = ['LEFT_CEREBELLUM_CORTEX',
              'RIGHT_CEREBELLUM_CORTEX',
@@ -417,8 +428,45 @@ def DFWeightedMean(df, keys):
     means = df.loc[:,keys].multiply(ratios).sum(axis=1)
     return (means, sizes)
 
-def additionalTauCalculations(df):
-    pass
+def additionalTauCalculations(df, lut_table, keys=None):
+    cerebg = [translateColumn(_, lut_table) for _ in CEREBG]
+    braak1 = [translateColumn(_, lut_table) for _ in BRAAK1]
+    braak2 = [translateColumn(_, lut_table) for _ in BRAAK2]
+    braak3 = [translateColumn(_, lut_table) for _ in BRAAK3]
+    braak4 = [translateColumn(_, lut_table) for _ in BRAAK4]
+    braak5 = [translateColumn(_, lut_table) for _ in BRAAK5]
+    braak6 = [translateColumn(_, lut_table) for _ in BRAAK6]
+
+    # calculate cereb gray
+    means, sizes = DFWeightedMean(df, cerebg)
+    df.loc[:,'CEREBELLUMGREYMATTER_SIZE'] = sizes
+    df.loc[:,'CEREBELLUMGREYMATTER'] = means
+
+    # calculate braak stages
+    means, sizes = DFWeightedMean(df, braak1)
+    df.loc[:,'BRAAK1_SIZE'] = sizes
+    df.loc[:,'BRAAK1'] = means
+    means, sizes = DFWeightedMean(df, braak2)
+    df.loc[:,'BRAAK2_SIZE'] = sizes
+    df.loc[:,'BRAAK2'] = means
+    means, sizes = DFWeightedMean(df, braak3)
+    df.loc[:,'BRAAK3_SIZE'] = sizes
+    df.loc[:,'BRAAK3'] = means
+    means, sizes = DFWeightedMean(df, braak4)
+    df.loc[:,'BRAAK4_SIZE'] = sizes
+    df.loc[:,'BRAAK4'] = means
+    means, sizes = DFWeightedMean(df, braak5)
+    df.loc[:,'BRAAK5_SIZE'] = sizes
+    df.loc[:,'BRAAK5'] = means
+    means, sizes = DFWeightedMean(df, braak6)
+    df.loc[:,'BRAAK6_SIZE'] = sizes
+    df.loc[:,'BRAAK6'] = means
+
+    if keys:
+        df = df.loc[:,keys]
+
+    return df
+
 
 def additionalAV45Calculations(df, lut_table, keys=None):
     '''
@@ -434,7 +482,7 @@ def additionalAV45Calculations(df, lut_table, keys=None):
     temporal = [translateColumn(_, lut_table) for _ in TEMPORAL]
     cingulate = [translateColumn(_, lut_table) for _ in CINGULATE]
     wcereb = [translateColumn(_, lut_table) for _ in WHOLECEREBELLUM]
-    compref = ['ERODED_SUBCORTICALWM', 'BRAINSTEM', 'WHOLECEREBELLUM']
+    compref = ['ERODED_SUBCORTICALWM', 'BRAIN_STEM', 'WHOLECEREBELLUM']
 
     # calculate composite
     frontal_means, frontal_sizes = DFWeightedMean(df, frontal)
@@ -470,7 +518,7 @@ def additionalAV45Calculations(df, lut_table, keys=None):
 
     # calculate composite ref
     df.loc[:,'COMPOSITE_REF_SIZE'] = df.loc[:,['%s_SIZE' % _ for _ in compref]].sum(axis=1)
-    df.loc[:,'COMPOSITE_REF'] = df.loc[:,compref].mean()
+    df.loc[:,'COMPOSITE_REF'] = df.loc[:,compref].mean(axis=1)
 
     # SUVR'S
     df.loc[:,'SUMMARYSUVR_WHOLECEREBNORM'] = df.loc[:,'COMPOSITE'].divide(df.loc[:,'WHOLECEREBELLUM'], axis=0)
@@ -502,18 +550,39 @@ def getVisitCode(rid, date, registry, cutoff=60):
     if len(regs) > 0:
         metadata = regs[0]
         if abs(date-metadata['EXAMDATE']).days <= cutoff:
-            vc = metadata['VISCODE']
-            vc2 = metadata['VISCODE2']
+            vc = metadata.get('VISCODE','')
+            vc2 = metadata.get('VISCODE2','')
     return (vc, vc2)
 
-def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, registry):
+def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, registry, dod=False):
+    '''
+    if dod:
+        - RID -> SCRNO
+        - VISCODE2 is removed
+    '''
     # read into dataframes
-    bl_means_df = pd.read_csv(bl_means)
-    v2_means_df = pd.read_csv(v2_means)
-    v3_means_df = pd.read_csv(v3_means)
-    bl_sizes_df = pd.read_csv(bl_sizes)
-    v2_sizes_df = pd.read_csv(v2_sizes)
-    v3_sizes_df = pd.read_csv(v3_sizes)
+    try:
+        bl_means_df = pd.read_csv(bl_means)
+        bl_sizes_df = pd.read_csv(bl_sizes)
+    except Exception as e:
+        print "Can't Read BL input: %s" % e
+        bl_means_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+        bl_sizes_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+    try:
+        v2_means_df = pd.read_csv(v2_means)
+        v2_sizes_df = pd.read_csv(v2_sizes)
+    except Exception as e:
+        print "Can't Read V2 input: %s" % e
+        v2_means_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+        v2_sizes_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+    try:
+        v3_means_df = pd.read_csv(v3_means)
+        v3_sizes_df = pd.read_csv(v3_sizes)
+    except Exception as e:
+        print "Can't Read V3 input: %s" % e
+        v3_means_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+        v3_sizes_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+
     # convert headers
     bl_means_df.columns = [translateColumn(_, lut_table) for _ in bl_means_df.columns]
     v2_means_df.columns = [translateColumn(_, lut_table) for _ in v2_means_df.columns]
@@ -527,27 +596,31 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     v3_means_df['EXAMDATE'] = ''
 
     # fill in exam dates + visit codes
-    for i in bl_means_df.index:
-        rid = bl_means_df.ix[i,'RID']
-        date = pet_dates[rid][0]
-        vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
-        bl_means_df.ix[i,'EXAMDATE'] = date
-        bl_means_df.ix[i,'VISCODE'] = vc
-        bl_means_df.ix[i,'VISCODE2'] = vc2
-    for i in v2_means_df.index:
-        rid = v2_means_df.ix[i,'RID']
-        date = pet_dates[rid][1]
-        vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
-        v2_means_df.ix[i,'EXAMDATE'] = date
-        v2_means_df.ix[i,'VISCODE'] = vc
-        v2_means_df.ix[i,'VISCODE2'] = vc2
-    for i in v3_means_df.index:
-        rid = v3_means_df.ix[i,'RID']
-        date = pet_dates[rid][2]
-        vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
-        v3_means_df.ix[i,'EXAMDATE'] = date
-        v3_means_df.ix[i,'VISCODE'] = vc
-        v3_means_df.ix[i,'VISCODE2'] = vc2
+    try:
+        for i in bl_means_df.index:
+            rid = bl_means_df.ix[i,'RID']
+            date = pet_dates[rid][0]
+            vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+            bl_means_df.ix[i,'EXAMDATE'] = date
+            bl_means_df.ix[i,'VISCODE'] = vc
+            bl_means_df.ix[i,'VISCODE2'] = vc2
+        for i in v2_means_df.index:
+            rid = v2_means_df.ix[i,'RID']
+            date = pet_dates[rid][1]
+            vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+            v2_means_df.ix[i,'EXAMDATE'] = date
+            v2_means_df.ix[i,'VISCODE'] = vc
+            v2_means_df.ix[i,'VISCODE2'] = vc2
+        for i in v3_means_df.index:
+            rid = v3_means_df.ix[i,'RID']
+            date = pet_dates[rid][2]
+            vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+            v3_means_df.ix[i,'EXAMDATE'] = date
+            v3_means_df.ix[i,'VISCODE'] = vc
+            v3_means_df.ix[i,'VISCODE2'] = vc2
+    except Exception as e:
+        print "PET DATE Problem: %s" % rid
+        raise e
 
     # merge sizes
     bl_means_df = bl_means_df.merge(bl_sizes_df, on='RID', suffixes=['','_SIZE'])
@@ -559,32 +632,55 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     all_rows.reset_index(inplace=True, drop=True)
     all_rows.sort(['RID','EXAMDATE'], inplace=True)
     all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%m/%d/%y'))
-    print list(all_rows.columns)
+
+    # Order columns
+    key_columns = ['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']
+    other_columns = sorted(list(set(all_rows.columns) - set(key_columns)))
+    column_order = key_columns + other_columns
+    all_rows = all_rows.loc[:,column_order]
+
+    # DOD modifications
+    if dod:
+        all_rows.rename(columns={'RID': 'SCRNO'}, inplace=True)
+        all_rows.drop('VISCODE2', axis=1, inplace=True)
+
     print all_rows.shape
     return all_rows
 
 
-def mergeRegularWithAllRegions(regular_output, allregions_output, output_file):
+def mergeRegularWithAllRegions(regular_output, allregions_output, output_file, dod=False):
+    if dod:
+        id_key = 'SCRNO'
+    else:
+        id_key = 'RID'
+
     regular_df = pd.read_csv(regular_output)
     allregions_df = pd.read_csv(allregions_output)
-    regular_df.set_index(['RID','EXAMDATE'],inplace=True)
-    allregions_df.set_index(['RID','EXAMDATE'],inplace=True)
+    regular_df.set_index([id_key,'EXAMDATE'],inplace=True)
+    allregions_df.set_index([id_key,'EXAMDATE'],inplace=True)
     # specify columns to merge
     merge_columns = [_ for _ in allregions_df.columns if _ not in regular_df.columns]
     merge_columns = sorted(merge_columns)
     merge_df = allregions_df[merge_columns]
     all_df = regular_df.merge(merge_df, left_index=True, right_index=True, how='outer')
-    stamps = all_df['update_stamp']
-    all_df.drop('update_stamp', axis=1, inplace=True)
-    all_df.insert(len(all_df.columns), 'update_stamp',stamps)
+    # move update_stamp to the end (if necessary)
+    if 'update_stamp' in all_df.columns:
+        stamps = all_df['update_stamp']
+        all_df.drop('update_stamp', axis=1, inplace=True)
+        all_df.insert(len(all_df.columns), 'update_stamp',stamps)
     all_df.to_csv(output_file, float_format='%.4f')
     
 def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
+    '''
+    Assumes preprocess outputs include all freesurfer regions (no pre-aggregation)
+    '''
     bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
     addon = "_nontp" if nontp else ""
     for filename in os.listdir(folder_name):
+        '''
         if allregions and 'allregions' not in filename:
             continue
+        '''
         if "BL%s_means" % addon in filename:
             bl_means = os.path.join(folder_name, filename)
         elif "V2%s_means" % addon in filename:
@@ -604,43 +700,89 @@ if __name__ == "__main__":
     '''
     IF DOD, RID -> SCRNO
     '''
-
+    # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
-    meta_pet = "../docs/ADNI/PET_META_LIST.csv"
     lut_table = importFreesurferLookup(lut_file)
-    adni_registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
 
-    # ADNI NONTP
-    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_19_15'
+    # registry imports
+    adni_registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
+    dod_registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
+    
+    # pet date imports
+    meta_pet = "../docs/ADNI/AV45META.csv"
+    meta_tau = '../docs/ADNI/TAUMETA.csv'
+    dod_meta_pet = "../docs/DOD/AV45META.csv"
+    dod_meta_tau = "../docs/DOD/TAUMETA.csv"
+    adni_av45_pet_dates = importScanMeta(meta_pet)
+    adni_tau_pet_dates = importScanMeta(meta_tau)
+    dod_av45_pet_dates = importScanMeta(dod_meta_pet)
+    dod_tau_pet_dates = importScanMeta(dod_meta_tau)
     timestamp = datetime.now().strftime('%m_%d_%y')
+
+    # preprocess output folders
+    adni_av45_preprocess_folder = '../docs/AV45_preprocess_output_11_24_15'
+    dod_av45_preprocess_folder = '../docs/AV45_DOD_preprocess_output_11_24_15'
+    adni_tau_preprocess_folder = '../docs/TAU_preprocess_output_11_24_15'
+    dod_tau_preprocess_folder = '../docs/TAU_DOD_preprocess_output_11_24_15'
+
+    # ADNI AV45 NONTP
     regular_output = '../output/UCBERKELEYAV45_%s_regular_nontp.csv' % timestamp
     allregions_output = '../output/UCBERKELEYAV45_%s_allregions_nontp.csv' % timestamp
     merged_output = '../output/UCBERKELEYAV45_%s_merged_nontp.csv' % timestamp
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=True, allregions=True)
-    pet_dates = importPetMETA(meta_pet)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, adni_registry)
-    df.to_csv(output,index=False,float_format='%.4f')
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
+    df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
-    sys.exit(1)
 
-    # ADNI TP
-    preprocess_folder =  '../docs/AV45_allregions_preprocess_output_11_19_15'
-    timestamp = datetime.now().strftime('%m_%d_%y')
-    regular_output = '../output/UCBERKELEYAV45_%s_regular.csv' % timestamp
-    allregions_output = '../output/UCBERKELEYAV45_%s_allregions.csv' % timestamp
-    merged_output = '../output/UCBERKELEYAV45_%s_merged.csv' % timestamp
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder, nontp=False, allregions=True)
-    pet_dates = importPetMETA(meta_pet)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, adni_registry)
-    df.to_csv(output,index=False,float_format='%.4f')
+    # ADNI AV45 TP
+    regular_output = '../output/UCBERKELEYAV45_%s_regular_tp.csv' % timestamp
+    allregions_output = '../output/UCBERKELEYAV45_%s_allregions_tp.csv' % timestamp
+    merged_output = '../output/UCBERKELEYAV45_%s_merged_tp.csv' % timestamp
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
+    df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
-    sys.exit(1)
 
+    # ADNI TAU TP
+    regular_output = '../output/UCBERKELEYTAU_%s_regular_tp.csv' % timestamp
+    allregions_output = '../output/UCBERKELEYTAU_%s_allregions_tp.csv' % timestamp
+    merged_output = '../output/UCBERKELEYTAU_%s_merged_tp.csv' % timestamp
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_tau_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_tau_pet_dates, adni_registry)
+    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES)
+    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
+    # DOD AV45 NONTP
+    regular_output = '../output/UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % timestamp
+    allregions_output = '../output/UCBERKELEYAV45_DOD_%s_allregions_tp.csv' % timestamp
+    merged_output = '../output/UCBERKELEYAV45_DOD_%s_merged_tp.csv' % timestamp
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_av45_preprocess_folder, nontp=True)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_av45_pet_dates, dod_registry, dod=True)
+    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    full_df = additionalAV45Calculations(df, lut_table, keys=DOD_FIELDNAMES_EXTRA)
+    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
+
+    # DOD TAU TP
+    regular_output = '../output/UCBERKELEYTAU_DOD_%s_regular_nontp.csv' % timestamp
+    allregions_output = '../output/UCBERKELEYTAU_DOD_%s_allregions_tp.csv' % timestamp
+    merged_output = '../output/UCBERKELEYTAU_DOD_%s_merged_tp.csv' % timestamp
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_tau_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_tau_pet_dates, dod_registry, dod=True)
+    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES)
+    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
+
+    ###############
+    ### OLD CODE ##
+    ###############
 
     # # for adni dod (add in adni controls)
     # output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
@@ -662,7 +804,6 @@ if __name__ == "__main__":
     # appendCSV(output, temp_output)
     # print 'removing'
     # removeFile(temp_output)
-
 
     # # # for adni dod (don't add in adni controls, for uploading)
     # output = '../output/AV45_DOD_LONI_10.22.15_extra.csv'

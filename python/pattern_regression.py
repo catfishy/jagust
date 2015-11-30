@@ -52,6 +52,34 @@ def bootstrap_mean(vals, nboot=10000):
         tboot[i] = np.mean(sboot)
     return np.mean(tboot)
 
+def chooseBestModel(patterns, components, alpha, covar_type):
+    # Cluster
+    models_scores = {}
+    patterns_only = raw_patterns_only
+    for i in range(20):
+        g = DPGMM(n_components=components, 
+                  covariance_type=covar_type,
+                  alpha=alpha,
+                  tol=1e-6,
+                  n_iter=700,
+                  params='wmc', 
+                  init_params='wmc',
+                  verbose=False)
+        print "Fitting: %s" % i
+        g.fit(patterns)
+        print g.converged_
+        y_ = g.predict(patterns)
+        print Counter(y_)
+        membership = np.zeros((len(patterns.index),components))
+        for i,member in enumerate(y_):
+            membership[i][member] = 1
+        bound = g.lower_bound(patterns, membership)
+        score = np.mean(g.score(patterns))
+        models_scores[bound] = g
+    best_score = max(models_scores.keys())
+    best_model = models_scores[best_score]
+    return best_model
+
 def gmm_sweep_alpha(components, data, covar_type='full'):
     # model selection for alpha by looking at lower bound on marginal likelihood, or log prob of X under model
     alphas = [0.005, 0.01, 0.05, 0.1, 0.2, 0.3, 0.5, 1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70]
@@ -72,9 +100,12 @@ def gmm_sweep_alpha(components, data, covar_type='full'):
             g.fit(data)
             print g.converged_
             y_ = g.predict(data)
+            counter = dict(Counter(y_))
+            print counter
+            big_y = [k for k,v in counter.iteritems() if v >= 3]
             score = np.mean(g.score(data))
             scores.append(score)
-            clusters.append(len(set(y_)))
+            clusters.append(len(big_y))
         print scores
         print clusters
         alpha_to_clusters[a] = np.mean(scores)
@@ -86,16 +117,20 @@ def group_comparisons(df, groups, keys):
         group1_members = df[df['membership']==group1]
         group2_members = df[df['membership']==group2]
         print "GRP %s (%s) vs GRP %s (%s)" % (group1, len(group1_members), group2, len(group2_members))
+        # bonferri correct
+        hypos = len(keys)
+        level = 0.05 / float(hypos)
+        print level
         for i, key in enumerate(keys):
             group1_vals = group1_members[key].tolist()
             group2_vals = group2_members[key].tolist()
             group1_boot = bootstrap_mean(group1_vals)
             group2_boot = bootstrap_mean(group2_vals)
-            pvalue = bootstrap_t_test(group1_vals, group2_vals, nboot = 10000)
+            pvalue = bootstrap_t_test(group1_vals, group2_vals, nboot = 100000)
             data[(group1,group2)][key] = (pvalue, group1_boot, group2_boot)
-            # if pvalue <= 0.05:
-            #     print "\t%s: %s" % (key, pvalue)
-            print "\t%s: %s (%s, %s)" % (key, pvalue, group1_boot, group2_boot)
+            if pvalue <= level:
+                print "\t%s: %s (%s, %s)" % (key, pvalue, group1_boot, group2_boot)
+            #print "\t%s: %s (%s, %s)" % (key, pvalue, group1_boot, group2_boot)
     return data
 
 # extract patterns and summary value, summary change
@@ -140,7 +175,7 @@ pattern_post_df.set_index('timepoint', append=True, inplace=True)
 
 
 # concat prior and post patterns
-pattern_df_raw = pd.concat((pattern_prior_df,pattern_post_df))
+pattern_df = pd.concat((pattern_prior_df,pattern_post_df))
 uptake_prior_df = raw_df[prior_keys]
 uptake_prior_df.columns = [_.replace('_prior','') for _ in uptake_prior_df.columns]
 uptake_post_df = raw_df[post_keys]
@@ -154,69 +189,51 @@ pattern_df_raw = pd.DataFrame(scaler.transform(pattern_df))
 pattern_df_raw.set_index(pattern_df.index, inplace=True)
 raw_keys = pattern_df_raw.columns
 
-# # convert to PCA space + whiten(scale)
-# pca_model = PCA(n_components=len(pattern_df.columns), copy=True, whiten=True)
-# pattern_df_pca = pd.DataFrame(pca_model.fit_transform(pattern_df))
-# pattern_df_pca.set_index(pattern_df.index, inplace=True)
-# pca_keys = pattern_df_pca.columns
+# convert to PCA space + whiten(scale)
+pca_model = PCA(n_components=len(pattern_df.columns), copy=True, whiten=True)
+pattern_df_pca = pd.DataFrame(pca_model.fit_transform(pattern_df))
+pattern_df_pca.set_index(pattern_df.index, inplace=True)
+pca_keys = pattern_df_pca.columns
 
-# # convert to Kernel PCA Projection and scale
-# kpca_model = KernelPCA(n_components=None,kernel='rbf',fit_inverse_transform=False,gamma=1,alpha=1.0)
-# X_kpca = kpca_model.fit_transform(pattern_df)
-# pattern_df_kpca = pd.DataFrame(X_kpca)
-# scaler = StandardScaler().fit(pattern_df_kpca)
-# pattern_df_kpca = pd.DataFrame(scaler.transform(pattern_df_kpca))
-# pattern_df_kpca.set_index(pattern_df.index, inplace=True)
-# kpca_keys = pattern_df_kpca.columns
+# convert to Kernel PCA Projection and scale
+kpca_model = KernelPCA(n_components=len(pattern_df.columns),kernel='rbf',fit_inverse_transform=False,gamma=1,alpha=1.0)
+X_kpca = kpca_model.fit_transform(pattern_df)
+pattern_df_kpca = pd.DataFrame(X_kpca)
+scaler = StandardScaler().fit(pattern_df_kpca)
+pattern_df_kpca = pd.DataFrame(scaler.transform(pattern_df_kpca))
+pattern_df_kpca.set_index(pattern_df.index, inplace=True)
+kpca_keys = pattern_df_kpca.columns
 
-# GMM
+# Original space (100spherical -> 70, [56, 47, 45, 48, 50])
 raw_patterns_only = pattern_df_raw[raw_keys]
-raw_alpha_to_clusters = gmm_sweep_alpha(30, raw_patterns_only, covar_type='diag')
+raw_alpha_to_clusters = gmm_sweep_alpha(100, raw_patterns_only, covar_type='spherical')
 print sorted(raw_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
-# pca_patterns_only = pattern_df_pca[pca_keys]
-# pca_alpha_to_clusters = gmm_sweep_alpha(20, pca_patterns_only, covar_type='diag')
-# print sorted(pca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
+# PCA (100spherical -> 45, [41, 46, 48, 40, 37])
+pca_patterns_only = pattern_df_pca[pca_keys]
+pca_alpha_to_clusters = gmm_sweep_alpha(100, pca_patterns_only, covar_type='spherical')
+print sorted(pca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
 # kpca_patterns_only = pattern_df_kpca[kpca_keys]
 # kpca_alpha_to_clusters = gmm_sweep_alpha(50, kpca_patterns_only, covar_type='diag')
 # print sorted(kpca_alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
 
-# Cluster
-alpha = 30
-components = 30
-models_scores = {}
-patterns_only = raw_patterns_only
-for i in range(20):
-    g = DPGMM(n_components=components, 
-              covariance_type='diag',
-              alpha=alpha,
-              tol=1e-6,
-              n_iter=700,
-              params='wmc', 
-              init_params='wmc',
-              verbose=False)
-    print "Fitting: %s" % i
-    g.fit(patterns_only)
-    print g.converged_
-    y_ = g.predict(patterns_only)
-    print Counter(y_)
-    membership = np.zeros((len(patterns_only.index),components))
-    for i,member in enumerate(y_):
-        membership[i][member] = 1
-    bound = g.lower_bound(patterns_only, membership)
-    score = np.mean(g.score(patterns_only))
-    models_scores[bound] = g
+# Model selection after selecting alpha
+best_raw_model = chooseBestModel(raw_patterns_only, 100, 70, 'spherical')
+best_pca_model = chooseBestModel(pca_patterns_only, 100, 45, 'spherical')
 
-best_score = max(models_scores.keys())
-best_model = models_scores[best_score]
-y_ = best_model.predict(patterns_only)
-probs = best_model.predict_proba(patterns_only)
+# Results
+raw_y_ = pd.DataFrame(best_raw_model.predict(raw_patterns_only))
+raw_y_.columns = ['group']
+raw_y_.set_index(raw_patterns_only.index, inplace=True)
+pca_y_ = pd.DataFrame(best_pca_model.predict(pca_patterns_only))
+pca_y_.columns = ['group']
+pca_y_.set_index(pca_patterns_only.index, inplace=True)
+
+# PICK ONE
+y_df = raw_y_
 
 # add membership to result df
-y_df = pd.DataFrame(y_)
-y_df.columns = ['group']
-y_df.set_index(patterns_only.index, inplace=True)
 for rid in result_df.index:
     result_df.loc[rid,'membership_prior'] = y_df.loc[(rid,'prior'),'group']
     result_df.loc[rid,'membership_post'] = y_df.loc[(rid,'post'),'group']
@@ -229,7 +246,7 @@ for g in groups:
     post_members = set(result_df[result_df.membership_post==g].index)
     allmembers = len(prior_members | post_members)
     print "%s: %s" % (g,allmembers)
-    if allmembers >= 10:
+    if allmembers >= 4:
         big_groups.append(g)
 
 # print group diagnostic/pattern/positivity conversions
@@ -258,6 +275,9 @@ for g in big_groups:
 conversions = pd.DataFrame(conversions).T
 conversions.index.name = 'pattern'
 
+positive_patterns = list(conversions[conversions['pos-pos']==1.0].index)
+negative_patterns = list(conversions[conversions['neg-neg']>=0.8].index)
+transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
 
 # merge results with regional change and uptakes
 change_members = rchange_df.merge(result_df, left_index=True, right_index=True)
@@ -299,7 +319,7 @@ for g in big_groups:
 
 # between group bootstrap hypothesis test for summary/regional change
 change_keys = rchange_keys
-change_pvalues = group_comparisons(change_members, big_groups, change_keys)
+change_pvalues = group_comparisons(change_members, positive_patterns, change_keys)
 flattened = []
 for k,v in change_pvalues.iteritems():
     row = {}
@@ -319,7 +339,7 @@ flattened_change_df.set_index(['GROUP1','GROUP2','TYPE'],inplace=True)
 
 # between group bootstrap hypothesis test for summary/regional uptake
 uptake_keys = pattern_keys
-uptake_pvalues = group_comparisons(uptake_members, big_groups, pattern_keys)
+uptake_pvalues = group_comparisons(uptake_members, positive_patterns, pattern_keys)
 flattened = []
 for k,v in uptake_pvalues.iteritems():
     row = {}

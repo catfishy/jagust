@@ -39,6 +39,13 @@ BIGREF = [2,41,7,8,46,47,16]
 WHITEMATTER = [2,41]
 SUMMARY = FRONTAL+PARIETAL+TEMPORAL+CINGULATE
 
+BRAAK1 = [1006,2006]
+BRAAK2 = [17,53]
+BRAAK3 = [1016,1007,1013,18,2016,2007,2013,54]
+BRAAK4 = [1015,10,1002,1026,1023,1010,1035,1009,1033,2015,49,2002,2026,2023,2010,2035,2009,2033]
+BRAAK5 = [1028,1012,1014,1032,1003,1027,1018,1019,1020,11,12,1011,1031,1008,1030,13,1029,1025,1001,26,1034,2028,2012,2014,2032,2003,2027,2018,2019,2020,50,51,2011,2031,2008,2030,52,2029,2025,2001,58,2034]
+BRAAK6 = [1021,1022,1005,1024,1017,2021,2022,2005,2024,2017]
+
 
 '''
 import pandas as pd; from utils import fitGMM_1D
@@ -1243,6 +1250,38 @@ def importCSF(csf_files, registry=None):
         print flattened
         data[k] = sorted(flattened, key=lambda x: x['EXAMDATE'])
     return data
+
+def importScanMeta(meta_file):
+    df = pd.read_csv(meta_file)
+    '''
+    if 'Sequence' in df.columns:
+        df.loc[:,'Sequence'] = df.loc[:,'Sequence'].apply(lambda x: x.strip())
+        df = df[df.Sequence == 'AV45 Coreg, Avg, Std Img and Vox Siz, Uniform Resolution']
+    '''
+    # get exam date column
+    subj_col = None
+    date_col = None
+    if 'SCRNO' in df.columns:
+        subj_col = 'SCRNO'
+    elif 'RID' in df.columns:
+        subj_col = 'RID'
+    if 'SCANDATE' in df.columns:
+        date_col = 'SCANDATE'
+    elif 'EXAMDATE' in df.columns:
+        date_col = 'EXAMDATE'
+    if subj_col is None or date_col is None:
+        raise Exception("No subj/date column in %s" % meta_file)
+    df.dropna(axis=0, subset=[subj_col, date_col], inplace=True)
+    df.loc[:,date_col] = df.loc[:,date_col].apply(parseDate)
+    # convert to dict
+    scans = defaultdict(list)
+    for i, row in df.iterrows():
+        scans[row[subj_col]].append(row[date_col])
+    scans = dict(scans)
+    for k in scans.keys():
+        scans[k] = sorted(list(set(scans[k])))
+    return scans
+
 
 def importPetMETA(pet_meta_file):
     headers, lines = parseCSV(pet_meta_file)
