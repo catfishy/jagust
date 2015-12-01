@@ -552,6 +552,8 @@ def getVisitCode(rid, date, registry, cutoff=60):
         if abs(date-metadata['EXAMDATE']).days <= cutoff:
             vc = metadata.get('VISCODE','')
             vc2 = metadata.get('VISCODE2','')
+        else:
+            print "CLOSEST VISCODE AT %s > %s (%s, %s)" % (abs(date-metadata['EXAMDATE']).days, cutoff, rid, date)
     return (vc, vc2)
 
 def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, registry, dod=False):
@@ -600,21 +602,21 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
         for i in bl_means_df.index:
             rid = bl_means_df.ix[i,'RID']
             date = pet_dates[rid][0]
-            vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+            vc, vc2 = getVisitCode(rid, date, registry, cutoff=90)
             bl_means_df.ix[i,'EXAMDATE'] = date
             bl_means_df.ix[i,'VISCODE'] = vc
             bl_means_df.ix[i,'VISCODE2'] = vc2
         for i in v2_means_df.index:
             rid = v2_means_df.ix[i,'RID']
             date = pet_dates[rid][1]
-            vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+            vc, vc2 = getVisitCode(rid, date, registry, cutoff=90)
             v2_means_df.ix[i,'EXAMDATE'] = date
             v2_means_df.ix[i,'VISCODE'] = vc
             v2_means_df.ix[i,'VISCODE2'] = vc2
         for i in v3_means_df.index:
             rid = v3_means_df.ix[i,'RID']
             date = pet_dates[rid][2]
-            vc, vc2 = getVisitCode(rid, date, registry, cutoff=60)
+            vc, vc2 = getVisitCode(rid, date, registry, cutoff=90)
             v3_means_df.ix[i,'EXAMDATE'] = date
             v3_means_df.ix[i,'VISCODE'] = vc
             v3_means_df.ix[i,'VISCODE2'] = vc2
@@ -631,7 +633,7 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     all_rows = pd.concat((bl_means_df, v2_means_df, v3_means_df), axis=0)
     all_rows.reset_index(inplace=True, drop=True)
     all_rows.sort(['RID','EXAMDATE'], inplace=True)
-    all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%m/%d/%y'))
+    all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%Y-%m-%d'))
 
     # Order columns
     key_columns = ['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']
@@ -704,15 +706,18 @@ if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
 
-    # registry imports
-    adni_registry = importRegistry("../docs/ADNI/REGISTRY.csv") 
-    dod_registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
-    
-    # pet date imports
+    registry_file = "../docs/ADNI/REGISTRY.csv"
+    dod_registry_file = "../docs/DOD/DOD_REGISTRY.csv"
     meta_pet = "../docs/ADNI/AV45META.csv"
     meta_tau = '../docs/ADNI/TAUMETA.csv'
     dod_meta_pet = "../docs/DOD/AV45META.csv"
     dod_meta_tau = "../docs/DOD/TAUMETA.csv"
+
+    # registry imports
+    adni_registry = importRegistry(meta_pet) 
+    dod_registry = importDODRegistry(dod_registry_file)
+    
+    # pet date imports
     adni_av45_pet_dates = importScanMeta(meta_pet)
     adni_tau_pet_dates = importScanMeta(meta_tau)
     dod_av45_pet_dates = importScanMeta(dod_meta_pet)

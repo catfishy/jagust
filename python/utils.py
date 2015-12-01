@@ -665,6 +665,8 @@ def importRegistry(registry_file, include_all=False):
     df['VISCODE'] = df['VISCODE'].fillna('')
     df.loc[:,'VISCODE'] = df.loc[:,'VISCODE'].apply(lambda x: x.lower().strip())
     df.loc[:,'VISCODE2'] = df.loc[:,'VISCODE2'].apply(lambda x: x.lower().strip())
+    if not include_all:
+        df = df[df.VISCODE!='sc'] # filter out screening visits
     df.loc[:,'EXAMDATE'] = parseAllDates(df.loc[:,'EXAMDATE'])
     if not include_all:
         df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
@@ -1253,6 +1255,7 @@ def importCSF(csf_files, registry=None):
 def importScanMeta(meta_file):
     df = pd.read_csv(meta_file)
     '''
+    VISCODE VISCODE2
     if 'Sequence' in df.columns:
         df.loc[:,'Sequence'] = df.loc[:,'Sequence'].apply(lambda x: x.strip())
         df = df[df.Sequence == 'AV45 Coreg, Avg, Std Img and Vox Siz, Uniform Resolution']
