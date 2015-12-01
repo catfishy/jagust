@@ -497,6 +497,10 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSX_MRI_STRENGTH_6',
                         'FSX_MRI_STRENGTH_7',
                         'FSX_MRI_STRENGTH_8',
+                        'FSX_MRI_STRENGTH_9',
+                        'FSX_MRI_STRENGTH_10',
+                        'FSX_MRI_STRENGTH_11',
+                        'FSX_MRI_STRENGTH_12',
                         'FSX_FSVERSION_1',
                         'FSX_FSVERSION_2',
                         'FSX_FSVERSION_3',
@@ -544,6 +548,10 @@ COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
                         'FSL_MRI_STRENGTH_6',
                         'FSL_MRI_STRENGTH_7',
                         'FSL_MRI_STRENGTH_8',
+                        'FSL_MRI_STRENGTH_9',
+                        'FSL_MRI_STRENGTH_10',
+                        'FSL_MRI_STRENGTH_11',
+                        'FSL_MRI_STRENGTH_12',
                         'FSL_FSVERSION_1',
                         'FSL_FSVERSION_2',
                         'FSL_FSVERSION_3',
@@ -874,11 +882,13 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
     wipeKeys(old_lines, to_add_headers)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
-        valid_groupings = ['summary']
+        #valid_groupings = ['summary']
         new_subj_data = {}
         for k in subj_row.keys():
             if k in valid_groupings:
                 v = subj_row[k]
+                if v is None:
+                    continue
                 wholecereb = float(v['wholecereb']['pvcval'])
                 bigref = float(v['bigref']['pvcval'])
                 for region, values in v.iteritems():
@@ -1640,17 +1650,17 @@ def parseAV45Entries(old_headers, subj_av45):
         compositeroi = float(point['COMPOSITE'])
         bigref = float(point['COMPOSITE_REF'])
         wm70 = float(point['ERODED_SUBCORTICALWM'])
-        brainstem = float(point['BRAINSTEM'])
+        brainstem = float(point['BRAIN_STEM'])
         cingulate = float(point['CINGULATE'])
         frontal = float(point['FRONTAL'])
         parietal = float(point['PARIETAL'])
         temporal = float(point['TEMPORAL'])
-        leftputamen = float(point['LEFT-PUTAMEN'])
-        rightputamen = float(point['RIGHT-PUTAMEN'])
-        leftcaudate = float(point['LEFT-CAUDATE'])
-        rightcaudate = float(point['RIGHT-CAUDATE'])
-        leftpallidum = float(point['LEFT-PALLIDUM'])
-        rightpallidum = float(point['RIGHT-PALLIDUM'])
+        leftputamen = float(point['LEFT_PUTAMEN'])
+        rightputamen = float(point['RIGHT_PUTAMEN'])
+        leftcaudate = float(point['LEFT_CAUDATE'])
+        rightcaudate = float(point['RIGHT_CAUDATE'])
+        leftpallidum = float(point['LEFT_PALLIDUM'])
+        rightpallidum = float(point['RIGHT_PALLIDUM'])
         tp_spec = 1 if point['TP_SPECIFIC'] else 0
 
         # fill in basic keys
@@ -2122,10 +2132,10 @@ def syncUWData(old_headers, old_lines, uw_file, registry_file, dump_to=None):
 
     return (new_headers, new_lines)
 
-def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None):
+def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file, dump_to=None):
     tmpts = 12
 
-    fs_by_subj_list = [importUCSFFreesurfer(filename, version=fsversion, mristrength=strength, include_failed=False) for fsversion,strength,filename in ucsf_files]
+    fs_by_subj_list = [importUCSFFreesurfer(filename, mprage_file, version=fsversion, include_failed=False) for fsversion,filename in ucsf_files]
     fs_by_subj = {}
     for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
         if k not in fs_by_subj:
@@ -2137,13 +2147,27 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None
     to_add_headers += ['FSX_HC/ICV_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSX_postAV45_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSX_postAV45_count', 'FSX_HC/ICV_slope', 'FSX_HC/ICV_BL_3months']
-    #to_add_headers += ['FSX_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSX_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSX_FSVERSION_%s' % (i+1) for i in range(tmpts)]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
     wipeKeys(old_lines, to_add_headers)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
+        '''
+        If RID<2000, use only 1.5T scans
+        If RID>2000, use only 3T scans
+        '''
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        mristrengths = [_['FLDSTRENG'] for _ in subj_row]
+        # filter by field strength
+        if int(subj) < 2000:
+            subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
+        else:
+            subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
+        if len(subj_row) == 0:
+            print "%s had all potential scans eliminated by field strength: %s" % (subj,mristrengths)
+            return {}
+
         # take care of scans on the same date
         by_date = defaultdict(list)
         for scan in subj_row:
@@ -2191,7 +2215,7 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None
                 new_data['FSX_HC/ICV_%s' % (i+1)] = hc_icv
                 new_data['FSX_postAV45_%s' % (i+1)] = timediff
                 new_data['FSX_FSVERSION_%s' % (i+1)] = datapoint['version']
-                #new_data['FSX_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+                new_data['FSX_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
         
         # calc slope
         new_data['FSX_postAV45_count'] = len(slope_points)
@@ -2213,10 +2237,10 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, dump_to=None
     return (new_headers, new_lines)
 
 
-def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, dump_to=None):
+def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file, dump_to=None):
     tmpts = 12
 
-    fs_by_subj_list = [importUCSFFreesurfer(filename, version=fsversion, mristrength=strength, include_failed=False) for fsversion,strength,filename in ucsf_files]
+    fs_by_subj_list = [importUCSFFreesurfer(filename, mprage_file, version=fsversion, include_failed=False) for fsversion,filename in ucsf_files]
     fs_by_subj = {}
     for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
         if k not in fs_by_subj:
@@ -2228,13 +2252,23 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, dump_to=None)
     to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSL_postAV45_count', 'FSL_HC/ICV_slope', 'FSL_HC/ICV_BL_3months']
-    #to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(tmpts)]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
     wipeKeys(old_lines, to_add_headers)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        mristrengths = [_['FLDSTRENG'] for _ in subj_row]
+        # filter by field strength
+        if int(subj) < 2000:
+            subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
+        else:
+            subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
+        if len(subj_row) == 0:
+            print "%s had all potential scans eliminated by field strength: %s" % (subj,mristrengths)
+            return {}
+
         # take care of scans on the same date
         by_date = defaultdict(list)
         for scan in subj_row:
@@ -2282,7 +2316,7 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, dump_to=None)
                 new_data['FSL_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
                 new_data['FSL_postAV45_%s' % (i+1)] = timediff
                 new_data['FSL_FSVERSION_%s' % (i+1)] = datapoint['version']
-                #new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
+                new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
         # Calculate slope
         new_data['FSL_postAV45_count'] = len(slope_points)
         new_data['FSL_HC/ICV_slope'] = slope(slope_points)
@@ -2520,9 +2554,9 @@ def runPipeline():
     print "\nSYNCING UW NEURO\n"
     new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING UCSF LONG FreeSurfer\n"
-    new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, dump_to=None)
+    new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, mprage_file, dump_to=None)
     print "\nSYCNING UCSF CROSS FreeSurfer"
-    new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, dump_to=None)
+    new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, mprage_file, dump_to=None)
     print "\nSYNCING ROUSSET BL\n"
     new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
     print "\nSYNCING ROUSSET SCAN2\n"
@@ -2569,11 +2603,12 @@ if __name__ == '__main__':
                  '../docs/ADNI/UPENNBIOMK8.csv']
     wmh_file = '../docs/ADNI/UCD_ADNI2_WMH_10_26_15.csv'
     fdg_file = '../docs/ADNI/UCBERKELEYFDG_07_30_15.csv'
+    mprage_file = '../docs/ADNI/MPRAGEMETA.csv'
     
     # Output files
     #av45_file = "../output/UCBERKELEYAV45_11_09_15_extra.csv"
     av45_file = None
-    av45_nontp_file = "../output/UCBERKELEYAV45_11_09_15_extra_nontp.csv"
+    av45_nontp_file = "../output/UCBERKELEYAV45_11_25_15_regular_nontp.csv"
     rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
     rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
     rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
@@ -2588,11 +2623,11 @@ if __name__ == '__main__':
     
     # MR files
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
-    ucsf_long_files = [('4.4','1.5','../mr_docs/UCSF/longitudinal/UCSFFSL_11_02_15.csv'),
-                       ('5.1','1.5','../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_11_02_15.csv')]
-    ucsf_cross_files = [('4.3','1.5','../mr_docs/UCSF/cross_section/UCSFFSX_11_02_15.csv'),
-                        ('5.1','1.5','../mr_docs/UCSF/cross_section/UCSFFSX51_11_02_15.csv')]
-                        #('5.1','3.0','../mr_docs/UCSF/cross_section/UCSFFSX51_ADNI1_3T_11_02_15.csv')]
+    ucsf_long_files = [('4.4','../mr_docs/UCSF/longitudinal/UCSFFSL_11_02_15.csv'),
+                       ('5.1','../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_11_02_15.csv')]
+    ucsf_cross_files = [('4.3','../mr_docs/UCSF/cross_section/UCSFFSX_11_02_15.csv'),
+                        ('5.1','../mr_docs/UCSF/cross_section/UCSFFSX51_11_02_15.csv'),
+                        ('5.1','../mr_docs/UCSF/cross_section/UCSFFSX51_ADNI1_3T_11_02_15.csv')]
 
     # Run pipeline
     runPipeline()

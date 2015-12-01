@@ -646,7 +646,7 @@ def updateLine(old_line, new_data, extraction_fn,
 
     subj_row = new_data.get(subj,None)
     if subj_row is None:
-        print "No subj row found for %s" % (subj)
+        # print "No subj row found for %s" % (subj)
         return {}
 
     patient_pets = None
@@ -1247,7 +1247,6 @@ def importCSF(csf_files, registry=None):
         for examdate, inners in userdata.iteritems():
             chosen = sorted(inners, key=lambda x: x['rundate'])[-1]
             flattened.append(chosen)
-        print flattened
         data[k] = sorted(flattened, key=lambda x: x['EXAMDATE'])
     return data
 
@@ -1558,21 +1557,33 @@ def importAV45(av45_tp_file, av45_nontp_file, registry=None):
         av45_by_subj[key] = [dict(_) for i,_ in val.iterrows()]
     return av45_by_subj
 
-def importUCSFFreesurfer(in_file, version='', mristrength='?', include_failed=False, as_df=False):
+def getMagStrength(mprage_df, imageuid):
+    try:
+        return mprage_df.loc[imageuid,'MagStrength']
+    except Exception as e:
+        print e
+        return np.nan
+
+def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False, as_df=False):
+    mprage_df = pd.read_csv(mprage_file)
+    mprage_df.set_index('ImageUID',inplace=True)
+
+    # pass qc
     QC_cols = ['TEMPQC','FRONTQC','PARQC','INSULAQC','OCCQC','BGQC','CWMQC','VENTQC']
     df = pd.read_csv(in_file)
     if not include_failed:
         df = df[df['OVERALLQC'].isin(['Pass','Partial'])]
-        # at least 6 qc columns passed
-        qc_df = df.loc[:,QC_cols] == "Pass"
-        passed = qc_df.sum(axis=1) >= 6
+        # at least tempqc has to pass
         before = len(df.index)
-        df = df[passed]
+        tempqc_passed = df.loc[:,'TEMPQC'] == 'Pass'
+        df = df[tempqc_passed]
         after = len(df.index)
-        print "%s: FAILED 6/8 QC: %s/%s" % (in_file, before-after, before)
+        print "%s: FAILED TEMP QC: %s/%s" % (in_file, before-after, before)
 
+    # filter by image type 
     if 'IMAGETYPE' in df.columns:
         df = df[df['IMAGETYPE']=='Non-Accelerated T1']
+
     # get relevant columns
     # right hippocampus volume: ST88SV
     # left hippocampus volume: ST29SV
@@ -1587,13 +1598,12 @@ def importUCSFFreesurfer(in_file, version='', mristrength='?', include_failed=Fa
     filtered.loc[:,'RIGHT_HCV'] = df.loc[:,'ST88SV']
     filtered.loc[:,'HCV'] = df[['ST88SV','ST29SV']].sum(axis=1)
     filtered.loc[:,'ICV'] = df.loc[:,'ST10CV']
-    if 'FLDSTRENG' in df.columns:
-        filtered.loc[:,'FLDSTRENG'] = df.loc[:,'FLDSTRENG']
-    else:
-        filtered.loc[:,'FLDSTRENG'] = mristrength
+    filtered.loc[:,'FLDSTRENG'] = df.loc[:,'IMAGEUID'].apply(lambda x: getMagStrength(mprage_df, x))
     filtered.loc[:,'version'] = version
     filtered = filtered.dropna(subset=['EXAMDATE'])
     filtered.set_index('RID',inplace=True)
+    print 'FIELD STRENGTH DOMAIN: %s' % (set(filtered['FLDSTRENG']),)
+
     if as_df:
         return filtered
     else:

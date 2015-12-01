@@ -717,7 +717,9 @@ if __name__ == "__main__":
     adni_tau_pet_dates = importScanMeta(meta_tau)
     dod_av45_pet_dates = importScanMeta(dod_meta_pet)
     dod_tau_pet_dates = importScanMeta(dod_meta_tau)
-    timestamp = datetime.now().strftime('%m_%d_%y')
+    
+    #timestamp = datetime.now().strftime('%m_%d_%y')
+    timestamp = '11_25_15'
 
     # preprocess output folders
     adni_av45_preprocess_folder = '../docs/AV45_preprocess_output_11_24_15'
@@ -732,7 +734,7 @@ if __name__ == "__main__":
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
-    full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES)
+    full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
@@ -743,7 +745,7 @@ if __name__ == "__main__":
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=False)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
-    full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES)
+    full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
