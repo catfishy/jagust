@@ -358,18 +358,24 @@ if __name__ == "__main__":
         data_post[rid] = (withyrs, new_diag)
 
     all_data = []
-    for rid, (post_data, diag_post) in data_post.iteritems():
+    for rid, prior_data in data_prior.iteritems():
         datarow = {'rid': rid,
-                   'diag_prior': diags.get(rid,''),
-                   'diag_post': diag_post}
-        prior_data = data_bl[rid]
-        for k in index_lookup:
-            k_f = k.upper().replace('-','_')
-            post_val, yrs = post_data[k]
-            annual_change = (post_val - prior_data[k]) / yrs
-            datarow['%s_post' % k_f] = post_val
-            datarow['yrs'] = yrs
-            datarow['%s_prior' % k_f] = prior_data[k]
+                   'diag_prior': diags.get(rid,'')}
+        prior_regions = {'%s_prior' % k.upper().replace('-','_') : prior_data[k] for k in index_lookup}
+        datarow.update(prior_regions)
+        if rid in data_post:
+            post_data, diag_post = data_post[rid]
+            datarow['diag_post'] = diag_post
+            for k in index_lookup:
+                k_f = k.upper().replace('-','_')
+                post_val, yrs = post_data[k]
+                datarow['%s_post' % k_f] = post_val
+                datarow['yrs'] = yrs
+        else:
+            datarow['diag_post'] = ''
+            datarow['yrs'] = ''
+            post_regions = {'%s_post' % k.upper().replace('-','_') : '' for k in index_lookup}
+            datarow.update(post_regions)
         all_data.append(datarow)
     df = pd.DataFrame(all_data)
     df.to_csv('../datasets/pvc_allregions_uptake_change.csv', index=False)

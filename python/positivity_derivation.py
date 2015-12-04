@@ -12,7 +12,6 @@ import itertools
 from sklearn.mixture import GMM, VBGMM, DPGMM, log_multivariate_normal_density
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.cross_validation import LeaveOneOut
-from sklearn.mixture import GMM, VBGMM, DPGMM
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import StandardScaler
 
