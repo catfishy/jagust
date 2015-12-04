@@ -224,7 +224,7 @@ def bigGroups(result_df, threshold=4):
             big_groups.append(g)
     return big_groups
 
-def parseConversions(groups, result_df):
+def parseConversions(groups, result_df, threshold):
     '''
     'APOE4_BIN'
     'UW_MEM_slope'
@@ -234,7 +234,6 @@ def parseConversions(groups, result_df):
     'WMH_slope'
     '''
     # group diagnostic/pattern/positivity conversions
-    threshold = 0.79
     diags = ['N', 'SMC', 'MCI', 'AD']
     master_cols = ['APOE4_BIN','UW_MEM_slope','UW_EF_slope','Gender','Handedness','WMH_slope']
     conversions = {}
@@ -364,9 +363,11 @@ def graphNetworkConversions(groups, conversions, iterations=50):
     for g1 in groups:
         for g2 in groups:
             if g1 == g2:
+                if g1 not in G.nodes():
+                    G.add_node(int(g1))
                 continue
             conv_percent = conversions.loc[g1,g2]
-            if conv_percent > 0.16:
+            if conv_percent > 0.1:
                 G.add_edge(int(g1),int(g2),weight=conv_percent)
     # edges sizes are % of pattern members converted to new pattern
     edgewidth = []
@@ -399,6 +400,7 @@ def graphNetworkConversions(groups, conversions, iterations=50):
 if __name__ == '__main__':
     ref_key = 'COMPOSITE_REF'
     patterns_csv = '../datasets/pvc_allregions_uptake_change.csv'
+    threshold = 0.91711
     pattern_df, uptake_prior_df, uptake_post_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
 
     # import master
@@ -434,13 +436,14 @@ if __name__ == '__main__':
     # generate conversion data
     result_df = result_df.merge(master_df,left_index=True,right_index=True)
     big_groups = bigGroups(result_df)
-    conversions = parseConversions(big_groups, result_df)
+    conversions = parseConversions(big_groups, result_df, threshold)
     #conversions.to_csv('../dpgmm_alpha%s_comp%s_spherical_conversions.csv' % (alpha, components))
-    positive_patterns = list(conversions[conversions['pos-pos']==1.0].index)
+    positive_patterns = list(conversions[conversions['cortical_summary']>=threshold].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.8].index)
     transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
     uptake_members, pattern_members, change_members = mergeResults(result_df, pattern_df, uptake_prior_df, uptake_post_df, rchange_df)
     # saveAparcs(alpha, components, big_groups, pattern_members, uptake_members, change_members)
+    # graphNetworkConversions(positive_patterns+transition_patterns, conversions, iterations=50)
 
     # for explicitly comparing two patterns
     compareTwoGroups(34, 7, uptake_members, pattern_keys)

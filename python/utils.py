@@ -135,6 +135,14 @@ out_df.to_csv(output)
 
 '''
 
+def isnan(arg):
+    try:
+        if np.isnan(arg):
+            return True
+    except Exception as e:
+        pass
+    return False
+
 def fitLine(df, xkey, ykey, order=0):
     curdf = df[[xkey, ykey]]
     curdf = curdf.sort(columns=xkey)
@@ -668,8 +676,7 @@ def importRegistry(registry_file, include_all=False):
     if not include_all:
         df = df[df.VISCODE!='sc'] # filter out screening visits
     df.loc[:,'EXAMDATE'] = parseAllDates(df.loc[:,'EXAMDATE'])
-    if not include_all:
-        df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
+    df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
     grouped = df.groupby(by=['RID'])
     by_subj = {}
     for key, val in grouped:
@@ -976,17 +983,10 @@ def importMMSE(mmse_file, registry=None):
         date_string = line['EXAMDATE']
         if not date_string and registry is not None:
             # get from registry
-            vs = line['VISCODE'].strip().lower()
-            vs2 = line['VISCODE2'].strip().lower()
-            subject_registry = registry.get(subj,[])
-            date = None
-            for v in subject_registry:
-                item_date = v['EXAMDATE']
-                if vs2 == v['VISCODE2']:
-                    date = item_date
-                    break
+            viscodes = [line['VISCODE'].strip().lower(), line['VISCODE2'].strip().lower()]
+            date = findVisitDate(registry, subj, viscodes)
             if date is None:
-                print "Could not find visit in registry: %s, %s, %s" % (subj, vs, vs2)
+                print "Could not find visit in registry: %s, %s" % (subj, viscodes)
         else:
             date = parseDate(date_string)
         if date is not None:
@@ -995,8 +995,6 @@ def importMMSE(mmse_file, registry=None):
     for k,v in mmse_by_subject.iteritems():
         mmse_by_subject[k] = sorted(v, key=lambda x: x[0])
     return mmse_by_subject
-
-
 
 
 def importAVLT(avlt_file, registry=None):
@@ -1008,21 +1006,21 @@ def importAVLT(avlt_file, registry=None):
             subj = int(line['SCRNO'])
         else:
             subj = int(line['RID'])
-        viscode = line['VISCODE'].strip().lower()
-        if 'VISCODE2' in line:
-            viscode2 = line['VISCODE2'].strip().lower()
-        else:
-            viscode2 = ''
-        examdate = line.get('EXAMDATE','')
-        if examdate != '':
-            examdate = parseDate(examdate)
-        elif registry is not None:
-            examdate = findVisitDate(registry, subj, [viscode, viscode2])
-            if not examdate:
-                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-                continue
-        tots = [line['AVTOT%s' % _ ]for _ in range(1,6)]
 
+        date_string = line.get('EXAMDATE')
+        viscode = line['VISCODE'].strip().lower() if 'VISCODE' in line else ''
+        viscode2 = line['VISCODE2'].strip().lower() if 'VISCODE2' in line else ''
+        if not date_string and registry is not None:
+            # get from registry
+            viscodes = [viscode, viscode2]
+            date = findVisitDate(registry, subj, viscodes)
+            if date is None:
+                print "Could not find visit in registry: %s, %s" % (subj, viscodes)
+                continue
+        else:
+            date = parseDate(date_string)
+
+        tots = [line['AVTOT%s' % _ ] for _ in range(1,6)]
         try:
             score_sum = 0.0
             for score_str in tots:
@@ -1035,7 +1033,7 @@ def importAVLT(avlt_file, registry=None):
             continue
         avlt_by_subj[subj].append({'VISCODE': viscode,
                                    'VISCODE2': viscode2,
-                                   'EXAMDATE': examdate,
+                                   'EXAMDATE': date,
                                    'TOTS': test_score})
     return dict(avlt_by_subj)
 
@@ -1354,6 +1352,59 @@ def importDODEligibility(elig_file):
         data[subj]['cohort'] = cohort
     return dict(data)
 
+def importMedicalHistory(mhist_file):
+    mhist_df = pd.read_csv(mhist_file)
+    mhist_df.set_index('RID',inplace=True)
+    mhist_df = mhist_df[['MHDESC']]
+    mhist_df.loc[:,'MHDESC'] = mhist_df.MHDESC.apply(lambda x: x.lower())
+    mhist_df.loc[:,'smoking'] = mhist_df.MHDESC.str.contains('smok')
+    mhist_df.loc[:,'diabetes'] = mhist_df.MHDESC.str.contains('diabete')
+    mhist_df.loc[:,'hyperlipidemia'] = mhist_df.MHDESC.str.contains('hyperlipidemia')
+    smoking = set(mhist_df[mhist_df.smoking].index)
+    diabetes = set(mhist_df[mhist_df.diabetes].index)
+    hyperlipidemia = set(mhist_df[mhist_df.hyperlipidemia].index)
+    by_rid = {}
+    for rid in set(mhist_df.index):
+        by_rid[rid] = {'smoking': rid in smoking,
+                       'diabetes': rid in diabetes,
+                       'hyperlipidemia': rid in hyperlipidemia}
+    return by_rid
+
+def importFAQ(faq_file, registry):
+    faq_df = pd.read_csv(faq_file)
+    faq_df = faq_df[['RID','EXAMDATE','VISCODE','VISCODE2','FAQTOTAL']]
+    # fill in examdates
+    def fillInDate(row, registry):
+        if isnan(row['EXAMDATE']):
+            vcs = [_ for _ in [row['VISCODE'],row['VISCODE2']] if not isnan(_)]
+            found_date = findVisitDate(registry, row['RID'], vcs)
+            if found_date is not None:
+                return found_date
+            else:
+                return np.nan
+        else:
+            return parseDate(row['EXAMDATE'])
+    faq_df['EXAMDATE'] = faq_df.apply(lambda x: fillInDate(x,registry), axis=1)
+    faq_df = faq_df[['RID','EXAMDATE','FAQTOTAL']]
+    faq_df.dropna(inplace=True)
+    by_rid = {}
+    for rid, ridrows in faq_df.groupby('RID'):
+        rows = ridrows[['EXAMDATE','FAQTOTAL']].to_dict(orient='records')
+        sorted_rows = sorted(rows, key=lambda x: x['EXAMDATE'])
+        by_rid[rid] = sorted_rows
+    return by_rid
+
+def importNPI(npi_file):
+    npi_df = pd.read_csv(npi_file)
+    npi_df = npi_df[['RID','EXAMDATE','NPITOTAL']]
+    npi_df.dropna(inplace=True)
+    npi_df['EXAMDATE'] = npi_df.EXAMDATE.apply(lambda x: parseDate(x))
+    by_rid = {}
+    for rid, ridrows in npi_df.groupby('RID'):
+        rows = ridrows[['EXAMDATE','NPITOTAL']].to_dict(orient='records')
+        sorted_rows = sorted(rows, key=lambda x: x['EXAMDATE'])
+        by_rid[rid] = sorted_rows
+    return by_rid
 
 def importDODMRI(mri_file):
     headers, lines = parseCSV(mri_file)

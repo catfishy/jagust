@@ -59,6 +59,9 @@ def extractRegionalValuesRousset(data, grouping, pvcval=True, regional=True):
     else:
         key = 'nonpvcval'
     data = data[grouping]
+    if data is None:
+        return None
+
     wholecereb = float(data['wholecereb'][key])
     bigref = float(data['bigref'][key])
 
@@ -147,11 +150,17 @@ def parseRoussetOutputs(bl_file, scan2_file, scan3_file, pvcval=True, regional=T
     data_scan2 = {}
     data_scan3 = {}
     for k,v in data_bl_raw.iteritems():
-        data_bl[k] = extractRegionalValuesRousset(v, grouping, pvcval=pvcval, regional=regional)
+        result = extractRegionalValuesRousset(v, grouping, pvcval=pvcval, regional=regional)
+        if result is not None:
+            data_bl[k] = result
     for k,v in data_scan2_raw.iteritems():
-        data_scan2[k] = extractRegionalValuesRousset(v, grouping, pvcval=pvcval, regional=regional)
+        result = extractRegionalValuesRousset(v, grouping, pvcval=pvcval, regional=regional)
+        if result is not None:
+            data_scan2[k] = result
     for k,v in data_scan3_raw.iteritems():
-        data_scan3[k] = extractRegionalValuesRousset(v, grouping, pvcval=pvcval, regional=regional)
+        result = extractRegionalValuesRousset(v, grouping, pvcval=pvcval, regional=regional)
+        if result is not None:
+            data_scan3[k] = result
     return data_bl, data_scan2, data_scan3
 
 def parseRoussetResiduals(bl_file, scan2_file, scan3_file):
@@ -641,10 +650,10 @@ if __name__ == "__main__":
     master_file = '../FDG_AV45_COGdata_10_28_15.csv'
 
     # tp-specific file
-    av45_file = "../output/UCBERKELEYAV45_09_25_15_extra.csv"
+    av45_file = "../output/UCBERKELEYAV45_12_03_15_merged_tp.csv"
 
     # non tp-specific file
-    av45_file_nontp = "../output/UCBERKELEYAV45_09_25_15_extra_nontp.csv"
+    av45_file_nontp = "../output/UCBERKELEYAV45_12_03_15_merged_nontp.csv"
 
     # Rousset output files
     rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
@@ -722,9 +731,12 @@ if __name__ == "__main__":
     # for PVC
     data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=True, regional=False, grouping='summary')
     data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=False, regional=False, grouping='summary')
-    points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl, rousset_matfile_scan2, rousset_matfile_scan3, 'summary')
+    points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl, rousset_matfile_scan2, rousset_matfile_scan3, 'allregions')
     fit_threshold = p(fit_threshold)
     print "NEW THRESHOLD: %s" % fit_threshold
+
+    sys.exit(1)
+
     all_rids = list(set(data_scan2_pvc.keys() + data_scan3_pvc.keys()))
     vol_diff_stable, uptake_diff_stable, yrs_diff_stable = findRegionalAnnualizedChange(STABLE, data_bl_pvc, data_scan2_pvc, data_scan3_pvc, master_data, annualize=True, regional=False)
     norm_fits = fitNormalToUptakeChange(uptake_diff_stable)

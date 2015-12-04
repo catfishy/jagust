@@ -42,819 +42,6 @@ def syncTemplate(old_headers, old_lines, input_file, dump_to=None):
 '''
 
 
-COLUMN_CATEGORIES = {'AV45_INFO': ['Diag@AV45_long',
-                                  'Diag@AV45_2_long',
-                                  'Diag@AV45_3_long',
-                                  'AV45_scan_count',
-                                  'Age@AV45',
-                                  'Age@AV45_2',
-                                  'Age@AV45_3',
-                                  'AV45_Date',
-                                  'AV45_2_Date',
-                                  'AV45_3_Date',
-                                  'AV451_time',
-                                  'AV45_1_2_Diff',
-                                  'AV45_1_3_Diff',
-                                  'AV45_TP_SPECIFIC_BL',
-                                  'AV45_TP_SPECIFIC_SCAN2',
-                                  'AV45_TP_SPECIFIC_SCAN3'],
-                    'OLD': ['SNAPgroups_BigRef_FDG1.25',
-                            'SNAPgroups_BigRef_HippVol0.0047',
-                            'PosAgreement_FDG1.25andHippVol0.0047',
-                            'NegAgreement_FDG1.25andHippVol0.0047',
-                            'FDGpos_1.25orHippVolpos_0.0047',
-                            'SNAPgroups_BigRef_FDG1.25_OR_HippVol0.0047',
-                            'SNAPgroups_BigRef_FDG1.25_AND_HippVol0.0047',
-                            'Notes',
-                            'Florbetapir_Steffi_reads',
-                            'Florbetapir_Steffi_read_notes',
-                            'Florbetapir_Bill_reads',
-                            'Florbetapir_Bill_read_notes',
-                            'Fam_Dementia_Total',
-                            'Fam_AD_Total',
-                            'DXDSEV',
-                            'DXMDUE (1 = MCI likely from AD, 2 = likely other)',
-                            'Other_MCI_Etiology',
-                            'MCI_Etiology_Notes',
-                            'MCI_nonamnestic_symptoms',
-                            'DXDDUE (1 = AD likely, 2 = other)',
-                            'DXODES',
-                            'DXOOTHSP_Notes',
-                            'DXAPP (1 = AD diagnosis probable, 2 = possible)',
-                            'DXAPOSS (1=Atypical clinical course or features (specify); 2=Stroke(s); 3=Depression; 4=Delirium; 5=Parkinsonism; 6=Metabolic / Toxic Disorder (specify); 7=Other (specify))',
-                            'AD_probable_notes',
-                            'Voxelwise_Groups_FDG_AV45_VBM',
-                            'csf_concordant_voxelwise_groups'],
-                    'COGNITIVE': ['UW_MEM_1',
-                                  'UW_MEM_2',
-                                  'UW_MEM_3',
-                                  'UW_MEM_4',
-                                  'UW_MEM_5',
-                                  'UW_MEM_6',
-                                  'UW_MEM_7',
-                                  'UW_MEM_8',
-                                  'UW_MEM_9',
-                                  'UW_MEM_10',
-                                  'UW_MEM_11',
-                                  'UW_MEM_12',
-                                  'UW_MEM_postAV45_1',
-                                  'UW_MEM_postAV45_2',
-                                  'UW_MEM_postAV45_3',
-                                  'UW_MEM_postAV45_4',
-                                  'UW_MEM_postAV45_5',
-                                  'UW_MEM_postAV45_6',
-                                  'UW_MEM_postAV45_7',
-                                  'UW_MEM_postAV45_8',
-                                  'UW_MEM_postAV45_9',
-                                  'UW_MEM_postAV45_10',
-                                  'UW_MEM_postAV45_11',
-                                  'UW_MEM_postAV45_12',
-                                  'UW_MEM_postAV45_count',
-                                  'UW_MEM_slope',
-                                  'UW_MEM_BL_3months',
-                                  'UW_EF_1',
-                                  'UW_EF_2',
-                                  'UW_EF_3',
-                                  'UW_EF_4',
-                                  'UW_EF_5',
-                                  'UW_EF_6',
-                                  'UW_EF_7',
-                                  'UW_EF_8',
-                                  'UW_EF_9',
-                                  'UW_EF_10',
-                                  'UW_EF_11',
-                                  'UW_EF_12',
-                                  'UW_EF_postAV45_1',
-                                  'UW_EF_postAV45_2',
-                                  'UW_EF_postAV45_3',
-                                  'UW_EF_postAV45_4',
-                                  'UW_EF_postAV45_5',
-                                  'UW_EF_postAV45_6',
-                                  'UW_EF_postAV45_7',
-                                  'UW_EF_postAV45_8',
-                                  'UW_EF_postAV45_9',
-                                  'UW_EF_postAV45_10',
-                                  'UW_EF_postAV45_11',
-                                  'UW_EF_postAV45_12',
-                                  'UW_EF_postAV45_count',
-                                  'UW_EF_slope',
-                                  'UW_EF_BL_3months',
-                                  'MMSCORE.1',
-                                  'MMSCORE.2',
-                                  'MMSCORE.3',
-                                  'MMSCORE.4',
-                                  'MMSCORE.5',
-                                  'MMSCORE.6',
-                                  'MMSCORE.7',
-                                  'MMSCORE.8',
-                                  'MMSCORE.9',
-                                  'MMSCORE.10',
-                                  'MMSCORE.11',
-                                  'MMSE_post_AV45_followuptime',
-                                  'MMSE_AV45_3MTHS',
-                                  'MMSE_AV45_DATE',
-                                  'MMSE_AV45_2_3MTHS',
-                                  'MMSE_AV45_2_DATE',
-                                  'MMSE_AV45_3_3MTHS',
-                                  'MMSE_AV45_3_DATE',
-                                  'MMSEslope_postAV45',
-                                  'TIMEpostAV45_MMSE.1',
-                                  'TIMEpostAV45_MMSE.2',
-                                  'TIMEpostAV45_MMSE.3',
-                                  'TIMEpostAV45_MMSE.4',
-                                  'TIMEpostAV45_MMSE.5',
-                                  'TIMEpostAV45_MMSE.6',
-                                  'TIMEpostAV45_MMSE.7',
-                                  'TIMEpostAV45_MMSE.8',
-                                  'TIMEpostAV45_MMSE.9',
-                                  'TIMEpostAV45_MMSE.10',
-                                  'TIMEpostAV45_MMSE.11',
-                                  'ADAScog.1',
-                                  'ADAScog.2',
-                                  'ADAScog.3',
-                                  'ADAScog.4',
-                                  'ADAScog.5',
-                                  'ADAScog.6',
-                                  'ADAScog.7',
-                                  'ADAScog.8',
-                                  'ADAScog.9',
-                                  'ADAScog.10',
-                                  'ADAScog.11',
-                                  'TIME_ADAS.1',
-                                  'TIME_ADAS.2',
-                                  'TIME_ADAS.3',
-                                  'TIME_ADAS.4',
-                                  'TIME_ADAS.5',
-                                  'TIME_ADAS.6',
-                                  'TIME_ADAS.7',
-                                  'TIME_ADAS.8',
-                                  'TIME_ADAS.9',
-                                  'TIME_ADAS.10',
-                                  'TIME_ADAS.11',
-                                  'TIMEreltoAV45_ADAS.1',
-                                  'TIMEreltoAV45_ADAS.2',
-                                  'TIMEreltoAV45_ADAS.3',
-                                  'TIMEreltoAV45_ADAS.4',
-                                  'TIMEreltoAV45_ADAS.5',
-                                  'TIMEreltoAV45_ADAS.6',
-                                  'TIMEreltoAV45_ADAS.7',
-                                  'TIMEreltoAV45_ADAS.8',
-                                  'TIMEreltoAV45_ADAS.9',
-                                  'TIMEreltoAV45_ADAS.10',
-                                  'TIMEreltoAV45_ADAS.11',
-                                  'TIMEpostAV45_ADAS.1',
-                                  'TIMEpostAV45_ADAS.2',
-                                  'TIMEpostAV45_ADAS.3',
-                                  'TIMEpostAV45_ADAS.4',
-                                  'TIMEpostAV45_ADAS.5',
-                                  'TIMEpostAV45_ADAS.6',
-                                  'TIMEpostAV45_ADAS.7',
-                                  'TIMEpostAV45_ADAS.8',
-                                  'TIMEpostAV45_ADAS.9',
-                                  'TIMEpostAV45_ADAS.10',
-                                  'TIMEpostAV45_ADAS.11',
-                                  'ADAS_3MTH_AV45',
-                                  'ADAS_post_AV45_followuptime',
-                                  'ADASslope_postAV45',
-                                  'ADAS_3MTHS_AV45DATE',
-                                  'ADAS_AV45_2_3MTHS',
-                                  'ADAS_AV45_2_DATE',
-                                  'ADAS_AV45_3_3MTHS',
-                                  'ADAS_AV45_3_DATE',
-                                  'AVLT.1',
-                                  'AVLT.2',
-                                  'AVLT.3',
-                                  'AVLT.4',
-                                  'AVLT.5',
-                                  'AVLT.6',
-                                  'AVLT.7',
-                                  'AVLT.8',
-                                  'AVLT.9',
-                                  'AVLT.10',
-                                  'AVLT.11',
-                                  'TIME_AVLT.1',
-                                  'TIME_AVLT.2',
-                                  'TIME_AVLT.3',
-                                  'TIME_AVLT.4',
-                                  'TIME_AVLT.5',
-                                  'TIME_AVLT.6',
-                                  'TIME_AVLT.7',
-                                  'TIME_AVLT.8',
-                                  'TIME_AVLT.9',
-                                  'TIME_AVLT.10',
-                                  'TIME_AVLT.11',
-                                  'TIMEreltoAV45_AVLT.1',
-                                  'TIMEreltoAV45_AVLT.2',
-                                  'TIMEreltoAV45_AVLT.3',
-                                  'TIMEreltoAV45_AVLT.4',
-                                  'TIMEreltoAV45_AVLT.5',
-                                  'TIMEreltoAV45_AVLT.6',
-                                  'TIMEreltoAV45_AVLT.7',
-                                  'TIMEreltoAV45_AVLT.8',
-                                  'TIMEreltoAV45_AVLT.9',
-                                  'TIMEreltoAV45_AVLT.10',
-                                  'TIMEreltoAV45_AVLT.11',
-                                  'TIMEpostAV45_AVLT.1',
-                                  'TIMEpostAV45_AVLT.2',
-                                  'TIMEpostAV45_AVLT.3',
-                                  'TIMEpostAV45_AVLT.4',
-                                  'TIMEpostAV45_AVLT.5',
-                                  'TIMEpostAV45_AVLT.6',
-                                  'TIMEpostAV45_AVLT.7',
-                                  'TIMEpostAV45_AVLT.8',
-                                  'TIMEpostAV45_AVLT.9',
-                                  'TIMEpostAV45_AVLT.10',
-                                  'TIMEpostAV45_AVLT.11',
-                                  'AVLT_3MTHS_AV45',
-                                  'AVLT_post_AV45_followuptime',
-                                  'AVLT_3MTHSAV45_Date',
-                                  'AVLT_AV45_2_3MTHS',
-                                  'AVLT_AV45_2_DATE',
-                                  'AVLT_slope_all',
-                                  'AVLTslope_postAV45',
-                                  'GD_TOTAL.1',
-                                  'GD_TOTAL.2',
-                                  'GD_TOTAL.3',
-                                  'GD_TOTAL.4',
-                                  'GD_TOTAL.5',
-                                  'GD_TOTAL.6',
-                                  'GD_TOTAL.7',
-                                  'GD_TOTAL.8',
-                                  'GD_TOTAL.9',
-                                  'GD_TOTAL.10',
-                                  'GD_timePostAV45.1',
-                                  'GD_timePostAV45.2',
-                                  'GD_timePostAV45.3',
-                                  'GD_timePostAV45.4',
-                                  'GD_timePostAV45.5',
-                                  'GD_timePostAV45.6',
-                                  'GD_timePostAV45.7',
-                                  'GD_timePostAV45.8',
-                                  'GD_timePostAV45.9',
-                                  'GD_timePostAV45.10',
-                                  'GD_AV45_6MTHS',
-                                  'GD_AV45_DATE',
-                                  'GD_AV45_2_6MTHS',
-                                  'GD_AV45_2_DATE',
-                                  'GD_AV45_3_6MTHS',
-                                  'GD_AV45_3_DATE',
-                                  'GD_slope'],
-                    'FDG': ['FDGvisit_count',
-                            'FDG_Bin_Baseline',
-                            'FDG_pons_Vis1',
-                            'FDG_pons_Vis2',
-                            'FDG_pons_Vis3',
-                            'FDG_pons_Vis4',
-                            'FDG_pons_Vis5',
-                            'FDG_pons_Vis6',
-                            'FDG_pons_Vis7',
-                            'FDG_pons_Vis8',
-                            'FDG_pons_Vis9',
-                            'FDG_pons_Vis10',
-                            'FDGVis1_ReltoAV45',
-                            'FDGVis2_ReltoAV45',
-                            'FDGVis3_ReltoAV45',
-                            'FDGVis4_ReltoAV45',
-                            'FDGVis5_ReltoAV45',
-                            'FDGVis6_ReltoAV45',
-                            'FDGVis7_ReltoAV45',
-                            'FDGVis8_ReltoAV45',
-                            'FDGVis9_ReltoAV45',
-                            'FDGVis10_ReltoAV45',
-                            'FDGVis1_Date',
-                            'FDGVis2_Date',
-                            'FDGVis3_Date',
-                            'FDGVis4_Date',
-                            'FDGVis5_Date',
-                            'FDGVis6_Date',
-                            'FDGVis7_Date',
-                            'FDGVis8_Date',
-                            'FDGVis9_Date',
-                            'FDGVis10_Date',
-                            'FDG_postAV45_slope',
-                            'FDG_postAV45_followuptime',
-                            'FDG_wholebrain_Vis1',
-                            'FDG_wholebrain_Vis2',
-                            'FDG_wholebrain_Vis3',
-                            'FDG_wholebrain_Vis4',
-                            'FDG_wholebrain_Vis5',
-                            'FDG_wholebrain_Vis6',
-                            'FDG_wholebrain_Vis7',
-                            'FDG_wholebrain_Vis8',
-                            'FDG_wholebrain_Vis9',
-                            'FDG_wholebrain_Vis10',
-                            'FDG_Vis1_Vis2_Time',
-                            'AGE_FDG1',
-                            'FDG_3mths_AV45_WBRAIN_date',
-                            'FDG_3mths_AV45_WBRAIN',
-                            'FDG_3months_AV45',
-                            'MEAN_FDG_3MONTHS_pons',
-                            'FDG_AV45_BIN1.21_pons',
-                            'FDG_AV45_BIN1.25_pons',
-                            'FDG_3mths_AV45_2',
-                            'FDG_number',
-                            'MEAN_FDG_AV45_2',
-                            'MEAN_FDG_AV45_2_BIN1.21'],
-                    'CSF': ['CSF_diff1',
-                            'CSF_diff2',
-                            'CSF_diff3',
-                            'CSF_diff4',
-                            'CSF_diff5',
-                            'CSF_diff6',
-                            'CSF_diff7',
-                            'ClosestCSF_AV45.1',
-                            'diff_CSF_AV45.1',
-                            'AV45CSF<3months.1',
-                            'abeta_closest_AV45.1',
-                            'abeta_bin192.1',
-                            'Closest_AV45_sec',
-                            'CSF_diff1.1',
-                            'CSF_diff2.1',
-                            'CSF_diff3.1',
-                            'CSF_diff4.1',
-                            'CSF_diff5.1',
-                            'CSF_diff6.1',
-                            'CSF_diff7.1',
-                            'CSF_ABETA.1',
-                            'CSF_ABETA.2',
-                            'CSF_ABETA.3',
-                            'CSF_ABETA.4',
-                            'CSF_ABETA.5',
-                            'CSF_ABETA.6',
-                            'CSF_ABETA.7',
-                            'CSF_ABETApostAV45.1',
-                            'CSF_ABETApostAV45.2',
-                            'CSF_ABETApostAV45.3',
-                            'CSF_ABETApostAV45.4',
-                            'CSF_ABETApostAV45.5',
-                            'CSF_ABETApostAV45.6',
-                            'CSF_ABETApostAV45.7',
-                            'CSF_ABETA_slope',
-                            'CSF_ABETA_closest_AV45',
-                            'CSF_ABETA_closest_AV45_2',
-                            'CSF_ABETA_closest_AV45_3',
-                            'CSF_ABETA_closest_AV45_BIN_192',
-                            'CSF_ABETA_closest_AV45_2_BIN_192',
-                            'CSF_ABETA_closest_AV45_3_BIN_192',
-                            'CSF_TAU.1',
-                            'CSF_TAU.2',
-                            'CSF_TAU.3',
-                            'CSF_TAU.4',
-                            'CSF_TAU.5',
-                            'CSF_TAU.6',
-                            'CSF_TAU.7',
-                            'CSF_TAUpostAV45.1',
-                            'CSF_TAUpostAV45.2',
-                            'CSF_TAUpostAV45.3',
-                            'CSF_TAUpostAV45.4',
-                            'CSF_TAUpostAV45.5',
-                            'CSF_TAUpostAV45.6',
-                            'CSF_TAUpostAV45.7',
-                            'CSF_TAU_slope',
-                            'CSF_TAU_closest_AV45',
-                            'CSF_TAU_closest_AV45_2',
-                            'CSF_TAU_closest_AV45_3',
-                            'CSF_TAU_closest_AV45_BIN_93',
-                            'CSF_TAU_closest_AV45_2_BIN_93',
-                            'CSF_TAU_closest_AV45_3_BIN_93',
-                            'CSF_PTAU.1',
-                            'CSF_PTAU.2',
-                            'CSF_PTAU.3',
-                            'CSF_PTAU.4',
-                            'CSF_PTAU.5',
-                            'CSF_PTAU.6',
-                            'CSF_PTAU.7',
-                            'CSF_PTAUpostAV45.1',
-                            'CSF_PTAUpostAV45.2',
-                            'CSF_PTAUpostAV45.3',
-                            'CSF_PTAUpostAV45.4',
-                            'CSF_PTAUpostAV45.5',
-                            'CSF_PTAUpostAV45.6',
-                            'CSF_PTAUpostAV45.7',
-                            'CSF_PTAU_slope',
-                            'CSF_PTAU_closest_AV45',
-                            'CSF_PTAU_closest_AV45_2',
-                            'CSF_PTAU_closest_AV45_3',
-                            'CSF_PTAU_closest_AV45_BIN_23',
-                            'CSF_PTAU_closest_AV45_2_BIN_23',
-                            'CSF_PTAU_closest_AV45_3_BIN_23'],
-                'CLINICAL': ['MOD_HACHINSKI',
-                             'Withdrawal (1=full,2=partial,3=stayedthroughADNI1)',
-                             'Withdrawal_date',
-                             'AD_Medication',
-                             'Depression_Medication',
-                             'Hypertension',
-                             'Cholesterol',
-                             'CDR_sum_boxes',
-                             'Gender',
-                             'Edu.(Yrs)',
-                             'Handedness',
-                             'APOE2_BIN',
-                             'APOE4_BIN',
-                             'APOE4_NUM',
-                             'Init_Diagnosis',
-                             'Closest_DX_Jun15',
-                             'DX_Jun15_closestdate',
-                             'MCItoADConv(fromav45)',
-                             'MCItoADConvDate',
-                             'FollowupTimetoDX',
-                             'Baseline_date',
-                             'AV45_MCItoAD_ConvTime',
-                             'Baseline_MCItoAD_ConvTime',
-                             'BD MM-YY'],
-                'MRI': ['FSX_HC/ICV_1',
-                        'FSX_HC/ICV_2',
-                        'FSX_HC/ICV_3',
-                        'FSX_HC/ICV_4',
-                        'FSX_HC/ICV_5',
-                        'FSX_HC/ICV_6',
-                        'FSX_HC/ICV_7',
-                        'FSX_HC/ICV_8',
-                        'FSX_HC/ICV_9',
-                        'FSX_HC/ICV_10',
-                        'FSX_HC/ICV_11',
-                        'FSX_HC/ICV_12',
-                        'FSX_postAV45_1',
-                        'FSX_postAV45_2',
-                        'FSX_postAV45_3',
-                        'FSX_postAV45_4',
-                        'FSX_postAV45_5',
-                        'FSX_postAV45_6',
-                        'FSX_postAV45_7',
-                        'FSX_postAV45_8',
-                        'FSX_postAV45_9',
-                        'FSX_postAV45_10',
-                        'FSX_postAV45_11',
-                        'FSX_postAV45_12',
-                        'FSX_postAV45_count',
-                        'FSX_HC/ICV_slope',
-                        'FSX_HC/ICV_BL_3months',
-                        'FSX_MRI_STRENGTH_1',
-                        'FSX_MRI_STRENGTH_2',
-                        'FSX_MRI_STRENGTH_3',
-                        'FSX_MRI_STRENGTH_4',
-                        'FSX_MRI_STRENGTH_5',
-                        'FSX_MRI_STRENGTH_6',
-                        'FSX_MRI_STRENGTH_7',
-                        'FSX_MRI_STRENGTH_8',
-                        'FSX_MRI_STRENGTH_9',
-                        'FSX_MRI_STRENGTH_10',
-                        'FSX_MRI_STRENGTH_11',
-                        'FSX_MRI_STRENGTH_12',
-                        'FSX_FSVERSION_1',
-                        'FSX_FSVERSION_2',
-                        'FSX_FSVERSION_3',
-                        'FSX_FSVERSION_4',
-                        'FSX_FSVERSION_5',
-                        'FSX_FSVERSION_6',
-                        'FSX_FSVERSION_7',
-                        'FSX_FSVERSION_8',
-                        'FSX_FSVERSION_9',
-                        'FSX_FSVERSION_10',
-                        'FSX_FSVERSION_11',
-                        'FSX_FSVERSION_12',
-                        'FSL_HC/ICV_1',
-                        'FSL_HC/ICV_2',
-                        'FSL_HC/ICV_3',
-                        'FSL_HC/ICV_4',
-                        'FSL_HC/ICV_5',
-                        'FSL_HC/ICV_6',
-                        'FSL_HC/ICV_7',
-                        'FSL_HC/ICV_8',
-                        'FSL_HC/ICV_9',
-                        'FSL_HC/ICV_10',
-                        'FSL_HC/ICV_11',
-                        'FSL_HC/ICV_12',
-                        'FSL_postAV45_1',
-                        'FSL_postAV45_2',
-                        'FSL_postAV45_3',
-                        'FSL_postAV45_4',
-                        'FSL_postAV45_5',
-                        'FSL_postAV45_6',
-                        'FSL_postAV45_7',
-                        'FSL_postAV45_8',
-                        'FSL_postAV45_9',
-                        'FSL_postAV45_10',
-                        'FSL_postAV45_11',
-                        'FSL_postAV45_12',
-                        'FSL_postAV45_count',
-                        'FSL_HC/ICV_slope',
-                        'FSL_HC/ICV_BL_3months',
-                        'FSL_MRI_STRENGTH_1',
-                        'FSL_MRI_STRENGTH_2',
-                        'FSL_MRI_STRENGTH_3',
-                        'FSL_MRI_STRENGTH_4',
-                        'FSL_MRI_STRENGTH_5',
-                        'FSL_MRI_STRENGTH_6',
-                        'FSL_MRI_STRENGTH_7',
-                        'FSL_MRI_STRENGTH_8',
-                        'FSL_MRI_STRENGTH_9',
-                        'FSL_MRI_STRENGTH_10',
-                        'FSL_MRI_STRENGTH_11',
-                        'FSL_MRI_STRENGTH_12',
-                        'FSL_FSVERSION_1',
-                        'FSL_FSVERSION_2',
-                        'FSL_FSVERSION_3',
-                        'FSL_FSVERSION_4',
-                        'FSL_FSVERSION_5',
-                        'FSL_FSVERSION_6',
-                        'FSL_FSVERSION_7',
-                        'FSL_FSVERSION_8',
-                        'FSL_FSVERSION_9',
-                        'FSL_FSVERSION_10',
-                        'FSL_FSVERSION_11',
-                        'FSL_FSVERSION_12',
-                        'LatVent_Diff',
-                        'FrontalVol_diff',
-                        'CingulateVol_diff',
-                        'ParietalVol_Diff',
-                        'TemporalVol_diff',
-                        'LatVent_pchange',
-                        'FrontalVol_pchange',
-                        'CingulateVol_pchange',
-                        'ParietalVol_pchange',
-                        'TemporalVol_pchange',
-                        'MRI_3ths_AV45',
-                        'MRI_3mths_AV45_2',
-                        'DTI_AV45_Closest_CC',
-                        'ASL_CC_closest',
-                        'TBMSyn_DATE.1',
-                        'TBMSyn_DATE.2',
-                        'TBMSyn_DATE.3',
-                        'TBMSyn_DATE.4',
-                        'TBMSyn_DATE.5',
-                        'TBMSyn_DATE.6',
-                        'TBMSyn_DATE.7',
-                        'TBMSyn_DATE.8',
-                        'TBMSyn_DATE.9',
-                        'TBMSyn_DATE.10',
-                        'TBMSyn_SCORE.1',
-                        'TBMSyn_SCORE.2',
-                        'TBMSyn_SCORE.3',
-                        'TBMSyn_SCORE.4',
-                        'TBMSyn_SCORE.5',
-                        'TBMSyn_SCORE.6',
-                        'TBMSyn_SCORE.7',
-                        'TBMSyn_SCORE.8',
-                        'TBMSyn_SCORE.9',
-                        'TBMSyn_SCORE.10',
-                        'TBMSyn_postAV45.1',
-                        'TBMSyn_postAV45.2',
-                        'TBMSyn_postAV45.3',
-                        'TBMSyn_postAV45.4',
-                        'TBMSyn_postAV45.5',
-                        'TBMSyn_postAV45.6',
-                        'TBMSyn_postAV45.7',
-                        'TBMSyn_postAV45.8',
-                        'TBMSyn_postAV45.9',
-                        'TBMSyn_postAV45.10',
-                        'TBMSyn_BL_DATE',
-                        'TBMSyn_count',
-                        'WMH_percentOfICV.1',
-                        'WMH_percentOfICV.2',
-                        'WMH_percentOfICV.3',
-                        'WMH_percentOfICV.4',
-                        'WMH_percentOfICV.5',
-                        'WMH_percentOfICV.6',
-                        'WMH_percentOfICV.7',
-                        'WMH_postAV45.1',
-                        'WMH_postAV45.2',
-                        'WMH_postAV45.3',
-                        'WMH_postAV45.4',
-                        'WMH_postAV45.5',
-                        'WMH_postAV45.6',
-                        'WMH_postAV45.7',
-                        'WMH_WHITMATHYP.1',
-                        'WMH_WHITMATHYP.2',
-                        'WMH_WHITMATHYP.3',
-                        'WMH_WHITMATHYP.4',
-                        'WMH_WHITMATHYP.5',
-                        'WMH_WHITMATHYP.6',
-                        'WMH_WHITMATHYP.7',
-                        'WMH_slope'],
-                'AV45_NONPVC': ['AV45_WM70/composite',
-                                'AV45_2_WM70/composite',
-                                'AV45_3_WM70/composite',
-                                'AV45_2_WM70/composite_pchange',
-                                'AV45_3_WM70/composite_pchange',
-                                'AV45_2_WM70/composite_pchange_ABS',
-                                'AV45_3_WM70/composite_pchange_ABS',
-                                'AV45_2_WM70/composite_diff',
-                                'AV45_3_WM70/composite_diff',
-                                'AV45_2_WM70/composite_diff_ABS',
-                                'AV45_3_WM70/composite_diff_ABS',
-                                'AV45_WM70/composite_Slope',
-                                'AV45_WM70/cerebg',
-                                'AV45_2_WM70/cerebg',
-                                'AV45_3_WM70/cerebg',
-                                'AV45_2_WM70/cerebg_pchange',
-                                'AV45_3_WM70/cerebg_pchange',
-                                'AV45_2_WM70/cerebg_pchange_ABS',
-                                'AV45_3_WM70/cerebg_pchange_ABS',
-                                'AV45_2_WM70/cerebg_diff',
-                                'AV45_3_WM70/cerebg_diff',
-                                'AV45_2_WM70/cerebg_diff_ABS',
-                                'AV45_3_WM70/cerebg_diff_ABS',
-                                'AV45_WM70/cerebg_Slope',
-                                'AV45_WM70/wcereb',
-                                'AV45_2_WM70/wcereb',
-                                'AV45_3_WM70/wcereb',
-                                'AV45_2_WM70/wcereb_pchange',
-                                'AV45_3_WM70/wcereb_pchange',
-                                'AV45_2_WM70/wcereb_pchange_ABS',
-                                'AV45_3_WM70/wcereb_pchange_ABS',
-                                'AV45_2_WM70/wcereb_diff',
-                                'AV45_3_WM70/wcereb_diff',
-                                'AV45_2_WM70/wcereb_diff_ABS',
-                                'AV45_3_WM70/wcereb_diff_ABS',
-                                'AV45_WM70/wcereb_Slope',
-                                'AV45_LeftPutamen/WM70',
-                                'AV45_RightPutamen/WM70',
-                                'AV45_LeftCaudate/WM70',
-                                'AV45_RightCaudate/WM70',
-                                'AV45_LeftPallidum/WM70',
-                                'AV45_RightPallidum/WM70',
-                                'AV45_BigRef',
-                                'AV45_2_BigRef',
-                                'AV45_3_BigRef',
-                                'AV45_2_BigRef_pchange',
-                                'AV45_3_BigRef_pchange',
-                                'AV45_2_BigRef_pchange_ABS',
-                                'AV45_3_BigRef_pchange_ABS',
-                                'AV45_2_BigRef_diff',
-                                'AV45_3_BigRef_diff',
-                                'AV45_2_BigRef_diff_ABS',
-                                'AV45_3_BigRef_diff_ABS',
-                                'AV45_BigRef_BIN.79',
-                                'AV45_2_BigRef_BIN.79',
-                                'AV45_3_BigRef_BIN.79',
-                                'AV45_BigRef_Slope',
-                                'AV45_WM70',
-                                'AV45_2_WM70',
-                                'AV45_3_WM70',
-                                'AV45_2_WM70_pchange',
-                                'AV45_3_WM70_pchange',
-                                'AV45_2_WM70_pchange_ABS',
-                                'AV45_3_WM70_pchange_ABS',
-                                'AV45_2_WM70_diff',
-                                'AV45_3_WM70_diff',
-                                'AV45_2_WM70_diff_ABS',
-                                'AV45_3_WM70_diff_ABS',
-                                'AV45_WM70_BIN.62',
-                                'AV45_2_WM70_BIN.62',
-                                'AV45_3_WM70_BIN.62',
-                                'AV45_WM70_Slope',
-                                'AV45_cerebg',
-                                'AV45_2_cerebg',
-                                'AV45_3_cerebg',
-                                'AV45_2_cerebg_pchange',
-                                'AV45_3_cerebg_pchange',
-                                'AV45_2_cerebg_pchange_ABS',
-                                'AV45_3_cerebg_pchange_ABS',
-                                'AV45_2_cerebg_diff',
-                                'AV45_3_cerebg_diff',
-                                'AV45_2_cerebg_diff_ABS',
-                                'AV45_3_cerebg_diff_ABS',
-                                'AV45_cerebg_BIN1.26',
-                                'AV45_2_cerebg_BIN1.26',
-                                'AV45_3_cerebg_BIN1.26',
-                                'AV45_cerebg_Slope',
-                                'AV45_wcereb',
-                                'AV45_2_wcereb',
-                                'AV45_3_wcereb',
-                                'AV45_2_wcereb_pchange',
-                                'AV45_3_wcereb_pchange',
-                                'AV45_2_wcereb_pchange_ABS',
-                                'AV45_3_wcereb_pchange_ABS',
-                                'AV45_2_wcereb_diff',
-                                'AV45_3_wcereb_diff',
-                                'AV45_2_wcereb_diff_ABS',
-                                'AV45_3_wcereb_diff_ABS',
-                                'AV45_wcereb_BIN1.11',
-                                'AV45_2_wcereb_BIN1.11',
-                                'AV45_3_wcereb_BIN1.11',
-                                'AV45_wcereb_Slope',
-                                'AV45_brainstem',
-                                'AV45_2_brainstem',
-                                'AV45_3_brainstem',
-                                'AV45_2_brainstem_pchange',
-                                'AV45_3_brainstem_pchange',
-                                'AV45_2_brainstem_pchange_ABS',
-                                'AV45_3_brainstem_pchange_ABS',
-                                'AV45_2_brainstem_diff',
-                                'AV45_3_brainstem_diff',
-                                'AV45_2_brainstem_diff_ABS',
-                                'AV45_3_brainstem_diff_ABS',
-                                'AV45_brainstem_BIN.79',
-                                'AV45_2_brainstem_BIN.79',
-                                'AV45_3_brainstem_BIN.79',
-                                'AV45_brainstem_Slope',
-                                'AV45_WMratio',
-                                'AV45_2_WMratio',
-                                'AV45_3_WMratio',
-                                'AV45_2_WMratio_pchange',
-                                'AV45_3_WMratio_pchange',
-                                'AV45_2_WMratio_pchange_ABS',
-                                'AV45_3_WMratio_pchange_ABS',
-                                'AV45_2_WMratio_diff',
-                                'AV45_3_WMratio_diff',
-                                'AV45_2_WMratio_diff_ABS',
-                                'AV45_3_WMratio_diff_ABS',
-                                'AV45_Frontal/BigRef',
-                                'AV45_2_Frontal/BigRef',
-                                'AV45_3_Frontal/BigRef',
-                                'AV45_2_Frontal/BigRef_pchange',
-                                'AV45_3_Frontal/BigRef_pchange',
-                                'AV45_2_Frontal/BigRef_diff',
-                                'AV45_3_Frontal/BigRef_diff',
-                                'AV45_Cingulate/BigRef',
-                                'AV45_2_Cingulate/BigRef',
-                                'AV45_3_Cingulate/BigRef',
-                                'AV45_2_Cingulate/BigRef_pchange',
-                                'AV45_3_Cingulate/BigRef_pchange',
-                                'AV45_2_Cingulate/BigRef_diff',
-                                'AV45_3_Cingulate/BigRef_diff',
-                                'AV45_Parietal/BigRef',
-                                'AV45_2_Parietal/BigRef',
-                                'AV45_3_Parietal/BigRef',
-                                'AV45_2_Parietal/BigRef_pchange',
-                                'AV45_3_Parietal/BigRef_pchange',
-                                'AV45_2_Parietal/BigRef_diff',
-                                'AV45_3_Parietal/BigRef_diff',
-                                'AV45_Temporal/BigRef',
-                                'AV45_2_Temporal/BigRef',
-                                'AV45_3_Temporal/BigRef',
-                                'AV45_2_Temporal/BigRef_pchange',
-                                'AV45_3_Temporal/BigRef_pchange',
-                                'AV45_2_Temporal/BigRef_diff',
-                                'AV45_3_Temporal/BigRef_diff',
-                                'frontal_asymmetry',
-                                'cingulate_asymmetry',
-                                'parietal_asymmetry',
-                                'temporal_asymmetry',
-                                'AV45_WM70/composite_Slope_2pts',
-                                'AV45_WM70/composite_Slope_3pts',
-                                'AV45_WM70/cerebg_Slope_2pts',
-                                'AV45_WM70/cerebg_Slope_3pts',
-                                'AV45_WM70/wcereb_Slope_2pts',
-                                'AV45_WM70/wcereb_Slope_3pts',
-                                'AV45_BigRef_Slope_2pts',
-                                'AV45_BigRef_Slope_3pts',
-                                'AV45_WM70_Slope_2pts',
-                                'AV45_WM70_Slope_3pts',
-                                'AV45_cerebg_Slope_2pts',
-                                'AV45_cerebg_Slope_3pts',
-                                'AV45_wcereb_Slope_2pts',
-                                'AV45_wcereb_Slope_3pts',
-                                'AV45_brainstem_Slope_2pts',
-                                'AV45_brainstem_Slope_3pts',
-                                'AV45_WMratio_Slope_2pts',
-                                'AV45_WMratio_Slope_3pts',
-                                'AV45_WMratio_Slope',
-                                'AV45_Frontal/BigRef_Slope_2pts',
-                                'AV45_Frontal/BigRef_Slope_3pts',
-                                'AV45_Frontal/BigRef_Slope',
-                                'AV45_Cingulate/BigRef_Slope_2pts',
-                                'AV45_Cingulate/BigRef_Slope_3pts',
-                                'AV45_Cingulate/BigRef_Slope',
-                                'AV45_Parietal/BigRef_Slope_2pts',
-                                'AV45_Parietal/BigRef_Slope_3pts',
-                                'AV45_Parietal/BigRef_Slope',
-                                'AV45_Temporal/BigRef_Slope_2pts',
-                                'AV45_Temporal/BigRef_Slope_3pts',
-                                'AV45_Temporal/BigRef_Slope'],
-                'AV45_PVC': ['AV45_PVC_summary_CorticalSummary/Wholecereb_BL',
-                            'AV45_PVC_summary_CorticalSummary/Wholecereb_Scan2',
-                            'AV45_PVC_summary_CorticalSummary/Wholecereb_Scan3',
-                            'AV45_PVC_summary_CorticalSummary/Bigref_BL',
-                            'AV45_PVC_summary_CorticalSummary/Bigref_Scan2',
-                            'AV45_PVC_summary_CorticalSummary/Bigref_Scan3',
-                            'AV45_PVC_summary_CorticalSummary_slope',
-                            'AV45_PVC_summary_CerebGM_BL',
-                            'AV45_PVC_summary_CerebGM_Scan2',
-                            'AV45_PVC_summary_CerebGM_Scan3',
-                            'AV45_PVC_summary_HemiWM/Wholecereb_BL',
-                            'AV45_PVC_summary_HemiWM/Wholecereb_Scan2',
-                            'AV45_PVC_summary_HemiWM/Wholecereb_Scan3',
-                            'AV45_PVC_summary_Wholecereb_BL',
-                            'AV45_PVC_summary_Wholecereb_Scan2',
-                            'AV45_PVC_summary_Wholecereb_Scan3',
-                            'AV45_PVC_summary_CerebWM_BL',
-                            'AV45_PVC_summary_CerebWM_Scan2',
-                            'AV45_PVC_summary_CerebWM_Scan3',
-                            'AV45_PVC_summary_CorticalSummary_slope_2points',
-                            'AV45_PVC_summary_CorticalSummary_slope_3points',
-                            'AV45_PVC_summary_CorticalSummary/Bigref_slope_2points',
-                            'AV45_PVC_summary_CorticalSummary/Bigref_slope_3points',
-                            'AV45_PVC_summary_HemiWM_slope_2points',
-                            'AV45_PVC_summary_HemiWM_slope_3points',
-                            'AV45_PVC_summary_accumulator.0081',
-                            'AV45_PVC_summary_wcereb1.27_BL',
-                            'AV45_PVC_summary_CorticalSummary/Bigref_slope',
-                            'AV45_PVC_summary_HemiWM_slope'],
-                'RID': ['RID']}
-
-
 
 def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_to=None):
     assert timepoint in set(['BL', 'Scan2', 'Scan3'])
@@ -984,11 +171,159 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
 
     return (new_headers, new_lines)
 
+def syncFAQData(old_headers, old_lines, faq_file, registry_file, dump_to=None):
+    tmpts = 12
+    registry = importRegistry(registry_file)
+    faq_by_subj = importFAQ(faq_file, registry)
 
+    to_add_headers = []
+    to_add_headers += ['FAQTOTAL.%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FAQTOTAL_timePostAV45.%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['FAQTOTAL_AV45_6MTHS', 'FAQTOTAL_AV45_DATE',
+                       'FAQTOTAL_AV45_2_6MTHS', 'FAQTOTAL_AV45_2_DATE',
+                       'FAQTOTAL_AV45_3_6MTHS', 'FAQTOTAL_AV45_3_DATE',
+                       'FAQTOTAL_slope']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    wipeKeys(old_lines, to_add_headers)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        if len(subj_row) > tmpts:
+            raise Exception("INCREASE NUMBER OF FAQ TIMEPOINTS TO > %s" % (len(subj_row)))
+        new_subj_data = {}
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        
+        # get closest to av45s
+        six_months = 31 * 6
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
+        new_subj_data['FAQTOTAL_AV45_6MTHS'] = av45_bl_closest['FAQTOTAL'] if av45_bl_closest else ''
+        new_subj_data['FAQTOTAL_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
+        new_subj_data['FAQTOTAL_AV45_2_6MTHS'] = av45_2_closest['FAQTOTAL'] if av45_2_closest else ''
+        new_subj_data['FAQTOTAL_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
+        new_subj_data['FAQTOTAL_AV45_3_6MTHS'] = av45_3_closest['FAQTOTAL'] if av45_3_closest else ''
+        new_subj_data['FAQTOTAL_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
+        
+        post_av45_points = []
+        for i in range(tmpts):
+            if i < len(subj_row):
+                cur_score = subj_row[i]
+                date = cur_score['EXAMDATE']
+                tot_score = cur_score['FAQTOTAL']
+                if bl_av45 is not None:
+                    timediff = (date - bl_av45).days / 365.0
+                    if timediff > (-90/365.0):
+                        post_av45_points.append((timediff, tot_score))
+                else:
+                    timediff = ''
+                new_subj_data['FAQTOTAL.%s' % (i+1)] = tot_score
+                new_subj_data['FAQTOTAL_timePostAV45.%s' % (i+1)] = timediff
+        # get slope
+        faq_slope = slope(post_av45_points)
+        new_subj_data['FAQTOTAL_slope'] = faq_slope if faq_slope is not None else ''
+        return new_subj_data
+
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, faq_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncNPIData(old_headers, old_lines, npi_file, dump_to=None):
+    tmpts = 5
+    npi_by_subj = importNPI(npi_file)
+
+    to_add_headers = []
+    to_add_headers += ['NPITOTAL.%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['NPITOTAL_timePostAV45.%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['NPITOTAL_AV45_6MTHS', 'NPITOTAL_AV45_DATE',
+                       'NPITOTAL_AV45_2_6MTHS', 'NPITOTAL_AV45_2_DATE',
+                       'NPITOTAL_AV45_3_6MTHS', 'NPITOTAL_AV45_3_DATE',
+                       'NPITOTAL_slope']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    wipeKeys(old_lines, to_add_headers)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        if len(subj_row) > tmpts:
+            raise Exception("INCREASE NUMBER OF NPI TIMEPOINTS TO > %s" % (len(subj_row)))
+
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        new_subj_data = {}
+
+        # get closest to av45s
+        six_months = 31 * 6
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
+        new_subj_data['NPITOTAL_AV45_6MTHS'] = av45_bl_closest['NPITOTAL'] if av45_bl_closest else ''
+        new_subj_data['NPITOTAL_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
+        new_subj_data['NPITOTAL_AV45_2_6MTHS'] = av45_2_closest['NPITOTAL'] if av45_2_closest else ''
+        new_subj_data['NPITOTAL_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
+        new_subj_data['NPITOTAL_AV45_3_6MTHS'] = av45_3_closest['NPITOTAL'] if av45_3_closest else ''
+        new_subj_data['NPITOTAL_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
+        
+        post_av45_points = []
+        for i in range(tmpts):
+            if i < len(subj_row):
+                cur_score = subj_row[i]
+                date = cur_score['EXAMDATE']
+                tot_score = cur_score['NPITOTAL']
+                if bl_av45 is not None:
+                    timediff = (date - bl_av45).days / 365.0
+                    if timediff > (-90/365.0):
+                        post_av45_points.append((timediff, tot_score))
+                else:
+                    timediff = ''
+                new_subj_data['NPITOTAL.%s' % (i+1)] = tot_score
+                new_subj_data['NPITOTAL_timePostAV45.%s' % (i+1)] = timediff
+        # get slope
+        npi_slope = slope(post_av45_points)
+        new_subj_data['NPITOTAL_slope'] = npi_slope if npi_slope is not None else ''
+        return new_subj_data
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, npi_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncMHISTData(old_headers, old_lines, mhist_file, dump_to=None):
+    mhist_by_subj = importMedicalHistory(mhist_file)
+
+    to_add_headers = ['SMOKING','DIABETES','HYPERLIPIDEMIA']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Handedness')
+    wipeKeys(old_lines, to_add_headers)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        new_subj_data = {'SMOKING': 1 if subj_row['smoking'] else 0,
+                         'DIABETES': 1 if subj_row['diabetes'] else 0,
+                         'HYPERLIPIDEMIA': 1 if subj_row['hyperlipidemia'] else 0}
+        return new_subj_data
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, mhist_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
 
 def syncGDData(old_headers, old_lines, gd_file, registry_file, dump_to=None):
     tmpts = 10
-    registry = importRegistry(registry_file)
+    registry = importRegistry(registry_file, include_all=True)
     gd_by_subj = importGD(gd_file, registry=registry)
 
     to_add_headers = []
@@ -1153,7 +488,7 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
 
 def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None):
     tmpts = 11
-    registry = importRegistry(registry_file)
+    registry = importRegistry(registry_file, include_all=True)
     mmse_by_subj = importMMSE(mmse_file, registry=registry)
 
     # add these new headers, if not present
@@ -1231,7 +566,7 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
 
 def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump_to=None):
     tmpts = 11
-    registry = importRegistry(registry_file)
+    registry = importRegistry(registry_file, include_all=True)
     avlt_by_subj = importAVLT(neuro_battery_file, registry=registry)
 
     # no change in headers
@@ -2345,7 +1680,10 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
     to_add_headers = ['WMH_percentOfICV.%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['WMH_postAV45.%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['WMH_WHITMATHYP.%s' % (i+1) for i in range(tmpts)]
-    to_add_headers.append('WMH_slope')
+    to_add_headers += ['WMH_percentOfICV_AV45_6MTHS', 'WMH_percentOfICV_AV45_DATE',
+                       'WMH_percentOfICV_AV45_2_6MTHS', 'WMH_percentOfICV_AV45_2_DATE',
+                       'WMH_percentOfICV_AV45_3_6MTHS', 'WMH_percentOfICV_AV45_3_DATE',
+                       'WMH_percentOfICV_slope']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
     wipeKeys(old_lines, to_add_headers)
 
@@ -2353,6 +1691,17 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
         subj_wmh = sorted(subj_row, key=lambda x: x['EXAMDATE'])
         new_data = {}
+
+        # get closest to av45s
+        six_months = 31 * 6
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_wmh, bl_av45, av45_2, av45_3, day_limit=six_months)
+        new_data['WMH_percentOfICV_AV45_6MTHS'] = av45_bl_closest['wmh_percent'] if av45_bl_closest else ''
+        new_data['WMH_percentOfICV_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
+        new_data['WMH_percentOfICV_AV45_2_6MTHS'] = av45_2_closest['wmh_percent'] if av45_2_closest else ''
+        new_data['WMH_percentOfICV_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
+        new_data['WMH_percentOfICV_AV45_3_6MTHS'] = av45_3_closest['wmh_percent'] if av45_3_closest else ''
+        new_data['WMH_percentOfICV_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
+        
         slope_points = []
         for i in range(tmpts):
             if i < len(subj_wmh):
@@ -2373,7 +1722,7 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
                 new_data['WMH_postAV45.%s' % (i+1)] = ''
                 new_data['WMH_WHITMATHYP.%s' % (i+1)] = ''
         # calculate slope
-        new_data['WMH_slope'] = slope(slope_points)
+        new_data['WMH_percentOfICV_slope'] = slope(slope_points)
         return new_data
 
     new_lines = []
@@ -2439,6 +1788,7 @@ def eliminateColumns(headers, lines):
                  'ptau_closest_2',
                  'WMH_CLOSEST_AV45',
                  'WMH_CLOSEST_',
+                 'WMH_slope',
                  'ClosestCSF_AV45',
                  'diff_CSF_AV45',
                  'AV45CSF<3months',
@@ -2511,14 +1861,18 @@ def wipeKeys(lines, keys):
         new_lines.append(l)
     return l
 
-
 def addCategories(output_file):
+    colcats_df = pd.read_csv('column_categories.csv')
+    colcats_df.set_index('COLUMN',inplace=True)
     df = pd.read_csv(output_file, low_memory=False)
-    col_dict = dict([(b.strip(),a) for a,b_list in COLUMN_CATEGORIES.iteritems() for b in b_list])
-    cats = [col_dict.get(str(_).strip(),'Unknown') for _ in df.columns]
-    for a,b in zip(cats, df.columns):
-        if a == 'Unknown':
-            print b
+    cats = []
+    for col in df.columns:
+        try:
+            cat = colcats_df.loc[col.strip(),'CATEGORY']
+        except Exception as e:
+            cat = 'Unknown'
+            print col
+        cats.append(cat)
     df.columns = [cats, df.columns]
     df.to_csv(output_file, index=False)
 
@@ -2551,6 +1905,12 @@ def runPipeline():
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, av45_nontp_file, registry_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
+    print "\nSYNCING FAQ\n"
+    new_headers, new_lines = syncFAQData(new_headers, new_lines, faq_file, registry_file, dump_to=None)
+    print "\nSYNCING NPI\n"
+    new_headers, new_lines = syncNPIData(new_headers, new_lines, npi_file, dump_to=None)
+    print "\nSYNCING MHIST\n"
+    new_headers, new_lines = syncMHISTData(new_headers, new_lines, mhist_file, dump_to=None)
     print "\nSYNCING UW NEURO\n"
     new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING UCSF LONG FreeSurfer\n"
@@ -2604,11 +1964,13 @@ if __name__ == '__main__':
     wmh_file = '../docs/ADNI/UCD_ADNI2_WMH_10_26_15.csv'
     fdg_file = '../docs/ADNI/UCBERKELEYFDG_07_30_15.csv'
     mprage_file = '../docs/ADNI/MPRAGEMETA.csv'
+    mhist_file = '../docs/ADNI/RECMHIST.csv'
+    faq_file = '../docs/ADNI/FAQ.csv'
+    npi_file = '../docs/ADNI/NPI.csv'
     
     # Output files
-    #av45_file = "../output/UCBERKELEYAV45_11_09_15_extra.csv"
-    av45_file = None
-    av45_nontp_file = "../output/UCBERKELEYAV45_11_25_15_regular_nontp.csv"
+    av45_file = None # overwrites nontp if specified
+    av45_nontp_file = "../output/12_03_15/UCBERKELEYAV45_12_03_15_merged_nontp.csv"
     rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
     rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
     rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
