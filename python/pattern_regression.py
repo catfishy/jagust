@@ -395,9 +395,11 @@ def scaleRawInput(pattern_df, scale_type='original'):
         kpca_keys = pattern_df_kpca.columns
         return (pattern_df_kpca[kpca_keys], scaler)
 
-def graphNetworkConversions(groups, conversions, iterations=50):
+def graphNetworkConversions(groups, conversions, iterations=50, alternate_nodes=None):
     G = nx.DiGraph()
     cmap = get_cmap("cool")
+    if alternate_nodes:
+        alternate_nodes = [int(_) for _ in alternate_nodes]
     for g1 in groups:
         for g2 in groups:
             if g1 == g2:
@@ -417,15 +419,22 @@ def graphNetworkConversions(groups, conversions, iterations=50):
     edgecolors = norm_cmap.to_rgba(edgewidth)
     # node sizes are number of prior+post members in group
     sizes = {}
+    nodecolor = []
     for n in G.nodes():
         sizes[n] = conversions.loc[n,'count_prior'] + conversions.loc[n,'count_post']
-    print sizes
+        if n in alternate_nodes:
+            nodecolor.append('r')
+        else:
+            nodecolor.append('w')
     nodesize = [sizes[_]*80 for _ in G]
     pos = nx.spring_layout(G,iterations=iterations)
     #pos = nx.circular_layout(G)
     plt.figure(figsize=(10,10))
     #nx.draw_networkx_edges(G,pos,width=edgewidth,edge_color='m',alpha=0.3)
-    nodes = nx.draw_networkx_nodes(G,pos,node_size=nodesize,node_color='w',alpha=0.4)
+    nodes = nx.draw_networkx_nodes(G,pos,
+                                   node_size=nodesize,
+                                   node_color=nodecolor,
+                                   alpha=0.4)
     nodes.set_edgecolor('k')
     nx.draw_networkx_edges(G,pos,alpha=0.25,node_size=0,width=4,edge_color=edgecolors)
     #nx.draw_networkx_edge_labels(G,pos,edge_labels=edgelabels)
@@ -433,7 +442,37 @@ def graphNetworkConversions(groups, conversions, iterations=50):
     plt.axis('off')
     plt.show()
 
+def plotValueDensity(result_df, groups, value_key):
+    long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
+    for i, (k, patterns) in enumerate(groups.iteritems()):
+        plt.figure(i)
+        plt.title("%s (%s)" % (value_key,k))
+        for g in patterns:
+            members = long[long.membership_prior==g]
+            print len(members.index)
+            members['value'].plot(kind='density', label=g, alpha=0.5)
+        plt.legend()
+    plt.show()
 
+def plotValueBox(result_df, groups, value_key):
+    long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
+    for i, (groupk, patterns) in enumerate(groups.iteritems()):
+        by_group = pd.DataFrame()
+        for g in patterns:
+            members = long[long.membership_prior==g][['value']]
+            members['pattern'] = g
+            by_group = pd.concat((by_group,members))
+        dfg = by_group.groupby('pattern')
+        labels = ['%s\n$n$=%d'%(k, len(v)) for k, v in dfg]
+        counts = [len(v) for k,v in dfg]
+        total = float(sum(counts))
+        widths = [2*c/total for c in counts]
+        plt.figure(i)
+        bplot = by_group.boxplot(column='value',by='pattern')
+        bplot.set_xticklabels(labels)
+        plt.title("%s (%s)" % (value_key,groupk))
+        plt.suptitle("")
+    plt.show()
 
 if __name__ == '__main__':
     ref_key = 'COMPOSITE_REF'
@@ -442,7 +481,15 @@ if __name__ == '__main__':
     pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
 
     # import master
-    master_cols = ['APOE4_BIN','UW_MEM_slope','UW_EF_slope','Gender','Handedness','WMH_percentOfICV_slope','CSF_TAU_slope','FSX_HC/ICV_slope'] # ADD HIPPOCAMPAL VOLUME CHANGE, CSF TAU
+    master_cols = ['APOE4_BIN','Age@AV45','Gender','Handedness',
+                   'UW_MEM_BL_3months','UW_MEM_slope',
+                   'UW_EF_BL_3months','UW_EF_slope',
+                   'WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope',
+                   'CSF_TAU_closest_AV45','CSF_TAU_slope',
+                   'CSF_ABETA_closest_AV45','CSF_ABETA_slope',
+                   'FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope',
+                   'FAQTOTAL_AV45_6MTHS','FAQTOTAL_slope',
+                   'NPITOTAL_AV45_6MTHS','NPITOTAL_slope']
     master_csv = '../FDG_AV45_COGdata_12_03_15.csv'
     master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
     master_df.columns = master_df.columns.get_level_values(1)
@@ -493,9 +540,26 @@ if __name__ == '__main__':
     positive_patterns = list(conversions[conversions['cortical_summary']>=threshold].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.8].index)
     transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
+    groups = {'positive': positive_patterns, 'negative': negative_patterns, 'transition': transition_patterns}
     uptake_members, pattern_members, change_members = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, rchange_df)
+    
     # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members)
-    # graphNetworkConversions(positive_patterns, conversions, iterations=50)
+    
+    # graphNetworkConversions(transition_patterns+positive_patterns, conversions, iterations=50, alternate_nodes=transition_patterns)
+    # graphNetworkConversions(negative_patterns+transition_patterns, conversions, iterations=50, alternate_nodes=transition_patterns)
+    # graphNetworkConversions(negative_patterns+positive_patterns, conversions, iterations=50, alternate_nodes=negative_patterns)
+
+    # plot group value distributions
+    plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_prior')
+    plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_change')
+    plotValueBox(result_df, groups, 'WMH_percentOfICV_slope')
+    plotValueBox(result_df, groups, 'UW_EF_slope')
+    plotValueBox(result_df, groups, 'UW_MEM_slope')
+    plotValueBox(result_df, groups, 'CSF_TAU_slope')
+    plotValueBox(result_df, groups, 'FSX_HC/ICV_slope')
+
+
+
 
     # for explicitly comparing two patterns
     compareTwoGroups(34, 7, uptake_members, pattern_keys)
@@ -610,59 +674,6 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-
-    # plot against summary uptake values
-    summary_prior_long = pd.melt(result_df, id_vars=['membership_prior'], value_vars='CORTICAL_SUMMARY_prior')
-    summary_post_long = pd.melt(result_df, id_vars=['membership_post'], value_vars='CORTICAL_SUMMARY_post')
-    plt.figure(1)
-    for g in big_groups:
-        prior_members = summary_prior_long[summary_prior_long.membership_prior==g][['variable','value']]
-        post_members = summary_post_long[summary_post_long.membership_post==g][['variable','value']]
-        members = pd.concat((prior_members,post_members))
-        members['value'].plot(kind='kde', label=g, alpha=0.5)
-
-    plt.legend()
-    plt.show()
-
-    # plot against summary change values
-    summary_change_long = pd.melt(result_df, id_vars=['membership_prior'], value_vars='CORTICAL_SUMMARY_change')
-    plt.figure(1)
-    for g in big_groups:
-        members = summary_change_long[summary_change_long.membership_prior==g]
-        members['value'].plot(kind='kde', label=g, alpha=0.5)
-
-    plt.legend()
-    plt.show()
-
-    # plot against wmh slope
-    wmh_slope_long = pd.melt(result_df, id_vars=['membership_prior'], value_vars='WMH_slope')
-    plt.figure(1)
-    for g in positive_patterns:
-        members = wmh_slope_long[wmh_slope_long.membership_prior==g]
-        members['value'].plot(kind='kde', label=g, alpha=0.5)
-
-    plt.legend()
-    plt.show()
-
-    # plot against uw ef
-    ef_slope_long = pd.melt(result_df, id_vars=['membership_prior'], value_vars='UW_EF_slope')
-    plt.figure(1)
-    for g in positive_patterns:
-        members = ef_slope_long[ef_slope_long.membership_prior==g]
-        members['value'].plot(kind='kde', label=g, alpha=0.5)
-
-    plt.legend()
-    plt.show()
-
-    # plot against uw mem
-    mem_slope_long = pd.melt(result_df, id_vars=['membership_prior'], value_vars='UW_MEM_slope')
-    plt.figure(1)
-    for g in positive_patterns:
-        members = mem_slope_long[mem_slope_long.membership_prior==g]
-        members['value'].plot(kind='kde', label=g, alpha=0.5)
-
-    plt.legend()
-    plt.show()
 
 
     # plot against regional change
