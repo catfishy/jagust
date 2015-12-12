@@ -4,6 +4,8 @@ import random
 from collections import Counter, defaultdict
 import itertools
 import multiprocessing as mp
+import cPickle
+
 
 from scipy.stats import f_oneway, norm
 import matplotlib.pyplot as plt
@@ -11,6 +13,7 @@ from matplotlib import cm
 from pylab import get_cmap
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
+from pandas.stats.api import ols
 
 from sklearn.mixture import GMM, VBGMM, DPGMM
 from sklearn.decomposition import PCA, KernelPCA
@@ -18,6 +21,7 @@ from sklearn.cross_validation import LeaveOneOut
 from sklearn.mixture import GMM, VBGMM, DPGMM
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import StandardScaler
+from statsmodels.sandbox.stats.multicomp import multipletests
 import networkx as nx
 
 
@@ -25,12 +29,40 @@ from utils import saveFakeAparcInput, importFreesurferLookup, importMaster
 
 pd.options.display.mpl_style = 'default'
 
-# extract patterns and summary value, summary change
-pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL', 'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE', 'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL', 'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_LH_UNKNOWN', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE', 'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL', 'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL', 'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS', 'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS', 'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL', 'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'CTX_RH_UNKNOWN', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX', 'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER', 'LEFT_VENTRALDC', 'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER', 'RIGHT_VENTRALDC']
+bilateral=True
+
+result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
+master_keys = ['APOE4_BIN','Age@AV45','Gender','Handedness',
+               'UW_MEM_BL_3months','UW_MEM_slope',
+               'UW_EF_BL_3months','UW_EF_slope',
+               'WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope',
+               'CSF_TAU_closest_AV45','CSF_TAU_slope',
+               'CSF_ABETA_closest_AV45','CSF_ABETA_slope',
+               'FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope',
+               'FAQTOTAL_AV45_6MTHS','FAQTOTAL_slope',
+               'NPITOTAL_AV45_6MTHS','NPITOTAL_slope']
+summary_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change']
+pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 
+                'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 
+                'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL', 
+                'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE', 
+                'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL', 
+                'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE', 
+                'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL', 
+                'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL', 
+                'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS', 
+                'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS', 
+                'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL', 
+                'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX', 
+                'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER', 
+                'LEFT_VENTRALDC', 'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 
+                'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER', 'RIGHT_VENTRALDC']
+if bilateral: # truncate keys
+    pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
+
 prior_keys = ['%s_prior' % _ for _ in pattern_keys]
 post_keys = ['%s_post' % _ for _ in pattern_keys]
-rchange_keys = ['%s_change' % _ for _ in pattern_keys]
-result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
+change_keys = ['%s_change' % _ for _ in pattern_keys]
 
 
 def importCogSlopes():
@@ -146,46 +178,60 @@ def gmm_sweep_alpha(components, data, covar_type='full', alphas=None, graph=Fals
         plt.show()
     return alpha_to_clusters
 
-def compareTwoGroups(group1, group2, df, keys):
+def compareTwoGroups(group1, group2, df, keys, adjust=True):
     group1_members = df[df['membership']==group1]
     group2_members = df[df['membership']==group2]
     print "GRP %s (%s) vs GRP %s (%s)" % (group1, len(group1_members), group2, len(group2_members))
     # bonferri correct
     hypos = len(keys)
-    level = 0.05 / float(hypos)
-    print level
+    level = 0.05
     results = {}
-
     def generateArgs(group1_members, group2_members, keys):
         for i, key in enumerate(keys):
-            group1_vals = group1_members[key].tolist()
-            group2_vals = group2_members[key].tolist()
+            group1_vals = group1_members[key].dropna().tolist()
+            group2_vals = group2_members[key].dropna().tolist()
             yield (key, group1_vals, group2_vals)
-
+    '''
     pool = mp.Pool(processes=4)
     for response in pool.imap(mp_bootstrap_wrapper, generateArgs(group1_members, group2_members, keys), 1):
         key, pvalue, group1_boot, group2_boot = response
         results[key] = (pvalue, group1_boot, group2_boot)
         if pvalue <= level:
             print "\t%s: %s (%s, %s)" % (key, pvalue, group1_boot, group2_boot)
+    '''
+    for arg in generateArgs(group1_members, group2_members, keys):
+        key, pvalue, group1_boot, group2_boot = mp_bootstrap_wrapper(arg)
+        results[key] = (pvalue, group1_boot, group2_boot)
+    result_keys = results.keys()
+    result_pvals = [results[_][0] for _ in result_keys]
+    if adjust:
+        reject, pvals_corrected, alphaSidak, alphaBonf = multipletests(result_pvals,alpha=level,method='hs')
+    else:
+        pvals_corrected = result_pvals
+    for i,k in enumerate(result_keys):
+        results[k] = (pvals_corrected[i],results[k][1],results[k][2])
+        if pvals_corrected[i] <= level:
+            print "\t%s: %s (%s, %s)" % (k,pvals_corrected[i],results[k][1],results[k][2])
     return results
 
-def group_comparisons(df, groups, keys):
+def group_comparisons(df, groups, keys, adjust=True):
     data = {}
     for group1, group2 in itertools.combinations(groups,2):
-        data[(group1,group2)] = compareTwoGroups(group1, group2, df, keys)
+        data[(group1,group2)] = compareTwoGroups(group1, group2, df, keys, adjust=adjust)
     return data
 
 def parseRawInput(patterns_csv, ref_key):
     # read in data
     raw_df = pd.read_csv(patterns_csv)
     raw_df.set_index('rid',inplace=True,drop=True)
+
     # convert to SUVR units and calculate change
     priors = [_ for _ in raw_df.columns if '_prior' in _ and 'diag' not in _]
-    prior_ref = raw_df.loc[:,'%s_prior' % ref_key]
-    raw_df[priors] = raw_df[priors].divide(prior_ref,axis='index')
     posts = [_ for _ in raw_df.columns if '_post' in _ and 'diag' not in _]
+    prior_ref = raw_df.loc[:,'%s_prior' % ref_key]
     post_ref = raw_df.loc[:,'%s_post' % ref_key]
+
+    raw_df[priors] = raw_df[priors].divide(prior_ref,axis='index')
     raw_df[posts] = raw_df[posts].divide(post_ref,axis='index')
     yrs = raw_df['yrs']
     for prior_key in priors:
@@ -211,7 +257,7 @@ def parseRawInput(patterns_csv, ref_key):
     pattern_post_df.dropna(inplace=True)
 
     #pattern_df = pd.concat((pattern_prior_df,pattern_post_df))
-    
+
     uptake_prior_df = raw_df[prior_keys]
     uptake_prior_df.columns = [_.replace('_prior','') for _ in uptake_prior_df.columns]
     uptake_prior_df.dropna(inplace=True)
@@ -221,7 +267,7 @@ def parseRawInput(patterns_csv, ref_key):
     uptake_post_df.dropna(inplace=True)
 
     result_df = raw_df[result_keys]
-    rchange_df = raw_df[rchange_keys]
+    rchange_df = raw_df[change_keys]
 
     return (pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df)
 
@@ -230,7 +276,7 @@ def loadResults(results_file):
     results.set_index('rid',inplace=True,drop=True)
     return results
 
-def bigGroups(result_df, threshold=10):
+def bigGroups(result_df, threshold=7):
     # determine big groups
     groups = np.array(list(set(result_df.membership_prior) | set(result_df.membership_post)))
     groups = groups[~np.isnan(groups)]
@@ -256,15 +302,7 @@ def fitNormalCdf(values, threshold):
     cdf_val = norm.cdf(threshold,loc=mu_1,scale=sigma_1)
     return cdf_val
 
-def parseConversions(groups, result_df, threshold, master_cols):
-    '''
-    'APOE4_BIN'
-    'UW_MEM_slope'
-    'UW_EF_slope'
-    'Gender'
-    'Handedness'
-    'WMH_slope'
-    '''
+def parseConversions(groups, result_df, threshold, master_keys):
     # group diagnostic/pattern/positivity conversions
     diags = ['N', 'SMC', 'MCI', 'AD']
     conversions = {}
@@ -272,57 +310,64 @@ def parseConversions(groups, result_df, threshold, master_cols):
         cur_conversions = {}
         conversions[g] = {}
         members_prior = result_df[result_df.membership_prior==g]
-        members_prior_with_post = members_prior.dropna(axis=0,subset=['membership_post'])
         members_post = result_df[result_df.membership_post==g]
-        count_prior = float(len(members_prior.index))
-        count_prior_with_post = float(len(members_prior_with_post.index))
-        count_post = float(len(members_post.index))
-        cur_conversions['count_prior'] = int(count_prior)
-        cur_conversions['count_post'] = int(count_post)
-        members_prior_rid = list(members_prior.index)
-        master_rows = result_df.loc[members_prior_rid,master_cols]
-        master_avgs = dict(master_rows.mean())
+        # add membership counts
+        cur_conversions['count_prior'] = len(members_prior.index)
+        cur_conversions['count_post'] = len(members_post.index)
+        # add master field avgs
+        master_rows = result_df.loc[members_prior.index,master_keys]
+        cur_conversions.update(dict(master_rows.mean()))
+        # add cortical summary values
         cortical_summary_values = np.array(list(members_prior['CORTICAL_SUMMARY_prior']) + list(members_post['CORTICAL_SUMMARY_post']))
-        under_threshold = fitNormalCdf(cortical_summary_values, threshold)
-        cur_conversions.update(master_avgs)
-        cur_conversions['cortical_summary_change'] = members_prior['CORTICAL_SUMMARY_change'].mean()
         cur_conversions['cortical_summary'] = cortical_summary_values.mean()
-        cur_conversions['below_threshold'] = under_threshold
-        if int(g) == 67:
-            print members_prior[['membership_prior','membership_post','diag_prior','diag_post']]
-            print members_post[['membership_prior','membership_post','diag_prior','diag_post']]
-        # diag counts:
+        cur_conversions['below_threshold'] = fitNormalCdf(cortical_summary_values, threshold)
+        # add cortical summary change
+        cur_conversions['cortical_summary_change'] = members_prior['CORTICAL_SUMMARY_change'].mean()
+        # add diagnostic counts
         prior_counts = Counter(list(members_prior['diag_prior']))
+        prior_counts['MCI']  = prior_counts.get('EMCI',0) + prior_counts.get('LMCI',0)
         post_counts = Counter(list(members_post['diag_post']))
-        diag_counts = {}
-        for diag in diags:
-            if diag == 'MCI':
-                count = prior_counts.get("LMCI",0) + post_counts.get("LMCI",0) + prior_counts.get("EMCI",0) + post_counts.get("EMCI",0)
-            else:
-                count = prior_counts.get(diag,0) + post_counts.get(diag,0)
-            diag_counts[diag] = count
+        post_counts['MCI']  = post_counts.get('EMCI',0) + post_counts.get('LMCI',0)
+        diag_counts = {diag: prior_counts.get(diag,0) + post_counts.get(diag,0) for diag in diags}
         total_counts = float(sum(diag_counts.values()))
-        diag_counts = {k:v/total_counts for k,v in diag_counts.iteritems()}
+        if total_counts > 0:
+            diag_counts = {k:v/total_counts for k,v in diag_counts.items()}
         cur_conversions.update(diag_counts)
-        # diagnostic conversions
-        for diag1, diag2 in itertools.product(diags,repeat=2):
-            if diag1 == 'MCI':
-                prior_members = set(members_prior[members_prior.diag_prior=='EMCI'].index) | set(members_prior[members_prior.diag_prior=='LMCI'].index)
-            else:
-                prior_members = set(members_prior[members_prior.diag_prior==diag1].index)
-            if diag2 == 'MCI':
-                post_members = set(members_prior[members_prior.diag_post=='EMCI'].index) | set(members_prior[members_prior.diag_post=='LMCI'].index)
-            else:
-                post_members = set(members_prior[members_prior.diag_post==diag2].index)
-            cur_conversions['%s-%s' % (diag1, diag2)] = len(prior_members & post_members)/count_prior_with_post
-        # positivity conversions
-        cur_conversions['neg-neg'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior<threshold) & (members_prior.CORTICAL_SUMMARY_post<threshold)].index)/count_prior_with_post
-        cur_conversions['neg-pos'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior<threshold) & (members_prior.CORTICAL_SUMMARY_post>=threshold)].index)/count_prior_with_post
-        cur_conversions['pos-pos'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior>=threshold) & (members_prior.CORTICAL_SUMMARY_post>=threshold)].index)/count_prior_with_post
-        cur_conversions['pos-neg'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior>=threshold) & (members_prior.CORTICAL_SUMMARY_post<threshold)].index)/count_prior_with_post
+        # add diagnostic conversions
+        diag_conversions = defaultdict(int)
+        for rid, row in members_prior.iterrows():
+            prior_diag = row['diag_prior']
+            post_diag = row['diag_post']
+            if pd.isnull(row['diag_prior']) or pd.isnull(row['diag_post']):
+                continue
+            if prior_diag in ['EMCI','LMCI']:
+                prior_diag = 'MCI'
+            if post_diag in ['EMCI','LMCI']:
+                post_diag = 'MCI'
+            diag_conversions['%s-%s' % (prior_diag,post_diag)] += 1
+        total_counts = float(sum(diag_conversions.values()))
+        if total_counts > 0:
+            diag_conversions = {k:v/total_counts for k,v in diag_conversions.items()}
+        cur_conversions.update(diag_conversions)
+        # add positivity conversions
+        pos_conversions = {}
+        pos_conversions['neg-neg'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior<threshold) & (members_prior.CORTICAL_SUMMARY_post<threshold)].index)
+        pos_conversions['neg-pos'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior<threshold) & (members_prior.CORTICAL_SUMMARY_post>=threshold)].index)
+        pos_conversions['pos-pos'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior>=threshold) & (members_prior.CORTICAL_SUMMARY_post>=threshold)].index)
+        pos_conversions['pos-neg'] = len(members_prior[(members_prior.CORTICAL_SUMMARY_prior>=threshold) & (members_prior.CORTICAL_SUMMARY_post<threshold)].index)
+        total_counts = float(sum(pos_conversions.values()))
+        if total_counts > 0:
+            pos_conversions = {k:v/total_counts for k,v in pos_conversions.items()}
+        cur_conversions.update(pos_conversions)
         # pattern conversions
+        pattern_conversions = {}
         for g2 in groups:
-            cur_conversions[g2] = len(members_prior[members_prior.membership_post==g2].index)/count_prior_with_post
+            pattern_conversions[g2] = len(members_prior[members_prior.membership_post==g2].index)
+        total_counts = float(sum(pattern_conversions.values()))
+        if total_counts > 0:
+            pattern_conversions = {k:v/total_counts for k,v in pattern_conversions.items()}
+        cur_conversions.update(pattern_conversions)
+        # add to results
         conversions[g] = cur_conversions
     conversions = pd.DataFrame(conversions).T
     conversions.index.name = 'pattern'
@@ -340,7 +385,7 @@ def saveAparcs(alpha, components, groups, pattern_members, uptake_members, chang
         out_file_uptake = aparc_input_template % (alpha, components, g, 'uptake')
         pattern_values = pattern_members[pattern_members['membership']==g][pattern_keys].mean().to_dict()
         uptake_values = uptake_members[uptake_members['membership']==g][pattern_keys].mean().to_dict()
-        change_values = change_members[change_members['membership']==g][rchange_keys].mean().to_dict()
+        change_values = change_members[change_members['membership']==g][change_keys].mean().to_dict()
         change_values = {k.replace('_change',''):v for k,v in change_values.iteritems()}
         saveFakeAparcInput(out_file_pattern, pattern_values, index_lookup)
         saveFakeAparcInput(out_file_change, change_values, index_lookup)
@@ -366,24 +411,24 @@ def mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, 
     pattern_members_post['membership'] = pattern_members_post['membership_post']
     pattern_members_post['CORTICAL_SUMMARY'] = pattern_members_post['CORTICAL_SUMMARY_post']
     pattern_members = pd.concat((pattern_members_prior,pattern_members_post))
-    return (uptake_members, pattern_members, change_members)
+    prior_members = result_df.copy()
+    prior_members['membership'] = result_df['membership_prior']
+    return (uptake_members, pattern_members, change_members, prior_members)
 
-def scaleRawInput(pattern_df, scale_type='original'):
+def scaleRawInput(pattern_df, scale_type='original', whiten=True):
     assert scale_type in set(['original', 'pca', 'kernelpca'])
     if scale_type == 'original':
         # Scale in original space
         scaler = StandardScaler().fit(pattern_df)
         pattern_df_raw = pd.DataFrame(scaler.transform(pattern_df))
         pattern_df_raw.set_index(pattern_df.index, inplace=True)
-        raw_keys = pattern_df_raw.columns
-        return (pattern_df_raw[raw_keys], scaler)
+        return (pattern_df_raw, scaler)
     elif scale_type == 'pca':
         # convert to PCA space + whiten(scale)
-        pca_model = PCA(n_components=len(pattern_df.columns), copy=True, whiten=True)
+        pca_model = PCA(n_components=len(pattern_df.columns), copy=True, whiten=whiten)
         pattern_df_pca = pd.DataFrame(pca_model.fit_transform(pattern_df))
         pattern_df_pca.set_index(pattern_df.index, inplace=True)
-        pca_keys = pattern_df_pca.columns
-        return (pattern_df_pca[pca_keys], scaler)
+        return (pattern_df_pca, pca_model)
     elif scale_type == 'kernelpca':
         # convert to Kernel PCA Projection and scale
         kpca_model = KernelPCA(n_components=len(pattern_df.columns),kernel='rbf',fit_inverse_transform=False,gamma=1,alpha=1.0)
@@ -392,8 +437,7 @@ def scaleRawInput(pattern_df, scale_type='original'):
         scaler = StandardScaler().fit(pattern_df_kpca)
         pattern_df_kpca = pd.DataFrame(scaler.transform(pattern_df_kpca))
         pattern_df_kpca.set_index(pattern_df.index, inplace=True)
-        kpca_keys = pattern_df_kpca.columns
-        return (pattern_df_kpca[kpca_keys], scaler)
+        return (pattern_df_kpca, scaler)
 
 def graphNetworkConversions(groups, conversions, iterations=50, alternate_nodes=None):
     G = nx.DiGraph()
@@ -407,7 +451,7 @@ def graphNetworkConversions(groups, conversions, iterations=50, alternate_nodes=
                     G.add_node(int(g1))
                 continue
             conv_percent = conversions.loc[g1,g2]
-            if conv_percent > 0.1:
+            if conv_percent > 0.0:
                 G.add_edge(int(g1),int(g2),weight=conv_percent)
     # edges sizes are % of pattern members converted to new pattern
     edgewidth = []
@@ -454,7 +498,7 @@ def plotValueDensity(result_df, groups, value_key):
         plt.legend()
     plt.show()
 
-def plotValueBox(result_df, groups, value_key):
+def plotValueBox(result_df, groups, value_key, save=False):
     long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
     for i, (groupk, patterns) in enumerate(groups.iteritems()):
         by_group = pd.DataFrame()
@@ -467,108 +511,15 @@ def plotValueBox(result_df, groups, value_key):
         counts = [len(v) for k,v in dfg]
         total = float(sum(counts))
         widths = [2*c/total for c in counts]
-        plt.figure(i)
         bplot = by_group.boxplot(column='value',by='pattern')
         bplot.set_xticklabels(labels)
         plt.title("%s (%s)" % (value_key,groupk))
         plt.suptitle("")
-    plt.show()
+        if save:
+            plt.savefig('../boxplot_%s_%s.png' % (value_key.replace('/','_'), groupk), dpi=200)
+    #plt.show()
 
-if __name__ == '__main__':
-    ref_key = 'COMPOSITE_REF'
-    patterns_csv = '../datasets/pvc_allregions_uptake_change.csv'
-    threshold = 0.91711
-    pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
-
-    # import master
-    master_cols = ['APOE4_BIN','Age@AV45','Gender','Handedness',
-                   'UW_MEM_BL_3months','UW_MEM_slope',
-                   'UW_EF_BL_3months','UW_EF_slope',
-                   'WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope',
-                   'CSF_TAU_closest_AV45','CSF_TAU_slope',
-                   'CSF_ABETA_closest_AV45','CSF_ABETA_slope',
-                   'FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope',
-                   'FAQTOTAL_AV45_6MTHS','FAQTOTAL_slope',
-                   'NPITOTAL_AV45_6MTHS','NPITOTAL_slope']
-    master_csv = '../FDG_AV45_COGdata_12_03_15.csv'
-    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
-    master_df.columns = master_df.columns.get_level_values(1)
-    master_df.set_index('RID', inplace=True)
-    master_df = master_df.loc[:,master_cols]
-
-    # # Scale inputs
-    # patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type=scale_type)
-    # post_patterns_only = pd.DataFrame(scaler.transform(pattern_post_df))
-    # post_patterns_only.set_index(pattern_post_df.index, inplace=True)
-
-    # # Sweep for alpha
-    # scale_type = 'original'
-    # components = 100
-    # patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type=scale_type)
-    # alpha_to_clusters = gmm_sweep_alpha(100, patterns_only, covar_type='spherical')
-    # print sorted(alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)
-
-    # # Choose alpha + do model selection
-    # alpha = 1.87495
-    # best_model = chooseBestModel(patterns_only, components, alpha, 'spherical')
-
-    # # Predict pattern groups and add to result df
-    # y_df = pd.DataFrame(best_model.predict(patterns_only))
-    # y_df.columns = ['group']
-    # y_df.set_index(patterns_only.index, inplace=True)
-    # y_df_post = pd.DataFrame(best_model.predict(post_patterns_only))
-    # y_df_post.columns = ['group']
-    # y_df_post.set_index(post_patterns_only.index, inplace=True)
-    # for rid in result_df.index:
-    #     result_df.loc[rid,'membership_prior'] = y_df.loc[(rid,'prior'),'group']
-    #     if (rid, 'post') in y_df_post.index:
-    #         result_df.loc[rid,'membership_post'] = y_df_post.loc[(rid,'post'),'group']
-
-    # # save result
-    # result_df.to_csv('../dpgmm_alpha1.87_spherical_result.csv')
-
-    # sys.exit(1)
-
-    # load result instead
-    result_df = loadResults('../dpgmm_alpha1.87_spherical_result.csv')
-
-    # generate conversion data
-    result_df = result_df.merge(master_df,left_index=True,right_index=True)
-    big_groups = bigGroups(result_df)
-    conversions = parseConversions(big_groups, result_df, threshold, master_cols)
-    #conversions.to_csv('../dpgmm_alpha%s_spherical_conversions.csv' % (round(alpha,2)))
-    positive_patterns = list(conversions[conversions['cortical_summary']>=threshold].index)
-    negative_patterns = list(conversions[conversions['neg-neg']>=0.8].index)
-    transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
-    groups = {'positive': positive_patterns, 'negative': negative_patterns, 'transition': transition_patterns}
-    uptake_members, pattern_members, change_members = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, rchange_df)
-    
-    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members)
-    
-    # graphNetworkConversions(transition_patterns+positive_patterns, conversions, iterations=50, alternate_nodes=transition_patterns)
-    # graphNetworkConversions(negative_patterns+transition_patterns, conversions, iterations=50, alternate_nodes=transition_patterns)
-    # graphNetworkConversions(negative_patterns+positive_patterns, conversions, iterations=50, alternate_nodes=negative_patterns)
-
-    # plot group value distributions
-    plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_prior')
-    plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_change')
-    plotValueBox(result_df, groups, 'WMH_percentOfICV_slope')
-    plotValueBox(result_df, groups, 'UW_EF_slope')
-    plotValueBox(result_df, groups, 'UW_MEM_slope')
-    plotValueBox(result_df, groups, 'CSF_TAU_slope')
-    plotValueBox(result_df, groups, 'FSX_HC/ICV_slope')
-
-
-
-
-    # for explicitly comparing two patterns
-    compareTwoGroups(34, 7, uptake_members, pattern_keys)
-    compareTwoGroups(34, 7, pattern_members, pattern_keys)
-    compareTwoGroups(34, 7, change_members, change_keys)
-
-    # between group bootstrap hypothesis test for summary/regional change
-    change_keys = rchange_keys
-    change_pvalues = group_comparisons(change_members, positive_patterns, change_keys)
+def flattenGroupComparisonResults(change_pvalues):
     flattened = []
     for k,v in change_pvalues.iteritems():
         row = {}
@@ -581,90 +532,197 @@ if __name__ == '__main__':
             row['%s_%s' % ('MEAN1', k_reg)] = m1_reg
             row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
         flattened.append(row)
-    flattened_change_df = pd.DataFrame(flattened)
-    flattened_change_df.columns = [_.replace('_change','') for _ in flattened_change_df.columns]
-    flattened_change_df.loc[:,'TYPE'] = 'change'
-    flattened_change_df.set_index(['GROUP1','GROUP2','TYPE'],inplace=True)
+    flattened_df = pd.DataFrame(flattened)
+    flattened_df.set_index(['GROUP1','GROUP2'],inplace=True)
+    return flattened_df
 
-    # between group bootstrap hypothesis test for summary/regional uptake
-    uptake_keys = pattern_keys
-    uptake_pvalues = group_comparisons(uptake_members, positive_patterns, pattern_keys)
-    flattened = []
-    for k,v in uptake_pvalues.iteritems():
-        row = {}
-        grp1, grp2 = k
-        row['GROUP1'] = grp1
-        row['GROUP2'] = grp2
-        for k_reg, v_reg in v.iteritems():
-            p_reg, m1_reg, m2_reg = v_reg
-            row['%s_%s' % ('PVALUE', k_reg)] = p_reg
-            row['%s_%s' % ('MEAN1', k_reg)] = m1_reg
-            row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
-        flattened.append(row)
-    flattened_uptake_df = pd.DataFrame(flattened)
-    flattened_uptake_df.loc[:,'TYPE'] = 'uptake'
-    flattened_uptake_df.set_index(['GROUP1','GROUP2','TYPE'],inplace=True)
+if __name__ == '__main__':
+    # import master
+    master_csv = '../FDG_AV45_COGdata_12_03_15.csv'
+    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+    master_df.columns = master_df.columns.get_level_values(1)
+    master_df.set_index('RID', inplace=True)
+    master_df = master_df.loc[:,master_keys]
 
-    # between group bootstrap hypothesis test for summary/regional patterns
-    pattern_pvalues = group_comparisons(pattern_members, big_groups, pattern_keys)
-    flattened = []
-    for k,v in pattern_pvalues.iteritems():
-        row = {}
-        grp1, grp2 = k
-        row['GROUP1'] = grp1
-        row['GROUP2'] = grp2
-        for k_reg, v_reg in v.iteritems():
-            p_reg, m1_reg, m2_reg = v_reg
-            row['%s_%s' % ('PVALUE', k_reg)] = p_reg
-            row['%s_%s' % ('MEAN1', k_reg)] = m1_reg
-            row['%s_%s' % ('MEAN2', k_reg)] = m2_reg
-        flattened.append(row)
-    flattened_pattern_df = pd.DataFrame(flattened)
-    flattened_pattern_df.loc[:,'TYPE'] = 'pattern'
-    flattened_pattern_df.set_index(['GROUP1','GROUP2','TYPE'],inplace=True)
+    # parse input
+    ref_key = 'COMPOSITE_REF'
+    patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
+    bilateral = True
+    threshold = 0.91711
+    membership_conf = 0.90
+    components = 100
 
-    change_pvalues = flattened_change_df[[_ for _ in flattened_change_df.columns if 'PVALUE' in _]]
-    uptake_pvalues = flattened_uptake_df[[_ for _ in flattened_uptake_df.columns if 'PVALUE' in _]]
-    pattern_pvalues = flattened_pattern_df[[_ for _ in flattened_pattern_df.columns if 'PVALUE' in _]]
+    pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
+
+    # Scale inputs
+    scale_type = 'original'
+    patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type=scale_type)
+    post_patterns_only = pd.DataFrame(scaler.transform(pattern_post_df))
+    post_patterns_only.set_index(pattern_post_df.index, inplace=True)
+
+    # Look at top pca components (top 10)
+    top = 10
+    columns = list(pattern_prior_df.columns)
+    pca_patterns_only, pca_model = scaleRawInput(patterns_only, scale_type='pca', whiten=False)
+    pca_post_patterns_only = pd.DataFrame(pca_model.transform(post_patterns_only))
+    pca_post_patterns_only.set_index(post_patterns_only.index, inplace=True)
+    pca_patterns_only = pca_patterns_only[range(top)]
+    pca_post_patterns_only = pca_post_patterns_only[range(top)]
+    top_components = []
+    for i in range(top):
+        explained_ratio = pca_model.explained_variance_ratio_[i]
+        component = pca_model.components_[i]
+        comps = zip(columns,component)
+        comps = sorted(comps,key=lambda x: abs(x[1]), reverse=True)
+        comps = pd.DataFrame(comps, columns=['REGION','WEIGHT'])
+        top_components.append(comps)
+
+    # Sweep for alpha
+    alpha_to_clusters = gmm_sweep_alpha(100, patterns_only, covar_type='spherical')
+    alpha = sorted(alpha_to_clusters.items(), key=lambda x:x[1], reverse=True)[0][0]
+    # alpha = 1.87495
+
+    # Choose alpha + do model selection
+    best_model = chooseBestModel(patterns_only, components, alpha, 'spherical')
+    with open('../dpgmm_alpha%s_spherical_model.pkl' % round(alpha,2), 'wb') as fid:
+        cPickle.dump(best_model, fid)   
+
+    # # Load model instead
+    # with open('../dpgmm_alpha%s_spherical_model.pkl' % round(alpha,2), 'rb') as fid:
+    #     best_model = cPickle.load(fid)
+
+    # Predict pattern groups and add to result df
+    y_df = pd.DataFrame(best_model.predict(patterns_only))
+    y_df.columns = ['group']
+    y_df.set_index(patterns_only.index, inplace=True)
+    y_proba_df = pd.DataFrame(best_model.predict_proba(patterns_only)).set_index(patterns_only.index).xs('prior',level='timepoint')
+    probsums = y_proba_df.sum()
+    components_distr_max = y_proba_df[probsums[probsums >= 0.1].index].max(axis=1)
+    confident_assignments_prior = components_distr_max[components_distr_max>=membership_conf].index
+
+    y_df_post = pd.DataFrame(best_model.predict(post_patterns_only))
+    y_df_post.columns = ['group']
+    y_df_post.set_index(post_patterns_only.index, inplace=True)
+    y_proba_df_post = pd.DataFrame(best_model.predict_proba(post_patterns_only)).set_index(post_patterns_only.index).xs('post',level='timepoint')
+    probsums = y_proba_df_post.sum()
+    components_distr_max = y_proba_df_post[probsums[probsums > 0.1].index].max(axis=1)
+    confident_assignments_post = components_distr_max[components_distr_max>=membership_conf].index
+    for rid in result_df.index:
+        result_df.loc[rid,'membership_prior'] = y_df.loc[(rid,'prior'),'group']
+        for pca_col in pca_patterns_only.columns:
+            result_df.loc[rid,'pca_%s_prior' % pca_col] = pca_patterns_only.loc[(rid, 'prior'),pca_col]
+        if (rid, 'post') in y_df_post.index:
+            result_df.loc[rid,'membership_post'] = y_df_post.loc[(rid,'post'),'group']
+            for pca_col in pca_post_patterns_only.columns:
+                result_df.loc[rid,'pca_%s_post' % pca_col] = pca_post_patterns_only.loc[(rid, 'post'),pca_col]
+        if rid in confident_assignments_prior:
+            result_df.loc[rid,'membership_prior_conf'] = result_df.loc[rid,'membership_prior']
+        if rid in confident_assignments_post:
+            result_df.loc[rid,'membership_post_conf'] = result_df.loc[rid,'membership_post']
+
+    # save
+    result_df.to_csv('../dpgmm_alpha%s_sphericalbilateral_result.csv' % round(alpha,2))
+
+    sys.exit(1)
+
+    # load results
+    result_df = loadResults('../dpgmm_alpha%s_sphericalbilateral_result.csv' % round(alpha,2))
+
+    # use group memberships filtered by confidence level
+    result_df.drop(['membership_prior','membership_post'], axis=1, inplace=True)
+    result_df.rename(columns={'membership_prior_conf':'membership_prior','membership_post_conf':'membership_post'},inplace=True)
+
+    # generate conversion data
+    result_df = result_df.merge(master_df,left_index=True,right_index=True)
+    big_groups = bigGroups(result_df)
+    conversions = parseConversions(big_groups, result_df, threshold, master_keys)
+    conversions.to_csv('../dpgmm_alpha%s_spherical_conversions.csv' % (round(alpha,2)))
+    positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
+    negative_patterns = list(conversions[conversions['neg-neg']>=0.8].index)
+    transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
+    groups = {'positive': positive_patterns, 'negative': negative_patterns, 'transition': transition_patterns}
+    uptake_members, pattern_members, change_members, prior_members = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, rchange_df)
+
+    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members)
+    
+    # graphNetworkConversions(transition_patterns+positive_patterns, conversions, iterations=50, alternate_nodes=transition_patterns)
+    # graphNetworkConversions(negative_patterns+transition_patterns, conversions, iterations=50, alternate_nodes=transition_patterns)
+    # graphNetworkConversions(negative_patterns+positive_patterns+transition_patterns, conversions, iterations=50, alternate_nodes=negative_patterns+transition_patterns)
+
+    # pca component correlations
+    y_cols = ['CORTICAL_SUMMARY_prior',
+              'CORTICAL_SUMMARY_change',
+              'UW_MEM_BL_3months',
+              'UW_EF_BL_3months',
+              'CSF_TAU_closest_AV45',
+              'CSF_ABETA_closest_AV45',
+              'FSX_HC/ICV_BL_3months']
+    x_cols = ['pca_0_prior','CORTICAL_SUMMARY_prior']
+    props={'pad':10}
+    for y in y_cols:
+        fig, axes = plt.subplots(nrows=1, ncols=2)
+        # pca
+        model = ols(x=result_df['pca_0_prior'],y=result_df[y])
+        x = model.beta.x
+        intercept = model.beta.intercept
+        r2 = '{0:.3f}'.format(model.r2)
+        equation = 'Y ~ %sx + %s' % ('{0:.3f}'.format(x),'{0:.3f}'.format(intercept))
+        ax = axes[0]
+        result_df.plot(ax=ax, kind='scatter',x='pca_0_prior',y=y)
+        xvals = np.array(sorted(list(result_df['pca_0_prior'])))
+        ax.plot(xvals, xvals*x + intercept, 'r')
+        ax.set_title('Principal Component')
+        ax.annotate('%s\nR2=%s' % (equation,r2), xy=(0.05,0.95), xycoords='axes fraction', bbox=props, verticalalignment='top', fontsize=15, color='k')
+        # cortical summary
+        model = ols(x=result_df['CORTICAL_SUMMARY_prior'],y=result_df[y])
+        x = model.beta.x
+        intercept = model.beta.intercept
+        r2 = '{0:.3f}'.format(model.r2)
+        equation = 'Y ~ %sx + %s' % ('{0:.3f}'.format(x),'{0:.3f}'.format(intercept))
+        ax = axes[1]
+        result_df.plot(ax=ax, kind='scatter',x='CORTICAL_SUMMARY_prior',y=y)
+        xvals = np.array(sorted(list(result_df['CORTICAL_SUMMARY_prior'])))
+        ax.plot(xvals, xvals*x + intercept, 'r')
+        ax.set_title('Cortical Summary SUVR')
+        ax.annotate('%s\nR2=%s' % (equation,r2), xy=(0.05,0.95), xycoords='axes fraction', bbox=props, verticalalignment='top', fontsize=15, color='k')
 
 
-    # aggregate effects
-    effects = []
-    keys = set(change_pvalues.keys()) & set(uptake_pvalues.keys())
-    for k in keys:
-        group1, group2 = k
-        row = {'group1': group1,
-               'group2': group2}
-        uptake_res = uptake_pvalues[k]
-        change_res = change_pvalues[k]
-        for ck in uptake_keys:
-            uptake_pvalue = uptake_res[ck][0]
-            group1_uptake = uptake_res[ck][1]
-            group2_uptake = uptake_res[ck][2]
-            cur_row = {'group1_%s_uptake' % ck: group1_uptake,
-                       'group2_%s_uptake' % ck: group2_uptake,
-                       'pvalue_%s_uptake' % ck: uptake_pvalue}
-            row.update(cur_row)
-        for ck in change_keys:
-            change_pvalue = change_res[ck][0]
-            group1_change = change_res[ck][1]
-            group2_change = change_res[ck][2]
-            cur_row = {'group1_%s_change' % ck: group1_change,
-                       'group2_%s_change' % ck: group2_change,
-                       'pvalue_%s_change' % ck: change_pvalue}
-            row.update(cur_row)
-        effects.append(row)
+    # plot group value distributions
+    plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_prior', save=True)
+    plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_change', save=True)
+    plotValueBox(result_df, groups, 'WMH_percentOfICV_slope', save=True)
+    plotValueBox(result_df, groups, 'UW_EF_slope', save=True)
+    plotValueBox(result_df, groups, 'UW_MEM_slope', save=True)
+    plotValueBox(result_df, groups, 'CSF_TAU_slope', save=True)
+    plotValueBox(result_df, groups, 'CSF_ABETA_slope', save=True)
+    plotValueBox(result_df, groups, 'FSX_HC/ICV_slope', save=True)
 
-    effects_df = pd.DataFrame(effects)
-    columns = ['group1', 'group2']
-    for ck in uptake_keys:
-        columns += ['group1_%s_uptake' % ck, 'group2_%s_uptake' % ck, 'pvalue_%s_uptake' % ck]
+    # for explicitly comparing two patterns
+    compareTwoGroups(55,53, uptake_members, pattern_keys)
+    compareTwoGroups(34, 7, pattern_members, pattern_keys)
+    compareTwoGroups(21, 47, change_members, change_keys)
+    compareTwoGroups(55,53, prior_members, master_keys + summary_keys, adjust=False)
 
-    for ck in change_keys:
-        columns += ['group1_%s_change' % ck, 'group2_%s_change' % ck, 'pvalue_%s_change' % ck]
+    # between group bootstrap hypothesis tests
+    change_pvalues = group_comparisons(change_members, transition_patterns, change_keys)
+    flattened_change_df = flattenGroupComparisonResults(change_pvalues)
+    flattened_change_df.to_csv('../dpgmm_alpha%s_spherical_transition_change_pvalues.csv' % (round(alpha,2)))
 
-    effects_df = effects_df.ix[:,columns]
+    pattern_pvalues = group_comparisons(pattern_members, transition_patterns, pattern_keys)
+    flattened_pattern_df = flattenGroupComparisonResults(pattern_pvalues)
+    flattened_pattern_df.to_csv('../dpgmm_alpha%s_spherical_transition_pattern_pvalues.csv' % (round(alpha,2)))
 
+    master_pvalues = group_comparisons(prior_members, transition_patterns, master_keys + summary_keys)
+    flattened_master_df = flattenGroupComparisonResults(master_pvalues)
+    flattened_master_df.to_csv('../dpgmm_alpha%s_spherical_transition_master_pvalues.csv' % (round(alpha,2)))
+
+    master_pvalues = group_comparisons(prior_members, positive_patterns, master_keys + summary_keys)
+    flattened_master_df = flattenGroupComparisonResults(master_pvalues)
+    flattened_master_df.to_csv('../dpgmm_alpha%s_spherical_positive_master_pvalues.csv' % (round(alpha,2)))
+
+    uptake_pvalues = group_comparisons(uptake_members, transition_patterns, pattern_keys)
+    flattened_uptake_df = flattenGroupComparisonResults(uptake_pvalues)
+    flattened_uptake_df.to_csv('../dpgmm_alpha%s_spherical_transition_uptake_pvalues.csv' % (round(alpha,2)))
 
     # plot baseline value versus change scatter plot
     fig, ax = plt.subplots(1)
@@ -674,11 +732,9 @@ if __name__ == '__main__':
     plt.legend()
     plt.show()
 
-
-
     # plot against regional change
     rchange_members = rchange_df.merge(result_df, left_index=True, right_index=True)
-    for i,rchange_key in enumerate(rchange_keys):
+    for i,rchange_key in enumerate(change_keys):
         long = pd.melt(rchange_members, id_vars='membership', value_vars=rchange_key)
         plt.figure(i+1)
         for g in groups:

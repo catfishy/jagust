@@ -368,7 +368,57 @@ def parseRawAV45Output(av45_file, registry_file, lut_file):
 
     return data_bl, data_scan2, data_scan3, index_lookup
 
-def parseRawRousset(bl_file, scan2_file, scan3_file):
+def bilateralTranslations(lut_file):
+    lut_table = importFreesurferLookup(lut_file, flip=True)
+    bilateral_dict = defaultdict(list)
+    for k,v in lut_table.iteritems():
+        bilateral_key = k.lower().replace('-','_').replace('lh.','').replace('rh.','').replace('lh_','').replace('rh_','').replace('right_','').replace('left_','').upper()
+        bilateral_dict[bilateral_key].append(v)
+    return dict(bilateral_dict)
+
+def parseRawRousset_inner(data, translations=None):
+    names = [unwrap(_) for _ in data['names']]
+    sizes = [unwrap(_) for _ in data['sizes']]
+    pvcvals = [unwrap(_) for _ in data['pvcvals']]
+    indices = [unwrap(_) for _ in data['indices']]
+    indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
+
+    val_lookup = dict(zip(names, pvcvals))
+    index_lookup = dict(zip(names, indices))
+    size_lookup = dict(zip(names, sizes))
+
+    if translations:
+        used_indices = set([b for a in indices for b in a])
+        for k,v in translations.iteritems():
+            relevant_names = [name for name, idx in index_lookup.iteritems() if len(set(idx) & set(v))>0]
+            if len(relevant_names) == 0:
+                continue
+            regionsizes = [(size_lookup[name],val_lookup[name]) for name in relevant_names]
+            val_lookup[k] = weightedMean(regionsizes)
+            index_lookup[k] = [_ for name in relevant_names for _ in index_lookup[name]]
+            size_lookup[k] = sum([size_lookup[name] for name in relevant_names])
+            for name in relevant_names:
+                val_lookup.pop(name)
+                index_lookup.pop(name)
+                size_lookup.pop(name)
+
+    # add whole cereb
+    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
+    val_lookup['whole_cerebellum'] = weightedMean(regionsizes)
+    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
+    val_lookup['composite_ref'] = weightedMean(regionsizes)
+    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
+    val_lookup['cortical_summary'] = weightedMean(regionsizes)
+    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
+    val_lookup['white_matter'] = weightedMean(regionsizes)
+    index_lookup['cortical_summary'] = SUMMARY
+    index_lookup['whole_cerebellum'] = WHOLECEREBELLUM
+    index_lookup['composite_ref'] = BIGREF
+    index_lookup['white_matter'] = WHITEMATTER
+
+    return val_lookup, index_lookup
+
+def parseRawRousset(bl_file, scan2_file, scan3_file, translations=None):
     data_bl_raw = importRawRoussetResults(bl_file)
     data_scan2_raw = importRawRoussetResults(scan2_file)
     data_scan3_raw = importRawRoussetResults(scan3_file)
@@ -377,78 +427,14 @@ def parseRawRousset(bl_file, scan2_file, scan3_file):
     data_scan3 = {}
     index_lookup = None
     for rid, data in data_bl_raw.iteritems():
-        names = [unwrap(_) for _ in data['names']]
-        sizes = [unwrap(_) for _ in data['sizes']]
-        pvcvals = [unwrap(_) for _ in data['pvcvals']]
-        indices = [unwrap(_) for _ in data['indices']]
-        indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
-        vals = dict(zip(names, pvcvals))
-
-        # add whole cereb
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
-        vals['whole_cerebellum'] = weightedMean(regionsizes)
-        # add bigref
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
-        vals['composite_ref'] = weightedMean(regionsizes)
-        # add cortical summary
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
-        vals['cortical_summary'] = weightedMean(regionsizes)
-        # add white matter
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
-        vals['white_matter'] = weightedMean(regionsizes)
-
-        if index_lookup is None:
-            index_lookup = dict(zip(names, indices))
-            index_lookup['cortical_summary'] = SUMMARY
-            index_lookup['whole_cerebellum'] = WHOLECEREBELLUM
-            index_lookup['composite_ref'] = BIGREF
-            index_lookup['white_matter'] = WHITEMATTER
-
-        data_bl[rid] = vals
+        val_lookup, index_lookup = parseRawRousset_inner(data, translations=translations)
+        data_bl[rid] = val_lookup
     for rid, data in data_scan2_raw.iteritems():
-        names = [unwrap(_) for _ in data['names']]
-        sizes = [unwrap(_) for _ in data['sizes']]
-        pvcvals = [unwrap(_) for _ in data['pvcvals']]
-        indices = [unwrap(_) for _ in data['indices']]
-        indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
-        vals = dict(zip(names, pvcvals))
-
-        # add whole cereb
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
-        vals['whole_cerebellum'] = weightedMean(regionsizes)
-        # add bigref
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
-        vals['composite_ref'] = weightedMean(regionsizes)
-        # add cortical summary
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
-        vals['cortical_summary'] = weightedMean(regionsizes)
-        # add white matter
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
-        vals['white_matter'] = weightedMean(regionsizes)
-
-        data_scan2[rid] = vals
+        val_lookup, index_lookup = parseRawRousset_inner(data, translations=translations)
+        data_scan2[rid] = val_lookup
     for rid, data in data_scan3_raw.iteritems():
-        names = [unwrap(_) for _ in data['names']]
-        sizes = [unwrap(_) for _ in data['sizes']]
-        pvcvals = [unwrap(_) for _ in data['pvcvals']]
-        indices = [unwrap(_) for _ in data['indices']]
-        indices = [[_] if (not (isinstance(_, list) or isinstance(_, np.ndarray))) else _ for _ in indices]
-        vals = dict(zip(names, pvcvals))
-
-        # add whole cereb
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
-        vals['whole_cerebellum'] = weightedMean(regionsizes)
-        # add bigref
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
-        vals['composite_ref'] = weightedMean(regionsizes)
-        # add cortical summary
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
-        vals['cortical_summary'] = weightedMean(regionsizes)
-        # add white matter
-        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
-        vals['white_matter'] = weightedMean(regionsizes)
-
-        data_scan3[rid] = vals
+        val_lookup, index_lookup = parseRawRousset_inner(data, translations=translations)
+        data_scan3[rid] = val_lookup
     return data_bl, data_scan2, data_scan3, index_lookup
 
 
@@ -839,7 +825,7 @@ def importADNIDiagnosis(diag_file, registry=None):
         diag_by_subj[k] = sorted(v, key=lambda x: x['EXAMDATE'])
     return diag_by_subj
 
-def importFreesurferLookup(lut_file):
+def importFreesurferLookup(lut_file, flip=False):
     infile = open(lut_file, 'r')
     data = {}
     for line in infile.readlines():
@@ -848,7 +834,10 @@ def importFreesurferLookup(lut_file):
             continue
         try:
             idx = int(parts[0])
-            data[idx] = parts[1]
+            if flip:
+                data[parts[1]] = idx
+            else:
+                data[idx] = parts[1]
         except Exception as e:
             continue
     return data

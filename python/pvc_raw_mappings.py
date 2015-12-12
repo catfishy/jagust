@@ -26,7 +26,7 @@ GROUPS = {'increasing_high': {'AD': [4657, 4660, 4153, 4672, 4696, 4195, 4252, 4
                              'LMCI': [4114, 4115, 1045, 4061, 4122, 4869, 42, 1122, 1118, 4210, 4723, 4214, 4229, 668, 1187, 679, 4777, 4784, 4300, 4817, 225, 4354, 4873, 4741, 1318, 1352, 867, 1414, 4489, 1418, 919, 908, 1427, 408, 4767, 4653, 4094], 
                              'N': [4620, 23, 4637, 4643, 4649, 4150, 58, 69, 4177, 602, 610, 618, 113, 4213, 120, 4218, 123, 4222, 4739, 4234, 4119, 4762, 4254, 159, 685, 4795, 4313, 741, 1261, 751, 767, 1280, 260, 4357, 4878, 4367, 4387, 4388, 4389, 4393, 4396, 301, 4399, 311, 4410, 4441, 4448, 4466, 4843, 4485, 4496, 4503, 923, 413, 926, 5023, 4520, 4082, 4018, 4020, 4028, 4032, 4552, 4060, 4576, 4580, 4586, 4076, 4086, 1016]}}
 
-REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1004,2004,85,24,14,15,72,4,43,75,76]
+REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,85,24,14,15,72,4,43,75,76]
 
 def generateBathroomTilePlot(bl_vs_change_json):
     df = pd.read_json(bl_vs_change_json)
@@ -279,6 +279,7 @@ def regionalRanksToLines(subj_group, group_prefix, data_prior, data_post, index_
 
 if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
+    bilat_translate = bilateralTranslations(lut_file)
     lut_table = importFreesurferLookup(lut_file)
     master_file = '../FDG_AV45_COGdata_11_10_15.csv'
     master_data = importMaster(master_file)
@@ -306,7 +307,7 @@ if __name__ == "__main__":
     bl_file = '../output/Rousset_BL/raw_allregions_output_BL.mat'
     scan2_file = '../output/Rousset_Scan2/raw_allregions_output_Scan2.mat'
     scan3_file = '../output/Rousset_Scan3/raw_allregions_output_Scan3.mat'
-    data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file)
+    data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file, translations=bilat_translate)
     data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
 
     # # allregion nontp results
@@ -342,7 +343,7 @@ if __name__ == "__main__":
             scan3_datarow.update({k:scan3_row[k] for k in index_lookup})
             all_data.append(scan3_datarow)
     df = pd.DataFrame(all_data)
-    df.to_csv('../datasets/pvc_allregions_uptake.csv', index=False)
+    df.to_csv('../datasets/pvc_allregions_uptake_bilateral.csv', index=False)
 
     data_prior = data_bl
     data_post = {}
@@ -378,7 +379,7 @@ if __name__ == "__main__":
             datarow.update(post_regions)
         all_data.append(datarow)
     df = pd.DataFrame(all_data)
-    df.to_csv('../datasets/pvc_allregions_uptake_change.csv', index=False)
+    df.to_csv('../datasets/pvc_allregions_uptake_change_bilateral.csv', index=False)
     sys.exit(1)
 
     # # identify subjects who rank first in key_groups out of subj_group
