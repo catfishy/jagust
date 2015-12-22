@@ -6,21 +6,16 @@ import itertools
 import multiprocessing as mp
 import cPickle
 
-
-from scipy.stats import f_oneway, norm
+from scipy.stats import f_oneway, norm, chi2_contingency
 import matplotlib.pyplot as plt
-from matplotlib import cm
-from pylab import get_cmap
 from matplotlib.colors import Normalize
-from matplotlib.cm import ScalarMappable
+from matplotlib.cm import ScalarMappable, get_cmap
 from pandas.stats.api import ols
 import seaborn as sns
 from sklearn.mixture import GMM, VBGMM, DPGMM
 from sklearn.mixture.dpgmm import digamma
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.cross_validation import LeaveOneOut
-from sklearn.mixture import GMM, VBGMM, DPGMM
-from sklearn.tree import DecisionTreeRegressor
 from sklearn.preprocessing import StandardScaler
 from statsmodels.sandbox.stats.multicomp import multipletests
 import networkx as nx
@@ -42,7 +37,8 @@ master_keys = ['APOE4_BIN','Age@AV45','Gender','Handedness',
                'FAQTOTAL_AV45_6MTHS','FAQTOTAL_slope',
                'NPITOTAL_AV45_6MTHS','NPITOTAL_slope',
                'MMSEslope_postAV45','MMSE_AV45_3MTHS',
-               '','FDG_postAV45_slope']
+               'FDG_PONS_AV45_6MTHS','FDG_postAV45_slope']
+cat_keys = ['APOE4_BIN','Gender','Handedness']
 summary_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change']
 pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 
                 'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 
@@ -114,8 +110,23 @@ def mp_bootstrap_wrapper(arg):
     key, group1_vals, group2_vals = arg
     group1_boot = bootstrap_mean(group1_vals)
     group2_boot = bootstrap_mean(group2_vals)
-    pvalue = bootstrap_t_test(group1_vals, group2_vals)
+    if key in cat_keys:
+        pvalue = chi2_test(group1_vals, group2_vals)
+        print "chi2 %s: %s" % (key,pvalue)
+    else:
+        pvalue = bootstrap_t_test(group1_vals, group2_vals)
     return (key, pvalue, group1_boot, group2_boot)
+
+def chi2_test(group1_vals, group2_vals):
+    g1_counter = Counter(group1_vals)
+    g2_counter = Counter(group2_vals)
+    all_keys = list(set(g1_counter.keys()) | set(g2_counter.keys()))
+    freqs = []
+    freqs.append({g1_counter.get(k,0) for k in all_keys})
+    freqs.append({g2_counter.get(k,0) for k in all_keys})
+    freqs_df = pd.DataFrame(freqs)
+    chi2, p, dof, expected = chi2_contingency(freqs_df,correction=True)
+    return float(p)
 
 def bootstrap_t_test(treatment, control, nboot=100000):
     treatment = np.array(treatment)
@@ -413,7 +424,12 @@ def parseConversions(groups, result_df, threshold, master_keys):
     conversions.index.name = 'pattern'
     return conversions
 
-def saveAparcs(alpha, components, groups, pattern_members, uptake_members, change_members, index_lookup):
+def saveAparcs(alpha, components, groups, pattern_members, uptake_members, change_members, lut_file):
+    if bilateral:
+        index_lookup = bilateralTranslations(lut_file)
+    else:
+        lut_table = importFreesurferLookup(lut_file)
+        index_lookup = {v.replace('-','_').upper():[k] for k,v in lut_table.iteritems()}
     aparc_input_template = "../output/fake_aparc_inputs/dpgmm_alpha%s_comp%s_group_%s_%s"
     for g in groups:
         out_file_pattern = aparc_input_template % (alpha, components, g, 'pattern')
@@ -601,11 +617,12 @@ def regionRanks(groups, members, keys):
     '''
     remove white matter, ref regions
     '''
-    blacklist = ['WHITE_MATTER','BRAIN_STEM','VENTRALDC']
+    #blacklist = ['WHITE_MATTER','BRAIN_STEM','VENTRALDC']
+    blacklist = []
     filtered_keys = [k for k in keys if not any([bl in k for bl in blacklist])]
     ranks = pd.DataFrame()
     for g in groups:
-        ranked_regions = members[members.membership_prior==g].mean().loc[filtered_keys].sort(ascending=False,inplace=False)
+        ranked_regions = members[members.membership==g].mean().loc[filtered_keys].sort(ascending=False,inplace=False)
         ranked_regions = pd.DataFrame(ranked_regions).reset_index()
         ranked_regions.columns = ['%s_RANK' % int(g),'%s_UPTAKE' % int(g)]
         ranks = pd.concat((ranks,ranked_regions.T))
@@ -639,22 +656,37 @@ def compareGroupPairs(pairs, members, keys):
     all_results_df = all_results_df[key_order]
     return all_results_df
 
+def diagnosisChi2Test(pairs, diags):
+    diags_comparisons = []
+    for g1, g2 in pairs:
+        cont_table = diags.loc[[g1,g2]]
+        chi2, p, dof, expected = chi2_contingency(cont_table,correction=True)
+        diags_comparisons.append({'GROUP1': g1,
+                                  'GROUP2': g2,
+                                  'DIAGS_PVALUE': p})
+    diags_comparisons_df = pd.DataFrame(diags_comparisons)
+    return diags_comparisons_df
+
 
 if __name__ == '__main__':
+    # SETTINGS
+    patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
+    lut_file = "../FreeSurferColorLUT.txt"
+    master_csv = '../FDG_AV45_COGdata_12_21_15.csv'
+    ref_key = 'WHOLE_CEREBELLUM'
+    threshold = 1.2813
+    # ref_key = 'COMPOSITE_REF'
+    # threshold = 0.91711
+    membership_conf = 0.50
+    components = 100
+
     # import master
-    master_csv = '../FDG_AV45_COGdata_12_03_15.csv'
     master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
     master_df.columns = master_df.columns.get_level_values(1)
     master_df.set_index('RID', inplace=True)
     master_df = master_df.loc[:,master_keys]
 
     # parse input
-    ref_key = 'COMPOSITE_REF'
-    patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
-    threshold = 0.91711
-    membership_conf = 0.50
-    components = 100
-
     pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
 
     # Scale inputs
@@ -662,6 +694,12 @@ if __name__ == '__main__':
     patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type=scale_type)
     post_patterns_only = pd.DataFrame(scaler.transform(pattern_post_df))
     post_patterns_only.set_index(pattern_post_df.index, inplace=True)
+
+    # # Choose alpha + do model selection
+    # best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.02, covar_type='spherical')
+    # alpha = best_model.alpha
+    # with open('../dpgmm_alpha%s_spherical_bilateral_model.pkl' % round(alpha,2), 'wb') as fid:
+    #     cPickle.dump(best_model, fid)   
 
     # # Look at top pca components (top 10)
     # top = 10
@@ -679,17 +717,6 @@ if __name__ == '__main__':
     #     comps = sorted(comps,key=lambda x: abs(x[1]), reverse=True)
     #     comps = pd.DataFrame(comps, columns=['REGION','WEIGHT'])
     #     top_components.append(comps)
-
-    # # Choose alpha + do model selection
-    # best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.1, covar_type='spherical')
-    # alpha = best_model.alpha
-    # with open('../dpgmm_alpha%s_spherical_bilateral_model.pkl' % round(alpha,2), 'wb') as fid:
-    #     cPickle.dump(best_model, fid)   
-
-    # Load model instead
-    with open('../dpgmm_alpha13.93_spherical_bilateral_model.pkl', 'rb') as fid:
-        best_model = cPickle.load(fid)
-        alpha = best_model.alpha
 
     # # Predict pattern groups and add to result df
     # y_df = pd.DataFrame(best_model.predict(patterns_only))
@@ -723,7 +750,11 @@ if __name__ == '__main__':
     # # save
     # result_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_result.csv' % round(alpha,2))
 
-    # load results
+    # Load
+    with open('../dpgmm_alpha15.4_spherical_bilateral_model.pkl', 'rb') as fid:
+        best_model = cPickle.load(fid)
+        alpha = best_model.alpha
+
     result_df = loadResults('../dpgmm_alpha%s_spherical_bilateral_result.csv' % round(alpha,2))
 
     # use group memberships filtered by confidence level
@@ -734,7 +765,8 @@ if __name__ == '__main__':
     result_df = result_df.merge(master_df,left_index=True,right_index=True)
     big_groups = bigGroups(result_df, threshold=3)
     conversions = parseConversions(big_groups, result_df, threshold, master_keys)
-    # conversions.to_csv('../dpgmm_alpha%s_spherical_bilateral_conversions.csv' % (round(alpha,2)))
+    conversions.to_csv('../dpgmm_alpha%s_spherical_bilateral_conversions.csv' % (round(alpha,2)))
+
     positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.9].index)
     transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
@@ -749,14 +781,7 @@ if __name__ == '__main__':
     all_keys = master_keys+summary_keys+pattern_keys+change_keys
 
     # # save fake aparcs
-    # lut_file = "../FreeSurferColorLUT.txt"
-    # if bilateral:
-    #     index_lookup = bilateralTranslations(lut_file)
-    # else:
-    #     lut_table = importFreesurferLookup(lut_file)
-    #     index_lookup = {v.replace('-','_').upper():[k] for k,v in lut_table.iteritems()}
-
-    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, index_lookup)
+    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
 
     # # pca component correlations
     # y_cols = ['CORTICAL_SUMMARY_prior',
@@ -796,13 +821,14 @@ if __name__ == '__main__':
     #     ax.set_title('Cortical Summary SUVR')
     #     ax.annotate('%s\nR2=%s' % (equation,r2), xy=(0.05,0.95), xycoords='axes fraction', bbox=props, verticalalignment='top', fontsize=15, color='k')
 
+
     # region ranking
     uptake_ranks = regionRanks(big_groups, uptake_members, pattern_keys)
-    uptake_ranks.to_csv('../dpgmm_alpha%s_spherical_bilateral_uptake_ranks.csv' % round(alpha,2))
     change_ranks = regionRanks(big_groups, change_members, change_keys)
-    change_ranks.to_csv('../dpgmm_alpha%s_spherical_bilateral_change_ranks.csv' % round(alpha,2))
     pattern_ranks = regionRanks(big_groups, pattern_members, pattern_keys)
-    pattern_ranks.to_csv('../dpgmm_alpha%s_spherical_bilateral_pattern_ranks.csv' % round(alpha,2))
+    uptake_ranks.T.to_csv('../dpgmm_alpha%s_spherical_bilateral_uptake_ranks.csv' % round(alpha,2))
+    change_ranks.T.to_csv('../dpgmm_alpha%s_spherical_bilateral_change_ranks.csv' % round(alpha,2))
+    pattern_ranks.T.to_csv('../dpgmm_alpha%s_spherical_bilateral_pattern_ranks.csv' % round(alpha,2))
 
     # plot pattern flows
     graphNetworkConversions(transition_patterns+positive_patterns, conversions, iterations=50, threshold=0.1, alternate_nodes=transition_patterns)
@@ -813,6 +839,8 @@ if __name__ == '__main__':
     plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_prior', save=True)
     plotValueBox(result_df, groups, 'CORTICAL_SUMMARY_change', save=True)
     plotValueBox(result_df, groups, 'WMH_percentOfICV_slope', save=True)
+    plotValueBox(result_df, groups, 'MMSEslope_postAV45', save=True)
+    plotValueBox(result_df, groups, 'FDG_postAV45_slope', save=True)
     plotValueBox(result_df, groups, 'UW_EF_slope', save=True)
     plotValueBox(result_df, groups, 'UW_MEM_slope', save=True)
     plotValueBox(result_df, groups, 'CSF_TAU_slope', save=True)
@@ -823,15 +851,21 @@ if __name__ == '__main__':
     # # derive cortical summary prior p values between all pairs
     # pvalue_df = compareGroupPairs(itertools.combinations(big_groups,2), merged_members, ['CORTICAL_SUMMARY_prior'])
     # pvalue_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_cortical_summary_pvalues.csv' % (round(alpha,2)), index=False)
-    
+
     # read cortical summary pvalues
     pvalue_df = pd.read_csv('../dpgmm_alpha%s_spherical_bilateral_cortical_summary_pvalues.csv' % (round(alpha,2)))
     pvalue_df.set_index(['GROUP1','GROUP2'],inplace=True)
     sig_same = pvalue_df[pvalue_df.CORTICAL_SUMMARY_prior_PVALUE>0.01]
     sig_same_pairs = [_[0] for _ in zip(sig_same.index)]
 
+    # diagnosis chi2 contingency test
+    diags = conversions[['AD','MCI','SMC','N']]
+    diags = diags.multiply(conversions[['count_prior','count_post']].sum(axis=1),axis=0).astype(int)
+    diags_comparisons_df = diagnosisChi2Test(sig_same_pairs, diags)
+
     # compare groups with non-significantly different cortical summary prior distributions
-    pairs_comparisons_df = compareGroupPairs(sig_same_pairs, merged_members, keys)
+    pairs_comparisons_df = compareGroupPairs(sig_same_pairs, merged_members, all_keys)
+    pairs_comparisons_df = pairs_comparisons_df.merge(diags_comparisons_df,on=['GROUP1','GROUP2'])
     pairs_comparisons_df.set_index(['GROUP1','GROUP2'], inplace=True)
     pairs_comparisons_df = pairs_comparisons_df.T
     pairs_comparisons_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_pair_comparisons.csv' % (round(alpha,2)))
@@ -840,7 +874,7 @@ if __name__ == '__main__':
     pairs_comparisons_df_pvalues = pairs_comparisons_df.loc[pvalue_indices,:]
     pairs_comparisons_df_pvalues.to_csv('../dpgmm_alpha%s_spherical_bilateral_pair_pvalues.csv' % (round(alpha,2)), na_rep=-1)
     # means only
-    reset_df = pairs_comparisons_df.T.reset_index().T
+    reset_df = pairs_comparisons_df.T.reset_index()
     mean1_indices = ['GROUP1'] + [_ for _ in pairs_comparisons_df.index if 'MEAN1' in _]
     mean2_indices = ['GROUP2'] + [_ for _ in pairs_comparisons_df.index if 'MEAN2' in _]
     clean_indices = [_.replace('1','').replace('_MEAN','') for _ in mean1_indices]
@@ -854,36 +888,9 @@ if __name__ == '__main__':
     mean_averages = all_cleaned.groupby(level='GROUP').mean().T
     mean_averages.to_csv('../dpgmm_alpha%s_spherical_bilateral_pair_means.csv' % (round(alpha,2)), na_rep='NA')
 
-    '''
-    master_pvalues = group_comparisons(prior_members, transition_patterns, master_keys + summary_keys)
-    flattened_master_df = flattenGroupComparisonResults(master_pvalues)
-    flattened_master_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_transition_master_pvalues.csv' % (round(alpha,2)))
-
-    master_pvalues = group_comparisons(prior_members, positive_patterns, master_keys + summary_keys)
-    flattened_master_df = flattenGroupComparisonResults(master_pvalues)
-    flattened_master_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_positive_master_pvalues.csv' % (round(alpha,2)))
-
-    master_pvalues = group_comparisons(prior_members, negative_patterns, master_keys + summary_keys)
-    flattened_master_df = flattenGroupComparisonResults(master_pvalues)
-    flattened_master_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_negative_master_pvalues.csv' % (round(alpha,2)))
-
-    # between group bootstrap hypothesis tests
-    change_pvalues = group_comparisons(change_members, transition_patterns, change_keys)
-    flattened_change_df = flattenGroupComparisonResults(change_pvalues)
-    flattened_change_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_transition_change_pvalues.csv' % (round(alpha,2)))
-
-    pattern_pvalues = group_comparisons(pattern_members, transition_patterns, pattern_keys)
-    flattened_pattern_df = flattenGroupComparisonResults(pattern_pvalues)
-    flattened_pattern_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_transition_pattern_pvalues.csv' % (round(alpha,2)))
-
-    uptake_pvalues = group_comparisons(uptake_members, transition_patterns, pattern_keys)
-    flattened_uptake_df = flattenGroupComparisonResults(uptake_pvalues)
-    flattened_uptake_df.to_csv('../dpgmm_alpha%s_spherical_bilateral_transition_uptake_pvalues.csv' % (round(alpha,2)))
-    '''
-
     # plot baseline value versus change scatter plot
     fig, ax = plt.subplots(1)
-    cmap = cm.get_cmap('gist_rainbow')
+    cmap = get_cmap('gist_rainbow')
     big_group_result_df = result_df[result_df['membership_prior'].isin(big_groups)]
     ax.scatter(big_group_result_df['CORTICAL_SUMMARY_prior'],big_group_result_df['CORTICAL_SUMMARY_change'],c=big_group_result_df['membership_prior'],cmap=cmap,s=50)
     plt.legend()
@@ -908,8 +915,6 @@ if __name__ == '__main__':
             members = long[long['membership']==g]
             members['value'].plot(kind='density', label='%s_%s' % (pattern_key, g))
         plt.legend()
-
-
 
 
 

@@ -1107,12 +1107,17 @@ def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
     to_add_headers += ['FDGVis%s_ReltoAV45' % (i+1) for i in range(10)]
     to_add_headers += ['FDGVis%s_Date' % (i+1) for i in range(10)]
     to_add_headers += ['FDG_postAV45_slope','FDG_postAV45_followuptime']
+    to_add_headers += ['FDG_PONS_AV45_6MTHS', 'FDG_PONS_AV45_DATE',
+                       'FDG_PONS_AV45_2_6MTHS', 'FDG_PONS_AV45_2_DATE',
+                       'FDG_PONS_AV45_3_6MTHS', 'FDG_PONS_AV45_3_DATE']
     new_headers= rearrangeHeaders(old_headers, to_add_headers, after='FDG_Bin_Baseline')
     wipeKeys(old_lines, to_add_headers)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
         # collapse subj rows per visit
-        av45_bl, av45_2, av45_3 = getAV45Dates(old_l)
+        av45_bl, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        new_data = {}
+
         examdates = list(set([_['EXAMDATE'] for _ in subj_row]))
         examdates = sorted(examdates)
         subj_fdg = []
@@ -1122,7 +1127,16 @@ def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
             pons_avg = np.mean(means)
             subj_fdg.append({'EXAMDATE': ed, 'PONS': pons_avg})
 
-        new_data = {}
+        # get closest to av45s
+        six_months = 31 * 6
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_fdg, av45_bl, av45_2, av45_3, day_limit=six_months)
+        new_data['FDG_PONS_AV45_6MTHS'] = av45_bl_closest['PONS'] if av45_bl_closest else ''
+        new_data['FDG_PONS_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
+        new_data['FDG_PONS_AV45_2_6MTHS'] = av45_2_closest['PONS'] if av45_2_closest else ''
+        new_data['FDG_PONS_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
+        new_data['FDG_PONS_AV45_3_6MTHS'] = av45_3_closest['PONS'] if av45_3_closest else ''
+        new_data['FDG_PONS_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
+
         slope_points = []
         for i in range(10):
             if i < len(subj_fdg):

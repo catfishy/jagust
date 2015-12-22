@@ -14,6 +14,8 @@ import pylab
 from scipy.stats import norm, mannwhitneyu, linregress, shapiro, ttest_ind
 from ggplot import *
 
+REF = 'wholecereb'
+# REF = 'bigref'
 
 STABLE = [89,
           272,
@@ -58,14 +60,12 @@ def extractRegionalValuesRousset(data, grouping, pvcval=True, regional=True):
         key = 'pvcval'
     else:
         key = 'nonpvcval'
+
     data = data[grouping]
     if data is None:
         return None
 
-    wholecereb = float(data['wholecereb'][key])
-    bigref = float(data['bigref'][key])
-
-    ref = bigref
+    ref = float(data[REF][key])
 
     composite_uptake = data['composite'][key]/ref
     try:
@@ -74,7 +74,6 @@ def extractRegionalValuesRousset(data, grouping, pvcval=True, regional=True):
         composite_vol = int(data['composite']['volume'])
     uptakes = {'composite': composite_uptake}
     sizes = {'composite': composite_vol}
-    print data.keys()
     if regional:
         cingulate_uptake = data['cingulate'][key]/ref
         parietal_uptake = data['parietal'][key]/ref
@@ -725,13 +724,26 @@ if __name__ == "__main__":
     # ggplot(aes(x='NonPVC', y='PVC', colour='grouping'), data=allpoints_lng) + geom_point()
 
 
-    # composite threshold
-    fit_threshold = 0.79 # for big ref
+    grouping='allregions'
+
+    # fit_threshold = 0.79 # for big ref
+    # ref = 'bigref'
+
+    fit_threshold = 1.11 # for whole cerebellum
+    ref = 'wholecereb'
+
+    # get threshold
+    points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl, rousset_matfile_scan2, rousset_matfile_scan3, grouping)
+    fit_threshold = p(fit_threshold)
+    print "NEW THRESHOLD: %s" % fit_threshold
+    sys.exit(1)
+
 
     # for PVC
-    data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=True, regional=False, grouping='summary')
-    data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=False, regional=False, grouping='summary')
-    points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl, rousset_matfile_scan2, rousset_matfile_scan3, 'allregions')
+    grouping='allregions'
+    data_bl_pvc, data_scan2_pvc, data_scan3_pvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=True, regional=False, grouping=grouping)
+    data_bl_nonpvc, data_scan2_nonpvc, data_scan3_nonpvc = parseRoussetOutputs(rousset_matfile_bl,rousset_matfile_scan2,rousset_matfile_scan3, pvcval=False, regional=False, grouping=grouping)
+    points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl, rousset_matfile_scan2, rousset_matfile_scan3, grouping)
     fit_threshold = p(fit_threshold)
     print "NEW THRESHOLD: %s" % fit_threshold
 
