@@ -28,7 +28,7 @@ bilateral=True
 normals_only=True
 
 result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
-master_keys = ['APOE4_BIN','Age@AV45','Gender','Handedness',
+master_keys = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','SMOKING','DIABETES',
                'UW_MEM_BL_3months','UW_MEM_slope',
                'UW_EF_BL_3months','UW_EF_slope',
                'WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope',
@@ -37,9 +37,8 @@ master_keys = ['APOE4_BIN','Age@AV45','Gender','Handedness',
                'FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope',
                'FAQTOTAL_AV45_6MTHS','FAQTOTAL_slope',
                'NPITOTAL_AV45_6MTHS','NPITOTAL_slope',
-               'MMSEslope_postAV45','MMSE_AV45_3MTHS',
                'FDG_PONS_AV45_6MTHS','FDG_postAV45_slope']
-cat_keys = ['APOE4_BIN','Gender','Handedness']
+cat_keys = ['APOE4_BIN','APOE2_BIN','Gender','Handedness','SMOKING','DIABETES']
 summary_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change']
 pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 
                 'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 
@@ -864,14 +863,14 @@ if __name__ == '__main__':
     sig_same = pvalue_df[pvalue_df.CORTICAL_SUMMARY_prior_PVALUE>0.2]
     sig_same_pairs = [_[0] for _ in zip(sig_same.index)]
 
-    # # diagnosis chi2 contingency test
-    # diags = conversions[['AD','MCI','SMC','N']]
-    # diags = diags.multiply(conversions[['count_prior','count_post']].sum(axis=1),axis=0).astype(int)
-    # diags_comparisons_df = diagnosisChi2Test(sig_same_pairs, diags)
+    # diagnosis chi2 contingency test
+    diags = conversions[['AD','MCI','SMC','N']]
+    diags = diags.multiply(conversions[['count_prior','count_post']].sum(axis=1),axis=0).astype(int)
+    diags_comparisons_df = diagnosisChi2Test(sig_same_pairs, diags)
 
     # compare groups with non-significantly different cortical summary prior distributions
     pairs_comparisons_df = compareGroupPairs(sig_same_pairs, merged_members, all_keys)
-    # pairs_comparisons_df = pairs_comparisons_df.merge(diags_comparisons_df,on=['GROUP1','GROUP2'])
+    pairs_comparisons_df = pairs_comparisons_df.merge(diags_comparisons_df,on=['GROUP1','GROUP2'])
     pairs_comparisons_df.set_index(['GROUP1','GROUP2'], inplace=True)
     pairs_comparisons_df = pairs_comparisons_df.T
     pairs_comparisons_df.to_csv('%s_pair_comparisons.csv' % generateFileRoot(alpha))
