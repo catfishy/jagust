@@ -698,10 +698,6 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 if __name__ == "__main__":
-
-    '''
-    IF DOD, RID -> SCRNO
-    '''
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
@@ -724,18 +720,22 @@ if __name__ == "__main__":
     dod_tau_pet_dates = importScanMeta(dod_meta_tau)
     
     #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '12_03_15'
+    timestamp = '01_03_16'
 
     # preprocess output folders
-    adni_av45_preprocess_folder = '../docs/AV45_preprocess_output_12_03_15'
-    dod_av45_preprocess_folder = '../docs/AV45_DOD_preprocess_output_12_03_15'
-    adni_tau_preprocess_folder = '../docs/TAU_preprocess_output_12_03_15'
-    dod_tau_preprocess_folder = '../docs/TAU_DOD_preprocess_output_12_03_15'
+    adni_av45_preprocess_folder = '../docs/AV45_preprocess_output_01_03_16'
+    dod_av45_preprocess_folder = '../docs/AV45_DOD_preprocess_output_01_03_16'
+    adni_tau_preprocess_folder = '../docs/TAU_preprocess_output_01_03_16'
+    dod_tau_preprocess_folder = '../docs/TAU_DOD_preprocess_output_01_03_16'
+
+    # create output folder
+    output_folder = '../output/%s' % timestamp
+    mkdir_p(output_folder)
 
     # ADNI AV45 NONTP
-    regular_output = '../output/%s/UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp, timestamp)
-    allregions_output = '../output/%s/UCBERKELEYAV45_%s_allregions_nontp.csv' % (timestamp, timestamp)
-    merged_output = '../output/%s/UCBERKELEYAV45_%s_merged_nontp.csv' % (timestamp, timestamp)
+    regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp))
+    allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_allregions_nontp.csv' % (timestamp))
+    merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_merged_nontp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
@@ -744,9 +744,9 @@ if __name__ == "__main__":
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
     # ADNI AV45 TP
-    regular_output = '../output/%s/UCBERKELEYAV45_%s_regular_tp.csv' % (timestamp, timestamp)
-    allregions_output = '../output/%s/UCBERKELEYAV45_%s_allregions_tp.csv' % (timestamp, timestamp)
-    merged_output = '../output/%s/UCBERKELEYAV45_%s_merged_tp.csv' % (timestamp, timestamp)
+    regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_regular_tp.csv' % (timestamp))
+    allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_allregions_tp.csv' % (timestamp))
+    merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_merged_tp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=False)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
@@ -755,9 +755,9 @@ if __name__ == "__main__":
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
     # ADNI TAU TP
-    regular_output = '../output/%s/UCBERKELEYTAU_%s_regular_tp.csv' % (timestamp, timestamp)
-    allregions_output = '../output/%s/UCBERKELEYTAU_%s_allregions_tp.csv' % (timestamp, timestamp)
-    merged_output = '../output/%s/UCBERKELEYTAU_%s_merged_tp.csv' % (timestamp, timestamp)
+    regular_output = os.path.join(output_folder, 'UCBERKELEYTAU_%s_regular_tp.csv' % (timestamp))
+    allregions_output = os.path.join(output_folder, 'UCBERKELEYTAU_%s_allregions_tp.csv' % (timestamp))
+    merged_output = os.path.join(output_folder, 'UCBERKELEYTAU_%s_merged_tp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_tau_preprocess_folder, nontp=False)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_tau_pet_dates, adni_registry)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
@@ -766,9 +766,9 @@ if __name__ == "__main__":
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
     # DOD AV45 NONTP
-    regular_output = '../output/%s/UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % (timestamp, timestamp)
-    allregions_output = '../output/%s/UCBERKELEYAV45_DOD_%s_allregions_tp.csv' % (timestamp, timestamp)
-    merged_output = '../output/%s/UCBERKELEYAV45_DOD_%s_merged_tp.csv' % (timestamp, timestamp)
+    regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % (timestamp))
+    allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_allregions_tp.csv' % (timestamp))
+    merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_merged_tp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_av45_preprocess_folder, nontp=True)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_av45_pet_dates, dod_registry, dod=True)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
@@ -777,9 +777,9 @@ if __name__ == "__main__":
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
 
     # DOD TAU TP
-    regular_output = '../output/%s/UCBERKELEYTAU_DOD_%s_regular_nontp.csv' % (timestamp, timestamp)
-    allregions_output = '../output/%s/UCBERKELEYTAU_DOD_%s_allregions_tp.csv' % (timestamp, timestamp)
-    merged_output = '../output/%s/UCBERKELEYTAU_DOD_%s_merged_tp.csv' % (timestamp, timestamp)
+    regular_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_regular_nontp.csv' % (timestamp))
+    allregions_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_allregions_tp.csv' % (timestamp))
+    merged_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_merged_tp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_tau_preprocess_folder, nontp=False)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_tau_pet_dates, dod_registry, dod=True)
     df.to_csv(allregions_output,index=False,float_format='%.4f')

@@ -66,7 +66,8 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
             to_add_headers += ['AV45_PVC_summary_accumulator.0081', 'AV45_PVC_summary_wcereb1.27_BL']
     after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
-    wipeKeys(old_lines, to_add_headers)
+    timepoint_headers = [t for t in to_add_headers if timepoint in t]
+    wipeKeys(old_lines, timepoint_headers)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
         #valid_groupings = ['summary']
@@ -1195,7 +1196,7 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
     def extraction_fn(subj, subj_row, old_l, patient_pets):
         subj_tbm = sorted(subj_row, key=lambda x: x['EXAMDATE'])
         av45_bl, av45_2, av45_3 = getAV45Dates(old_l)
-        bl_examdate = subj_tbm[0]['BL_EXAMDATE']
+        bl_examdate = subj_tbm[0]['EXAMDATEBL']
         if av45_bl is None:
             print "No Baseline AV45 date for %s" % subj
             return {}
@@ -1210,9 +1211,9 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
             if i < len(subj_tbm):
                 datapoint = subj_tbm[i]
                 new_data['TBMSyn_DATE.%s' % (i+1)] = datapoint['EXAMDATE']
-                new_data['TBMSyn_SCORE.%s' % (i+1)] = datapoint['SCORE']
-                timediff = (datapoint['EXAMDATE']-datapoint['BL_EXAMDATE']).days / 365.0
-                slope_points.append((timediff,datapoint['SCORE']))
+                new_data['TBMSyn_SCORE.%s' % (i+1)] = datapoint['TBMSYNSCOR']
+                timediff = (datapoint['EXAMDATE']-datapoint['EXAMDATEBL']).days / 365.0
+                slope_points.append((timediff,datapoint['TBMSYNSCOR']))
                 new_data['TBMSyn_postAV45.%s' % (i+1)] = timediff
             else:
                 new_data['TBMSyn_DATE.%s' % (i+1)] = ''
@@ -1984,7 +1985,7 @@ if __name__ == '__main__':
     
     # Output files
     av45_file = None # overwrites nontp if specified
-    av45_nontp_file = "../output/12_03_15/UCBERKELEYAV45_12_03_15_merged_nontp.csv"
+    av45_nontp_file = "../output/01_03_16/UCBERKELEYAV45_01_03_16_merged_nontp.csv"
     rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
     rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
     rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'

@@ -15,7 +15,11 @@ from scipy.stats import norm, mannwhitneyu, linregress, shapiro, ttest_ind
 from ggplot import *
 
 REF = 'wholecereb'
+fit_threshold = 1.11
+
 # REF = 'bigref'
+# fit_threshold = 0.79
+
 
 STABLE = [89,
           272,
@@ -726,11 +730,7 @@ if __name__ == "__main__":
 
     grouping='allregions'
 
-    # fit_threshold = 0.79 # for big ref
-    # ref = 'bigref'
 
-    fit_threshold = 1.11 # for whole cerebellum
-    ref = 'wholecereb'
 
     # get threshold
     points, p = calculatePVCvsNonPVCSlope(rousset_matfile_bl, rousset_matfile_scan2, rousset_matfile_scan3, grouping)

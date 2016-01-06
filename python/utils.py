@@ -1,6 +1,7 @@
 import sys
 import csv
 import os
+import errno
 from collections import defaultdict
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
@@ -20,11 +21,8 @@ from sklearn.decomposition import PCA
 from sklearn.mixture import GMM
 import statsmodels.api as sm
 
-try:
-    plt.style.use('ggplot')
-except:
-    pass
-pd.options.display.mpl_style = 'default'
+#plt.style.use('ggplot')
+#pd.options.display.mpl_style = 'default'
 
 FRONTAL=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
 PARIETAL=[1008,1025,1029,1031,2008,2025,2029,2031]
@@ -46,6 +44,7 @@ BRAAK4 = [1015,10,1002,1026,1023,1010,1035,1009,1033,2015,49,2002,2026,2023,2010
 BRAAK5 = [1028,1012,1014,1032,1003,1027,1018,1019,1020,11,12,1011,1031,1008,1030,13,1029,1025,1001,26,1034,2028,2012,2014,2032,2003,2027,2018,2019,2020,50,51,2011,2031,2008,2030,52,2029,2025,2001,58,2034]
 BRAAK6 = [1021,1022,1005,1024,1017,2021,2022,2005,2024,2017]
 
+REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,85,24,14,15,72,4,43,75,76]
 
 '''
 import pandas as pd; from utils import fitGMM_1D
@@ -134,6 +133,15 @@ out_df = pd.DataFrame(rows)
 out_df.to_csv(output)
 
 '''
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc: # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
 def isnan(arg):
     try:
@@ -437,6 +445,31 @@ def parseRawRousset(bl_file, scan2_file, scan3_file, translations=None):
         data_scan3[rid] = val_lookup
     return data_bl, data_scan2, data_scan3, index_lookup
 
+def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True, ref_key='whole_cerebellum'):
+    assert ref_key in ['whole_cerebellum','composite_ref']
+
+    regions_to_remove = [k for k,v in index_lookup.iteritems() if len(list(set(REGION_BLACKLIST) & set(list(v)))) > 0]
+
+    index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
+    for rid,val in data_bl.iteritems():
+        ref_value = 1.0
+        if suvr:
+            ref_value = val.get(ref_key,1.0)
+        new_val = {k: v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
+        data_bl[rid] = new_val
+    for rid,val in data_scan2.iteritems():
+        ref_value = 1.0
+        if suvr:
+            ref_value = val.get(ref_key,1.0)
+        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
+        data_scan2[rid] = new_val
+    for rid,val in data_scan3.iteritems():
+        ref_value = 1.0
+        if suvr:
+            ref_value = val.get(ref_key,1.0)
+        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
+        data_scan3[rid] = new_val
+    return data_bl, data_scan2, data_scan3, index_lookup
 
 def unwrap(arg):
     try:
@@ -963,6 +996,8 @@ def importDemog(demog_file):
     return demog_by_subj
 
 def importMMSE(mmse_file, registry=None):
+
+
     mmse_headers, mmse_lines = parseCSV(mmse_file)
     
     # restructure mmse lines by subject
@@ -1077,26 +1112,32 @@ def importADASCog(adni1_file, adnigo2_file, registry=None):
                                    'TOTSCORE': totscore})
     return dict(adas_by_subj)
 
-def importTBMSyn(tbm_file):
-    headers, lines = parseCSV(tbm_file)
-    data = defaultdict(list)
-    for i, line in enumerate(lines):  
-        if line['ACCELERATED'] == 'Yes':
-            continue      
-        subj = int(line['RID'])
-        vc = line['VISCODE'].strip().lower()
-        vc2 = line['VISCODE2'].strip().lower()
-        vcbl = line['VISCODE2BL'].strip().lower()
-        bl_examdate = parseDate(line['EXAMDATEBL'])
-        score = float(line['TBMSYNSCOR'])
-        examdate = parseDate(line['EXAMDATE'])
-        data[subj].append({'VISCODE': vc,
-                           'VISCODE2': vc2,
-                           'VISCODEBL': vcbl,
-                           'EXAMDATE': examdate,
-                           'BL_EXAMDATE': bl_examdate,
-                           'SCORE': score})
-    return data
+def importTBMSyn(tbm_file, registry=None):
+    df = pd.read_csv(tbm_file, low_memory=False)
+    df['EXAMDATE'] = df['EXAMDATE'].fillna('')
+    df['EXAMDATEBL'] = df['EXAMDATEBL'].fillna('')
+
+    for i in df.index:
+        # parse bl examdate
+        bl_date = df.loc[i,'EXAMDATEBL']
+        df.loc[i,'EXAMDATEBL'] = parseDate(bl_date)
+        # parse examdate
+        raw_date = df.loc[i,'EXAMDATE']
+        if raw_date == '':
+            # try to find date from viscode
+            date = findVisitDate(registry, df.loc[i,'RID'], [df.loc[i,'VISCODE']]) if registry is not None else None
+            if date is None:
+                date = np.nan
+        else:
+            date = parseDate(raw_date)
+        df.loc[i,'EXAMDATE'] = date
+        
+    df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
+    grouped = df.groupby(by=['RID'])
+    by_subj = {}
+    for key, val in grouped:
+        by_subj[key] = [dict(_) for i,_ in val.iterrows()]
+    return by_subj
 
 def importWMH(wmh_file):
     headers, lines = parseCSV(wmh_file)
@@ -1241,12 +1282,6 @@ def importCSF(csf_files, registry=None):
 
 def importScanMeta(meta_file):
     df = pd.read_csv(meta_file)
-    '''
-    VISCODE VISCODE2
-    if 'Sequence' in df.columns:
-        df.loc[:,'Sequence'] = df.loc[:,'Sequence'].apply(lambda x: x.strip())
-        df = df[df.Sequence == 'AV45 Coreg, Avg, Std Img and Vox Siz, Uniform Resolution']
-    '''
     # get exam date column
     subj_col = None
     date_col = None
@@ -1262,15 +1297,17 @@ def importScanMeta(meta_file):
         raise Exception("No subj/date column in %s" % meta_file)
     df.dropna(axis=0, subset=[subj_col, date_col], inplace=True)
     df.loc[:,date_col] = df.loc[:,date_col].apply(parseDate)
-    # convert to dict
-    scans = defaultdict(list)
-    for i, row in df.iterrows():
-        scans[row[subj_col]].append(row[date_col])
-    scans = dict(scans)
-    for k in scans.keys():
-        scans[k] = sorted(list(set(scans[k])))
+    # IF TWO ENTRIES HAVE THE SAME VISIT CODE, TAKE THE ONE WITH THE LATER DATE
+    scans = {}
+    for pid, rows in df.groupby(subj_col):
+        by_viscode = defaultdict(list)
+        for i,r in rows.iterrows():
+            viscode_key = (r.get('VISCODE',None),r.get('VISCODE2',None))
+            visit_date = r[date_col]
+            by_viscode[viscode_key].append(visit_date)
+        by_viscode_filtered = [sorted(by_viscode[k])[-1] for k in by_viscode.keys()]
+        scans[pid] = sorted(by_viscode_filtered)
     return scans
-
 
 def importPetMETA(pet_meta_file):
     headers, lines = parseCSV(pet_meta_file)

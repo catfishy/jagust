@@ -9,23 +9,6 @@ from scipy.stats import norm, mannwhitneyu, linregress
 from ggplot import *
 import pandas as pd
 
-GROUPS = {'increasing_high': {'AD': [4657, 4660, 4153, 4672, 4696, 4195, 4252, 4258, 4477, 4494, 4500, 4568, 4089], 
-                              'EMCI': [4614, 2063, 4624, 2073, 4635, 2077, 2087, 4146, 4149, 4674, 4679, 4680, 2121, 2133, 4623, 2155, 4764, 2167, 4799, 4235, 2195, 2196, 4259, 2213, 2216, 4272, 2225, 4805, 4809, 4816, 4309, 2264, 2274, 4844, 4858, 4351, 4868, 4893, 2336, 4404, 4405, 4415, 4419, 2373, 2381, 4944, 4947, 2190, 2390, 2391, 4447, 2403, 2022, 4974, 2109, 4467, 4473, 5000, 5007, 4005, 4007, 2037, 4547, 5066, 2045, 2047], 
-                              'LMCI': [4611, 4782, 4631, 4636, 4654, 4675, 4170, 4689, 4189, 4197, 4712, 4713, 112, 4714, 126, 4736, 4715, 142, 4240, 4757, 4796, 4042, 702, 4287, 800, 4294, 4815, 729, 1030, 1246, 227, 4857, 4363, 4877, 4203, 1300, 4057, 4902, 1074, 4406, 4925, 4414, 4929, 1346, 4945, 4444, 4035, 378, 906, 4502, 925, 4510, 4521, 4015, 5047, 4538, 4542, 4243, 4562, 994, 4582], 
-                              'N': [4612, 4616, 4120, 31, 545, 4645, 4151, 61, 4176, 4179, 4198, 106, 4225, 130, 166, 173, 4270, 4278, 4290, 4291, 717, 1232, 230, 4339, 4343, 778, 4385, 4386, 4400, 4422, 842, 4482, 920, 4003, 4014, 1098, 972, 981, 4566, 985, 4081]}, 
-          'stable_high': {'AD': [4501, 4641, 4526, 4192, 4591, 4211, 4215], 
-                          'EMCI': [2307, 2055, 2068, 4891, 4765, 2079, 4128, 4392, 2100, 4661, 2376, 2380, 4557, 2130, 4188, 2142], 
-                          'LMCI': [4595, 4888, 4250, 1186, 4263, 1066, 4167, 1326, 4936, 4531, 4030, 4928, 4162, 709, 4807, 331, 4430, 4311, 1117, 887, 4584, 4458, 1004, 1106, 4596, 4729], 
-                          'N': [4100, 4371, 4262, 4320, 1190]}, 
-          'stable_low': {'AD': [4009], 
-                         'EMCI': [2304, 2052, 2074, 4127, 2083, 4160, 4678, 2119, 2146, 4199, 2153, 2164, 4220, 2191, 2072, 2200, 2201, 2208, 4380, 2220, 4271, 2245, 2247, 4299, 4813, 4301, 4310, 4312, 2301, 2347, 4356, 4876, 4883, 2332, 4917, 2374, 2378, 2395, 4455, 4476, 4268, 4513, 4036, 4004, 2010, 4063, 4072, 2027, 2031, 2036], 
-                         'LMCI': [4626, 1052, 4138, 4169, 4187, 4722, 1155, 135, 4750, 4244, 4293, 4769, 4806, 200, 722, 746, 4989, 4381, 4395, 4960, 4842, 4543], 
-                         'N': [4103, 4105, 4075, 21, 4632, 4121, 4148, 56, 59, 4158, 4164, 74, 4173, 89, 4200, 4208, 680, 4269, 4275, 1206, 4292, 4832, 4345, 4350, 4352, 4365, 272, 4369, 4372, 4382, 4384, 1169, 315, 4491, 4427, 4429, 4446, 4453, 4598, 4469, 4483, 907, 4499, 4505, 416, 419, 4516, 4021, 4084, 4255, 4545, 4037, 4041, 4043, 4559, 4560, 4579, 4585, 4599, 4090, 4604, 4607]}, 
-          'increasing_low': {'AD': [4172, 4676], 
-                             'EMCI': [2061, 4133, 2093, 4143, 4159, 2116, 4168, 2123, 4621, 4281, 4184, 4185, 2148, 2151, 4212, 2180, 4742, 2183, 2187, 4237, 4216, 2219, 4780, 2233, 2234, 4285, 2238, 2239, 2249, 2263, 4328, 4331, 4360, 4874, 4919, 4898, 2357, 2360, 2363, 4926, 2367, 4417, 2379, 4434, 2394, 4443, 2398, 2405, 2407, 4468, 4986, 4512, 4012, 4536, 2002, 4571, 2018, 4594, 2042], 
-                             'LMCI': [4114, 4115, 1045, 4061, 4122, 4869, 42, 1122, 1118, 4210, 4723, 4214, 4229, 668, 1187, 679, 4777, 4784, 4300, 4817, 225, 4354, 4873, 4741, 1318, 1352, 867, 1414, 4489, 1418, 919, 908, 1427, 408, 4767, 4653, 4094], 
-                             'N': [4620, 23, 4637, 4643, 4649, 4150, 58, 69, 4177, 602, 610, 618, 113, 4213, 120, 4218, 123, 4222, 4739, 4234, 4119, 4762, 4254, 159, 685, 4795, 4313, 741, 1261, 751, 767, 1280, 260, 4357, 4878, 4367, 4387, 4388, 4389, 4393, 4396, 301, 4399, 311, 4410, 4441, 4448, 4466, 4843, 4485, 4496, 4503, 923, 413, 926, 5023, 4520, 4082, 4018, 4020, 4028, 4032, 4552, 4060, 4576, 4580, 4586, 4076, 4086, 1016]}}
-
 REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,85,24,14,15,72,4,43,75,76]
 
 def generateBathroomTilePlot(bl_vs_change_json):
@@ -102,41 +85,6 @@ def getMeanAveragePrecision(avg_rank, sorted_uptakes, k):
     actuals = [actual]*len(sorted_regions)
     sim = mapk(actuals, sorted_regions, k=k)
     return sim
-
-    '''
-    sims = []
-    for a,b in itertools.permutations(sorted_regions, 2):
-        sim = apk(a[:k],b[:k],k=k)
-        sims.append(sim)
-    return np.mean(sims)
-    '''
-
-def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True):
-    regions_to_remove = [k for k,v in index_lookup.iteritems() if len(list(set(REGION_BLACKLIST) & set(list(v)))) > 0]
-
-    ref_key = 'whole_cerebellum'
-    #ref_key = 'composite_ref'
-
-    index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
-    for rid,val in data_bl.iteritems():
-        ref_value = 1.0
-        if suvr:
-            ref_value = val.get(ref_key,1.0)
-        new_val = {k: v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
-        data_bl[rid] = new_val
-    for rid,val in data_scan2.iteritems():
-        ref_value = 1.0
-        if suvr:
-            ref_value = val.get(ref_key,1.0)
-        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
-        data_scan2[rid] = new_val
-    for rid,val in data_scan3.iteritems():
-        ref_value = 1.0
-        if suvr:
-            ref_value = val.get(ref_key,1.0)
-        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
-        data_scan3[rid] = new_val
-    return data_bl, data_scan2, data_scan3, index_lookup
 
 
 def valuesByFreesurferRegion(values_by_group, index_lookup):
@@ -382,58 +330,3 @@ if __name__ == "__main__":
     df.to_csv('../datasets/pvc_allregions_uptake_change_bilateral.csv', index=False)
     sys.exit(1)
 
-    # # identify subjects who rank first in key_groups out of subj_group
-    # subj = GROUPS['increasing_low']['N'] + GROUPS['stable_low']['N']
-    # key_groups = ['Cluster17', 'Cluster36', 'Cluster45']
-    # avg_ranks = rankSubjects(key_groups, subj, data_scan2)
-    # for k,v in sorted(avg_ranks.iteritems(), key=lambda x: x[1]):
-    #     print "%s: %s" % (k,v)
-    # sys.exit(1)
-
-    # low normals
-    subj_group = GROUPS['increasing_low']['N'] + GROUPS['stable_low']['N']
-    low_normals_df = regionalRanksToLines(subj_group, 'LOW_N', data_prior, data_post, index_lookup)
-    # low, stable normals
-    subj_group = GROUPS['stable_low']['N']
-    stable_low_normals_df = regionalRanksToLines(subj_group, 'STABLE_LOW_N', data_prior, data_post, index_lookup)
-    #low, increasing normals
-    subj_group = GROUPS['increasing_low']['N']
-    inc_low_normals_df = regionalRanksToLines(subj_group, 'INC_LOW_N', data_prior, data_post, index_lookup)
-    #effects between INC_LOW and STABLE_LOW
-    inc_vs_low_effects_df = regionEffectSizesBetweenGroups('INC_VS_STABLE',
-                                                        GROUPS['increasing_low']['N'], 
-                                                        GROUPS['stable_low']['N'], 
-                                                        data_prior, 
-                                                        index_lookup)
-    # save
-    low_normals_df.loc[:,'regions'] = [[lut_table[_] for _ in index_lookup[region_name]] for region_name in low_normals_df.index]
-    low_normals_df.to_csv('../pvc_allregions_regional_ranks.csv')
-    sys.exit(1)
-
-
-
-    # # write out results to matfile (group visualizing)
-    out_file = '../output/fake_aparc_inputs/REGION_INDICES.mat'
-    values = {k: i+1 for i, (k,v) in enumerate(line_data.iteritems())}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
-    out_file = '../output/fake_aparc_inputs/ALL_LOW_N_mean_suvr.mat'
-    values = {k: v['LOW_N_uptakes_prior_mean'] for k,v in line_data.iteritems()}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
-    out_file = '../output/fake_aparc_inputs/INC_LOW_N_mean_suvr.mat'
-    values = {k: v['INC_LOW_N_uptakes_prior_mean'] for k,v in line_data.iteritems()}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
-    out_file = '../output/fake_aparc_inputs/STABLE_LOW_N_mean_suvr.mat'
-    values = {k: v['STABLE_LOW_N_uptakes_prior_mean'] for k,v in line_data.iteritems()}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
-    out_file = '../output/fake_aparc_inputs/ALL_LOW_N_long_effect.mat'
-    values = {k: v['LOW_N_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
-    out_file = '../output/fake_aparc_inputs/INC_LOW_N_long_effect.mat'
-    values = {k: v['INC_LOW_N_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
-    out_file = '../output/fake_aparc_inputs/STABLE_LOW_N_long_effect.mat'
-    values = {k: v['STABLE_LOW_N_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})
-    out_file = '../output/fake_aparc_inputs/INC_VS_STABLE_bl_effect.mat'
-    values = {k: v['INC_VS_STABLE_uptake_effect_rank_biserial'] for k,v in line_data.iteritems()}
-    sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})

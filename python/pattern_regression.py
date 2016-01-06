@@ -22,6 +22,7 @@ import networkx as nx
 
 from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations
 
+#plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
 
 bilateral=True
@@ -327,6 +328,20 @@ def loadResults(results_file):
     results.set_index('rid',inplace=True,drop=True)
     return results
 
+def smallGroups(result_df, threshold=50):
+    # determine small groups
+    groups = np.array(list(set(result_df.membership_prior) | set(result_df.membership_post)))
+    groups = groups[~np.isnan(groups)]
+    small_groups = []
+    for g in groups:
+        prior_members = set(result_df[result_df.membership_prior==g].index)
+        post_members = set(result_df[result_df.membership_post==g].index)
+        allmembers = len(prior_members | post_members)
+        print "%s: %s" % (g,allmembers)
+        if allmembers <= threshold:
+            small_groups.append(g)
+    return small_groups
+
 def bigGroups(result_df, threshold=7):
     # determine big groups
     groups = np.array(list(set(result_df.membership_prior) | set(result_df.membership_post)))
@@ -367,6 +382,8 @@ def parseConversions(groups, result_df, threshold, master_keys):
         cur_conversions['count_post'] = len(members_post.index)
         # add master field avgs
         master_rows = result_df.loc[members_prior.index,master_keys]
+        master_counts = {"%s_N" % k: v for k,v in dict(master_rows.count()).iteritems()}
+        cur_conversions.update(master_counts)
         cur_conversions.update(dict(master_rows.mean()))
         # add cortical summary values
         cortical_summary_values = np.array(list(members_prior['CORTICAL_SUMMARY_prior']) + list(members_post['CORTICAL_SUMMARY_post']))
@@ -560,6 +577,23 @@ def graphNetworkConversions(groups, conversions, iterations=50, threshold=0.0, a
     plt.axis('off')
     plt.show()
 
+def plotValueScatter(result_df, groups, x='CORTICAL_SUMMARY_prior', y='CORTICAL_SUMMARY_change'):
+    # SCATTER PLOTS!   
+    group_result_df = result_df[result_df['membership_prior'].isin(groups)]
+    xmin = group_result_df[x].min()
+    xmax = group_result_df[x].max()
+    xranges = xmax-xmin
+    xmin -= 0.05*xranges
+    xmax += 0.05*xranges
+    ymin = group_result_df[y].min()
+    ymax = group_result_df[y].max()
+    yranges = ymax-ymin
+    ymin -= 0.05*yranges
+    ymax += 0.05*yranges
+    g = sns.lmplot(x=x,y=y,data=group_result_df,hue='membership_prior', fit_reg=False)
+    g.set(ylim=(ymin,ymax), xlim=(xmin,xmax))
+    sns.plt.show()
+
 def plotValueDensity(result_df, groups, value_key):
     long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
     for i, (k, patterns) in enumerate(groups.iteritems()):
@@ -592,9 +626,10 @@ def plotValueBox(result_df, groups, value_key, save=False):
         plt.suptitle("")
         if save:
             plt.savefig('../boxplot_%s_%s.png' % (value_key.replace('/','_'), groupk), dpi=200)
+            plt.close()
         else:
             plt.show()
-        plt.close()
+        
 
 def flattenGroupComparisonResults(change_pvalues):
     flattened = []
@@ -694,7 +729,7 @@ if __name__ == '__main__':
     # SETTINGS
     patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
     lut_file = "../FreeSurferColorLUT.txt"
-    master_csv = '../FDG_AV45_COGdata_12_21_15.csv'
+    master_csv = '../FDG_AV45_COGdata_01_05_16.csv'
     membership_conf = 0.50
     components = 100
     ref_key = 'WHOLE_CEREBELLUM'
@@ -774,8 +809,10 @@ if __name__ == '__main__':
 
     # generate conversion data
     big_groups = bigGroups(result_df, threshold=3)
+    small_groups = smallGroups(result_df, threshold=50)
+    medium_groups = list(set(big_groups) & set(small_groups))
     conversions = parseConversions(big_groups, result_df, threshold, master_keys)
-    conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
+    # conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
     positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.9].index)
     transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
@@ -863,14 +900,14 @@ if __name__ == '__main__':
     sig_same = pvalue_df[pvalue_df.CORTICAL_SUMMARY_prior_PVALUE>0.2]
     sig_same_pairs = [_[0] for _ in zip(sig_same.index)]
 
-    # diagnosis chi2 contingency test
-    diags = conversions[['AD','MCI','SMC','N']]
-    diags = diags.multiply(conversions[['count_prior','count_post']].sum(axis=1),axis=0).astype(int)
-    diags_comparisons_df = diagnosisChi2Test(sig_same_pairs, diags)
+    # # diagnosis chi2 contingency test
+    # diags = conversions[['AD','MCI','SMC','N']]
+    # diags = diags.multiply(conversions[['count_prior','count_post']].sum(axis=1),axis=0).astype(int)
+    # diags_comparisons_df = diagnosisChi2Test(sig_same_pairs, diags)
 
     # compare groups with non-significantly different cortical summary prior distributions
     pairs_comparisons_df = compareGroupPairs(sig_same_pairs, merged_members, all_keys)
-    pairs_comparisons_df = pairs_comparisons_df.merge(diags_comparisons_df,on=['GROUP1','GROUP2'])
+    # pairs_comparisons_df = pairs_comparisons_df.merge(diags_comparisons_df,on=['GROUP1','GROUP2'])
     pairs_comparisons_df.set_index(['GROUP1','GROUP2'], inplace=True)
     pairs_comparisons_df = pairs_comparisons_df.T
     pairs_comparisons_df.to_csv('%s_pair_comparisons.csv' % generateFileRoot(alpha))
@@ -893,13 +930,22 @@ if __name__ == '__main__':
     mean_averages = all_cleaned.groupby(level='GROUP').mean().T
     mean_averages.to_csv('%s_pair_means.csv' % generateFileRoot(alpha), na_rep='NA')
 
-    # plot baseline value versus change scatter plot
-    fig, ax = plt.subplots(1)
-    cmap = get_cmap('gist_rainbow')
-    big_group_result_df = result_df[result_df['membership_prior'].isin(big_groups)]
-    ax.scatter(big_group_result_df['CORTICAL_SUMMARY_prior'],big_group_result_df['CORTICAL_SUMMARY_change'],c=big_group_result_df['membership_prior'],cmap=cmap,s=50)
-    plt.legend()
-    plt.show()
+
+    # SCATTER PLOTS!
+    to_scatter = [('CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_change'),
+                  ('CORTICAL_SUMMARY_prior','UW_MEM_BL_3months','UW_MEM_slope'),
+                  ('UW_EF_BL_3months','UW_EF_slope'),
+                  ('WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope'),
+                  ('CSF_TAU_closest_AV45','CSF_TAU_slope'),
+                  ('CSF_ABETA_closest_AV45','CSF_ABETA_slope'),
+                  ('FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope'),
+                  ('FAQTOTAL_AV45_6MTHS','FAQTOTAL_slope'),
+                  ('NPITOTAL_AV45_6MTHS','NPITOTAL_slope'),
+                  ('FDG_PONS_AV45_6MTHS','FDG_postAV45_slope')]
+    plotValueScatter(result_df, small_groups, x='CORTICAL_SUMMARY_prior', y='FSX_HC/ICV_BL_3months')
+
+    plotValueScatter(result_df, [9,16], x='CORTICAL_SUMMARY_prior', y='FDG_PONS_AV45_6MTHS')
+    plotValueScatter(result_df, [10,26], x='CORTICAL_SUMMARY_prior', y='FSX_HC/ICV_BL_3months')
 
     # plot against regional change
     rchange_members = rchange_df.merge(result_df, left_index=True, right_index=True)
