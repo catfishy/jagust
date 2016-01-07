@@ -1496,7 +1496,7 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file,
     to_add_headers = []
     to_add_headers += ['FSX_HC/ICV_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSX_postAV45_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSX_postAV45_count', 'FSX_HC/ICV_slope', 'FSX_HC/ICV_BL_3months']
+    to_add_headers += ['FSX_postAV45_count', 'FSX_postAV45_interval', 'FSX_HC/ICV_slope', 'FSX_HC/ICVavg_slope', 'FSX_HC/ICV_BL_3months']
     to_add_headers += ['FSX_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSX_FSVERSION_%s' % (i+1) for i in range(tmpts)]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
@@ -1508,14 +1508,26 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file,
         If RID>2000, use only 3T scans
         '''
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        mristrengths = [_['FLDSTRENG'] for _ in subj_row]
+
         # filter by field strength
+        '''
         if int(subj) < 2000:
             subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
         else:
             subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
         if len(subj_row) == 0:
             print "%s had all potential scans eliminated by field strength: %s" % (subj,mristrengths)
+            return {}
+        '''
+        # FILTER: Only use 1.5T scans if 3T scans aren't present
+        onefive_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
+        three_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
+        if len(three_scans) == 0:
+            subj_row = onefive_scans
+        else:
+            subj_row = three_scans
+        if len(subj_row) == 0:
+            print "%s had all potential scans eliminated by field strength: %s" % (subj,[_['FLDSTRENG'] for _ in subj_row])
             return {}
 
         # take care of scans on the same date
@@ -1545,18 +1557,22 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file,
 
         new_data = {}
         slope_points = []
+        avg_slope_points = []
         bl_icv = subj_fs[0]['ICV']
+        avg_icv = np.mean([float(_['ICV']) for _ in subj_fs])
         for i in range(tmpts):
             if i < len(subj_fs):
                 datapoint = subj_fs[i]
                 examdate = datapoint['EXAMDATE']
                 hc_icv = datapoint['HCV']/bl_icv
+                hc_icv_avg = datapoint['HCV']/avg_icv
                 try:
                     timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
                     if timediff <= -(90.0/365.0):
                         timediff = ''
                     if timediff != '':
                         slope_points.append((timediff, hc_icv))
+                        avg_slope_points.append((timediff,hc_icv_avg))
                 except:
                     print "BAD EXAMDATE"
                     continue
@@ -1570,6 +1586,11 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file,
         # calc slope
         new_data['FSX_postAV45_count'] = len(slope_points)
         new_data['FSX_HC/ICV_slope'] = slope(slope_points)
+        new_data['FSX_HC/ICVavg_slope'] = slope(avg_slope_points)
+        if len(slope_points) > 0:
+            new_data['FSX_postAV45_interval'] = max([_[0] for _ in slope_points])
+        else:
+            new_data['FSX_postAV45_interval'] = 0
         
         return new_data
 
@@ -1601,7 +1622,7 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file, 
     to_add_headers = []
     to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSL_postAV45_count', 'FSL_HC/ICV_slope', 'FSL_HC/ICV_BL_3months']
+    to_add_headers += ['FSL_postAV45_count', 'FSL_postAV45_interval', 'FSL_HC/ICV_slope', 'FSL_HC/ICVavg_slope', 'FSX_HC/ICV_BL_3months']
     to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(tmpts)]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
@@ -1610,13 +1631,27 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file, 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
         mristrengths = [_['FLDSTRENG'] for _ in subj_row]
+        
+
         # filter by field strength
+        '''
         if int(subj) < 2000:
             subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
         else:
             subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
         if len(subj_row) == 0:
             print "%s had all potential scans eliminated by field strength: %s" % (subj,mristrengths)
+            return {}
+        '''
+        # FILTER: Only use 1.5T scans if 3T scans aren't present
+        onefive_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
+        three_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
+        if len(three_scans) == 0:
+            subj_row = onefive_scans
+        else:
+            subj_row = three_scans
+        if len(subj_row) == 0:
+            print "%s had all potential scans eliminated by field strength: %s" % (subj,[_['FLDSTRENG'] for _ in subj_row])
             return {}
 
         # take care of scans on the same date
@@ -1646,17 +1681,21 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file, 
 
         new_data = {}
         slope_points = []
-        bl_icv = float(subj_fs[0]['ICV'])
+        avg_slope_points = []
+        bl_icv = subj_fs[0]['ICV']
+        avg_icv = np.mean([float(_['ICV']) for _ in subj_fs])
         for i in range(tmpts):
             if i < len(subj_fs):
                 datapoint = subj_fs[i]
                 examdate = datapoint['EXAMDATE']
                 hc_icv = datapoint['HCV']/bl_icv
+                hc_icv_avg = datapoint['HCV']/avg_icv
                 try:
                     timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
                     if timediff <= -(90.0/365.0):
                         timediff = ''
                     if timediff != '':
+                        avg_slope_points.append((timediff, hc_icv_avg))
                         slope_points.append((timediff, hc_icv))
                 except:
                     print "BAD EXAMDATE"
@@ -1670,6 +1709,11 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file, 
         # Calculate slope
         new_data['FSL_postAV45_count'] = len(slope_points)
         new_data['FSL_HC/ICV_slope'] = slope(slope_points)
+        new_data['FSL_HC/ICVavg_slope'] = slope(avg_slope_points)
+        if len(slope_points) > 0:
+            new_data['FSL_postAV45_interval'] = max([_[0] for _ in slope_points])
+        else:
+            new_data['FSL_postAV45_interval'] = 0
 
         return new_data
 
@@ -1963,7 +2007,7 @@ if __name__ == '__main__':
     now = datetime.now()
 
     # IO files
-    master_file = "../FDG_AV45_COGdata_10_27_15.csv"
+    master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_10_27_15.csv"
     output_file = "../FDG_AV45_COGdata_%s.csv" % (now.strftime("%m_%d_%y"))
     
     # ADNI docs

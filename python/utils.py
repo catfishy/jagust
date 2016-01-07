@@ -2,7 +2,7 @@ import sys
 import csv
 import os
 import errno
-from collections import defaultdict
+from collections import defaultdict, Counter
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import itertools
@@ -1649,16 +1649,16 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
     mprage_df.set_index('ImageUID',inplace=True)
 
     # pass qc
-    QC_cols = ['TEMPQC','FRONTQC','PARQC','INSULAQC','OCCQC','BGQC','CWMQC','VENTQC']
     df = pd.read_csv(in_file)
     if not include_failed:
         df = df[df['OVERALLQC'].isin(['Pass','Partial'])]
         # at least tempqc has to pass
         before = len(df.index)
         tempqc_passed = df.loc[:,'TEMPQC'] == 'Pass'
+        failed = df[~tempqc_passed]
         df = df[tempqc_passed]
-        after = len(df.index)
-        print "%s: FAILED TEMP QC: %s/%s" % (in_file, before-after, before)
+        failed_counter = Counter(list(failed.index))
+        print "%s: FAILED TEMP QC: %s/%s" % (in_file, before-len(df.index), before)
 
     # filter by image type 
     if 'IMAGETYPE' in df.columns:
@@ -1692,6 +1692,7 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
             data[rid].append(dict(row))
         return data
 
+'''
 def importCrossSectionFreesurfer(crossfree_file, include_failed=False):
     headers, lines = parseCSV(crossfree_file)
     data = defaultdict(list)
@@ -1738,6 +1739,7 @@ def importLongitudinalFreesurfer(longfree_file, include_failed = False):
                            'inner_data': inner_data})
     print "LONG FREESURFER failed: %s" % failed
     return dict(data)
+'''
 
 def slope(points):
     '''
