@@ -6,7 +6,7 @@ import itertools
 import multiprocessing as mp
 import cPickle
 
-from scipy.stats import f_oneway, norm, chi2_contingency
+from scipy.stats import f_oneway, norm, chi2_contingency, linregress
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable, get_cmap
@@ -20,7 +20,7 @@ from sklearn.preprocessing import StandardScaler
 from statsmodels.sandbox.stats.multicomp import multipletests
 import networkx as nx
 
-from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations
+from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations, regCoeffZTest
 
 #plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
@@ -335,7 +335,6 @@ def smallGroups(result_df, threshold=50):
         prior_members = set(result_df[result_df.membership_prior==g].index)
         post_members = set(result_df[result_df.membership_post==g].index)
         allmembers = len(prior_members | post_members)
-        print "%s: %s" % (g,allmembers)
         if allmembers <= threshold:
             small_groups.append(g)
     return small_groups
@@ -349,7 +348,6 @@ def bigGroups(result_df, threshold=7):
         prior_members = set(result_df[result_df.membership_prior==g].index)
         post_members = set(result_df[result_df.membership_post==g].index)
         allmembers = len(prior_members | post_members)
-        print "%s: %s" % (g,allmembers)
         if allmembers >= threshold:
             big_groups.append(g)
     return big_groups
@@ -597,22 +595,57 @@ def graphNetworkConversions(groups, conversions, iterations=50, threshold=0.0, a
     plt.axis('off')
     plt.show()
 
-def plotValueScatter(result_df, groups, x='CORTICAL_SUMMARY_prior', y='CORTICAL_SUMMARY_change', fit_reg=False):
-    # SCATTER PLOTS!   
-    group_result_df = result_df[result_df['membership_prior'].isin(groups)]
-    xmin = group_result_df[x].min()
-    xmax = group_result_df[x].max()
-    xranges = xmax-xmin
-    xmin -= 0.05*xranges
-    xmax += 0.05*xranges
-    ymin = group_result_df[y].min()
-    ymax = group_result_df[y].max()
-    yranges = ymax-ymin
-    ymin -= 0.05*yranges
-    ymax += 0.05*yranges
-    g = sns.lmplot(x=x,y=y,data=group_result_df,hue='membership_prior', fit_reg=fit_reg)
-    g.set(ylim=(ymin,ymax), xlim=(xmin,xmax))
-    sns.plt.show()
+def plotValueScatter(result_df, groups, xys, fit_reg=False, test=True, show=False):  
+    figures = []
+    for i, (x,y) in enumerate(xys):
+        members = []
+        valid_groups = []
+        for grp in groups:
+            grp_members = result_df[result_df.membership_prior==grp].dropna(subset=[x,y])
+            if len(grp_members) < 2:
+                print "Not enough members in %s with values" % grp
+            else:
+                valid_groups.append(grp)
+                members.append(grp_members)
+
+        if len(valid_groups) == 0:
+            print "No valid groups"
+            continue
+
+        group_result_df = result_df[result_df['membership_prior'].isin(valid_groups)]
+        xmin = group_result_df[x].min()
+        xmax = group_result_df[x].max()
+        xranges = xmax-xmin
+        xmin -= 0.05*xranges
+        xmax += 0.05*xranges
+        ymin = group_result_df[y].min()
+        ymax = group_result_df[y].max()
+        yranges = ymax-ymin
+        ymin -= 0.05*yranges
+        ymax += 0.05*yranges
+
+        newplot = sns.lmplot(x=x,y=y,data=group_result_df,hue='membership_prior', fit_reg=fit_reg)
+        newplot.set(ylim=(ymin,ymax), xlim=(xmin,xmax))
+
+        if test:
+            if len(members) != 2:
+                print "can only test 2 groups"
+            else:
+                members1 = members[0]
+                members2 = members[1]
+                x1 = list(members1[x])
+                x2 = list(members2[x])
+                y1 = list(members1[y])
+                y2 = list(members2[y])
+                slope_z, slope_p, int_z, int_p = LinRegZTest(x1, y1, x2, y2)
+                label = "SLOPE_P: %s, INT_P: %s" % (round(slope_p,5), round(int_p,5))
+                if slope_p <= 0.05 or int_p <= 0.05:
+                    print "%s vs %s: %s" % (x,y,label)
+                newplot.fig.text(0.33, 1.02, label, fontsize=16)
+
+        figures.append(newplot)
+    if show:
+        sns.plt.show()
 
 def plotValueDensity(result_df, groups, value_key):
     long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
@@ -848,6 +881,13 @@ def pcaCorrelations(result_df):
         ax.annotate('%s\nR2=%s' % (equation,r2), xy=(0.05,0.95), xycoords='axes fraction', bbox=props, verticalalignment='top', fontsize=15, color='k')
 
 
+def LinRegZTest(x1, y1, x2, y2):
+    m1, b1, r_value1, p_value1, std_err1 = linregress(x1, y1)
+    m2, b2, r_value2, p_value2, std_err2 = linregress(x2, y2)
+    slope_z, slope_pvalue = regCoeffZTest(m1, m2, std_err1, std_err2)
+    int_z, int_pvalue = regCoeffZTest(b1, b2, std_err1, std_err2)
+    return (slope_z, slope_pvalue, int_z, int_pvalue)
+
 if __name__ == '__main__':
     # SETTINGS
     patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
@@ -923,7 +963,7 @@ if __name__ == '__main__':
     # read cortical summary pvalues
     pvalue_df = pd.read_csv('%s_cortical_summary_pvalues.csv' % generateFileRoot(alpha))
     pvalue_df.set_index(['GROUP1','GROUP2'],inplace=True)
-    sig_same = pvalue_df[pvalue_df.CORTICAL_SUMMARY_prior_PVALUE>0.2]
+    sig_same = pvalue_df[pvalue_df.CORTICAL_SUMMARY_prior_PVALUE>0.05]
     sig_same_pairs = [_[0] for _ in zip(sig_same.index)]
 
     # diagnosis chi2 contingency test
@@ -957,22 +997,32 @@ if __name__ == '__main__':
     mean_averages.to_csv('%s_pair_means.csv' % generateFileRoot(alpha), na_rep='NA')
 
 
-    # SCATTER PLOTS!
-    to_scatter = [('CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_change'),
-                  ('CORTICAL_SUMMARY_prior','UW_MEM_BL_3months','UW_MEM_slope'),
+    # SCATTER PLOTS! (FSX, WMH, FDG, EF, MEM)
+    bl_changes = [('FSX_HC/ICV_BL_3months', 'FSX_HC/ICV_slope'),
                   ('UW_EF_BL_3months','UW_EF_slope'),
+                  ('UW_MEM_BL_3months','UW_MEM_slope'),
                   ('WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope'),
+                  ('FDG_PONS_AV45_6MTHS','FDG_postAV45_slope'),
                   ('CSF_TAU_closest_AV45','CSF_TAU_slope'),
-                  ('CSF_ABETA_closest_AV45','CSF_ABETA_slope'),
-                  ('FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope'),
-                  ('FAQTOTAL_AV45_6MTHS','FAQTOTAL_slope'),
-                  ('NPITOTAL_AV45_6MTHS','NPITOTAL_slope'),
-                  ('FDG_PONS_AV45_6MTHS','FDG_postAV45_slope')]
-    plotValueScatter(result_df, small_groups, x='CORTICAL_SUMMARY_prior', y='FSX_HC/ICV_BL_3months')
+                  ('CSF_ABETA_closest_AV45','CSF_ABETA_slope'),]
+    to_scatter = [('CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change')]
+    for bl, change in bl_changes:
+        to_add = [('CORTICAL_SUMMARY_prior', bl),
+                  ('CORTICAL_SUMMARY_prior', change),
+                  ('CORTICAL_SUMMARY_change', change),
+                  (bl, change)]
+        to_scatter += to_add
 
-    plotValueScatter(result_df, [9,16], x='CORTICAL_SUMMARY_prior', y='FDG_PONS_AV45_6MTHS')
-    plotValueScatter(result_df, [10,26], x='CORTICAL_SUMMARY_prior', y='FSX_HC/ICV_BL_3months')
-    plotValueScatter(result_df, [13,22], x='CORTICAL_SUMMARY_prior', y='APOE2_BIN')
+    # [(2.0, 7.0), (2.0, 26.0), (7.0, 8.0), (7.0, 10.0), (7.0, 26.0), (8.0, 10.0), (13.0, 22.0), (14.0, 22.0)]
+    plotValueScatter(result_df, [13,22], xys=to_scatter, fit_reg=True, test=True)
+    plotValueScatter(result_df, [14,22], xys=to_scatter, fit_reg=True, test=True)
+    plotValueScatter(result_df, [2,7], xys=to_scatter, fit_reg=True, test=True)
+    plotValueScatter(result_df, [2,26], xys=to_scatter, fit_reg=True, test=True)
+    plotValueScatter(result_df, [7,8], xys=to_scatter, fit_reg=True, test=True)
+    plotValueScatter(result_df, [7,10], xys=to_scatter, fit_reg=True, test=True)
+    plotValueScatter(result_df, [7,26], xys=to_scatter, fit_reg=True, test=True)
+    plotValueScatter(result_df, [8,10], xys=to_scatter, fit_reg=True, test=True)
+
 
     # plot against regional change
     rchange_members = rchange_df.merge(result_df, left_index=True, right_index=True)

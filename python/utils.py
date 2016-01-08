@@ -134,6 +134,14 @@ out_df.to_csv(output)
 
 '''
 
+
+def regCoeffZTest(B1, B2, se1, se2):
+    pooledSE = np.sqrt(se1 + se2)
+    z = (B1 - B2) / pooledSE
+    pval = 2*(1 - norm.cdf(abs(z)))
+    return (z, pval)
+
+
 def mkdir_p(path):
     try:
         os.makedirs(path)
