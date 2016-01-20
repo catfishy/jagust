@@ -24,6 +24,7 @@ import statsmodels.api as sm
 #plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
 
+# DEFINITIONS FOR THE COMPOSITE REGION OF INTEREST
 FRONTAL=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
 PARIETAL=[1008,1025,1029,1031,2008,2025,2029,2031]
 TEMPORAL=[1015,1030,2015,2030]
@@ -37,6 +38,7 @@ BIGREF = [2,41,7,8,46,47,16]
 WHITEMATTER = [2,41]
 SUMMARY = FRONTAL+PARIETAL+TEMPORAL+CINGULATE
 
+# DEFINITIONS FOR BRAAK STAGES
 BRAAK1 = [1006,2006]
 BRAAK2 = [17,53]
 BRAAK3 = [1016,1007,1013,18,2016,2007,2013,54]
@@ -44,6 +46,16 @@ BRAAK4 = [1015,10,1002,1026,1023,1010,1035,1009,1033,2015,49,2002,2026,2023,2010
 BRAAK5 = [1028,1012,1014,1032,1003,1027,1018,1019,1020,11,12,1011,1031,1008,1030,13,1029,1025,1001,26,1034,2028,2012,2014,2032,2003,2027,2018,2019,2020,50,51,2011,2031,2008,2030,52,2029,2025,2001,58,2034]
 BRAAK6 = [1021,1022,1005,1024,1017,2021,2022,2005,2024,2017]
 
+# DEFINITIONS FOR LOBES
+FRONTAL_LOBE = []
+PARIETAL_LOBE = []
+TEMPORAL_LOBE = []
+OCCIPITAL_LOBE = []
+CINGULATE = []
+
+
+
+# BLACKLISTED REGIONS
 REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,85,24,14,15,72,4,43,75,76]
 
 '''
@@ -418,20 +430,20 @@ def parseRawRousset_inner(data, translations=None):
                 index_lookup.pop(name)
                 size_lookup.pop(name)
 
-    # add whole cereb
-    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHOLECEREBELLUM)) > 0]
-    val_lookup['whole_cerebellum'] = weightedMean(regionsizes)
-    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(BIGREF)) > 0]
-    val_lookup['composite_ref'] = weightedMean(regionsizes)
-    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(SUMMARY)) > 0]
-    val_lookup['cortical_summary'] = weightedMean(regionsizes)
-    regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(WHITEMATTER)) > 0]
-    val_lookup['white_matter'] = weightedMean(regionsizes)
-    index_lookup['cortical_summary'] = SUMMARY
-    index_lookup['whole_cerebellum'] = WHOLECEREBELLUM
-    index_lookup['composite_ref'] = BIGREF
-    index_lookup['white_matter'] = WHITEMATTER
-
+    # calculate weighted sum fields
+    names_and_keys = [('whole_cerebellum',WHOLECEREBELLUM),
+                      ('composite_ref', BIGREF),
+                      ('cortical_summary', SUMMARY),
+                      ('white_matter', WHITEMATTER),
+                      ('frontal', FRONTAL_LOBE),
+                      ('parietal', PARIETAL_LOBE),
+                      ('cingulate', CINGULATE),
+                      ('temporal', TEMPORAL_LOBE)]
+    for name, keys in names_and_keys:
+        regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(keys)) > 0]
+        val_lookup[name] = weightedMean(regionsizes)
+        index_lookup[name] = keys
+    
     return val_lookup, index_lookup
 
 def parseRawRousset(bl_file, scan2_file, scan3_file, translations=None):

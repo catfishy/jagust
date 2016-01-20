@@ -659,9 +659,9 @@ if __name__ == "__main__":
     av45_file_nontp = "../output/UCBERKELEYAV45_12_03_15_merged_nontp.csv"
 
     # Rousset output files
-    rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
-    rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
-    rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
+    rousset_matfile_bl = '../output/rousset_output/rousset_output_BL.mat'
+    rousset_matfile_scan2 = '../output/rousset_output/rousset_output_Scan2.mat'
+    rousset_matfile_scan3 = '../output/rousset_output/rousset_output_Scan3.mat'
 
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"

@@ -28,6 +28,16 @@ from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bila
 bilateral=True
 normals_only=False
 
+patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
+lut_file = "../FreeSurferColorLUT.txt"
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_06_16.csv'
+membership_conf = 0.50
+components = 100
+ref_key = 'WHOLE_CEREBELLUM'
+threshold = 1.2813
+# ref_key = 'COMPOSITE_REF'
+# threshold = 0.91711
+
 result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
 master_keys = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','SMOKING','DIABETES',
                'UW_MEM_BL_3months','UW_MEM_slope',
@@ -97,11 +107,6 @@ class DPGMM_SCALE(DPGMM):
             self.gamma_[i, 2] = self.gamma_[i + 1, 2] + sz[i]
         self.gamma_.T[2] += self.alpha
 
-
-def importCogSlopes():
-    master_file = '../FDG_AV45_COGdata_11_10_15.csv'
-    master_data = importMaster(master_file)
-
 def sample(data):
     return data[np.random.randint(0,len(data),(1,len(data)))[0]]
 
@@ -127,11 +132,11 @@ def chi2_test(group1_vals, group2_vals):
     chi2, p, dof, expected = chi2_contingency(freqs_df,correction=True)
     return float(p)
 
-def bootstrap_t_test(treatment, control, nboot=100000):
+def bootstrap_t_test(treatment, control, nboot=100000, stat_fn=np.mean):
     treatment = np.array(treatment)
     control = np.array(control)
     treatment_len = len(treatment)
-    tstat = abs(np.mean(treatment)-np.mean(control))
+    tstat = abs(stat_fn(treatment)-stat_fn(control))
     # adjust mean
     treatment = treatment - np.mean(treatment) + np.mean(control)
     # concatenate and scramble
@@ -141,7 +146,7 @@ def bootstrap_t_test(treatment, control, nboot=100000):
     idx = np.random.randint(0,len(Z),(nboot,len(Z)))
     for i in xrange(nboot):
         sboot = Z[idx[i]]
-        tboot[i] = np.mean(sboot[:treatment_len]) - np.mean(sboot[treatment_len:])
+        tboot[i] = stat_fn(sboot[:treatment_len]) - stat_fn(sboot[treatment_len:])
     pvalue = np.sum(abs(tboot)>=tstat) / float(nboot)
     return pvalue
 
@@ -156,7 +161,7 @@ def bootstrap_mean(vals, nboot=1000):
 def chooseBestModel(patterns, components, gamma_shape=7.5, gamma_inversescale=1.0, covar_type='spherical'):
     # Cluster
     models_scores = {}
-    for i in range(30):
+    for i in range(40):
         g = DPGMM_SCALE(n_components=components,
                         gamma_shape=gamma_shape,
                         gamma_inversescale=gamma_inversescale,
@@ -237,6 +242,7 @@ def compareTwoGroups(group1, group2, df, keys, adjust=True):
     hypos = len(keys)
     level = 0.05
     results = {}
+    
     def generateArgs(group1_members, group2_members, keys):
         for i, key in enumerate(keys):
             group1_vals = group1_members[key].dropna().tolist()
@@ -661,28 +667,26 @@ def plotValueDensity(result_df, groups, value_key):
 
 def plotValueBox(result_df, groups, value_key, save=False):
     long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
-    for i, (groupk, patterns) in enumerate(groups.iteritems()):
-        by_group = pd.DataFrame()
-        for g in patterns:
-            members = long[long.membership_prior==g][['value']]
-            members['pattern'] = g
-            by_group = pd.concat((by_group,members))
-        dfg = by_group.groupby('pattern')
-        labels = ['%s\n$n$=%d'%(k, len(v)) for k, v in dfg]
-        counts = [len(v) for k,v in dfg]
-        total = float(sum(counts))
-        widths = [2*c/total for c in counts]
-        plt.figure(i)
-        bplot = sns.violinplot(x='pattern',y='value',data=by_group)
-        bplot.set_xticklabels(labels)
-        plt.title("%s (%s)" % (value_key,groupk))
-        plt.suptitle("")
-        if save:
-            plt.savefig('../boxplot_%s_%s.png' % (value_key.replace('/','_'), groupk), dpi=200)
-            plt.close()
-        else:
-            plt.show()
-        
+    by_group = pd.DataFrame()
+    for g in groups:
+        members = long[long.membership_prior==g][['value']]
+        members['pattern'] = g
+        by_group = pd.concat((by_group,members))
+    dfg = by_group.groupby('pattern')
+    labels = ['%s\n$n$=%d'%(k, len(v)) for k, v in dfg]
+    counts = [len(v) for k,v in dfg]
+    total = float(sum(counts))
+    widths = [2*c/total for c in counts]
+    bplot = sns.violinplot(x='pattern',y='value',data=by_group)
+    bplot.set_xticklabels(labels)
+    plt.title("%s" % value_key)
+    plt.suptitle("")
+    if save:
+        plt.savefig('../boxplot_%s.png' % value_key.replace('/','_'), dpi=400)
+        plt.close()
+    else:
+        plt.show()
+    
 
 def flattenGroupComparisonResults(change_pvalues):
     flattened = []
@@ -786,7 +790,7 @@ def trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df):
     post_patterns_only.set_index(pattern_post_df.index, inplace=True)
 
     # Choose alpha + do model selection
-    best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.02, covar_type='spherical')
+    best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.01, covar_type='spherical')
     alpha = best_model.alpha
     with open("%s_model.pkl" % generateFileRoot(alpha, model=True), 'wb') as fid:
         cPickle.dump(best_model, fid)   
@@ -880,6 +884,30 @@ def pcaCorrelations(result_df):
         ax.set_title('Cortical Summary SUVR')
         ax.annotate('%s\nR2=%s' % (equation,r2), xy=(0.05,0.95), xycoords='axes fraction', bbox=props, verticalalignment='top', fontsize=15, color='k')
 
+def bootstrap_regression(x, y, nboot=1000):
+    '''
+    1. Estimate regression coefficients on original sample
+    2. Calculate fitted value and residual for each observation
+    3. Bootstrap sample the residuals
+    4. Calculate bootstrapped Y values (Yfit + bootstrapped residual)
+    5. Regress bootstrapped Y values on fixed X values to get bootstrap regression coefficients
+    6. Use bootstrapped regression coefficients to get SE and CI
+    '''
+    # regression on original sample
+    m_og, b_og, r_value_og, p_value_og, std_err_og = linregress(x, y)
+    regfn_og = np.poly1d([m_og, b_og])
+    # residuals for each observation
+    residuals_og = []
+    for x_i, y_i in zip(x,y):
+        pass
+
+    vals = np.array(vals)
+    tboot = np.zeros(nboot)
+    for i in xrange(nboot):
+        sboot = sample(vals)
+        tboot[i] = np.mean(sboot)
+    return np.mean(tboot)
+
 
 def LinRegZTest(x1, y1, x2, y2):
     m1, b1, r_value1, p_value1, std_err1 = linregress(x1, y1)
@@ -889,17 +917,6 @@ def LinRegZTest(x1, y1, x2, y2):
     return (slope_z, slope_pvalue, int_z, int_pvalue)
 
 if __name__ == '__main__':
-    # SETTINGS
-    patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
-    lut_file = "../FreeSurferColorLUT.txt"
-    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_06_16.csv'
-    membership_conf = 0.50
-    components = 100
-    ref_key = 'WHOLE_CEREBELLUM'
-    threshold = 1.2813
-    # ref_key = 'COMPOSITE_REF'
-    # threshold = 0.91711
-
     # parse input
     pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
 
@@ -907,7 +924,7 @@ if __name__ == '__main__':
     # result_df = trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df)
 
     # Load
-    model_file = '../dpgmm_alpha15.4_bilateral_model.pkl'
+    model_file = '../dpgmm_alpha15.58_bilateral_model.pkl'
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
     result_df = loadResults(alpha, master_csv)
@@ -949,12 +966,9 @@ if __name__ == '__main__':
 
     # plot group value distributions
     boxplot_keys = ['CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change']
-    for k in master_keys:
-        if k not in cat_keys:
-            boxplot_keys.append(k)
-
+    boxplot_keys += [k for k in master_keys if k not in cat_keys]
     for k in boxplot_keys:
-        plotValueBox(result_df, groups, k, save=True)
+        plotValueBox(result_df, big_groups, k, save=True)
 
     # # derive cortical summary prior p values between all pairs
     # pvalue_df = compareGroupPairs(itertools.combinations(big_groups,2), merged_members, ['CORTICAL_SUMMARY_prior'])
@@ -1023,45 +1037,3 @@ if __name__ == '__main__':
     plotValueScatter(result_df, [7,26], xys=to_scatter, fit_reg=True, test=True)
     plotValueScatter(result_df, [8,10], xys=to_scatter, fit_reg=True, test=True)
 
-
-    # plot against regional change
-    rchange_members = rchange_df.merge(result_df, left_index=True, right_index=True)
-    for i,rchange_key in enumerate(change_keys):
-        long = pd.melt(rchange_members, id_vars='membership', value_vars=rchange_key)
-        plt.figure(i+1)
-        for g in big_groups:
-            members = long[long['membership']==g]
-            members['value'].plot(kind='density', label='%s_%s' % (rchange_key, g))
-        plt.legend()
-
-    # plot against regional bl value
-    uptake_members = uptake_prior_df.merge(result_df, left_index=True, right_index=True)
-    for i,pattern_key in enumerate(pattern_keys):
-        long = pd.melt(uptake_members, id_vars='membership', value_vars=pattern_key)
-        plt.figure(i+1)
-        for g in big_groups:
-            members = long[long['membership']==g]
-            members['value'].plot(kind='density', label='%s_%s' % (pattern_key, g))
-        plt.legend()
-
-
-
-# # Leave one out X-validation
-# loo = LeaveOneOut(n=len(pattern_df_pca.index))
-# target = 'cortical_summary_bl'
-# points = []
-# for train_index, test_index in loo:
-#     train_rows = pattern_df_pca.iloc[train_index]
-#     test_rows = pattern_df_pca.iloc[test_index]
-#     X_train = train_rows[pca_keys]
-#     Y_train = train_rows[target].tolist()
-#     X_test = test_rows[pca_keys]
-#     Y_test = test_rows[target].tolist()
-#     regressor = DecisionTreeRegressor(random_state=0)
-#     regressor.fit(X_train,Y_train)
-#     score = regressor.predict(X_test)
-#     points.append((Y_test[0],score[0]))
-#     print "%s -> %s" % (score, Y_test)
-# plt.figure(1)
-# plt.scatter([_[0] for _ in points],[_[1] for _ in points])
-# plt.show()

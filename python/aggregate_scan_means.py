@@ -163,8 +163,6 @@ DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'PID', 'COMPOSITE', 'ERODED_SUBCORTICALW
                         'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
                         'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
                         'CEREBELLUMWHITEMATTER']
-'''
-
 
 def readHeaderAndLines(csv_file, limit=None):
     bl_lines = []
@@ -181,6 +179,7 @@ def readHeaderAndLines(csv_file, limit=None):
             raise Exception("%s, %s" % (bl_header, l))
         bl_lines.append(l)
     return (bl_header, bl_lines)
+
 
 def convertHeaderCodes(header):
     lookup = {0: 'RID',
@@ -411,14 +410,10 @@ def additionalCalculations(headers, mean_values, size_values, agg_type):
         headers.append('SCRNO')
         mean_values['SCRNO'] = int(mean_values['RID'])
     else:
-        '''
-        headers.append('PID')
-        headers.remove('RID')
-        mean_values['PID'] = int(mean_values['RID'])
-        '''
         pass
     return (headers, mean_values, size_values)
 
+'''
 
 def DFWeightedMean(df, keys):
     size_keys = ['%s_SIZE' % _ for _ in keys]
@@ -731,6 +726,17 @@ if __name__ == "__main__":
     # create output folder
     output_folder = '../output/%s' % timestamp
     mkdir_p(output_folder)
+
+    # FOR LONI UPLOAD (ADNI AV45)
+    regular_output = os.path.join(output_folder, 'LONI_UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp))
+    allregions_output = os.path.join(output_folder, 'LONI_UCBERKELEYAV45_%s_allregions_nontp.csv' % (timestamp))
+    merged_output = os.path.join(output_folder, 'LONI_UCBERKELEYAV45_%s_merged_nontp.csv' % (timestamp))
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
+    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES)
+    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
     # ADNI AV45 NONTP
     regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp))

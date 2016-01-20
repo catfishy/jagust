@@ -229,7 +229,7 @@ if __name__ == "__main__":
     lut_file = "../FreeSurferColorLUT.txt"
     bilat_translate = bilateralTranslations(lut_file)
     lut_table = importFreesurferLookup(lut_file)
-    master_file = '../FDG_AV45_COGdata_11_10_15.csv'
+    master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_06_16.csv'
     master_data = importMaster(master_file)
     diags = extractDiagnosesFromMasterData(master_data)
 
@@ -252,9 +252,9 @@ if __name__ == "__main__":
     # data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True)
 
     # allregion pvc results
-    bl_file = '../output/Rousset_BL/raw_allregions_output_BL.mat'
-    scan2_file = '../output/Rousset_Scan2/raw_allregions_output_Scan2.mat'
-    scan3_file = '../output/Rousset_Scan3/raw_allregions_output_Scan3.mat'
+    bl_file = '../output/rousset_output/rousset_output_BL.mat'
+    scan2_file = '../output/rousset_output/rousset_output_Scan2.mat'
+    scan3_file = '../output/rousset_output/rousset_output_Scan3.mat'
     data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file, translations=bilat_translate)
     data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
 
