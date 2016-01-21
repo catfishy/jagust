@@ -773,8 +773,8 @@ if __name__ == "__main__":
 
     # DOD AV45 NONTP
     regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % (timestamp))
-    allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_allregions_tp.csv' % (timestamp))
-    merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_merged_tp.csv' % (timestamp))
+    allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_allregions_nontp.csv' % (timestamp))
+    merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_merged_nontp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_av45_preprocess_folder, nontp=True)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_av45_pet_dates, dod_registry, dod=True)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
@@ -783,7 +783,7 @@ if __name__ == "__main__":
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
 
     # DOD TAU TP
-    regular_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_regular_nontp.csv' % (timestamp))
+    regular_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_regular_tp.csv' % (timestamp))
     allregions_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_allregions_tp.csv' % (timestamp))
     merged_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_merged_tp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_tau_preprocess_folder, nontp=False)

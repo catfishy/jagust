@@ -47,12 +47,16 @@ BRAAK5 = [1028,1012,1014,1032,1003,1027,1018,1019,1020,11,12,1011,1031,1008,1030
 BRAAK6 = [1021,1022,1005,1024,1017,2021,2022,2005,2024,2017]
 
 # DEFINITIONS FOR LOBES
-FRONTAL_LOBE = []
-PARIETAL_LOBE = []
-TEMPORAL_LOBE = []
-OCCIPITAL_LOBE = []
-CINGULATE = []
-
+FRONTAL_LOBE = [1028,2028,1003,2003,1027,2027,1032,2032,1012,2012,1014,2014,1020,2020,1019,2019,1018,2018]
+PARIETAL_LOBE = [1029,2029,1008,2008,1025,2025,1031,2031]
+CINGULATE_LOBE = [1002,2002,1023,2023,1026,2026,1010,2010]
+TEMPORAL_LOBE = [1015,2015,1030,2030,1009,2009,1034,2034,1033,2033,1001,2001]
+OCCIPITAL_LOBE = [1011,2011]
+MEDIAL_OCCIPITAL = [1005,2005,1021,2021,1013,2013,1007,2007]
+SENSORY_LOBE = [1024,2024,1022,2022,1017,2017]
+BASAL_GANGLIA = [11,50,12,51,13,52,26,58]
+THALAMUS = [9,10,48,49,28,60]
+LIMBIC = [17,53,1016,2016,1006,2006,1035,2035,18,54]
 
 
 # BLACKLISTED REGIONS
@@ -437,8 +441,14 @@ def parseRawRousset_inner(data, translations=None):
                       ('white_matter', WHITEMATTER),
                       ('frontal', FRONTAL_LOBE),
                       ('parietal', PARIETAL_LOBE),
-                      ('cingulate', CINGULATE),
-                      ('temporal', TEMPORAL_LOBE)]
+                      ('cingulate', CINGULATE_LOBE),
+                      ('temporal', TEMPORAL_LOBE),
+                      ('occipital', OCCIPITAL_LOBE),
+                      ('medialoccipital', MEDIAL_OCCIPITAL),
+                      ('sensory', SENSORY_LOBE),
+                      ('basalganglia', BASAL_GANGLIA),
+                      ('thalamus', THALAMUS),
+                      ('limbic', LIMBIC)]
     for name, keys in names_and_keys:
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(keys)) > 0]
         val_lookup[name] = weightedMean(regionsizes)
@@ -1596,6 +1606,18 @@ def importBSI(bsi_file, include_failed=False):
     return dict(data)
 
 
+def importAV1451(av1451_file):
+    df = pd.read_csv(av1451_file)
+    if 'SCRNO' in df.columns:
+        subj_col = 'SCRNO'
+    else:
+        subj_col = 'RID'
+    df.set_index(subj_col,inplace=True)
+    subj_dict = df.T.to_dict()
+    subj_dict = {int(k):v for k,v in subj_dict.iteritems()}
+    return subj_dict
+
+
 def importAV45(av45_tp_file, av45_nontp_file, registry=None):
     if av45_tp_file:
         # PARSE TIMEPOINT SPECIFIC DATA
@@ -1784,6 +1806,7 @@ def weightedMean(points):
 def parseDate(date_str, registry=None):
     if date_str == '':
         raise Exception("Blank date string")
+    date_str = date_str.replace('--','1')
     formats = ['%Y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
     for f in formats:
         try:
@@ -1828,11 +1851,14 @@ def rearrangeHeaders(new_headers, to_add, after=None):
     return new_headers
 
 def findVisitDate(registry, subj, viscodes):
-    vcs = set([_.lower().strip() for _ in viscodes])
+    vcs = [_.lower().strip() for _ in viscodes]
+    vcs = set([_ for _ in vcs if _ != ''])
     subj_registry = registry.get(subj,[])
     date = None
     for reg_row in subj_registry:
-        if reg_row['VISCODE'] in vcs or reg_row['VISCODE2'] in vcs:
+        row_visits = [reg_row.get('VISCODE','').lower().strip(), reg_row.get('VISCODE2','').lower().strip()]
+        row_visits = set([_ for _ in row_visits if _ != ''])
+        if len(vcs & row_visits) > 0:
             date = reg_row['EXAMDATE']
             break
     return date
@@ -1900,108 +1926,4 @@ def calculateCSVDifference(file1, file2, index='RID'):
 
 
 if __name__ == "__main__":
-    # Calculate DOD raw output differences
-    '''
-    lut_file = "../FreeSurferColorLUT.txt"
-    data = importFreesurferLookup(lut_file)
-    file1 = '../docs/AV45_DOD_preprocess_output_12_18_14/AV45_BL_means_extraregions_18-Dec-2014_99.csv'
-    file2 = '../docs/AV45_DOD_preprocess_output_08_05_15/AV45_BL_means_extraregions_05-Aug-2015_121.csv'
-    diff_distr = calculateCSVDifference(file1, file2, index='0')
-    plt.figure(1)
-    keys = diff_distr.keys()
-    x = range(len(keys))
-    avgs = [diff_distr[k][0] for k in keys]
-    stds = [diff_distr[k][1] for k in keys]
-    maxs = [diff_distr[k][2] for k in keys]
-    mins = [diff_distr[k][3] for k in keys]
-    plt.errorbar(x, avgs, stds)
-    plt.plot(x,maxs)
-    plt.plot(x,mins)
-    x1,x2,y1,y2 = plt.axis()
-    plt.axis((0,len(x),y1,y2))
-    locs, labels = plt.xticks()
-    keys = [data.get(int(k),k) for k in keys]
-    plt.xticks(x, keys, rotation='vertical')
-    plt.show()
-    sys.exit(1)
-    '''
-
-    # Scatter plot of composite SUVR values
-    file1 = '../docs/DOD/AV45_BL_means_Dec2014_99.csv'
-    file2 = '../DOD_DATA_08_05_15.csv'
-    headers1, rows1 = parseCSV(file1)
-    headers2, rows2 = parseCSV(file2)
-    data1 = {r['PID']:r['comp/wcerb'] for r in rows1}
-    data2 = {r['PID']:r['AV45_1_comp/wcerb'] for r in rows2}
-    points = []
-    for pid in list(set(data1.keys()) & set(data2.keys())):
-        if pid < 6000:
-            continue
-        xval = float(data1[pid])
-        yval = float(data2[pid])
-        points.append((xval,yval))
-    x = [_[0] for _ in points]
-    y = [_[1] for _ in points]
-    plt.figure(1)
-    plt.scatter(x,y)
-    plt.plot([0.8,1.7],[0.8,1.7])
-    
-    plt.xlabel('Old Value')
-    plt.ylabel('New Value')
-    plt.show()
-    # Import FDG raw data
-    '''
-    fdg_extract_file = "../docs/FDG_preprocess_output_01_20_15/Tue-Jan-20-15-38-15-2015_FDGmetaroi.csv"
-    registry_file = "../docs/registry_clean.csv"
-    registry = importRegistry(registry_file)
-    fdg_rows = importExtractedFDG(fdg_extract_file, registry=registry)
-    fdg_rows = [convertToCSVDataType(_, decimal_places=5) for _ in fdg_rows]
-    fdg_output = '../UCBERKELEY_FDG_07_29_15.csv'
-    headers = ['RID','VISCODE','VISCODE2','UID','EXAMDATE','ROINAME','ROILAT','MEAN','MEDIAN','MODE','MIN','MAX','STDEV','NANVOX','TOTVOX','update_stamp']
-    dumpCSV(fdg_output, headers, fdg_rows)
-    '''
-
-    # Get ventricle sections
-    '''
-    for k,v in data.iteritems():
-        if 'ventricle' in v.lower():
-            print "%s: %s" % (k,v)
-    sys.exit(1)
-    '''
-
-    # Suzanne Other ROI
-    '''
-    to_lookup = [5,14,15,18,24,26,28,30,31,44,54,58,60,62,63,72,77,80,85,
-                 251,252,253,254,255,1000,1001,1004,1005,1007,1009,1010,
-                 1013,1016,1017,1021,1022,1024,1026,1030,1033,1034,1035,
-                 2000,2001,2004,2005,2007,2009,2010,2013,2016,2017,2021,
-                 2022,2024,2026,2030,2033,2034,2035]
-    '''
-
-    # All in aparc+aseg
-    to_lookup = [0,2,4,5,7,8,10,11,12,13,14,15,16,17,18,24,26,28,30,31,41,43,
-                 44,46,47,49,50,51,52,53,54,58,60,62,63,72,77,80,85,251,252,
-                 253,254,255,1000,1001,1002,1003,1004,1005,1006,1007,1008,1009,
-                 1010,1011,1012,1013,1014,1015,1016,1017,1018,1019,1020,1021,
-                 1022,1023,1024,1025,1026,1027,1028,1029,1030,1031,1032,1033,
-                 1034,1035,2000,2001,2002,2003,2004,2005,2006,2007,2008,2009,
-                 2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,
-                 2022,2023,2024,2025,2026,2027,2028,2029,2030,2031,2032,2033,
-                 2034,2035]
-
-
-    # DOD Output
-    '''
-    to_lookup = [3000,3001,3002,3003,3004,4000,8,47,5003,5001,5002,5000,16,12,
-                 51,11,50,13,52,1003,1012,1014,1018,1019,1020,1027,1028,1032,
-                 2003,2012,2014,2018,2019,2020,2027,2028,2032,1002,1010,1023,
-                 1026,2002,2010,2023,2026,1008,1025,1029,1031,2008,2025,2029,
-                 2031,1015,1030,2015,2030]
-    '''
-
-    '''
-    lut_file = "../FreeSurferColorLUT.txt"
-    data = importFreesurferLookup(lut_file)
-    for idx in to_lookup:
-        print "%s: %s" % (idx, data.get(idx, 'Unknown'))
-    '''
+    pass

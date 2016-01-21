@@ -378,13 +378,76 @@ def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
     return (new_headers, new_lines)
 
 
+def syncAV1451Data(old_headers, old_lines, av1451_file, dump_to=None):
+    av1451_by_subj = importAV1451(av1451_file)
+
+    to_add_headers = ['AV1451_BRAAK1_wcereb', 'AV1451_BRAAK2_wcereb', 
+                      'AV1451_BRAAK3_wcereb', 'AV1451_BRAAK4_wcereb', 
+                      'AV1451_BRAAK5_wcereb', 'AV1451_BRAAK6_wcereb',
+                      'AV1451_LEFT_CAUDATE_wcereb', 'AV1451_RIGHT_CAUDATE_wcereb',
+                      'AV1451_LEFT_PUTAMEN_wcereb', 'AV1451_RIGHT_PUTAMEN_wcereb',
+                      'AV1451_LEFT_CHOROID_PLEXUS_wcereb', 'AV1451_RIGHT_CHOROID_PLEXUS_wcereb',
+                      'AV1451_CEREBELLUMGREYMATTER', 'AV1451_BRAIN_STEM', 
+                      'AV1451_WHOLECEREBELLUM']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        new_data = {}
+        new_data['AV1451_CEREBELLUMGREYMATTER'] = float(subj_row['CEREBELLUMGREYMATTER'])
+        new_data['AV1451_BRAIN_STEM'] = float(subj_row['BRAIN_STEM'])
+
+        # get whole cerebellum
+        cerebellum_parts = ['RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBELLUM_CORTEX', 'LEFT_CEREBELLUM_WHITE_MATTER']
+        weights_values = [(float(subj_row["%s_SIZE" % _]), float(subj_row[_])) for _ in cerebellum_parts]
+        wcereb = weightedMean(weights_values)
+        new_data['AV1451_WHOLECEREBELLUM'] = wcereb
+
+        # region suvrs
+        new_data['AV1451_BRAAK1_wcereb'] = float(subj_row['BRAAK1'])/wcereb
+        new_data['AV1451_BRAAK2_wcereb'] = float(subj_row['BRAAK2'])/wcereb
+        new_data['AV1451_BRAAK3_wcereb'] = float(subj_row['BRAAK3'])/wcereb
+        new_data['AV1451_BRAAK4_wcereb'] = float(subj_row['BRAAK4'])/wcereb
+        new_data['AV1451_BRAAK5_wcereb'] = float(subj_row['BRAAK5'])/wcereb
+        new_data['AV1451_BRAAK6_wcereb'] = float(subj_row['BRAAK6'])/wcereb
+        new_data['AV1451_LEFT_CAUDATE_wcereb'] = float(subj_row['LEFT_CAUDATE'])/wcereb
+        new_data['AV1451_RIGHT_CAUDATE_wcereb'] = float(subj_row['RIGHT_CAUDATE'])/wcereb
+        new_data['AV1451_LEFT_PUTAMEN_wcereb'] = float(subj_row['LEFT_PUTAMEN'])/wcereb
+        new_data['AV1451_RIGHT_PUTAMEN_wcereb'] = float(subj_row['RIGHT_PUTAMEN'])/wcereb
+        new_data['AV1451_LEFT_CHOROID_PLEXUS_wcereb'] = float(subj_row['LEFT_CHOROID_PLEXUS'])/wcereb
+        new_data['AV1451_RIGHT_CHOROID_PLEXUS_wcereb'] = float(subj_row['RIGHT_CHOROID_PLEXUS'])/wcereb 
+
+        return new_data
+
+    old_subjects = set()
+    for i, old_line in enumerate(old_lines):
+        subj = int(old_line['SCRNO'])
+        new_data = updateLine(old_line, av1451_by_subj, extraction_fn, pid_key='SCRNO', pet_meta=None)
+        old_line.update(new_data)
+        new_lines.append(old_line)
+        old_subjects.add(subj)
+
+    new_subjects = list(set(av1451_by_subj.keys()) - old_subjects)
+    for ns in new_subjects:
+        old_line = {k: '' for k in new_headers}
+        old_line['SCRNO'] = str(int(ns))
+        new_data = updateLine(old_line, av1451_by_subj, extraction_fn, pid_key='SCRNO', pet_meta=None)
+        old_line.update(new_data)
+        new_lines.append(old_line)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+
 def syncAV45Data(old_headers, old_lines, av45_file, registry_file, diags, dump_to=None):
     '''
     Only take ADNI1 Controls:
     If PID is < 6000, then filter by ADNI1_CONTROLS
     '''
     registry = importDODRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, registry=registry)
+    av45_by_subj = importAV45('', av45_file, registry=registry)
     ADNI1_CONTROLS = [rid for rid,diag in diags.iteritems() if diag == 'N']
 
     new_headers = None
@@ -427,7 +490,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, diags, dump_t
             new_headers = updated_headers
         new_data = convertToCSVDataType(new_data, decimal_places=None)
         old_l = {k: '' for k in new_headers}
-        old_l['SCRNO'] = str(ns)
+        old_l['SCRNO'] = str(int(ns))
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -450,8 +513,8 @@ def parseAV45Entries(old_headers, subj_rows):
     right_parietal_keys = ['CTX_RH_INFERIORPARIETAL', 'CTX_RH_PRECUNEUS', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPRAMARGINAL']
     left_temporal_keys = ['CTX_LH_MIDDLETEMPORAL', 'CTX_LH_SUPERIORTEMPORAL']
     right_temporal_keys = ['CTX_RH_MIDDLETEMPORAL', 'CTX_RH_SUPERIORTEMPORAL']
-    left_bg_keys = ['LEFT-PUTAMEN', 'LEFT-CAUDATE', 'LEFT-PALLIDUM']
-    right_bg_keys = ['RIGHT-PUTAMEN', 'RIGHT-CAUDATE', 'RIGHT-PALLIDUM']
+    left_bg_keys = ['LEFT_PUTAMEN', 'LEFT_CAUDATE', 'LEFT_PALLIDUM']
+    right_bg_keys = ['RIGHT_PUTAMEN', 'RIGHT_CAUDATE', 'RIGHT_PALLIDUM']
     left_ventrical_keys = []
     right_ventrical_keys = []
 
@@ -499,17 +562,17 @@ def parseAV45Entries(old_headers, subj_rows):
         compositeroi = float(point['COMPOSITE'])
         bigref = float(point['COMPOSITE_REF'])
         wm70 = float(point['ERODED_SUBCORTICALWM'])
-        brainstem = float(point['BRAINSTEM'])
+        brainstem = float(point['BRAIN_STEM'])
         cingulate = float(point['CINGULATE'])
         frontal = float(point['FRONTAL'])
         parietal = float(point['PARIETAL'])
         temporal = float(point['TEMPORAL'])
-        leftputamen = float(point['LEFT-PUTAMEN'])
-        rightputamen = float(point['RIGHT-PUTAMEN'])
-        leftcaudate = float(point['LEFT-CAUDATE'])
-        rightcaudate = float(point['RIGHT-CAUDATE'])
-        leftpallidum = float(point['LEFT-PALLIDUM'])
-        rightpallidum = float(point['RIGHT-PALLIDUM'])
+        leftputamen = float(point['LEFT_PUTAMEN'])
+        rightputamen = float(point['RIGHT_PUTAMEN'])
+        leftcaudate = float(point['LEFT_CAUDATE'])
+        rightcaudate = float(point['RIGHT_CAUDATE'])
+        leftpallidum = float(point['LEFT_PALLIDUM'])
+        rightpallidum = float(point['RIGHT_PALLIDUM'])
         left_frontal = np.average([float(point[k]) for k in left_frontal_keys], weights=[float(point["%s_SIZE" % k]) for k in left_frontal_keys])
         right_frontal = np.average([float(point[k]) for k in right_frontal_keys], weights=[float(point["%s_SIZE" % k]) for k in right_frontal_keys])
         left_cingulate = np.average([float(point[k]) for k in left_cingulate_keys], weights=[float(point["%s_SIZE" % k]) for k in left_cingulate_keys])
@@ -607,6 +670,8 @@ def runPipeline():
 
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, diags, dump_to=None) # adds new patients
+    print "\nSYNCING AV1451\n"
+    new_headers, new_lines = syncAV1451Data(new_headers, new_lines, av1451_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAG\n"
     new_headers, new_lines = syncDiagData(new_headers, new_lines, diag_file, dump_to=None)
     print "\nSYNCING APOE\n"
@@ -630,7 +695,7 @@ def runPipeline():
     print "\nSYNCING CSF\n"
     new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_file, registry_file, dump_to=None)
     print "\nSYNCING ADNI MASTER\n"
-    new_headers, new_lines = syncADNIMasterData(new_headers, new_lines, adnimaster_file, dump_to=output_file)
+    new_headers, new_lines = syncADNIMasterData(new_headers, new_lines, av45_master_file, dump_to=output_file)
 
 if __name__ == '__main__':
     now = datetime.now()
@@ -639,12 +704,15 @@ if __name__ == '__main__':
     master_file = "" # not used
     output_file = "../DOD_DATA_%s.csv" % (now.strftime("%m_%d_%y"))
 
-    # LOOKUP files
-    av45_master_file = '../FDG_AV45_COGdata_10_15_15.csv'
-    registry_file = "../docs/DOD/DOD_REGISTRY.csv"
-
+    # ADNI master file
+    av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_19_16.csv'
     # AV45 file
-    av45_file = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
+    av45_file = '../output/01_03_16/UCBERKELEYAV45_DOD_01_03_16_merged_nontp.csv'
+    # AV1451 file
+    av1451_file = '../output/01_03_16/UCBERKELEYTAU_DOD_01_03_16_merged_tp.csv'
+
+    # Registry file
+    registry_file = "../docs/DOD/REGISTRY.csv"
     # AVLT file
     avlt_file = "../docs/DOD/NEUROBAT.csv"
     # ADAS file
@@ -666,19 +734,7 @@ if __name__ == '__main__':
     mri_file = "../docs/DOD/MRIMETA.csv"
     # Elig file
     elig_file = "../docs/DOD/VAELG.csv"
-    # ADNI master file
-    adnimaster_file = "../FDG_AV45_COGdata_10_15_15.csv"
     # diag file
     diag_file = "../docs/DOD/DXSUM.csv"
 
     runPipeline()
-
-    # testing old input processing
-    '''
-    av45_file = '../output/AV45_DOD_LONI_OLDTEST_extra.csv'
-    output_file = '../DOD_DATA_TEST.csv'
-    # syncing pipeline
-    new_headers = ['PID', 'Notes']
-    new_lines = []
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, dump_to=output_file) # adds new patients
-    '''
