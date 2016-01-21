@@ -448,7 +448,10 @@ def parseRawRousset_inner(data, translations=None):
                       ('sensory', SENSORY_LOBE),
                       ('basalganglia', BASAL_GANGLIA),
                       ('thalamus', THALAMUS),
-                      ('limbic', LIMBIC)]
+                      ('limbic', LIMBIC),
+                      ('cerebellum_gray', CEREBG),
+                      ('cerebelllum_white', CEREBW),
+                      ('cerebral_white', WHITEMATTER)]
     for name, keys in names_and_keys:
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(keys)) > 0]
         val_lookup[name] = weightedMean(regionsizes)

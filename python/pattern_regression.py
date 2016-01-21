@@ -39,6 +39,8 @@ threshold = 1.2813
 # threshold = 0.91711
 
 result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
+lobe_keys = ['frontal','parietal','cingulate','temporal','occipital','medialoccipital',
+             'sensory','basalganglia','thalamus','limbic','cerebellum_gray','cerebellum_white','cerebral_white','BRAIN_STEM']
 master_keys = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','SMOKING','DIABETES',
                'UW_MEM_BL_3months','UW_MEM_slope',
                'UW_EF_BL_3months','UW_EF_slope',
