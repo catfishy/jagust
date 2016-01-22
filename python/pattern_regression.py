@@ -363,7 +363,7 @@ def smallGroups(result_df, threshold=50):
             small_groups.append(g)
     return small_groups
 
-def bigGroups(result_df, threshold=7):
+def bigGroups(result_df, threshold=10):
     # determine big groups
     groups = np.array(list(set(result_df.membership_prior) | set(result_df.membership_post)))
     groups = groups[~np.isnan(groups)]
@@ -372,6 +372,7 @@ def bigGroups(result_df, threshold=7):
         prior_members = set(result_df[result_df.membership_prior==g].index)
         post_members = set(result_df[result_df.membership_post==g].index)
         allmembers = len(prior_members | post_members)
+        print "%s: %s" % (g, allmembers)
         if allmembers >= threshold:
             big_groups.append(g)
     return big_groups
@@ -386,7 +387,22 @@ def fitNormalCdf(values, threshold):
     g_1.fit([[_] for _ in values])
     mu_1, sigma_1 = (g_1.means_[0][0],np.sqrt(g_1.covars_[0][0][0]))
     cdf_val = norm.cdf(threshold,loc=mu_1,scale=sigma_1)
-    return cdf_val
+    return (mu_1, sigma_1, cdf_val)
+
+def graphNormalFits(groups, result_df, threshold):
+    x = np.linspace(0,3.5,1000)
+    plt.figure(1)
+    for g in groups:
+        members_prior = result_df[result_df.membership_prior==g]
+        members_post = result_df[result_df.membership_post==g]
+        cortical_summary_values = np.array(list(members_prior['CORTICAL_SUMMARY_prior']) + list(members_post['CORTICAL_SUMMARY_post']))
+        mu, sigma, cdf_val = fitNormalCdf(cortical_summary_values, threshold)
+        y = norm.pdf(x, loc=mu, scale=sigma)
+        plt.plot(x,y)
+    plt.plot([threshold, threshold],[0,10])
+    plt.show()
+
+
 
 def parseConversions(groups, result_df, threshold, master_keys):
     # group diagnostic/pattern/positivity conversions
@@ -406,7 +422,8 @@ def parseConversions(groups, result_df, threshold, master_keys):
         # add cortical summary values
         cortical_summary_values = np.array(list(members_prior['CORTICAL_SUMMARY_prior']) + list(members_post['CORTICAL_SUMMARY_post']))
         cur_conversions['cortical_summary'] = cortical_summary_values.mean()
-        cur_conversions['below_threshold'] = fitNormalCdf(cortical_summary_values, threshold)
+        mu, sigma, cdf_val = fitNormalCdf(cortical_summary_values, threshold)
+        cur_conversions['below_threshold'] = cdf_val
         cur_conversions['cortical_summary_change'] = members_prior['CORTICAL_SUMMARY_change'].mean()
         
         # add diagnostic counts
@@ -986,22 +1003,26 @@ def lobePatterns(lobe_tp, groups, pattern=True):
         lobe_patterns[g] = members
     return lobe_patterns
 
-def graphLobes(lobe_tp, groups, pattern=True):
+def graphLobes(lobe_tp, groups, suvrs, pattern=True, save=True):
     y_limits = (0,3.0)
     if pattern:
         y_limits = (0,0.2)
     prior_pts = lobe_tp.xs('prior',level='timepoint')
     lobe_patterns = lobePatterns(lobe_tp, groups, pattern=pattern)
     for i,g in enumerate(groups):
-        plt.figure(i+1)
+        fig = plt.figure(i+1)
+        #fig.set_size_inches(5.5,4)
+        #fig.set_dpi(300)
         members = lobe_patterns[g]
         long_df = pd.melt(members, id_vars=['rid'], value_vars=lobe_keys)
-        bplot = sns.violinplot(x='variable', y='value', data=long_df)
+        bplot = sns.violinplot(x='variable', y='value', data=long_df, size=4, aspect=2)
         bplot.set(ylim=y_limits)
-        plt.xticks(rotation=45)
-        title = 'Group %s, n=%s' % (int(g), len(members.index))
+        plt.xticks(rotation=80)
+        title = 'Group %s, n=%s, mean SUVR: %s' % (int(g), len(members.index), suvrs[g])
         plt.title(title)
         plt.suptitle("")
+        if save:
+            plt.savefig('../pattern_%s_lobeplot.png' % int(g), bbox_inches='tight')
     plt.show()
 
 def testLobePatternDifferences(lobe_tp, groups, pattern=True):
@@ -1054,7 +1075,7 @@ if __name__ == '__main__':
     saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
 
     # lobe violin plots
-    graphLobes(lobe_tp,big_groups)
+    graphLobes(lobe_tp,big_groups,cortical_summary)
 
     # lobe pattern differences
     lobe_sigtests = testLobePatternDifferences(lobe_tp, groups, pattern=True)
