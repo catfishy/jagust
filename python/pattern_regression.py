@@ -19,6 +19,7 @@ from sklearn.cross_validation import LeaveOneOut
 from sklearn.preprocessing import StandardScaler
 from statsmodels.sandbox.stats.multicomp import multipletests
 import networkx as nx
+import numpy.testing as npt
 
 from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations, regCoeffZTest
 
@@ -39,8 +40,8 @@ threshold = 1.2813
 # threshold = 0.91711
 
 result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
-lobe_keys = ['frontal','parietal','cingulate','temporal','occipital','medialoccipital',
-             'sensory','basalganglia','thalamus','limbic','cerebellum_gray','cerebellum_white','cerebral_white','BRAIN_STEM']
+lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
+             'SENSORY','BASALGANGLIA','THALAMUS','LIMBIC','CEREBELLUM_GRAY','CEREBELLUM_WHITE','CEREBRAL_WHITE','BRAIN_STEM']
 master_keys = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','SMOKING','DIABETES',
                'UW_MEM_BL_3months','UW_MEM_slope',
                'UW_EF_BL_3months','UW_EF_slope',
@@ -72,6 +73,7 @@ if bilateral: # truncate keys
 prior_keys = ['%s_prior' % _ for _ in pattern_keys]
 post_keys = ['%s_post' % _ for _ in pattern_keys]
 change_keys = ['%s_change' % _ for _ in pattern_keys]
+lobe_change_keys = ['%s_change' % _ for _ in lobe_keys]
 
 
 class DPGMM_SCALE(DPGMM):
@@ -160,15 +162,15 @@ def bootstrap_mean(vals, nboot=1000):
         tboot[i] = np.mean(sboot)
     return np.mean(tboot)
 
-def chooseBestModel(patterns, components, gamma_shape=7.5, gamma_inversescale=1.0, covar_type='spherical'):
+def chooseBestModel(patterns, components, gamma_shape=1.0, gamma_inversescale=0.01, covar_type='spherical'):
     # Cluster
     models_scores = {}
-    for i in range(40):
+    for i in range(60):
         g = DPGMM_SCALE(n_components=components,
                         gamma_shape=gamma_shape,
                         gamma_inversescale=gamma_inversescale,
-                        tol=1e-6,
-                        n_iter=700,
+                        tol=1e-7,
+                        n_iter=1000,
                         params='wmc',
                         init_params='wmc',
                         verbose=False)
@@ -260,6 +262,7 @@ def compareTwoGroups(group1, group2, df, keys, adjust=True):
         key, pvalue, group1_boot, group2_boot = mp_bootstrap_wrapper(arg)
         results[key] = (pvalue, group1_boot, group2_boot)
         print "\t%s: %s (%s, %s)" % (key,pvalue,group1_boot,group2_boot)
+
     result_keys = results.keys()
     result_pvals = [results[_][0] for _ in result_keys]
     if adjust:
@@ -282,6 +285,7 @@ def parseRawInput(patterns_csv, ref_key):
     # read in data
     raw_df = pd.read_csv(patterns_csv)
     raw_df.set_index('rid',inplace=True,drop=True)
+    raw_df.sort_index(inplace=True)
 
     # convert to SUVR units and calculate change
     priors = [_ for _ in raw_df.columns if '_prior' in _ and 'diag' not in _]
@@ -289,16 +293,25 @@ def parseRawInput(patterns_csv, ref_key):
     prior_ref = raw_df.loc[:,'%s_prior' % ref_key]
     post_ref = raw_df.loc[:,'%s_post' % ref_key]
 
+    # convert to SUVR
     raw_df[priors] = raw_df[priors].divide(prior_ref,axis='index')
     raw_df[posts] = raw_df[posts].divide(post_ref,axis='index')
+
+    # annualize change
     yrs = raw_df['yrs']
     for prior_key in priors:
         post_key = prior_key.replace('_prior','_post')
         change_key = prior_key.replace('_prior','_change')
         raw_df[change_key] = (raw_df[post_key]-raw_df[prior_key]).divide(yrs,axis='index')
 
+    # split pattern keys from aggregate (lobe) keys
+    prior_keys_pattern = [_ for _ in priors if _.replace('_prior','') in pattern_keys]
+    prior_keys_lobes = [_ for _ in priors if _.replace('_prior','') in lobe_keys]
+    post_keys_pattern = [_ for _ in posts if _.replace('_post','') in pattern_keys]
+    post_keys_lobes = [_ for _ in posts if _.replace('_post','') in lobe_keys]
+
     # convert to patterns
-    pattern_prior_df = raw_df[prior_keys].copy()
+    pattern_prior_df = raw_df[prior_keys_pattern].copy()
     pattern_prior_df.columns = [_.replace('_prior','') for _ in pattern_prior_df.columns]
     pattern_prior_df = pattern_prior_df.divide(pattern_prior_df.sum(axis=1),axis=0)
     pattern_prior_df['timepoint'] = 'prior'
@@ -306,7 +319,7 @@ def parseRawInput(patterns_csv, ref_key):
     pattern_prior_df.set_index('timepoint', append=True, inplace=True)
     pattern_prior_df.dropna(inplace=True)
 
-    pattern_post_df = raw_df[post_keys].copy()
+    pattern_post_df = raw_df[post_keys_pattern].copy()
     pattern_post_df.columns = [_.replace('_post','') for _ in pattern_post_df.columns]
     pattern_post_df = pattern_post_df.divide(pattern_post_df.sum(axis=1),axis=0)
     pattern_post_df['timepoint'] = 'post'
@@ -314,25 +327,28 @@ def parseRawInput(patterns_csv, ref_key):
     pattern_post_df.set_index('timepoint', append=True, inplace=True)
     pattern_post_df.dropna(inplace=True)
 
-    #pattern_df = pd.concat((pattern_prior_df,pattern_post_df))
-
-    uptake_prior_df = raw_df[prior_keys]
+    uptake_prior_df = raw_df[prior_keys_pattern].copy()
     uptake_prior_df.columns = [_.replace('_prior','') for _ in uptake_prior_df.columns]
     uptake_prior_df.dropna(inplace=True)
 
-    uptake_post_df = raw_df[post_keys]
+    uptake_post_df = raw_df[post_keys_pattern].copy()
     uptake_post_df.columns = [_.replace('_post','') for _ in uptake_post_df.columns]
     uptake_post_df.dropna(inplace=True)
 
-    result_df = raw_df[result_keys]
-    rchange_df = raw_df[change_keys]
+    lobes_prior_df = raw_df[prior_keys_lobes].copy()
+    lobes_prior_df.columns = [_.replace('_prior','') for _ in lobes_prior_df.columns]
+    lobes_prior_df.dropna(inplace=True)
 
-    return (pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df)
+    lobes_post_df = raw_df[post_keys_lobes].copy()
+    lobes_post_df.columns = [_.replace('_post','') for _ in lobes_post_df.columns]
+    lobes_post_df.dropna(inplace=True)
 
-def loadResults(results_file):
-    results = pd.read_csv(results_file)
-    results.set_index('rid',inplace=True,drop=True)
-    return results
+    result_df = raw_df[result_keys].copy()
+    rchange_df = raw_df[change_keys].copy()
+    lobes_change_df = raw_df[lobe_change_keys].copy()
+
+    return (pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, lobes_change_df, result_df, rchange_df)
+
 
 def smallGroups(result_df, threshold=50):
     # determine small groups
@@ -486,20 +502,39 @@ def saveAparcs(alpha, components, groups, pattern_members, uptake_members, chang
         saveFakeAparcInput(out_file_change, change_values, index_lookup)
         saveFakeAparcInput(out_file_uptake, uptake_values, index_lookup)
 
-def mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, rchange_df, with_timepoint=False):
-    # merge results with regional change and uptakes
+def saveLobeAparcs(alpha, groups, lobe_tp, lut_file):
+    if bilateral:
+        index_lookup = bilateralTranslations(lut_file)
+    else:
+        index_lookup = importFreesurferLookup(lut_file)
+
+    all_lobe_members = lobePatterns(lobe_tp, groups, pattern=True)
+    aparc_input_template = "../output/fake_aparc_inputs/dpgmm_alpha%s_group_%s_%s"
+    for g in groups:
+        lobe_members = all_lobe_members[g]
+        out_file = aparc_input_template % (alpha,g,'lobes')
+        lobe_values = lobe_members[lobe_keys].mean().to_dict()
+        saveFakeAparcInput(out_file, lobe_values, index_lookup)
+
+
+def mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobe_prior_df, lobe_post_df, rchange_df, with_timepoint=False):
+    # changes
     change_members = rchange_df.copy()
     change_members['membership'] = result_df['membership_prior']
     if with_timepoint:
         change_members.index.name='rid'
         change_members.loc[:,'timepoint'] = 'prior'
         change_members.set_index('timepoint',append=True,inplace=True)
+
+    # priors
     prior_members = result_df.copy()
     prior_members['membership'] = result_df['membership_prior']
     if with_timepoint:
         prior_members.index.name='rid'
         prior_members.loc[:,'timepoint'] = 'prior'
         prior_members.set_index('timepoint',append=True,inplace=True)
+
+    # uptakes
     uptake_members_prior = uptake_prior_df.merge(result_df[['membership_prior','CORTICAL_SUMMARY_prior']], left_index=True, right_index=True)
     uptake_members_prior['membership'] = uptake_members_prior['membership_prior']
     uptake_members_prior['CORTICAL_SUMMARY'] = uptake_members_prior['CORTICAL_SUMMARY_prior']
@@ -514,6 +549,8 @@ def mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, 
         uptake_members_prior.set_index('timepoint',append=True,inplace=True)
         uptake_members_post.set_index('timepoint',append=True,inplace=True)
     uptake_members = pd.concat((uptake_members_prior,uptake_members_post))
+
+    # pattern members
     pattern_prior_df = pattern_prior_df.xs('prior',level='timepoint')
     pattern_post_df = pattern_post_df.xs('post',level='timepoint')
     pattern_members_prior = pattern_prior_df.merge(result_df[['membership_prior','CORTICAL_SUMMARY_prior']], left_index=True, right_index=True)
@@ -530,7 +567,24 @@ def mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, 
         pattern_members_prior.set_index('timepoint',append=True,inplace=True)
         pattern_members_post.set_index('timepoint',append=True,inplace=True)
     pattern_members = pd.concat((pattern_members_prior,pattern_members_post))
-    return (uptake_members, pattern_members, change_members, prior_members)
+
+    # lobe members
+    lobe_members_prior = lobe_prior_df.merge(result_df[['membership_prior','CORTICAL_SUMMARY_prior']], left_index=True, right_index=True)
+    lobe_members_post = lobe_post_df.merge(result_df[['membership_post','CORTICAL_SUMMARY_post']], left_index=True, right_index=True)
+    lobe_members_prior['membership'] = lobe_members_prior['membership_prior']
+    lobe_members_prior['CORTICAL_SUMMARY'] = lobe_members_prior['CORTICAL_SUMMARY_prior']
+    lobe_members_post['membership'] = lobe_members_post['membership_post']
+    lobe_members_post['CORTICAL_SUMMARY'] = lobe_members_post['CORTICAL_SUMMARY_post']
+    if with_timepoint:
+        lobe_members_prior.index.name='rid'
+        lobe_members_post.index.name='rid'
+        lobe_members_prior.loc[:,'timepoint'] = 'prior'
+        lobe_members_post.loc[:,'timepoint'] = 'post'
+        lobe_members_prior.set_index('timepoint',append=True,inplace=True)
+        lobe_members_post.set_index('timepoint',append=True,inplace=True)
+    lobe_members = pd.concat((lobe_members_prior,lobe_members_post))
+
+    return (uptake_members, pattern_members, lobe_members, change_members, prior_members)
 
 def scaleRawInput(pattern_df, scale_type='original', whiten=True):
     assert scale_type in set(['original', 'pca', 'kernelpca'])
@@ -656,22 +710,22 @@ def plotValueScatter(result_df, groups, xys, fit_reg=False, test=True, show=Fals
         sns.plt.show()
 
 def plotValueDensity(result_df, groups, value_key):
-    long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
+    long_df = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
     for i, (k, patterns) in enumerate(groups.iteritems()):
         plt.figure(i)
         plt.title("%s (%s)" % (value_key,k))
         for g in patterns:
-            members = long[long.membership_prior==g]
+            members = long_df[long_df.membership_prior==g]
             print len(members.index)
             members['value'].plot(kind='density', label=g, alpha=0.5)
         plt.legend()
     plt.show()
 
 def plotValueBox(result_df, groups, value_key, save=False):
-    long = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
+    long_df = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
     by_group = pd.DataFrame()
     for g in groups:
-        members = long[long.membership_prior==g][['value']]
+        members = long_df[long_df.membership_prior==g][['value']]
         members['pattern'] = g
         by_group = pd.concat((by_group,members))
     dfg = by_group.groupby('pattern')
@@ -680,7 +734,7 @@ def plotValueBox(result_df, groups, value_key, save=False):
     total = float(sum(counts))
     widths = [2*c/total for c in counts]
     bplot = sns.violinplot(x='pattern',y='value',data=by_group)
-    bplot.set_xticklabels(labels)
+    bplot.set_xticklabels(labels, rotation=45)
     plt.title("%s" % value_key)
     plt.suptitle("")
     if save:
@@ -777,9 +831,10 @@ def loadResults(alpha, master_csv):
     master_df = master_df.loc[:,master_keys]
     result_df = pd.read_csv('%s_result.csv' % generateFileRoot(alpha, model=True))
     result_df.set_index('rid', inplace=True)
+    result_df.sort_index(inplace=True)
     result_df.drop(['membership_prior','membership_post'], axis=1, inplace=True)
     result_df.rename(columns={'membership_prior_conf':'membership_prior','membership_post_conf':'membership_post'},inplace=True)
-    result_df = result_df.merge(master_df,left_index=True,right_index=True)
+    result_df = result_df.merge(master_df,left_index=True,right_index=True,how='left')
     if normals_only:
         result_df = result_df[result_df.diag_prior.isin(['N','SMC'])]
     return result_df
@@ -918,18 +973,61 @@ def LinRegZTest(x1, y1, x2, y2):
     int_z, int_pvalue = regCoeffZTest(b1, b2, std_err1, std_err2)
     return (slope_z, slope_pvalue, int_z, int_pvalue)
 
+def lobePatterns(lobe_tp, groups, pattern=True):
+    prior_pts = lobe_tp.xs('prior',level='timepoint')
+    lobe_patterns = {}
+    for i,g in enumerate(groups):
+        members = prior_pts[prior_pts.membership_prior == g]
+        members = members[lobe_keys]
+        if pattern:
+            members = members.divide(members.sum(axis=1),axis=0)
+        members.reset_index(inplace=True)
+        members['membership'] = g
+        lobe_patterns[g] = members
+    return lobe_patterns
+
+def graphLobes(lobe_tp, groups, pattern=True):
+    y_limits = (0,3.0)
+    if pattern:
+        y_limits = (0,0.2)
+    prior_pts = lobe_tp.xs('prior',level='timepoint')
+    lobe_patterns = lobePatterns(lobe_tp, groups, pattern=pattern)
+    for i,g in enumerate(groups):
+        plt.figure(i+1)
+        members = lobe_patterns[g]
+        long_df = pd.melt(members, id_vars=['rid'], value_vars=lobe_keys)
+        bplot = sns.violinplot(x='variable', y='value', data=long_df)
+        bplot.set(ylim=y_limits)
+        plt.xticks(rotation=45)
+        title = 'Group %s, n=%s' % (int(g), len(members.index))
+        plt.title(title)
+        plt.suptitle("")
+    plt.show()
+
+def testLobePatternDifferences(lobe_tp, groups, pattern=True):
+    lobe_patterns = lobePatterns(lobe_tp, groups, pattern=pattern)
+    full_results = {}
+    for g1,g2 in itertools.combinations(groups,2):
+        df = pd.concat((lobe_patterns[g1],lobe_patterns[g2]))
+        res = compareTwoGroups(g1, g2, df, lobe_keys, adjust=False)
+        full_results[(g1,g2)] = res
+    return full_results
+
+
 if __name__ == '__main__':
     # parse input
-    pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
+    pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, lobes_change_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
 
     # # Calculate
     # result_df = trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df)
 
     # Load
-    model_file = '../dpgmm_alpha15.58_bilateral_model.pkl'
+    model_file = '../dpgmm_alpha15.37_bilateral_model.pkl'
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
-    result_df = loadResults(alpha, master_csv)
+    loaded_result_df = loadResults(alpha, master_csv)
+    npt.assert_array_equal(result_df.index,loaded_result_df.index)
+    result_df = loaded_result_df
 
     # generate conversion data
     big_groups = bigGroups(result_df, threshold=3)
@@ -937,14 +1035,15 @@ if __name__ == '__main__':
     medium_groups = list(set(big_groups) & set(small_groups))
     conversions = parseConversions(big_groups, result_df, threshold, master_keys)
     conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
+    cortical_summary = conversions.cortical_summary.to_dict()
     positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.9].index)
     transition_patterns = list(set(conversions.index) - (set(positive_patterns) | set(negative_patterns)))
     groups = {'positive': positive_patterns, 'negative': negative_patterns, 'transition': transition_patterns}
-    uptake_members, pattern_members, change_members, prior_members = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, rchange_df)
+    uptake_members, pattern_members, lobe_members, change_members, prior_members = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, rchange_df)
 
     # create giant dataframe of merged results
-    uptake_tp, pattern_tp, change_tp, prior_tp = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, rchange_df, with_timepoint=True)
+    uptake_tp, pattern_tp, lobe_tp, change_tp, prior_tp = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, rchange_df, with_timepoint=True)
     merged_members = prior_tp.copy().reset_index()
     merged_members = merged_members.merge(uptake_tp[pattern_keys].reset_index(), on=['rid','timepoint'], how='outer')
     merged_members = merged_members.merge(change_tp[change_keys].reset_index(), on=['rid','timepoint'], how='outer')
@@ -952,6 +1051,14 @@ if __name__ == '__main__':
 
     # # save fake aparcs
     # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
+    saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
+
+    # lobe violin plots
+    graphLobes(lobe_tp,big_groups)
+
+    # lobe pattern differences
+    lobe_sigtests = testLobePatternDifferences(lobe_tp, groups, pattern=True)
+
 
     # region ranking
     uptake_ranks = regionRanks(big_groups, uptake_members, pattern_keys)

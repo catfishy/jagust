@@ -47,6 +47,7 @@ BRAAK5 = [1028,1012,1014,1032,1003,1027,1018,1019,1020,11,12,1011,1031,1008,1030
 BRAAK6 = [1021,1022,1005,1024,1017,2021,2022,2005,2024,2017]
 
 # DEFINITIONS FOR LOBES
+
 FRONTAL_LOBE = [1028,2028,1003,2003,1027,2027,1032,2032,1012,2012,1014,2014,1020,2020,1019,2019,1018,2018]
 PARIETAL_LOBE = [1029,2029,1008,2008,1025,2025,1031,2031]
 CINGULATE_LOBE = [1002,2002,1023,2023,1026,2026,1010,2010]
@@ -57,6 +58,19 @@ SENSORY_LOBE = [1024,2024,1022,2022,1017,2017]
 BASAL_GANGLIA = [11,50,12,51,13,52,26,58]
 THALAMUS = [9,10,48,49,28,60]
 LIMBIC = [17,53,1016,2016,1006,2006,1035,2035,18,54]
+LOBES = {'FRONTAL': FRONTAL_LOBE,
+         'PARIETAL': PARIETAL_LOBE,
+         'CINGULATE': CINGULATE_LOBE,
+         'TEMPORAL': TEMPORAL_LOBE,
+         'OCCIPITAL': OCCIPITAL_LOBE,
+         'MEDIALOCCIPITAL': MEDIAL_OCCIPITAL,
+         'SENSORY': SENSORY_LOBE,
+         'BASALGANGLIA': BASAL_GANGLIA,
+         'THALAMUS': THALAMUS,
+         'LIMBIC': LIMBIC,
+         'CEREBELLUM_GRAY': CEREBG,
+         'CEREBELLUM_WHITE': CEREBW,
+         'CEREBRAL_WHITE': WHITEMATTER}
 
 
 # BLACKLISTED REGIONS
@@ -406,7 +420,12 @@ def bilateralTranslations(lut_file):
     for k,v in lut_table.iteritems():
         bilateral_key = k.lower().replace('-','_').replace('lh.','').replace('rh.','').replace('lh_','').replace('rh_','').replace('right_','').replace('left_','').upper()
         bilateral_dict[bilateral_key].append(v)
-    return dict(bilateral_dict)
+
+    # add lobe names and keys
+    bilateral_dict = dict(bilateral_dict)
+    bilateral_dict.update(LOBES)
+    
+    return bilateral_dict
 
 def parseRawRousset_inner(data, translations=None):
     names = [unwrap(_) for _ in data['names']]
@@ -437,21 +456,8 @@ def parseRawRousset_inner(data, translations=None):
     # calculate weighted sum fields
     names_and_keys = [('whole_cerebellum',WHOLECEREBELLUM),
                       ('composite_ref', BIGREF),
-                      ('cortical_summary', SUMMARY),
-                      ('white_matter', WHITEMATTER),
-                      ('frontal', FRONTAL_LOBE),
-                      ('parietal', PARIETAL_LOBE),
-                      ('cingulate', CINGULATE_LOBE),
-                      ('temporal', TEMPORAL_LOBE),
-                      ('occipital', OCCIPITAL_LOBE),
-                      ('medialoccipital', MEDIAL_OCCIPITAL),
-                      ('sensory', SENSORY_LOBE),
-                      ('basalganglia', BASAL_GANGLIA),
-                      ('thalamus', THALAMUS),
-                      ('limbic', LIMBIC),
-                      ('cerebellum_gray', CEREBG),
-                      ('cerebelllum_white', CEREBW),
-                      ('cerebral_white', WHITEMATTER)]
+                      ('cortical_summary', SUMMARY)]
+    names_and_keys.append(LOBES.items())
     for name, keys in names_and_keys:
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(keys)) > 0]
         val_lookup[name] = weightedMean(regionsizes)
