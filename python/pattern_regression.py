@@ -1025,6 +1025,23 @@ def graphLobes(lobe_tp, groups, suvrs, pattern=True, save=True):
             plt.savefig('../pattern_%s_lobeplot.png' % int(g), bbox_inches='tight')
     plt.show()
 
+def graphRegionPatterns(pattern_tp, groups, suvrs, save=True):
+    y_limits = (0,0.07)
+    prior_pts = pattern_tp.xs('prior',level='timepoint')
+    for i,g in enumerate(groups):
+        fig = plt.figure(i+1)
+        members = prior_pts[prior_pts.membership_prior == g]
+        long_df = pd.melt(members, id_vars=['rid'], value_vars=pattern_keys)
+        bplot = sns.violinplot(x='variable', y='value', data=long_df, scale='width')
+        bplot.set(ylim=y_limits)
+        plt.xticks(rotation=80)
+        title = 'Group %s, n=%s, mean SUVR: %s' % (int(g), len(members.index), suvrs[g])
+        plt.title(title)
+        plt.suptitle("")
+        if save:
+            plt.savefig('../pattern_%s_regionplot.png' % int(g), bbox_inches='tight')
+    plt.show()
+
 def testLobePatternDifferences(lobe_tp, groups, pattern=True):
     lobe_patterns = lobePatterns(lobe_tp, groups, pattern=pattern)
     full_results = {}
