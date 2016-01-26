@@ -856,12 +856,16 @@ def loadResults(alpha, master_csv):
         result_df = result_df[result_df.diag_prior.isin(['N','SMC'])]
     return result_df
 
-def trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df):
-    # Scale inputs
+def scaleInput(pattern_prior_df, pattern_post_df):
     scale_type = 'original'
     patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type=scale_type)
     post_patterns_only = pd.DataFrame(scaler.transform(pattern_post_df))
     post_patterns_only.set_index(pattern_post_df.index, inplace=True)
+    return (patterns_only, post_patterns_only)
+
+def trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df):
+    # Scale inputs
+    patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
 
     # Choose alpha + do model selection
     best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.01, covar_type='spherical')
@@ -1051,6 +1055,91 @@ def testLobePatternDifferences(lobe_tp, groups, pattern=True):
         full_results[(g1,g2)] = res
     return full_results
 
+def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False):
+    '''
+    If categorize, encode pattern membership by one-hot, where membership is determined by argmax(membership_probs)
+    '''
+    # Scale inputs
+    prior_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
+
+    # Get membership probabilities
+    proba_df = pd.DataFrame(model.predict_proba(prior_patterns_only)).set_index(prior_patterns_only.index).xs('prior',level='timepoint')
+    # Remove components with insignificant membership
+    probsums = proba_df.sum()
+    valid_components = probsums[probsums >= 0.1].index
+    proba_df = proba_df[valid_components]
+    proba_max_df = proba_df.max(axis=1)
+    confident_assignments = proba_max_df[proba_max_df>=0.5].index
+
+    # Convert to categorical 
+    if categorize:
+        proba_max_df = proba_df.max(axis=1)
+        for c in proba_df.columns:
+            proba_df[c] = (proba_df[c]==proba_max_df)
+        proba_df = proba_df.applymap(lambda x: 1 if x else 0)
+
+    # Filter for confident group assignments
+    if confident:
+        proba_df = proba_df.loc[confident_assignments,:]
+
+    # Drop patterns that don't have >1 members
+    member_counts = proba_df.sum()
+    valid_patterns = list(member_counts[member_counts>1].index)
+    proba_df = proba_df[valid_patterns]
+
+    # Get master df
+    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+    master_df.columns = master_df.columns.get_level_values(1)
+    master_df.set_index('RID', inplace=True)
+
+    # Add demographic data (baseline age, sex, e2 status, e4 status, education, baseline cortical summary suvr)
+    demo_df = master_df.loc[:,['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)']]
+    demo_df.Gender = demo_df.Gender-1
+    proba_df = proba_df.merge(demo_df, left_index=True, right_index=True, how='left')
+
+    # Add diagnostic status + cortical summary
+    cort_summ = result_df.loc[:,['CORTICAL_SUMMARY_prior']]
+    proba_df = proba_df.merge(cort_summ, left_index=True, right_index=True, how='left')
+    diags = result_df['diag_prior']
+    diags_one_hot = pd.get_dummies(diags)
+    proba_df = proba_df.merge(diags_one_hot, left_index=True, right_index=True, how='left')
+
+    # Add dependent variable and test times
+    dep_value_keys = ['%s%s' % (dep_val_var,i) for i in range(30) if '%s%s' % (dep_val_var,i) in master_df.columns]
+    dep_keypairs = {}
+    for dv_key in dep_value_keys:
+        dt_key = dv_key.replace(dep_val_var,dep_time_var)
+        timepoint_index = int(dv_key.replace(dep_val_var,''))
+        dep_keypairs[timepoint_index] = (dt_key, dv_key)
+
+    dep_by_subject = defaultdict(list)
+    for tp_index in sorted(dep_keypairs.keys()):
+        dt_key, dv_key = dep_keypairs[tp_index]
+        tp_df = master_df[[dt_key,dv_key]].dropna()
+        for pid, row in tp_df.iterrows():
+            if pid not in proba_df.index:
+                continue
+            tp_tuple = (float(row[dt_key]),float(row[dv_key]))
+            dep_by_subject[pid].append(tp_tuple)
+
+    full_df = pd.DataFrame()
+    for pid, timepoints in dep_by_subject.iteritems():
+        timepoints = sorted(timepoints, key=lambda x: x[0])
+        base_time = timepoints[0][0]
+        for time, val in timepoints:
+            adjusted_time = time-base_time
+            new_row = proba_df.loc[pid].copy()
+            new_row[dep_val_var] = val
+            new_row[dep_time_var] = adjusted_time
+            full_df = pd.concat((full_df, new_row),axis=1)
+
+    full_df = full_df.T
+    full_df.index.name='RID'
+    full_df.dropna(inplace=True)
+    clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
+    output_file = '%s_%s_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    full_df.to_csv(output_file)
+
 
 if __name__ == '__main__':
     # parse input
@@ -1087,9 +1176,21 @@ if __name__ == '__main__':
     merged_members = merged_members.merge(change_tp[change_keys].reset_index(), on=['rid','timepoint'], how='outer')
     all_keys = master_keys+summary_keys+pattern_keys+change_keys
 
-    # # save fake aparcs
-    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
+    # save fake aparcs
+    saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
     saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
+
+    # dump LMM Dataset
+    LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
+                         ('UW_EF_','UW_EF_postAV45_'),
+                         ('CSF_ABETA.','CSF_ABETApostAV45.'),
+                         ('CSF_TAU.','CSF_TAUpostAV45.'),
+                         ('CSF_PTAU.','CSF_PTAUpostAV45.'),
+                         ('FSX_HC/ICV_','FSX_postAV45_'),
+                         ('WMH_percentOfICV.','WMH_postAV45.')]
+    for dep_val_var, dep_time_var in LME_dep_variables:
+        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=True)
+
 
     # lobe violin plots
     graphLobes(lobe_tp,big_groups,cortical_summary)

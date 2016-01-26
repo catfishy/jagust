@@ -42,6 +42,8 @@ def syncTemplate(old_headers, old_lines, input_file, dump_to=None):
 '''
 
 
+RID_ADDONS = [78,93,108,458,514,691,724,739,821,853,916,1080,1271]
+
 
 def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_to=None):
     assert timepoint in set(['BL', 'Scan2', 'Scan3'])
@@ -1973,6 +1975,23 @@ def mergeSlopes(output_file):
         df[new_col].update(df[three_col])
     df.to_csv(output_file, index=False)
 
+def manualAddOns(old_headers, old_lines, rid_list):
+    '''
+    Manually add on subjects who may not have AV45 records
+    '''
+    old_rids = set([int(_['RID']) for _ in old_lines])
+    new_rids = set([int(_) for _ in rid_list])
+    to_add = list(set(new_rids) - set(old_rids))
+
+    print "MANUALLY ADDING: %s" % to_add
+    for rid in to_add:
+        new_subj_row = {k: '' for k in old_headers}
+        new_subj_row['RID'] = str(rid)
+        old_lines.append(new_subj_row)
+
+    return old_headers, old_lines
+
+
 def runPipeline():
     # syncing pipeline
     new_headers, new_lines = parseCSV(master_file, use_second_line=True)
@@ -1980,6 +1999,8 @@ def runPipeline():
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
     print "\nSYNCING AV45\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, av45_nontp_file, registry_file, dump_to=None) # adds new patients
+    print "\nMANUALLY ADDING SUBJECTS"
+    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING FAQ\n"
@@ -2048,9 +2069,9 @@ if __name__ == '__main__':
     # Output files
     av45_file = None # overwrites nontp if specified
     av45_nontp_file = "../output/01_03_16/UCBERKELEYAV45_01_03_16_merged_nontp.csv"
-    rousset_matfile_bl = '../output/Rousset_BL/rousset_output_BL.mat'
-    rousset_matfile_scan2 = '../output/Rousset_Scan2/rousset_output_Scan2.mat'
-    rousset_matfile_scan3 = '../output/Rousset_Scan3/rousset_output_Scan3.mat'
+    rousset_matfile_bl = '../output/rousset_output/rousset_output_BL_agg.mat'
+    rousset_matfile_scan2 = '../output/rousset_output/rousset_output_Scan2_agg.mat'
+    rousset_matfile_scan3 = '../output/rousset_output/rousset_output_Scan3_agg.mat'
 
     # Cog files
     mmse_file = "../cog_tests/MMSE.csv"

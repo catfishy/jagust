@@ -692,13 +692,25 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
             v3_sizes = os.path.join(folder_name, filename)
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
+def ADNINamingConventions(input_df):
+    rename_dict = {'BRAIN_STEM': 'BRAINSTEM',
+                   'BRAIN_STEM_SIZE' : 'BRAINSTEM_SIZE',
+                   '3RD_VENTRICLE': 'VENTRICLE_3RD',
+                   '3RD_VENTRICLE_SIZE': 'VENTRICLE_3RD_SIZE',
+                   '4TH_VENTRICLE': 'VENTRICLE_4TH',
+                   '4TH_VENTRICLE_SIZE': 'VENTRICLE_4TH_SIZE',
+                   '5TH_VENTRICLE': 'VENTRICLE_5TH',
+                   '5TH_VENTRICLE_SIZE': 'VENTRICLE_5TH_SIZE'}
+    output_df = input_df.rename(columns=rename_dict)
+    return output_df
+
 if __name__ == "__main__":
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
     lut_table = importFreesurferLookup(lut_file)
 
     registry_file = "../docs/ADNI/REGISTRY.csv"
-    dod_registry_file = "../docs/DOD/DOD_REGISTRY.csv"
+    dod_registry_file = "../docs/DOD/REGISTRY.csv"
     meta_pet = "../docs/ADNI/AV45META.csv"
     meta_tau = '../docs/ADNI/TAUMETA.csv'
     dod_meta_pet = "../docs/DOD/AV45META.csv"
@@ -733,9 +745,9 @@ if __name__ == "__main__":
     merged_output = os.path.join(output_folder, 'LONI_UCBERKELEYAV45_%s_merged_nontp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
     df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
-    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    ADNINamingConventions(df).to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES)
-    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    ADNINamingConventions(full_df).to_csv(regular_output,index=False,float_format='%.4f')
     mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
     # ADNI AV45 NONTP
