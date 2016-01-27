@@ -1064,6 +1064,8 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
 
     # Get membership probabilities
     proba_df = pd.DataFrame(model.predict_proba(prior_patterns_only)).set_index(prior_patterns_only.index).xs('prior',level='timepoint')
+    groups_df = pd.DataFrame(model.predict(prior_patterns_only)).set_index(prior_patterns_only.index).xs('prior',level='timepoint')
+    groups_df.columns = ['group']
     # Remove components with insignificant membership
     probsums = proba_df.sum()
     valid_components = probsums[probsums >= 0.1].index
@@ -1073,7 +1075,6 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
 
     # Convert to categorical 
     if categorize:
-        proba_max_df = proba_df.max(axis=1)
         for c in proba_df.columns:
             proba_df[c] = (proba_df[c]==proba_max_df)
         proba_df = proba_df.applymap(lambda x: 1 if x else 0)
@@ -1086,6 +1087,9 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     member_counts = proba_df.sum()
     valid_patterns = list(member_counts[member_counts>1].index)
     proba_df = proba_df[valid_patterns]
+
+    # Merge in pattern factor
+    proba_df = proba_df.merge(groups_df, left_index=True, right_index=True, how='left')
 
     # Get master df
     master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
@@ -1102,6 +1106,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     proba_df = proba_df.merge(cort_summ, left_index=True, right_index=True, how='left')
     diags = result_df['diag_prior']
     diags_one_hot = pd.get_dummies(diags)
+    diag_list = diags_one_hot.columns
     proba_df = proba_df.merge(diags_one_hot, left_index=True, right_index=True, how='left')
 
     # Add dependent variable and test times
@@ -1136,9 +1141,49 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     full_df = full_df.T
     full_df.index.name='RID'
     full_df.dropna(inplace=True)
+
+    # drops rows with no pattern membership
+    member_sums = full_df[valid_patterns].sum(axis=1)
+    notmember = set(member_sums[member_sums==0].index)
+    full_df = full_df.drop(notmember) 
+
+    # split by diagnosis (N/SMC, EMCI/LMCI, AD)
+    n_df = full_df[full_df.N == 1]
+    smc_df = full_df[full_df.SMC == 1]
+    emci_df = full_df[full_df.EMCI == 1]
+    lmci_df = full_df[full_df.LMCI == 1]
+    ad_df = full_df[full_df.AD == 1]
+
+    N_full_df = pd.concat((n_df, smc_df)).drop(diag_list,axis=1)
+    MCI_full_df = pd.concat((emci_df, lmci_df)).drop(diag_list,axis=1)
+    AD_full_df = ad_df.drop(diag_list,axis=1)
+
+    '''
+    # drop patterns with only one subject
+    invalid_patterns_diagsplit = {'N': [], 'MCI': [], 'AD': []}
+    for p in valid_patterns:
+        num_n = len(set(N_full_df[N_full_df[p] == 1].index))
+        num_mci = len(set(MCI_full_df[MCI_full_df[p] == 1].index))
+        num_ad = len(set(AD_full_df[AD_full_df[p] == 1].index))
+        if num_n < 2:
+            invalid_patterns_diagsplit['N'].append(p)
+        if num_mci < 2:
+            invalid_patterns_diagsplit['MCI'].append(p)
+        if num_ad < 2:
+            invalid_patterns_diagsplit['AD'].append(p)
+
+    N_full_df.drop(invalid_patterns_diagsplit['N'], axis=1, inplace=True)
+    MCI_full_df.drop(invalid_patterns_diagsplit['MCI'], axis=1, inplace=True)
+    AD_full_df.drop(invalid_patterns_diagsplit['AD'], axis=1, inplace=True)
+    '''
+
     clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
-    output_file = '%s_%s_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
-    full_df.to_csv(output_file)
+    n_output_file = '%s_%s_N_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    mci_output_file = '%s_%s_MCI_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    ad_output_file = '%s_%s_AD_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    N_full_df.to_csv(n_output_file)
+    MCI_full_df.to_csv(mci_output_file)
+    AD_full_df.to_csv(ad_output_file)
 
 
 if __name__ == '__main__':
@@ -1176,9 +1221,9 @@ if __name__ == '__main__':
     merged_members = merged_members.merge(change_tp[change_keys].reset_index(), on=['rid','timepoint'], how='outer')
     all_keys = master_keys+summary_keys+pattern_keys+change_keys
 
-    # save fake aparcs
-    saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
-    saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
+    # # save fake aparcs
+    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
+    # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
 
     # dump LMM Dataset
     LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),

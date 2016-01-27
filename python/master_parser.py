@@ -578,10 +578,12 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
     to_add_headers += ['TIME_AVLT.%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['TIMEreltoAV45_AVLT.%s' % (i+1) for i in range(tmpts)]
     to_add_headers += ['TIMEpostAV45_AVLT.%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['AVLT_3MTHS_AV45','AVLT_3MTHSAV45_Date',
+    to_add_headers += ['AVLT_AV45_1_3MTHS','AVLT_AV45_1_DATE',
                        'AVLT_AV45_2_3MTHS','AVLT_AV45_2_DATE',
+                       'AVLT_AV45_3_3MTHS','AVLT_AV45_3_DATE',
                        'AVLT_post_AV45_followuptime',
                        'AVLT_slope_all','AVLTslope_postAV45']
+
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
     wipeKeys(old_lines, to_add_headers)
 
@@ -593,12 +595,22 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         if len(set(dates)) != len(dates):
             print "%s has Dup dates, skipping: %s" % (subj, dates)
             return {}
-
         new_subj_data = {}
         all_slope_points = []
         post_slope_points = []
         max_followup = ''
         first_scan_date = dates[0]
+
+        three_months = 31 * 3
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(tests, bl_av45, av45_2, av45_3, day_limit=three_months)
+        new_subj_data['AVLT_AV45_1_3MTHS'] = av45_bl_closest['TOTS'] if av45_bl_closest else ''
+        new_subj_data['AVLT_AV45_1_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
+        new_subj_data['AVLT_AV45_2_3MTHS'] = av45_2_closest['TOTS'] if av45_2_closest else ''
+        new_subj_data['AVLT_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
+        new_subj_data['AVLT_AV45_3_3MTHS'] = av45_3_closest['TOTS'] if av45_3_closest else ''
+        new_subj_data['AVLT_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
+
+
         for i in range(tmpts):
             if i < len(tests):
                 test_results = tests[i]
@@ -614,13 +626,6 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
                     if test_score != '' and diff_from_bl >= (-93.0/365.0):
                         post_slope_points.append((diff_from_first,test_score))
                         new_subj_data['TIMEpostAV45_AVLT.%s' % (i+1)] = diff_from_bl
-                    if abs(diff_from_bl) <= (-93.0/365.0) and 'AVLT_3MTHS_AV45' not in new_subj_data:
-                        new_subj_data['AVLT_3MTHS_AV45'] = test_score
-                        new_subj_data['AVLT_3MTHSAV45_Date'] = test_date
-                if diff_from_scan2 != '':
-                    if abs(diff_from_scan2) <= (-93.0/365.0) and 'AVLT_AV45_2_3MTHS' not in new_subj_data:
-                        new_subj_data['AVLT_AV45_2_3MTHS'] = test_score
-                        new_subj_data['AVLT_AV45_2_DATE'] = test_date
                 new_subj_data['AVLT_DATE.%s' % (i+1)] = test_date
                 new_subj_data['AVLT.%s' % (i+1)] = test_score
                 new_subj_data['TIME_AVLT.%s' % (i+1)] = diff_from_first
@@ -1844,7 +1849,9 @@ def getClosestToAV45(points, bl_av45, av45_2, av45_3, day_limit=550):
 
 
 def eliminateColumns(headers, lines):
-    to_remove = ['LastClinicalVisit',
+    to_remove = ['AVLT_3MTHS_AV45',
+                 'AVLT_3MTHSAV45_Date',
+                 'LastClinicalVisit',
                  'DIFF_LastClinicalVisit_AV45',
                  'ClinicalVisitClosestto_AV45',
                  'ClinicalVisitClosestto_AV45_2',

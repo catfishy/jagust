@@ -484,7 +484,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, diags, dump_t
             continue
 
         av45_data = av45_by_subj[ns]
-        #print "AV45 %s" % ns
+        print "AV45 %s" % ns
         updated_headers, new_data = parseAV45Entries(old_headers, av45_data)
         if new_headers is None:
             new_headers = updated_headers
@@ -555,6 +555,7 @@ def parseAV45Entries(old_headers, subj_rows):
 
     data = {}
     for i, point in enumerate(subj_rows):
+
         examdate = point['EXAMDATE']
         # extract necessary values
         wcereb = float(point['WHOLECEREBELLUM'])
@@ -593,6 +594,11 @@ def parseAV45Entries(old_headers, subj_rows):
         right_temporal_size = np.sum([float(point["%s_SIZE" % k]) for k in right_temporal_keys])
         left_ventrical_size = np.sum([float(point["%s_SIZE" % k]) for k in left_ventrical_keys])
         right_ventrical_size = np.sum([float(point["%s_SIZE" % k]) for k in right_ventrical_keys])
+
+        print compositeroi
+        print wcereb
+        print bigref
+        print compositeroi/wcereb
 
         # Dates
         data['AV45_%s_EXAMDATE' % (i+1)] = examdate
