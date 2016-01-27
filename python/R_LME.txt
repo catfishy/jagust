@@ -78,11 +78,14 @@ df_ad$Gender <- factor(df_ad$Gender)
 
 fm1 = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + APOE2_BIN + APOE2_BIN*UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN*UW_MEM_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*UW_MEM_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mci)
 
+anova(fm1)
+
 lsmeans(fm1)
 
 test = glht(fm1,linfct=data.matrix(contrasts))
 summary(test)
 
+test2 = glht(fm1,linfct=mcp(group='Tukey'))
 
 
 
