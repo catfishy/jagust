@@ -1,91 +1,64 @@
-X0
-X0*UW_MEM_postAV45_
-X1
-X1*UW_MEM_postAV45_
-X2
-X2*UW_MEM_postAV45_
-X3
-X3*UW_MEM_postAV45_
-X4
-X4*UW_MEM_postAV45_
-X5
-X5*UW_MEM_postAV45_
-X6
-X6*UW_MEM_postAV45_
-X9
-X9*UW_MEM_postAV45_
-X19
-X19*UW_MEM_postAV45_
-X22
-X22*UW_MEM_postAV45_
-X25
-X25*UW_MEM_postAV45_
-X29
-X29*UW_MEM_postAV45_
-X34
-X34*UW_MEM_postAV45_
-X56
-X56*UW_MEM_postAV45_
-APOE2_BIN
-APOE2_BIN*UW_MEM_postAV45_
-APOE4_BIN
-APOE4_BIN*UW_MEM_postAV45_
-CORTICAL_SUMMARY_prior
-CORTICAL_SUMMARY_prior*UW_MEM_postAV45_
-Age.AV45
-Gender
-Edu..Yrs.
-UW_MEM_postAV45_
-
-(1 + UW_MEM_postAV45_ | RID)
-
-
-
+install.packages("coefplot2",repos="http://www.math.mcmaster.ca/bolker/R", type="source")
 
 
 require(lme4)
+require(coefplot2)
 library(lmerTest)
 library(pbkrtest)
 library(multcomp)
 library(contrast)
 
-df_n = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__N_longdata.csv')
-df_mci = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__MCI_longdata.csv')
-df_ad = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__AD_longdata.csv')
+df_ef = read.csv('dpgmm_alpha15.37_bilateral_UW_EF__ALL_longdata.csv')
+df_mem = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__ALL_longdata.csv')
+df_adas = read.csv('dpgmm_alpha15.37_bilateral_ADAScog__ALL_longdata.csv')
+df_avlt = read.csv('dpgmm_alpha15.37_bilateral_AVLT__ALL_longdata.csv')
+df_hcicv = read.csv('dpgmm_alpha15.37_bilateral_FSX_HC_ICV__ALL_longdata.csv')
+df_wmh = read.csv('dpgmm_alpha15.37_bilateral_WMH_percentOfICV__ALL_longdata.csv')
+
+df_ef$RID = factor(df_ef$RID)
+df_mem$RID = factor(df_mem$RID)
+df_hcicv$RID = factor(df_hcicv$RID)
+df_wmh$RID = factor(df_wmh$RID)
+df_adas$RID = factor(df_adas$RID)
+df_avlt$RID = factor(df_avlt$RID)
+
+df_ef$group = factor(df_ef$group)
+df_mem$group = factor(df_mem$group)
+df_hcicv$group = factor(df_hcicv$group)
+df_wmh$group = factor(df_wmh$group)
+df_adas$group = factor(df_adas$group)
+df_avlt$group = factor(df_avlt$group)
+
+
+fm_uwef = lmer(UW_EF_ ~ group + group*UW_EF_postAV45_ + factor(diag_prior) + factor(diag_prior)*UW_EF_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_EF_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef)
+
+fm_uwmem = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + factor(diag_prior) + factor(diag_prior)*UW_MEM_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_MEM_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*UW_MEM_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem)
+
+fm_hcicv = lmer(FSX_HC.ICV_ ~ group + group*FSX_postAV45_ + factor(diag_prior) + factor(diag_prior)*FSX_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*FSX_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*FSX_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + FSX_postAV45_ + (1 + FSX_postAV45_ | RID), df_hcicv)
+
+fm_wmh = lmer(WMH_percentOfICV. ~ group + group*WMH_postAV45. + factor(diag_prior) + factor(diag_prior)*WMH_postAV45. + factor(APOE4_BIN) + factor(APOE4_BIN)*WMH_postAV45. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*WMH_postAV45. + Age.AV45 + factor(Gender) + Edu..Yrs. + WMH_postAV45. + (1 + WMH_postAV45. | RID), df_wmh)
+
+fm_avlt = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + factor(diag_prior) + factor(diag_prior)*TIMEpostAV45_AVLT. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_AVLT. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*TIMEpostAV45_AVLT. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt)
+
+fm_adas = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + factor(diag_prior) + factor(diag_prior)*TIMEpostAV45_ADAS. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_ADAS. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*TIMEpostAV45_ADAS. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas)
+
+
 contrasts = read.csv('contrasts.csv')
+uwef_anova = as.matrix(anova(fm_uwef))
+uwmem_anova = as.matrix(anova(fm_uwmem))
+hcicv_anova = as.matrix(anova(fm_hcicv))
+wmh_anova = as.matrix(anova(fm_wmh))
+adas_anova = as.matrix(anova(fm_adas))
+avlt_anova = as.matrix(anova(fm_avlt))
 
-df_n$RID <- factor(df_n$RID)
-df_n$group <- factor(df_n$group)
-df_n$APOE2_BIN <- factor(df_n$APOE2_BIN)
-df_n$APOE4_BIN <- factor(df_n$APOE4_BIN)
-df_n$Gender <- factor(df_n$Gender)
-
-df_mci$RID <- factor(df_mci$RID)
-df_mci$group <- factor(df_mci$group)
-df_mci$APOE2_BIN <- factor(df_mci$APOE2_BIN)
-df_mci$APOE4_BIN <- factor(df_mci$APOE4_BIN)
-df_mci$Gender <- factor(df_mci$Gender)
-
-df_ad$RID <- factor(df_ad$RID)
-df_ad$group <- factor(df_ad$group)
-df_ad$APOE2_BIN <- factor(df_ad$APOE2_BIN)
-df_ad$APOE4_BIN <- factor(df_ad$APOE4_BIN)
-df_ad$Gender <- factor(df_ad$Gender)
-
-
-
-##### MCI ##########
-
-fm1 = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + APOE2_BIN + APOE2_BIN*UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN*UW_MEM_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*UW_MEM_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mci)
-
+summary(fm1)
 anova(fm1)
-
 lsmeans(fm1)
 
-test = glht(fm1,linfct=data.matrix(contrasts))
+test = glht(fm_uwmem,linfct=data.matrix(contrasts))
 summary(test)
 
-test2 = glht(fm1,linfct=mcp(group='Tukey'))
-
+test2 = glht(fm_uwmem,linfct=mcp(group='Tukey'))
+summary(test2)
 
 

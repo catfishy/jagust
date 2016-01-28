@@ -1104,9 +1104,10 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     # Add diagnostic status + cortical summary
     cort_summ = result_df.loc[:,['CORTICAL_SUMMARY_prior']]
     proba_df = proba_df.merge(cort_summ, left_index=True, right_index=True, how='left')
-    diags = result_df['diag_prior']
-    diags_one_hot = pd.get_dummies(diags)
+    diags = result_df[['diag_prior']]
+    diags_one_hot = pd.get_dummies(result_df['diag_prior'])
     diag_list = diags_one_hot.columns
+    proba_df = proba_df.merge(diags, left_index=True, right_index=True, how='left')
     proba_df = proba_df.merge(diags_one_hot, left_index=True, right_index=True, how='left')
 
     # Add dependent variable and test times
@@ -1157,6 +1158,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     N_full_df = pd.concat((n_df, smc_df)).drop(diag_list,axis=1)
     MCI_full_df = pd.concat((emci_df, lmci_df)).drop(diag_list,axis=1)
     AD_full_df = ad_df.drop(diag_list,axis=1)
+    full_df = full_df.drop(diag_list,axis=1)
 
     '''
     # drop patterns with only one subject
@@ -1181,10 +1183,26 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     n_output_file = '%s_%s_N_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
     mci_output_file = '%s_%s_MCI_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
     ad_output_file = '%s_%s_AD_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    all_output_file = '%s_%s_ALL_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
     N_full_df.to_csv(n_output_file)
     MCI_full_df.to_csv(mci_output_file)
     AD_full_df.to_csv(ad_output_file)
+    full_df.to_csv(all_output_file)
 
+def createContrasts(columns, time_key, out_file=None):
+    new_df = pd.DataFrame(columns=columns)
+    cols = [_ for _ in columns if 'group' in _ and time_key in _]
+    for c in cols:
+        new_df.loc[len(new_df)+1]=0
+        new_df.loc[len(new_df),c]=1
+
+    for c1,c2 in itertools.combinations(cols,2):
+        new_df.loc[len(new_df)+1]=0
+        new_df.loc[len(new_df),c1]=1
+        new_df.loc[len(new_df),c2]=-1
+
+    if out_file:
+        new_df.to_csv(out_file,index=False)
 
 if __name__ == '__main__':
     # parse input
@@ -1232,7 +1250,9 @@ if __name__ == '__main__':
                          ('CSF_TAU.','CSF_TAUpostAV45.'),
                          ('CSF_PTAU.','CSF_PTAUpostAV45.'),
                          ('FSX_HC/ICV_','FSX_postAV45_'),
-                         ('WMH_percentOfICV.','WMH_postAV45.')]
+                         ('WMH_percentOfICV.','WMH_postAV45.'),
+                         ('AVLT.','TIMEpostAV45_AVLT.'),
+                         ('ADAScog.','TIMEpostAV45_ADAS.')]
     for dep_val_var, dep_time_var in LME_dep_variables:
         saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=True)
 
