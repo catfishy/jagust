@@ -1,9 +1,13 @@
-require(lme4)
-require(coefplot2)
+library(lme4)
+library(coefplot2)
+library(ggplot2)
 library(lmerTest)
 library(pbkrtest)
 library(multcomp)
 library(contrast)
+
+
+# Normals 
 
 df_ef = read.csv('dpgmm_alpha15.37_bilateral_UW_EF__ALL_longdata.csv')
 df_mem = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__ALL_longdata.csv')
@@ -164,8 +168,13 @@ write.csv(wmh_n_cs_summary$coefficients, file = "wmh_n_cs_coefficients.csv", na 
 write.csv(adas_n_cs_summary$coefficients, file = "adas_n_cs_coefficients.csv", na = "")
 write.csv(avlt_n_cs_summary$coefficients, file = "avlt_n_cs_coefficients.csv", na = "")
 
-contrasts_n = read.csv('contrasts_n.csv')
+p = ggplot(df_mem_n, aes(x=UW_MEM_postAV45_,y=UW_MEM_, colour=group)) +
+  geom_point(size=3) +
+  geom_line(aes(y=predict()))
 
+
+
+contrasts_n = read.csv('contrasts_n.csv')
 test = glht(fm_wmh_n,linfct=data.matrix(contrasts_n))
 test2 = glht(fm_wmh_n,linfct=mcp(group='Tukey'))
 summary(test)
