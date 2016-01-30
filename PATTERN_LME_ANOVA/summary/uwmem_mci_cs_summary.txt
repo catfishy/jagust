@@ -1,0 +1,43 @@
+Linear mixed model fit by REML 
+t-tests use  Satterthwaite approximations to degrees of freedom ['lmerMod']
+Formula: UW_MEM_ ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE *      UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN * UW_MEM_postAV45_ +  
+    Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ |      RID)
+   Data: df_mem_mci
+
+REML criterion at convergence: 2663.2
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-8.7763 -0.4362  0.0105  0.4558  6.4736 
+
+Random effects:
+ Groups   Name             Variance Std.Dev. Corr
+ RID      (Intercept)      0.29594  0.5440       
+          UW_MEM_postAV45_ 0.01544  0.1243   0.32
+ Residual                  0.08108  0.2848       
+Number of obs: 2330, groups:  RID, 523
+
+Fixed effects:
+                                              Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                                   1.590996   0.332445 509.900000   4.786 2.23e-06 ***
+CORTICAL_SUMMARY_POSITIVE1                   -0.291267   0.060373 509.800000  -4.824 1.86e-06 ***
+UW_MEM_postAV45_                              0.004313   0.012115 355.200000   0.356  0.72203    
+APOE4_BIN1                                   -0.114122   0.059055 509.700000  -1.932  0.05386 .  
+Age.AV45                                     -0.021338   0.003596 512.000000  -5.934 5.44e-09 ***
+Gender1                                       0.191365   0.052570 508.800000   3.640  0.00030 ***
+Edu..Yrs.                                     0.025550   0.009660 511.000000   2.645  0.00842 ** 
+CORTICAL_SUMMARY_POSITIVE1:UW_MEM_postAV45_  -0.143404   0.017787 382.600000  -8.062 9.77e-15 ***
+UW_MEM_postAV45_:APOE4_BIN1                  -0.022613   0.017863 387.600000  -1.266  0.20630    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+                            (Intr) CORTICAL_SUMMARY_POSITIVE1 UW_MEM_pAV45_ APOE4_ A.AV45 Gendr1 Ed..Y. CORTICAL_SUMMARY_POSITIVE1:
+CORTICAL_SUMMARY_POSITIVE1   0.190                                                                                                 
+UW_MEM_pAV45_                0.016 -0.017                                                                                          
+APOE4_BIN1                  -0.280 -0.487                     -0.013                                                               
+Age.AV45                    -0.866 -0.321                     -0.009         0.267                                                 
+Gender1                     -0.274 -0.018                     -0.003         0.050  0.153                                          
+Edu..Yrs.                   -0.615  0.016                     -0.007         0.061  0.163  0.173                                   
+CORTICAL_SUMMARY_POSITIVE1: -0.007  0.026                     -0.446        -0.012  0.005  0.004  0.000                            
+UW_MEM_AV45_:                0.001 -0.011                     -0.350         0.024 -0.005 -0.002  0.004 -0.433                     

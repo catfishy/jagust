@@ -1,0 +1,43 @@
+Linear mixed model fit by REML 
+t-tests use  Satterthwaite approximations to degrees of freedom ['lmerMod']
+Formula: UW_EF_ ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE *      UW_EF_postAV45_ + APOE4_BIN + APOE4_BIN * UW_EF_postAV45_ +  
+    Age.AV45 + Gender + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ |      RID)
+   Data: df_ef_n
+
+REML criterion at convergence: 1935.4
+
+Scaled residuals: 
+     Min       1Q   Median       3Q      Max 
+-3.09998 -0.50960  0.00347  0.53059  2.68732 
+
+Random effects:
+ Groups   Name            Variance Std.Dev. Corr 
+ RID      (Intercept)     0.34009  0.5832        
+          UW_EF_postAV45_ 0.01599  0.1265   -0.01
+ Residual                 0.12279  0.3504        
+Number of obs: 1273, groups:  RID, 347
+
+Fixed effects:
+                                             Estimate Std. Error         df t value Pr(>|t|)    
+(Intercept)                                  3.239078   0.484758 338.200000   6.682 9.73e-11 ***
+CORTICAL_SUMMARY_POSITIVE1                  -0.146930   0.085006 339.000000  -1.728  0.08481 .  
+UW_EF_postAV45_                             -0.012224   0.016136 206.600000  -0.758  0.44955    
+APOE4_BIN1                                  -0.078918   0.083205 336.000000  -0.948  0.34357    
+Age.AV45                                    -0.040784   0.005521 339.300000  -7.387 1.17e-12 ***
+Gender1                                      0.061899   0.070350 336.600000   0.880  0.37955    
+Edu..Yrs.                                    0.037781   0.013350 335.400000   2.830  0.00493 ** 
+CORTICAL_SUMMARY_POSITIVE1:UW_EF_postAV45_  -0.075116   0.031045 213.700000  -2.420  0.01638 *  
+UW_EF_postAV45_:APOE4_BIN1                   0.013609   0.031269 232.200000   0.435  0.66380    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+                            (Intr) CORTICAL_SUMMARY_POSITIVE1 UW_EF_pAV45_ APOE4_ A.AV45 Gendr1 Ed..Y. CORTICAL_SUMMARY_POSITIVE1:
+CORTICAL_SUMMARY_POSITIVE1   0.148                                                                                                
+UW_EF_pAV45_                -0.017  0.090                                                                                         
+APOE4_BIN1                  -0.207 -0.326                      0.086                                                              
+Age.AV45                    -0.871 -0.249                     -0.007        0.195                                                 
+Gender1                     -0.339 -0.107                     -0.001        0.023  0.194                                          
+Edu..Yrs.                   -0.493  0.089                      0.001        0.019  0.017  0.222                                   
+CORTICAL_SUMMARY_POSITIVE1:  0.007 -0.246                     -0.354        0.079  0.000  0.003  0.003                            
+UW_EF_AV45_:                 0.007  0.077                     -0.345       -0.255 -0.001  0.003  0.003 -0.300                     

@@ -1,0 +1,43 @@
+Linear mixed model fit by REML 
+t-tests use  Satterthwaite approximations to degrees of freedom ['lmerMod']
+Formula: ADAScog. ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE *      TIMEpostAV45_ADAS. + APOE4_BIN + APOE4_BIN * TIMEpostAV45_ADAS. +  
+    Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 +      TIMEpostAV45_ADAS. | RID)
+   Data: df_adas_n
+
+REML criterion at convergence: 6587.2
+
+Scaled residuals: 
+    Min      1Q  Median      3Q     Max 
+-6.7799 -0.4636 -0.0564  0.4035  9.3553 
+
+Random effects:
+ Groups   Name               Variance Std.Dev. Corr
+ RID      (Intercept)        4.907    2.215        
+          TIMEpostAV45_ADAS. 1.264    1.124    0.11
+ Residual                    4.820    2.195        
+Number of obs: 1307, groups:  RID, 347
+
+Fixed effects:
+                                               Estimate Std. Error        df t value Pr(>|t|)    
+(Intercept)                                     1.06289    2.10414 328.30000   0.505 0.613798    
+CORTICAL_SUMMARY_POSITIVE1                      0.83436    0.36858 330.20000   2.264 0.024238 *  
+TIMEpostAV45_ADAS.                             -0.06507    0.11434 358.80000  -0.569 0.569666    
+APOE4_BIN1                                     -0.06397    0.35971 325.40000  -0.178 0.858969    
+Age.AV45                                        0.08909    0.02398 329.90000   3.715 0.000238 ***
+Gender1                                        -1.44858    0.30495 325.10000  -4.750 3.05e-06 ***
+Edu..Yrs.                                      -0.09283    0.05784 323.70000  -1.605 0.109491    
+CORTICAL_SUMMARY_POSITIVE1:TIMEpostAV45_ADAS.   0.59093    0.21755 366.60000   2.716 0.006914 ** 
+TIMEpostAV45_ADAS.:APOE4_BIN1                   0.34521    0.21471 365.90000   1.608 0.108733    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Correlation of Fixed Effects:
+                            (Intr) CORTICAL_SUMMARY_POSITIVE1 TIMEpAV45_ADAS. APOE4_ A.AV45 Gendr1 Ed..Y. CORTICAL_SUMMARY_POSITIVE1:
+CORTICAL_SUMMARY_POSITIVE1   0.148                                                                                                   
+TIMEpAV45_ADAS.             -0.028  0.083                                                                                            
+APOE4_BIN1                  -0.209 -0.325                      0.090                                                                 
+Age.AV45                    -0.872 -0.249                      0.006           0.195                                                 
+Gender1                     -0.339 -0.107                      0.001           0.022  0.196                                          
+Edu..Yrs.                   -0.492  0.089                      0.002           0.021  0.017  0.220                                   
+CORTICAL_SUMMARY_POSITIVE1:  0.009 -0.244                     -0.346           0.077 -0.002  0.001  0.001                            
+TIMEAV45_ADAS.:              0.011  0.076                     -0.365          -0.248 -0.001  0.000 -0.005 -0.299                     

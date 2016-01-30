@@ -1078,6 +1078,9 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
         for c in proba_df.columns:
             proba_df[c] = (proba_df[c]==proba_max_df)
         proba_df = proba_df.applymap(lambda x: 1 if x else 0)
+        cont_suffix = ''
+    else:
+        cont_suffix = '_continuous'
 
     # Filter for confident group assignments
     if confident:
@@ -1103,6 +1106,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
 
     # Add diagnostic status + cortical summary
     cort_summ = result_df.loc[:,['CORTICAL_SUMMARY_prior']]
+    cort_summ['CORTICAL_SUMMARY_POSITIVE'] = (result_df.CORTICAL_SUMMARY_prior >= threshold).astype(int)
     proba_df = proba_df.merge(cort_summ, left_index=True, right_index=True, how='left')
     diags = result_df[['diag_prior']]
     diags_one_hot = pd.get_dummies(result_df['diag_prior'])
@@ -1180,10 +1184,10 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     '''
 
     clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
-    n_output_file = '%s_%s_N_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
-    mci_output_file = '%s_%s_MCI_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
-    ad_output_file = '%s_%s_AD_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
-    all_output_file = '%s_%s_ALL_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    n_output_file = '%s_%s_N_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
+    mci_output_file = '%s_%s_MCI_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
+    ad_output_file = '%s_%s_AD_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
+    all_output_file = '%s_%s_ALL_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
     N_full_df.to_csv(n_output_file)
     MCI_full_df.to_csv(mci_output_file)
     AD_full_df.to_csv(ad_output_file)
@@ -1221,9 +1225,10 @@ if __name__ == '__main__':
 
     # generate conversion data
     big_groups = bigGroups(result_df, threshold=3)
+    all_groups = bigGroups(result_df, threshold=2)
     small_groups = smallGroups(result_df, threshold=50)
     medium_groups = list(set(big_groups) & set(small_groups))
-    conversions = parseConversions(big_groups, result_df, threshold, master_keys)
+    conversions = parseConversions(all_groups, result_df, threshold, master_keys)
     conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
     cortical_summary = conversions.cortical_summary.to_dict()
     positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
@@ -1246,16 +1251,11 @@ if __name__ == '__main__':
     # dump LMM Dataset
     LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
                          ('UW_EF_','UW_EF_postAV45_'),
-                         ('CSF_ABETA.','CSF_ABETApostAV45.'),
-                         ('CSF_TAU.','CSF_TAUpostAV45.'),
-                         ('CSF_PTAU.','CSF_PTAUpostAV45.'),
-                         ('FSX_HC/ICV_','FSX_postAV45_'),
-                         ('WMH_percentOfICV.','WMH_postAV45.'),
                          ('AVLT.','TIMEpostAV45_AVLT.'),
                          ('ADAScog.','TIMEpostAV45_ADAS.')]
     for dep_val_var, dep_time_var in LME_dep_variables:
         saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=True)
-
+        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=True)
 
     # lobe violin plots
     graphLobes(lobe_tp,big_groups,cortical_summary)

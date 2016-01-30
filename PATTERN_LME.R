@@ -6,173 +6,213 @@ library(pbkrtest)
 library(multcomp)
 library(contrast)
 
-
-# Normals 
-
-df_ef = read.csv('dpgmm_alpha15.37_bilateral_UW_EF__ALL_longdata.csv')
-df_mem = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__ALL_longdata.csv')
-df_adas = read.csv('dpgmm_alpha15.37_bilateral_ADAScog__ALL_longdata.csv')
-df_avlt = read.csv('dpgmm_alpha15.37_bilateral_AVLT__ALL_longdata.csv')
-df_hcicv = read.csv('dpgmm_alpha15.37_bilateral_FSX_HC_ICV__ALL_longdata.csv')
-df_wmh = read.csv('dpgmm_alpha15.37_bilateral_WMH_percentOfICV__ALL_longdata.csv')
-df_ef$RID = factor(df_ef$RID)
-df_mem$RID = factor(df_mem$RID)
-df_hcicv$RID = factor(df_hcicv$RID)
-df_wmh$RID = factor(df_wmh$RID)
-df_adas$RID = factor(df_adas$RID)
-df_avlt$RID = factor(df_avlt$RID)
-df_ef$group = factor(df_ef$group)
-df_mem$group = factor(df_mem$group)
-df_hcicv$group = factor(df_hcicv$group)
-df_wmh$group = factor(df_wmh$group)
-df_adas$group = factor(df_adas$group)
-df_avlt$group = factor(df_avlt$group)
-
-fm_uwef = lmer(UW_EF_ ~ group + group*UW_EF_postAV45_ + factor(diag_prior) + factor(diag_prior)*UW_EF_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_EF_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef)
-fm_uwmem = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + factor(diag_prior) + factor(diag_prior)*UW_MEM_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_MEM_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem)
-fm_hcicv = lmer(FSX_HC.ICV_ ~ group + group*FSX_postAV45_ + factor(diag_prior) + factor(diag_prior)*FSX_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*FSX_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + FSX_postAV45_ + (1 + FSX_postAV45_ | RID), df_hcicv)
-fm_wmh = lmer(WMH_percentOfICV. ~ group + group*WMH_postAV45. + factor(diag_prior) + factor(diag_prior)*WMH_postAV45. + factor(APOE4_BIN) + factor(APOE4_BIN)*WMH_postAV45. + Age.AV45 + factor(Gender) + Edu..Yrs. + WMH_postAV45. + (1 + WMH_postAV45. | RID), df_wmh)
-fm_avlt = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + factor(diag_prior) + factor(diag_prior)*TIMEpostAV45_AVLT. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_AVLT. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt)
-fm_adas = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + factor(diag_prior) + factor(diag_prior)*TIMEpostAV45_ADAS. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_ADAS. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas)
-
-fm_uwef_cs = lmer(UW_EF_ ~ group + group*UW_EF_postAV45_ + factor(diag_prior) + factor(diag_prior)*UW_EF_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_EF_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*UW_EF_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef)
-fm_uwmem_cs = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + factor(diag_prior) + factor(diag_prior)*UW_MEM_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_MEM_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*UW_MEM_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem)
-fm_hcicv_cs = lmer(FSX_HC.ICV_ ~ group + group*FSX_postAV45_ + factor(diag_prior) + factor(diag_prior)*FSX_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*FSX_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*FSX_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + FSX_postAV45_ + (1 + FSX_postAV45_ | RID), df_hcicv)
-fm_wmh_cs = lmer(WMH_percentOfICV. ~ group + group*WMH_postAV45. + factor(diag_prior) + factor(diag_prior)*WMH_postAV45. + factor(APOE4_BIN) + factor(APOE4_BIN)*WMH_postAV45. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*WMH_postAV45. + Age.AV45 + factor(Gender) + Edu..Yrs. + WMH_postAV45. + (1 + WMH_postAV45. | RID), df_wmh)
-fm_avlt_cs = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + factor(diag_prior) + factor(diag_prior)*TIMEpostAV45_AVLT. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_AVLT. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*TIMEpostAV45_AVLT. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt)
-fm_adas_cs = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + factor(diag_prior) + factor(diag_prior)*TIMEpostAV45_ADAS. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_ADAS. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*TIMEpostAV45_ADAS. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas)
-
-
+# Import data for Ns
 df_ef_n = read.csv('dpgmm_alpha15.37_bilateral_UW_EF__N_longdata.csv')
 df_mem_n = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__N_longdata.csv')
 df_adas_n = read.csv('dpgmm_alpha15.37_bilateral_ADAScog__N_longdata.csv')
 df_avlt_n = read.csv('dpgmm_alpha15.37_bilateral_AVLT__N_longdata.csv')
-df_hcicv_n = read.csv('dpgmm_alpha15.37_bilateral_FSX_HC_ICV__N_longdata.csv')
-df_wmh_n = read.csv('dpgmm_alpha15.37_bilateral_WMH_percentOfICV__N_longdata.csv')
 df_ef_n$RID = factor(df_ef_n$RID)
 df_mem_n$RID = factor(df_mem_n$RID)
-df_hcicv_n$RID = factor(df_hcicv_n$RID)
-df_wmh_n$RID = factor(df_wmh_n$RID)
 df_adas_n$RID = factor(df_adas_n$RID)
 df_avlt_n$RID = factor(df_avlt_n$RID)
 df_ef_n$group = factor(df_ef_n$group)
 df_mem_n$group = factor(df_mem_n$group)
-df_hcicv_n$group = factor(df_hcicv_n$group)
-df_wmh_n$group = factor(df_wmh_n$group)
 df_adas_n$group = factor(df_adas_n$group)
 df_avlt_n$group = factor(df_avlt_n$group)
+df_ef_n$diag_prior = factor(df_ef_n$diag_prior)
+df_mem_n$diag_prior = factor(df_mem_n$diag_prior)
+df_adas_n$diag_prior = factor(df_adas_n$diag_prior)
+df_avlt_n$diag_prior = factor(df_avlt_n$diag_prior)
+df_ef_n$APOE4_BIN = factor(df_ef_n$APOE4_BIN)
+df_mem_n$APOE4_BIN = factor(df_mem_n$APOE4_BIN)
+df_adas_n$APOE4_BIN = factor(df_adas_n$APOE4_BIN)
+df_avlt_n$APOE4_BIN = factor(df_avlt_n$APOE4_BIN)
+df_ef_n$Gender = factor(df_ef_n$Gender)
+df_mem_n$Gender = factor(df_mem_n$Gender)
+df_adas_n$Gender = factor(df_adas_n$Gender)
+df_avlt_n$Gender = factor(df_avlt_n$Gender)
+df_ef_n$CORTICAL_SUMMARY_POSITIVE = factor(df_ef_n$CORTICAL_SUMMARY_POSITIVE)
+df_mem_n$CORTICAL_SUMMARY_POSITIVE = factor(df_mem_n$CORTICAL_SUMMARY_POSITIVE)
+df_adas_n$CORTICAL_SUMMARY_POSITIVE = factor(df_adas_n$CORTICAL_SUMMARY_POSITIVE)
+df_avlt_n$CORTICAL_SUMMARY_POSITIVE = factor(df_avlt_n$CORTICAL_SUMMARY_POSITIVE)
 
-fm_uwef_n = lmer(UW_EF_ ~ group + group*UW_EF_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_EF_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef_n)
-fm_uwmem_n = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_MEM_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem_n)
-fm_hcicv_n = lmer(FSX_HC.ICV_ ~ group + group*FSX_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*FSX_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + FSX_postAV45_ + (1 + FSX_postAV45_ | RID), df_hcicv_n)
-fm_wmh_n = lmer(WMH_percentOfICV. ~ group + group*WMH_postAV45. + factor(APOE4_BIN) + factor(APOE4_BIN)*WMH_postAV45. + Age.AV45 + factor(Gender) + Edu..Yrs. + WMH_postAV45. + (1 + WMH_postAV45. | RID), df_wmh_n)
-fm_avlt_n = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_AVLT. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_n)
-fm_adas_n = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_ADAS. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas_n)
+df_adas_n_positive = df_adas_n[df_adas_n$CORTICAL_SUMMARY_POSITIVE==1,]
+df_ef_n_positive = df_ef_n[df_ef_n$CORTICAL_SUMMARY_POSITIVE==1,]
+df_mem_n_positive = df_mem_n[df_mem_n$CORTICAL_SUMMARY_POSITIVE==1,]
+df_avlt_n_positive = df_avlt_n[df_avlt_n$CORTICAL_SUMMARY_POSITIVE==1,]
+df_adas_n_negative = df_adas_n[df_adas_n$CORTICAL_SUMMARY_POSITIVE==0,]
+df_ef_n_negative = df_ef_n[df_ef_n$CORTICAL_SUMMARY_POSITIVE==0,]
+df_mem_n_negative = df_mem_n[df_mem_n$CORTICAL_SUMMARY_POSITIVE==0,]
+df_avlt_n_negative = df_avlt_n[df_avlt_n$CORTICAL_SUMMARY_POSITIVE==0,]
 
-fm_uwef_n_cs = lmer(UW_EF_ ~ group + group*UW_EF_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_EF_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*UW_EF_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef_n)
-fm_uwmem_n_cs = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*UW_MEM_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*UW_MEM_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem_n)
-fm_hcicv_n_cs = lmer(FSX_HC.ICV_ ~ group + group*FSX_postAV45_ + factor(APOE4_BIN) + factor(APOE4_BIN)*FSX_postAV45_ + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*FSX_postAV45_ + Age.AV45 + factor(Gender) + Edu..Yrs. + FSX_postAV45_ + (1 + FSX_postAV45_ | RID), df_hcicv_n)
-fm_wmh_n_cs = lmer(WMH_percentOfICV. ~ group + group*WMH_postAV45. + factor(APOE4_BIN) + factor(APOE4_BIN)*WMH_postAV45. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*WMH_postAV45. + Age.AV45 + factor(Gender) + Edu..Yrs. + WMH_postAV45. + (1 + WMH_postAV45. | RID), df_wmh_n)
-fm_avlt_n_cs = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_AVLT. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*TIMEpostAV45_AVLT. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_n)
-fm_adas_n_cs = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_ADAS. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*TIMEpostAV45_ADAS. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas_n)
+# Import data for MCIs
+df_ef_mci = read.csv('dpgmm_alpha15.37_bilateral_UW_EF__MCI_longdata.csv')
+df_mem_mci = read.csv('dpgmm_alpha15.37_bilateral_UW_MEM__MCI_longdata.csv')
+df_adas_mci = read.csv('dpgmm_alpha15.37_bilateral_ADAScog__MCI_longdata.csv')
+df_avlt_mci = read.csv('dpgmm_alpha15.37_bilateral_AVLT__MCI_longdata.csv')
+df_ef_mci$RID = factor(df_ef_mci$RID)
+df_mem_mci$RID = factor(df_mem_mci$RID)
+df_adas_mci$RID = factor(df_adas_mci$RID)
+df_avlt_mci$RID = factor(df_avlt_mci$RID)
+df_ef_mci$group = factor(df_ef_mci$group)
+df_mem_mci$group = factor(df_mem_mci$group)
+df_adas_mci$group = factor(df_adas_mci$group)
+df_avlt_mci$group = factor(df_avlt_mci$group)
+df_ef_mci$diag_prior = factor(df_ef_mci$diag_prior)
+df_mem_mci$diag_prior = factor(df_mem_mci$diag_prior)
+df_adas_mci$diag_prior = factor(df_adas_mci$diag_prior)
+df_avlt_mci$diag_prior = factor(df_avlt_mci$diag_prior)
+df_ef_mci$APOE4_BIN = factor(df_ef_mci$APOE4_BIN)
+df_mem_mci$APOE4_BIN = factor(df_mem_mci$APOE4_BIN)
+df_adas_mci$APOE4_BIN = factor(df_adas_mci$APOE4_BIN)
+df_avlt_mci$APOE4_BIN = factor(df_avlt_mci$APOE4_BIN)
+df_ef_mci$Gender = factor(df_ef_mci$Gender)
+df_mem_mci$Gender = factor(df_mem_mci$Gender)
+df_adas_n$Gender = factor(df_adas_n$Gender)
+df_avlt_n$Gender = factor(df_avlt_n$Gender)
+df_ef_mci$CORTICAL_SUMMARY_POSITIVE = factor(df_ef_mci$CORTICAL_SUMMARY_POSITIVE)
+df_mem_mci$CORTICAL_SUMMARY_POSITIVE = factor(df_mem_mci$CORTICAL_SUMMARY_POSITIVE)
+df_adas_mci$CORTICAL_SUMMARY_POSITIVE = factor(df_adas_mci$CORTICAL_SUMMARY_POSITIVE)
+df_avlt_mci$CORTICAL_SUMMARY_POSITIVE = factor(df_avlt_mci$CORTICAL_SUMMARY_POSITIVE)
 
-uwef_anova = as.matrix(anova(fm_uwef))
-uwmem_anova = as.matrix(anova(fm_uwmem))
-wmh_anova = as.matrix(anova(fm_wmh))
-adas_anova = as.matrix(anova(fm_adas))
-avlt_anova = as.matrix(anova(fm_avlt))
+df_adas_mci_positive = df_adas_mci[df_adas_mci$CORTICAL_SUMMARY_POSITIVE==1,]
+df_ef_mci_positive = df_ef_mci[df_ef_mci$CORTICAL_SUMMARY_POSITIVE==1,]
+df_mem_mci_positive = df_mem_mci[df_mem_mci$CORTICAL_SUMMARY_POSITIVE==1,]
+df_avlt_mci_positive = df_avlt_mci[df_avlt_mci$CORTICAL_SUMMARY_POSITIVE==1,]
+df_adas_mci_negative = df_adas_mci[df_adas_mci$CORTICAL_SUMMARY_POSITIVE==0,]
+df_ef_mci_negative = df_ef_mci[df_ef_mci$CORTICAL_SUMMARY_POSITIVE==0,]
+df_mem_mci_negative = df_mem_mci[df_mem_mci$CORTICAL_SUMMARY_POSITIVE==0,]
+df_avlt_mci_negative = df_avlt_mci[df_avlt_mci$CORTICAL_SUMMARY_POSITIVE==0,]
 
-uwef_cs_anova = as.matrix(anova(fm_uwef_cs))
-uwmem_cs_anova = as.matrix(anova(fm_uwmem_cs))
-wmh_cs_anova = as.matrix(anova(fm_wmh_cs))
-adas_cs_anova = as.matrix(anova(fm_adas_cs))
-avlt_cs_anova = as.matrix(anova(fm_avlt_cs))
+# LME MODELS: Normals 
+fm_uwef_n_cs = lmer(UW_EF_ ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*UW_EF_postAV45_ + APOE4_BIN + APOE4_BIN*UW_EF_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef_n)
+fm_uwmem_n_cs = lmer(UW_MEM_ ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN*UW_MEM_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem_n)
+fm_avlt_n_cs = lmer(AVLT. ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*TIMEpostAV45_AVLT. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_AVLT. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_n)
+fm_adas_n_cs = lmer(ADAScog. ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*TIMEpostAV45_ADAS. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_ADAS. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas_n)
 
-uwef_n_anova = as.matrix(anova(fm_uwef_n))
-uwmem_n_anova = as.matrix(anova(fm_uwmem_n))
-wmh_n_anova = as.matrix(anova(fm_wmh_n))
-adas_n_anova = as.matrix(anova(fm_adas_n))
-avlt_n_anova = as.matrix(anova(fm_avlt_n))
+fm_uwef_n = lmer(UW_EF_ ~ group + group*UW_EF_postAV45_ + APOE4_BIN + APOE4_BIN*UW_EF_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef_n_negative)
+fm_uwmem_n = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN*UW_MEM_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem_n_negative)
+fm_avlt_n = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_AVLT. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_n_negative)
+fm_adas_n = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_ADAS. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas_n_negative)
 
-uwef_n_cs_anova = as.matrix(anova(fm_uwef_n_cs))
-uwmem_n_cs_anova = as.matrix(anova(fm_uwmem_n_cs))
-wmh_n_cs_anova = as.matrix(anova(fm_wmh_n_cs))
-adas_n_cs_anova = as.matrix(anova(fm_adas_n_cs))
-avlt_n_cs_anova = as.matrix(anova(fm_avlt_n_cs))
+# LME MODELS: MCIS
+fm_uwef_mci_cs = lmer(UW_EF_ ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*UW_EF_postAV45_ + APOE4_BIN + APOE4_BIN*UW_EF_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef_mci)
+fm_uwmem_mci_cs = lmer(UW_MEM_ ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN*UW_MEM_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem_mci)
+fm_avlt_mci_cs = lmer(AVLT. ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*TIMEpostAV45_AVLT. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_AVLT. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_mci)
+fm_adas_mci_cs = lmer(ADAScog. ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*TIMEpostAV45_ADAS. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_ADAS. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas_mci)
 
-write.csv(uwef_anova, file = "uwef_all_anova.csv", na = "")
-write.csv(uwmem_anova, file = "uwmem_all_anova.csv", na = "")
-write.csv(wmh_anova, file = "wmh_all_anova.csv", na = "")
-write.csv(adas_anova, file = "adas_all_anova.csv", na = "")
-write.csv(avlt_anova, file = "avlt_all_anova.csv", na = "")
-write.csv(uwef_cs_anova, file = "uwef_all_cs_anova.csv", na = "")
-write.csv(uwmem_cs_anova, file = "uwmem_all_cs_anova.csv", na = "")
-write.csv(wmh_cs_anova, file = "wmh_all_cs_anova.csv", na = "")
-write.csv(adas_cs_anova, file = "adas_all_cs_anova.csv", na = "")
-write.csv(avlt_cs_anova, file = "avlt_all_cs_anova.csv", na = "")
+fm_uwef_mci = lmer(UW_EF_ ~ group + group*UW_EF_postAV45_ + APOE4_BIN + APOE4_BIN*UW_EF_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef_mci_negative)
+fm_uwmem_mci = lmer(UW_MEM_ ~ group + group*UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN*UW_MEM_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem_mci_negative)
+fm_avlt_mci = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_AVLT. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_mci_negative)
+fm_adas_mci = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_ADAS. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas_mci_negative)
 
-write.csv(uwef_n_anova, file = "uwef_n_anova.csv", na = "")
-write.csv(uwmem_n_anova, file = "uwmem_n_anova.csv", na = "")
-write.csv(wmh_n_anova, file = "wmh_n_anova.csv", na = "")
-write.csv(adas_n_anova, file = "adas_n_anova.csv", na = "")
-write.csv(avlt_n_anova, file = "avlt_n_anova.csv", na = "")
-write.csv(uwef_n_cs_anova, file = "uwef_n_cs_anova.csv", na = "")
-write.csv(uwmem_n_cs_anova, file = "uwmem_n_cs_anova.csv", na = "")
-write.csv(wmh_n_cs_anova, file = "wmh_n_cs_anova.csv", na = "")
-write.csv(adas_n_cs_anova, file = "adas_n_cs_anova.csv", na = "")
-write.csv(avlt_n_cs_anova, file = "avlt_n_cs_anova.csv", na = "")
-
-uwef_summary = summary(fm_uwef)
-uwmem_summary = summary(fm_uwmem)
-wmh_summary = summary(fm_wmh)
-adas_summary = summary(fm_adas)
-avlt_summary = summary(fm_avlt)
-
-uwef_cs_summary = summary(fm_uwef_cs)
-uwmem_cs_summary = summary(fm_uwmem_cs)
-wmh_cs_summary = summary(fm_wmh_cs)
-adas_cs_summary = summary(fm_adas_cs)
-avlt_cs_summary = summary(fm_avlt_cs)
-
+# MODEL SUMMARIES
 uwef_n_summary = summary(fm_uwef_n)
 uwmem_n_summary = summary(fm_uwmem_n)
-wmh_n_summary = summary(fm_wmh_n)
 adas_n_summary = summary(fm_adas_n)
 avlt_n_summary = summary(fm_avlt_n)
 
 uwef_n_cs_summary = summary(fm_uwef_n_cs)
 uwmem_n_cs_summary = summary(fm_uwmem_n_cs)
-wmh_n_cs_summary = summary(fm_wmh_n_cs)
 adas_n_cs_summary = summary(fm_adas_n_cs)
 avlt_n_cs_summary = summary(fm_avlt_n_cs)
 
-write.csv(uwef_summary$coefficients, file = "uwef_all_coefficients.csv", na = "")
-write.csv(uwmem_summary$coefficients, file = "uwmem_all_coefficients.csv", na = "")
-write.csv(wmh_summary$coefficients, file = "wmh_all_coefficients.csv", na = "")
-write.csv(adas_summary$coefficients, file = "adas_all_coefficients.csv", na = "")
-write.csv(avlt_summary$coefficients, file = "avlt_all_coefficients.csv", na = "")
-write.csv(uwef_cs_summary$coefficients, file = "uwef_all_cs_coefficients.csv", na = "")
-write.csv(uwmem_cs_summary$coefficients, file = "uwmem_all_cs_coefficients.csv", na = "")
-write.csv(wmh_cs_summary$coefficients, file = "wmh_all_cs_coefficients.csv", na = "")
-write.csv(adas_cs_summary$coefficients, file = "adas_all_cs_coefficients.csv", na = "")
-write.csv(avlt_cs_summary$coefficients, file = "avlt_all_cs_coefficients.csv", na = "")
+uwef_mci_summary = summary(fm_uwef_mci)
+uwmem_mci_summary = summary(fm_uwmem_mci)
+adas_mci_summary = summary(fm_adas_mci)
+avlt_mci_summary = summary(fm_avlt_mci)
 
+uwef_mci_cs_summary = summary(fm_uwef_mci_cs)
+uwmem_mci_cs_summary = summary(fm_uwmem_mci_cs)
+adas_mci_cs_summary = summary(fm_adas_mci_cs)
+avlt_mci_cs_summary = summary(fm_avlt_mci_cs)
+
+# MODEL ANOVAS
+uwef_n_anova = as.matrix(anova(fm_uwef_n))
+uwmem_n_anova = as.matrix(anova(fm_uwmem_n))
+adas_n_anova = as.matrix(anova(fm_adas_n))
+avlt_n_anova = as.matrix(anova(fm_avlt_n))
+uwef_n_cs_anova = as.matrix(anova(fm_uwef_n_cs))
+uwmem_n_cs_anova = as.matrix(anova(fm_uwmem_n_cs))
+adas_n_cs_anova = as.matrix(anova(fm_adas_n_cs))
+avlt_n_cs_anova = as.matrix(anova(fm_avlt_n_cs))
+
+uwef_mci_anova = as.matrix(anova(fm_uwef_mci))
+uwmem_mci_anova = as.matrix(anova(fm_uwmem_mci))
+adas_mci_anova = as.matrix(anova(fm_adas_mci))
+avlt_mci_anova = as.matrix(anova(fm_avlt_mci))
+uwef_mci_cs_anova = as.matrix(anova(fm_uwef_mci_cs))
+uwmem_mci_cs_anova = as.matrix(anova(fm_uwmem_mci_cs))
+adas_mci_cs_anova = as.matrix(anova(fm_adas_mci_cs))
+avlt_mci_cs_anova = as.matrix(anova(fm_avlt_mci_cs))
+
+# PRINT MODEL OUTPUTS
+sink('uwef_n_summary.txt'); print(uwef_n_summary, correlation=TRUE); sink(file=NULL)
+sink('uwmem_n_summary.txt'); print(uwmem_n_summary, correlation=TRUE); sink(file=NULL)
+sink('adas_n_summary.txt'); print(adas_n_summary, correlation=TRUE); sink(file=NULL)
+sink('avlt_n_summary.txt'); print(avlt_n_summary, correlation=TRUE); sink(file=NULL)
+sink('uwef_n_cs_summary.txt'); print(uwef_n_cs_summary, correlation=TRUE); sink(file=NULL)
+sink('uwmem_n_cs_summary.txt'); print(uwmem_n_cs_summary, correlation=TRUE); sink(file=NULL)
+sink('adas_n_cs_summary.txt'); print(adas_n_cs_summary, correlation=TRUE); sink(file=NULL)
+sink('avlt_n_cs_summary.txt'); print(avlt_n_cs_summary, correlation=TRUE); sink(file=NULL)
+
+sink('uwef_mci_summary.txt'); print(uwef_mci_summary, correlation=TRUE); sink(file=NULL)
+sink('uwmem_mci_summary.txt'); print(uwmem_mci_summary, correlation=TRUE); sink(file=NULL)
+sink('adas_mci_summary.txt'); print(adas_mci_summary, correlation=TRUE); sink(file=NULL)
+sink('avlt_mci_summary.txt'); print(avlt_mci_summary, correlation=TRUE); sink(file=NULL)
+sink('uwef_mci_cs_summary.txt'); print(uwef_mci_cs_summary, correlation=TRUE); sink(file=NULL)
+sink('uwmem_mci_cs_summary.txt'); print(uwmem_mci_cs_summary, correlation=TRUE); sink(file=NULL)
+sink('adas_mci_cs_summary.txt'); print(adas_mci_cs_summary, correlation=TRUE); sink(file=NULL)
+sink('avlt_mci_cs_summary.txt'); print(avlt_mci_cs_summary, correlation=TRUE); sink(file=NULL)
+
+# PRINT MODEL COEFFICIENTS
 write.csv(uwef_n_summary$coefficients, file = "uwef_n_coefficients.csv", na = "")
 write.csv(uwmem_n_summary$coefficients, file = "uwmem_n_coefficients.csv", na = "")
-write.csv(wmh_n_summary$coefficients, file = "wmh_n_coefficients.csv", na = "")
 write.csv(adas_n_summary$coefficients, file = "adas_n_coefficients.csv", na = "")
 write.csv(avlt_n_summary$coefficients, file = "avlt_n_coefficients.csv", na = "")
 write.csv(uwef_n_cs_summary$coefficients, file = "uwef_n_cs_coefficients.csv", na = "")
 write.csv(uwmem_n_cs_summary$coefficients, file = "uwmem_n_cs_coefficients.csv", na = "")
-write.csv(wmh_n_cs_summary$coefficients, file = "wmh_n_cs_coefficients.csv", na = "")
 write.csv(adas_n_cs_summary$coefficients, file = "adas_n_cs_coefficients.csv", na = "")
 write.csv(avlt_n_cs_summary$coefficients, file = "avlt_n_cs_coefficients.csv", na = "")
+
+write.csv(uwef_mci_summary$coefficients, file = "uwef_mci_coefficients.csv", na = "")
+write.csv(uwmem_mci_summary$coefficients, file = "uwmem_mci_coefficients.csv", na = "")
+write.csv(adas_mci_summary$coefficients, file = "adas_mci_coefficients.csv", na = "")
+write.csv(avlt_mci_summary$coefficients, file = "avlt_mci_coefficients.csv", na = "")
+write.csv(uwef_mci_cs_summary$coefficients, file = "uwef_mci_cs_coefficients.csv", na = "")
+write.csv(uwmem_mci_cs_summary$coefficients, file = "uwmem_mci_cs_coefficients.csv", na = "")
+write.csv(adas_mci_cs_summary$coefficients, file = "adas_mci_cs_coefficients.csv", na = "")
+write.csv(avlt_mci_cs_summary$coefficients, file = "avlt_mci_cs_coefficients.csv", na = "")
+
+# PRINT MODEL ANOVA
+write.csv(uwef_n_anova, file = "uwef_n_anova.csv", na = "")
+write.csv(uwmem_n_anova, file = "uwmem_n_anova.csv", na = "")
+write.csv(adas_n_anova, file = "adas_n_anova.csv", na = "")
+write.csv(avlt_n_anova, file = "avlt_n_anova.csv", na = "")
+write.csv(uwef_n_cs_anova, file = "uwef_n_cs_anova.csv", na = "")
+write.csv(uwmem_n_cs_anova, file = "uwmem_n_cs_anova.csv", na = "")
+write.csv(adas_n_cs_anova, file = "adas_n_cs_anova.csv", na = "")
+write.csv(avlt_n_cs_anova, file = "avlt_n_cs_anova.csv", na = "")
+
+write.csv(uwef_mci_anova, file = "uwef_mci_anova.csv", na = "")
+write.csv(uwmem_mci_anova, file = "uwmem_mci_anova.csv", na = "")
+write.csv(adas_mci_anova, file = "adas_mci_anova.csv", na = "")
+write.csv(avlt_mci_anova, file = "avlt_mci_anova.csv", na = "")
+write.csv(uwef_mci_cs_anova, file = "uwef_mci_cs_anova.csv", na = "")
+write.csv(uwmem_mci_cs_anova, file = "uwmem_mci_cs_anova.csv", na = "")
+write.csv(adas_mci_cs_anova, file = "adas_mci_cs_anova.csv", na = "")
+write.csv(avlt_mci_cs_anova, file = "avlt_mci_cs_anova.csv", na = "")
+
+
+# VISUALIZE MODELS
+
+
+
+
 
 p = ggplot(df_mem_n, aes(x=UW_MEM_postAV45_,y=UW_MEM_, colour=group)) +
   geom_point(size=3) +
   geom_line(aes(y=predict()))
-
-
 
 contrasts_n = read.csv('contrasts_n.csv')
 test = glht(fm_wmh_n,linfct=data.matrix(contrasts_n))
