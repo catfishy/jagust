@@ -31,7 +31,7 @@ normals_only=False
 
 patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
 lut_file = "../FreeSurferColorLUT.txt"
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_06_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_26_16.csv'
 membership_conf = 0.50
 components = 100
 ref_key = 'WHOLE_CEREBELLUM'
@@ -728,14 +728,15 @@ def plotValueScatter(result_df, groups, xys, fit_reg=False, test=True, show=Fals
 
 def plotValueDensity(result_df, groups, value_key):
     long_df = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
-    for i, (k, patterns) in enumerate(groups.iteritems()):
-        plt.figure(i)
-        plt.title("%s (%s)" % (value_key,k))
-        for g in patterns:
-            members = long_df[long_df.membership_prior==g]
-            print len(members.index)
-            members['value'].plot(kind='density', label=g, alpha=0.5)
-        plt.legend()
+    plt.figure(1)
+    plt.title("Cortical Summary SUVR Density, by Pattern Group (n>3)")
+    groups_members = [long_df[long_df.membership_prior==g] for g in groups]
+    groups_means = [_['value'].mean() for _ in groups_members]
+    means_members = zip(groups_means, groups_members, groups)
+    means_members_sorted = sorted(means_members, key=lambda x: x[0])
+    for mean_val, members, g in means_members_sorted:
+        members['value'].plot(kind='density', label="Pattern %s (n=%s, SUVR=%s)" % (int(g),int(len(members.index)),mean_val), alpha=0.8)
+    plt.legend()
     plt.show()
 
 def plotValueBox(result_df, groups, value_key, save=False):
@@ -1080,6 +1081,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
         proba_df = proba_df.applymap(lambda x: 1 if x else 0)
         cont_suffix = ''
     else:
+        proba_df = proba_df.applymap(lambda x: round(x,2))
         cont_suffix = '_continuous'
 
     # Filter for confident group assignments
@@ -1115,23 +1117,40 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     proba_df = proba_df.merge(diags_one_hot, left_index=True, right_index=True, how='left')
 
     # Add dependent variable and test times
-    dep_value_keys = ['%s%s' % (dep_val_var,i) for i in range(30) if '%s%s' % (dep_val_var,i) in master_df.columns]
-    dep_keypairs = {}
-    for dv_key in dep_value_keys:
-        dt_key = dv_key.replace(dep_val_var,dep_time_var)
-        timepoint_index = int(dv_key.replace(dep_val_var,''))
-        dep_keypairs[timepoint_index] = (dt_key, dv_key)
-
-    dep_by_subject = defaultdict(list)
-    for tp_index in sorted(dep_keypairs.keys()):
-        dt_key, dv_key = dep_keypairs[tp_index]
-        tp_df = master_df[[dt_key,dv_key]].dropna()
-        for pid, row in tp_df.iterrows():
-            if pid not in proba_df.index:
-                continue
-            tp_tuple = (float(row[dt_key]),float(row[dv_key]))
-            dep_by_subject[pid].append(tp_tuple)
-
+    if dep_val_var == 'AV45':
+        dep_value_keys = ['AV45_BigRef','AV45_2_BigRef','AV45_3_BigRef']
+        dep_time_keys = ['','AV45_1_2_Diff','AV45_1_3_Diff']
+        dep_by_subject = defaultdict(list)
+        for i, (dt_key, dv_key) in enumerate(zip(dep_time_keys, dep_value_keys)):
+            if i == 0:
+                tp_df = master_df[[dv_key]].dropna()
+            else:
+                tp_df = master_df[[dt_key, dv_key]].dropna()
+            for pid, row in tp_df.iterrows():
+                if pid not in proba_df.index:
+                    continue
+                if i == 0:
+                    tp_tuple = (0.0,float(row[dv_key]))
+                else:
+                    tp_tuple = (float(row[dt_key]), float(row[dv_key]))
+                dep_by_subject[pid].append(tp_tuple)
+    else:
+        dep_value_keys = ['%s%s' % (dep_val_var,i) for i in range(30) if '%s%s' % (dep_val_var,i) in master_df.columns]
+        dep_keypairs = {}
+        for dv_key in dep_value_keys:
+            dt_key = dv_key.replace(dep_val_var,dep_time_var)
+            timepoint_index = int(dv_key.replace(dep_val_var,''))
+            dep_keypairs[timepoint_index] = (dt_key, dv_key)
+        dep_by_subject = defaultdict(list)
+        for tp_index in sorted(dep_keypairs.keys()):
+            dt_key, dv_key = dep_keypairs[tp_index]
+            tp_df = master_df[[dt_key,dv_key]].dropna()
+            for pid, row in tp_df.iterrows():
+                if pid not in proba_df.index:
+                    continue
+                tp_tuple = (float(row[dt_key]),float(row[dv_key]))
+                dep_by_subject[pid].append(tp_tuple)
+    
     full_df = pd.DataFrame()
     for pid, timepoints in dep_by_subject.iteritems():
         timepoints = sorted(timepoints, key=lambda x: x[0])
@@ -1140,7 +1159,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
             adjusted_time = time-base_time
             new_row = proba_df.loc[pid].copy()
             new_row[dep_val_var] = val
-            new_row[dep_time_var] = adjusted_time
+            new_row['YrsPostBL'] = round(adjusted_time,1)
             full_df = pd.concat((full_df, new_row),axis=1)
 
     full_df = full_df.T
@@ -1195,16 +1214,14 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
 
 def createContrasts(columns, time_key, out_file=None):
     new_df = pd.DataFrame(columns=columns)
-    cols = [_ for _ in columns if 'group' in _ and time_key in _]
+    cols = [_ for _ in columns if 'X' in _ and time_key in _]
     for c in cols:
         new_df.loc[len(new_df)+1]=0
         new_df.loc[len(new_df),c]=1
-
     for c1,c2 in itertools.combinations(cols,2):
         new_df.loc[len(new_df)+1]=0
         new_df.loc[len(new_df),c1]=1
         new_df.loc[len(new_df),c2]=-1
-
     if out_file:
         new_df.to_csv(out_file,index=False)
 
@@ -1252,16 +1269,22 @@ if __name__ == '__main__':
     LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
                          ('UW_EF_','UW_EF_postAV45_'),
                          ('AVLT.','TIMEpostAV45_AVLT.'),
-                         ('ADAScog.','TIMEpostAV45_ADAS.')]
+                         ('ADAScog.','TIMEpostAV45_ADAS.'),
+                         ('FSX_HC/ICV_','FSX_postAV45_'),
+                         ('WMH_percentOfICV.','WMH_postAV45.'),
+                         ('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
-        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=True)
-        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=True)
+        #saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=True)
+        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False)
 
     # lobe violin plots
     graphLobes(lobe_tp,big_groups,cortical_summary)
 
     # lobe pattern differences
     lobe_sigtests = testLobePatternDifferences(lobe_tp, groups, pattern=True)
+
+    # plot densities
+    plotValueDensity(result_df, big_groups, 'CORTICAL_SUMMARY_prior')
 
 
     # region ranking

@@ -5,6 +5,8 @@ library(lmerTest)
 library(pbkrtest)
 library(multcomp)
 library(contrast)
+library(xtable)
+library(sjPlot)
 
 # Import data for Ns
 df_ef_n = read.csv('dpgmm_alpha15.37_bilateral_UW_EF__N_longdata_continuous.csv')
@@ -92,7 +94,7 @@ fm_adas_n_cs = lmer(ADAScog. ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSI
 
 fm_uwef_n = lmer(UW_EF_ ~ X1 + X1*UW_EF_postAV45_ + X4 + X4*UW_EF_postAV45_ + X2 + X2*UW_EF_postAV45_ + X19 + X19*UW_EF_postAV45_ + X22 + X22*UW_EF_postAV45_ + X25 + X25*UW_EF_postAV45_ + X29 + X29*UW_EF_postAV45_ + X34 + X34*UW_EF_postAV45_ + X56 + X56*UW_EF_postAV45_ + APOE4_BIN + APOE4_BIN*UW_EF_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_EF_postAV45_ + (1 + UW_EF_postAV45_ | RID), df_ef_n)
 fm_uwmem_n = lmer(UW_MEM_ ~ X1 + X1*UW_MEM_postAV45_ + X4 + X4*UW_MEM_postAV45_ + X2 + X2*UW_MEM_postAV45_ + X19 + X19*UW_MEM_postAV45_ + X22 + X22*UW_MEM_postAV45_ + X25 + X25*UW_MEM_postAV45_ + X29 + X29*UW_MEM_postAV45_ + X34 + X34*UW_MEM_postAV45_ + X56 + X56*UW_MEM_postAV45_ + APOE4_BIN + APOE4_BIN*UW_MEM_postAV45_ + Age.AV45 + Gender + Edu..Yrs. + UW_MEM_postAV45_ + (1 + UW_MEM_postAV45_ | RID), df_mem_n)
-fm_avlt_n = lmer(AVLT. ~ CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE*TIMEpostAV45_AVLT. + X1 + X1*TIMEpostAV45_AVLT. + X4 + X4*TIMEpostAV45_AVLT. + X2 + X2*TIMEpostAV45_AVLT. + X19 + X19*TIMEpostAV45_AVLT. + X22 + X22*TIMEpostAV45_AVLT. + X25 + X25*TIMEpostAV45_AVLT. + X29 + X29*TIMEpostAV45_AVLT. + X34 + X34*TIMEpostAV45_AVLT. + X56 + X56*TIMEpostAV45_AVLT. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_AVLT. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_n)
+fm_avlt_n = lmer(AVLT. ~ X1 + X1*TIMEpostAV45_AVLT. + X4 + X4*TIMEpostAV45_AVLT. + X2 + X2*TIMEpostAV45_AVLT. + X19 + X19*TIMEpostAV45_AVLT. + X22 + X22*TIMEpostAV45_AVLT. + X25 + X25*TIMEpostAV45_AVLT. + X29 + X29*TIMEpostAV45_AVLT. + X34 + X34*TIMEpostAV45_AVLT. + X56 + X56*TIMEpostAV45_AVLT. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_AVLT. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_AVLT. + (1 + TIMEpostAV45_AVLT. | RID), df_avlt_n)
 fm_adas_n = lmer(ADAScog. ~ X1 + X1*TIMEpostAV45_ADAS. + X4 + X4*TIMEpostAV45_ADAS. + X2 + X2*TIMEpostAV45_ADAS. + X19 + X19*TIMEpostAV45_ADAS. + X22 + X22*TIMEpostAV45_ADAS. + X25 + X25*TIMEpostAV45_ADAS. + X29 + X29*TIMEpostAV45_ADAS. + X34 + X34*TIMEpostAV45_ADAS. + X56 + X56*TIMEpostAV45_ADAS. + APOE4_BIN + APOE4_BIN*TIMEpostAV45_ADAS. + Age.AV45 + Gender + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas_n)
 
 # LME MODELS: MCIS
@@ -145,6 +147,19 @@ uwef_mci_cs_anova = as.matrix(anova(fm_uwef_mci_cs))
 uwmem_mci_cs_anova = as.matrix(anova(fm_uwmem_mci_cs))
 adas_mci_cs_anova = as.matrix(anova(fm_adas_mci_cs))
 avlt_mci_cs_anova = as.matrix(anova(fm_avlt_mci_cs))
+
+# latex COEFFICIENTS
+uwmem_n_summary_coeff_latex = xtable(uwmem_n_summary$coefficients)
+avlt_n_summary_coeff_latex = xtable(avlt_n_summary$coefficients)
+uwmem_mci_summary_coeff_latex = xtable(uwmem_mci_summary$coefficients)
+avlt_mci_summary_coeff_latex = xtable(avlt_mci_summary$coefficients)
+
+# latex ANOVAS
+uwmem_n_anova_latex = xtable(uwmem_n_anova)
+avlt_n_anova_latex = xtable(avlt_n_anova)
+uwmem_mci_anova_latex = xtable(uwmem_mci_anova)
+avlt_mci_anova_latex = xtable(avlt_mci_anova)
+
 
 # PRINT MODEL OUTPUTS
 sink('uwef_n_summary.txt'); print(uwef_n_summary, correlation=TRUE); sink(file=NULL)
@@ -205,4 +220,59 @@ write.csv(avlt_mci_cs_anova, file = "avlt_mci_cs_anova.csv", na = "")
 
 
 # VISUALIZE MODELS
+fm_uwmem_n_fitted <- fitted(fm_uwmem_n)
+fm_uwef_n_fitted <- fitted(fm_uwef_n)
+fm_avlt_n_fitted <- fitted(fm_avlt_n)
+fm_adas_n_fitted <- fitted(fm_adas_n)
 
+fm_uwmem_mci_fitted <- fitted(fm_uwmem_mci)
+fm_uwef_mci_fitted <- fitted(fm_uwef_mci)
+fm_avlt_mci_fitted <- fitted(fm_avlt_mci)
+fm_adas_mci_fitted <- fitted(fm_adas_mci)
+
+uwmem_n_siggroups = c('2','19','25','29','34')
+avlt_n_siggroups = c('1','2','19','22','25','29')
+uwmem_n_sigmembers = which(df_mem_n$group %in% uwmem_n_siggroups)
+avlt_n_sigmembers = which(df_avlt_n$group %in% avlt_n_siggroups)
+
+uwmem_mci_siggroups = c('1','2','4','19','22','29','34')
+avlt_mci_siggroups = c('1','2','4','19','25','29','34')
+uwmem_mci_sigmembers = which(df_mem_mci$group %in% uwmem_mci_siggroups)
+avlt_mci_sigmembers = which(df_avlt_mci$group %in% avlt_mci_siggroups)
+
+lattice::xyplot(fm_uwmem_n_fitted[uwmem_n_sigmembers]~UW_MEM_postAV45_ | group, 
+                groups=group, 
+                data=df_mem_n[uwmem_n_sigmembers,], 
+                type=c('p','r'), 
+                auto.key=FALSE, 
+                grid=TRUE,
+                main="UW MEM LME Significant Group Effects (Normals)",
+                xlab='Yrs After Baseline',
+                ylab='UW MEM')
+lattice::xyplot(fm_avlt_n_fitted[avlt_n_sigmembers]~TIMEpostAV45_AVLT. | group, 
+                groups=group, 
+                data=df_avlt_n[avlt_n_sigmembers,], 
+                type=c('p','r'), 
+                auto.key=FALSE, 
+                grid=TRUE,
+                main="AVLT LME Significant Group Effects (Normals)",
+                xlab='Yrs After Baseline',
+                ylab='AVLT')
+lattice::xyplot(fm_uwmem_mci_fitted[uwmem_mci_sigmembers]~UW_MEM_postAV45_ | group, 
+                groups=group, 
+                data=df_mem_mci[uwmem_mci_sigmembers,], 
+                type=c('p','r'), 
+                auto.key=FALSE, 
+                grid=TRUE,
+                main="UW MEM LME Significant Group Effects (MCI)",
+                xlab='Yrs After Baseline',
+                ylab='UW MEM')
+lattice::xyplot(fm_avlt_mci_fitted[avlt_mci_sigmembers]~TIMEpostAV45_AVLT. | group, 
+                groups=group, 
+                data=df_avlt_mci[avlt_mci_sigmembers,], 
+                type=c('p','r'), 
+                auto.key=FALSE, 
+                grid=TRUE,
+                main="AVLT LME Significant Group Effects (MCI)",
+                xlab='Yrs After Baseline',
+                ylab='AVLT')
