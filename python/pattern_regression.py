@@ -21,7 +21,7 @@ from statsmodels.sandbox.stats.multicomp import multipletests
 import networkx as nx
 import numpy.testing as npt
 
-from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations, regCoeffZTest
+from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations, regCoeffZTest, slope
 
 #plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
@@ -1056,7 +1056,8 @@ def testLobePatternDifferences(lobe_tp, groups, pattern=True):
         full_results[(g1,g2)] = res
     return full_results
 
-def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False):
+
+def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=False):
     '''
     If categorize, encode pattern membership by one-hot, where membership is determined by argmax(membership_probs)
     '''
@@ -1152,15 +1153,28 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
                 dep_by_subject[pid].append(tp_tuple)
     
     full_df = pd.DataFrame()
-    for pid, timepoints in dep_by_subject.iteritems():
-        timepoints = sorted(timepoints, key=lambda x: x[0])
-        base_time = timepoints[0][0]
-        for time, val in timepoints:
-            adjusted_time = time-base_time
+    if calc_slope:
+        slope_suffix = '_slope'
+        # create annualized slopes dataset
+        for pid, timepoints in dep_by_subject.iteritems():
+            timepoints = sorted(timepoints, key=lambda x: x[0])
+            slope_val = slope(timepoints)
             new_row = proba_df.loc[pid].copy()
-            new_row[dep_val_var] = val
-            new_row['YrsPostBL'] = round(adjusted_time,1)
+            new_row['%s_slope' % dep_val_var] = slope_val
+            new_row['YrsPostBL'] = timepoints[-1][0] - timepoints[0][0]
             full_df = pd.concat((full_df, new_row),axis=1)
+    else:
+        slope_suffix = ''
+        # create longitudnal dataset
+        for pid, timepoints in dep_by_subject.iteritems():
+            timepoints = sorted(timepoints, key=lambda x: x[0])
+            base_time = timepoints[0][0]
+            for time, val in timepoints:
+                adjusted_time = time-base_time
+                new_row = proba_df.loc[pid].copy()
+                new_row[dep_val_var] = val
+                new_row['YrsPostBL'] = round(adjusted_time,1)
+                full_df = pd.concat((full_df, new_row),axis=1)
 
     full_df = full_df.T
     full_df.index.name='RID'
@@ -1171,6 +1185,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     notmember = set(member_sums[member_sums==0].index)
     full_df = full_df.drop(notmember) 
 
+    '''
     # split by diagnosis (N/SMC, EMCI/LMCI, AD)
     n_df = full_df[full_df.N == 1]
     smc_df = full_df[full_df.SMC == 1]
@@ -1181,35 +1196,17 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     N_full_df = pd.concat((n_df, smc_df)).drop(diag_list,axis=1)
     MCI_full_df = pd.concat((emci_df, lmci_df)).drop(diag_list,axis=1)
     AD_full_df = ad_df.drop(diag_list,axis=1)
-    full_df = full_df.drop(diag_list,axis=1)
-
-    '''
-    # drop patterns with only one subject
-    invalid_patterns_diagsplit = {'N': [], 'MCI': [], 'AD': []}
-    for p in valid_patterns:
-        num_n = len(set(N_full_df[N_full_df[p] == 1].index))
-        num_mci = len(set(MCI_full_df[MCI_full_df[p] == 1].index))
-        num_ad = len(set(AD_full_df[AD_full_df[p] == 1].index))
-        if num_n < 2:
-            invalid_patterns_diagsplit['N'].append(p)
-        if num_mci < 2:
-            invalid_patterns_diagsplit['MCI'].append(p)
-        if num_ad < 2:
-            invalid_patterns_diagsplit['AD'].append(p)
-
-    N_full_df.drop(invalid_patterns_diagsplit['N'], axis=1, inplace=True)
-    MCI_full_df.drop(invalid_patterns_diagsplit['MCI'], axis=1, inplace=True)
-    AD_full_df.drop(invalid_patterns_diagsplit['AD'], axis=1, inplace=True)
-    '''
-
-    clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
+    
     n_output_file = '%s_%s_N_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
     mci_output_file = '%s_%s_MCI_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
     ad_output_file = '%s_%s_AD_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
-    all_output_file = '%s_%s_ALL_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
     N_full_df.to_csv(n_output_file)
     MCI_full_df.to_csv(mci_output_file)
     AD_full_df.to_csv(ad_output_file)
+    '''
+
+    clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
+    all_output_file = '%s_%s_ALL_longdata%s%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix,slope_suffix)
     full_df.to_csv(all_output_file)
 
 def createContrasts(columns, time_key, out_file=None):
@@ -1266,16 +1263,18 @@ if __name__ == '__main__':
     # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
 
     # dump LMM Dataset
-    LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
-                         ('UW_EF_','UW_EF_postAV45_'),
-                         ('AVLT.','TIMEpostAV45_AVLT.'),
-                         ('ADAScog.','TIMEpostAV45_ADAS.'),
-                         ('FSX_HC/ICV_','FSX_postAV45_'),
-                         ('WMH_percentOfICV.','WMH_postAV45.'),
-                         ('AV45','')]
+    # LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
+    #                      ('UW_EF_','UW_EF_postAV45_'),
+    #                      ('AVLT.','TIMEpostAV45_AVLT.'),
+    #                      ('ADAScog.','TIMEpostAV45_ADAS.'),
+    #                      ('FSX_HC/ICV_','FSX_postAV45_'),
+    #                      ('WMH_percentOfICV.','WMH_postAV45.'),
+    #                      ('AV45','')]
+    LME_dep_variables = [('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
-        #saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=True)
-        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False)
+        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=False)
+        if dep_val_var == 'AV45':
+            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=True)
 
     # lobe violin plots
     graphLobes(lobe_tp,big_groups,cortical_summary)

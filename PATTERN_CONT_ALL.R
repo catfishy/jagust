@@ -71,6 +71,11 @@ df_wmh = df_wmh[which(df_wmh$diag_prior %in% valid_diags),]
 df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 df_hcicv = df_hcicv[which(df_hcicv$diag_prior %in% valid_diags),]
 
+
+# LM models        
+fm_av45 = lm()
+
+
 # LME MODELS: Normals 
 
 fm_uwef_csonly = lmer(UW_EF_ ~ diag_prior + diag_prior:YrsPostBL + CORTICAL_SUMMARY_POSITIVE + CORTICAL_SUMMARY_POSITIVE:YrsPostBL + APOE4_BIN + APOE4_BIN:YrsPostBL + Age.AV45 + Gender + Edu..Yrs. + YrsPostBL + (1 + YrsPostBL |RID), df_ef)
