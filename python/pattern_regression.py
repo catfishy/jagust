@@ -422,8 +422,15 @@ def parseConversions(groups, result_df, threshold, master_keys):
         # add cortical summary values
         cortical_summary_values = np.array(list(members_prior['CORTICAL_SUMMARY_prior']) + list(members_post['CORTICAL_SUMMARY_post']))
         cur_conversions['cortical_summary'] = cortical_summary_values.mean()
-        mu, sigma, cdf_val = fitNormalCdf(cortical_summary_values, threshold)
-        cur_conversions['below_threshold'] = cdf_val
+        
+        # calculate below threshold with fit
+        # mu, sigma, cdf_val = fitNormalCdf(cortical_summary_values, threshold)
+        # cur_conversions['below_threshold'] = cdf_val
+        
+        # calculate raw below threshold percent
+        cs_below_threshold = cortical_summary_values[cortical_summary_values <= threshold]
+        cur_conversions['below_threshold'] = float(len(cs_below_threshold)) / float(len(cortical_summary_values))
+
         cur_conversions['cortical_summary_change'] = members_prior['CORTICAL_SUMMARY_change'].mean()
         
         # add diagnostic counts
@@ -1222,6 +1229,23 @@ def createContrasts(columns, time_key, out_file=None):
     if out_file:
         new_df.to_csv(out_file,index=False)
 
+def createLMContrast(columns,out_file=None):
+    '''
+    create contrasts between X* variables
+    '''
+    new_df = pd.DataFrame(columns=columns)
+    cols = ["X%s" % i for i in range(100) if 'X%s' % i in columns]
+    for c in cols:
+        new_df.loc[len(new_df)+1]=0
+        new_df.loc[len(new_df),c]=1
+    for c1,c2 in itertools.combinations(cols,2):
+        new_df.loc[len(new_df)+1]=0
+        new_df.loc[len(new_df),c1]=1
+        new_df.loc[len(new_df),c2]=-1
+    if out_file:
+        new_df.to_csv(out_file,index=False)
+}
+
 if __name__ == '__main__':
     # parse input
     pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, lobes_change_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
@@ -1275,6 +1299,7 @@ if __name__ == '__main__':
         saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=False)
         if dep_val_var == 'AV45':
             saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=True)
+            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=False, calc_slope=True)
 
     # lobe violin plots
     graphLobes(lobe_tp,big_groups,cortical_summary)
