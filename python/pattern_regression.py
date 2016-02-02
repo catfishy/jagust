@@ -1244,7 +1244,6 @@ def createLMContrast(columns,out_file=None):
         new_df.loc[len(new_df),c2]=-1
     if out_file:
         new_df.to_csv(out_file,index=False)
-}
 
 if __name__ == '__main__':
     # parse input
