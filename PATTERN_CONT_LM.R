@@ -9,6 +9,7 @@ library(xtable)
 library(sjPlot)
 library(splines)
 library(car)
+library(stats)
 
 # Import data
 df_av45 = read.csv('dpgmm_alpha15.37_bilateral_AV45_ALL_longdata_continuous_slope.csv')
@@ -30,9 +31,10 @@ df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 
 # only keep patterns
 valid_patterns = c(1,4,22,25,9,0,34,2,19)
-df_av45 = df_av45[which(df_av45$group %in% valid_patterns),]
+#df_av45 = df_av45[which(df_av45$group %in% valid_patterns),]
 
 # pattern weight models
+fm_av45_onlycs = lm(AV45_slope ~ CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2), family=gaussian, df_av45)
 fm_av45_nopattern = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
 fm_av45 = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN +  I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + X1*APOE4_BIN + X4*APOE4_BIN + X22*APOE4_BIN + X25*APOE4_BIN + X9*APOE4_BIN + X0*APOE4_BIN + X34*APOE4_BIN + X2*APOE4_BIN + X19*APOE4_BIN + APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
 fm_av45_onlypatterns = lm(AV45_slope ~ diag_prior + X1*APOE4_BIN + X4*APOE4_BIN + X22*APOE4_BIN + X25*APOE4_BIN + X9*APOE4_BIN + X0*APOE4_BIN + X34*APOE4_BIN + X2*APOE4_BIN + X19*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
@@ -78,7 +80,8 @@ sink('av45_lm_onlypattern_anova.txt'); print(fm_av45_onlypatterns_anova, correla
 sink('av45_mc_anova.txt'); print(fm_modelcomparison_anova, correlation=TRUE); sink(file=NULL)
 
 # plot fits
-toplot = c(0,1,4,9,19,25,22)
+toplot = c(0,1,9,25,22)
+labels =
 for(g in toplot){
   jpeg(paste('fit_original_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'], col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('Original Data, Group:',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
   jpeg(paste('fit_withpattern_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45), col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('LM Predicted (with patterns)',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
@@ -86,10 +89,36 @@ for(g in toplot){
   jpeg(paste('fit_onlypattern_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_onlypatterns), col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('LM Predicted (only patterns)',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
 }
 
+
+polfit = function(x) fm_av45_onlycs$coefficients[3]*x^2 + fm_av45_onlycs$coefficients[2]*x + fm_av45_onlycs$coefficients[1]
+colors = rainbow(length(toplot))
+#colors = topo.colors(length(toplot))
+
+jpeg('fit_original_siggroups.jpeg')
+plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'], pch=4, cex=1, lwd=0.6, main='Significant Pattern Groups', xlab='Cortical Summary BL', ylab='Annualized AV45 Slope')
+for(i in 1:length(toplot)){
+  g = toplot[i]
+  c = colors[i]
+  x = df_av45[which(df_av45$group==g),'CORTICAL_SUMMARY_prior']
+  y = df_av45[which(df_av45$group==g),'AV45_slope']
+  points(x,y, bg=c, pch=21, cex=1.1, lwd=1)
+}
+curve(polfit,add=T)
+legend('topright', legend=sapply(toplot, function(x) paste('Group #',x,sep='')), fill=colors)
+dev.off()
+
+# plot fits
+plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'],bg='yellow',pch=21)
+points(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45),bg='red',pch=21)
+points(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_nopattern),bg='blue',pch=21)
+points(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_onlypatterns),bg='green',pch=21)
+
+
 # plot residuals
-plot(fm_av45$fitted.values, fm_av45$residuals)
-plot(fm_av45_nopattern$fitted.values, fm_av45_nopattern$residuals)
-plot(fm_av45_onlypatterns$fitted.values, fm_av45_onlypatterns$residuals)
+plot(1,type-'n')
+points(fm_av45_nopattern$fitted.values, fm_av45_nopattern$residuals,bg='blue',pch=21)
+points(fm_av45$fitted.values, fm_av45$residuals, bg='red', pch=21)
+
 
 
 # get coeff names

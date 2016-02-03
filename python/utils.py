@@ -438,6 +438,8 @@ def parseRawRousset_inner(data, translations=None):
     index_lookup = dict(zip(names, indices))
     size_lookup = dict(zip(names, sizes))
 
+    og_names = set(index_lookup.keys())
+    used_names = set()
     if translations:
         used_indices = set([b for a in indices for b in a])
         for k,v in translations.iteritems():
@@ -449,20 +451,25 @@ def parseRawRousset_inner(data, translations=None):
             index_lookup[k] = [_ for name in relevant_names for _ in index_lookup[name]]
             size_lookup[k] = sum([size_lookup[name] for name in relevant_names])
             for name in relevant_names:
-                val_lookup.pop(name)
-                index_lookup.pop(name)
-                size_lookup.pop(name)
+                used_names.add(name)
+
+    # only keep translations and unused names
+    keep_keys = (og_names - used_names) | set(translations.keys())
+    index_lookup = {k:index_lookup[k] for k in index_lookup.keys() if k in keep_keys}
+    val_lookup = {k:val_lookup[k] for k in val_lookup.keys() if k in keep_keys}
+    size_lookup = {k:size_lookup[k] for k in size_lookup.keys() if k in keep_keys}
 
     # calculate weighted sum fields
-    names_and_keys = [('whole_cerebellum',WHOLECEREBELLUM),
+    names_and_keys = [('whole_cerebellum', WHOLECEREBELLUM),
                       ('composite_ref', BIGREF),
                       ('cortical_summary', SUMMARY)]
-    names_and_keys.append(LOBES.items())
+    names_and_keys += LOBES.items()
     for name, keys in names_and_keys:
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(keys)) > 0]
         val_lookup[name] = weightedMean(regionsizes)
         index_lookup[name] = keys
     
+
     return val_lookup, index_lookup
 
 def parseRawRousset(bl_file, scan2_file, scan3_file, translations=None):

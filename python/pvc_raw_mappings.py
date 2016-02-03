@@ -258,6 +258,7 @@ if __name__ == "__main__":
     data_bl, data_scan2, data_scan3, index_lookup = parseRawRousset(bl_file, scan2_file, scan3_file, translations=bilat_translate)
     data_bl, data_scan2, data_scan3, index_lookup = removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=False)
 
+
     # # allregion nontp results
     # av45_file = "../output/UCBERKELEYAV45_11_09_15_allregions_nontp.csv"
     # registry_file = "../docs/ADNI/REGISTRY.csv"
@@ -274,21 +275,21 @@ if __name__ == "__main__":
         bl_datarow = {'rid': rid,
                       'diag': diag_1,
                       'timepoint': 'BL'}
-        bl_datarow.update({k:bl_row[k] for k in index_lookup})
+        bl_datarow.update({k.upper().replace('-','_'):bl_row[k] for k in index_lookup})
         all_data.append(bl_datarow)
         if rid in data_scan2:
             scan2_row = data_scan2[rid]
             scan2_datarow = {'rid': rid,
                              'diag': diag_2,
                              'timepoint': 'SCAN2'}
-            scan2_datarow.update({k:scan2_row[k] for k in index_lookup})
+            scan2_datarow.update({k.upper().replace('-','_'):scan2_row[k] for k in index_lookup})
             all_data.append(scan2_datarow)
         if rid in data_scan3:
             scan3_row = data_scan3[rid]
             scan3_datarow = {'rid': rid,
                              'diag': diag_3,
                              'timepoint': 'SCAN3'}
-            scan3_datarow.update({k:scan3_row[k] for k in index_lookup})
+            scan3_datarow.update({k.upper().replace('-','_'):scan3_row[k] for k in index_lookup})
             all_data.append(scan3_datarow)
     df = pd.DataFrame(all_data)
     df.to_csv('../datasets/pvc_allregions_uptake_bilateral.csv', index=False)
@@ -328,5 +329,6 @@ if __name__ == "__main__":
         all_data.append(datarow)
     df = pd.DataFrame(all_data)
     df.to_csv('../datasets/pvc_allregions_uptake_change_bilateral.csv', index=False)
+
     sys.exit(1)
 

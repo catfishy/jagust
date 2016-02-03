@@ -30,6 +30,7 @@ bilateral=True
 normals_only=False
 
 patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
+patterns_split_csv = '../datasets/pvc_allregions_uptake_bilateral.csv'
 lut_file = "../FreeSurferColorLUT.txt"
 master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_26_16.csv'
 membership_conf = 0.50
@@ -280,6 +281,35 @@ def group_comparisons(df, groups, keys, adjust=True):
     for group1, group2 in itertools.combinations(groups,2):
         data[(group1,group2)] = compareTwoGroups(group1, group2, df, keys, adjust=adjust)
     return data
+
+def parseRawSplitInput(patterns_split_csv, ref_key, column_order):
+    raw_df = pd.read_csv(patterns_split_csv)
+    raw_df.set_index('rid',inplace=True,drop=True)
+    raw_df.sort_index(inplace=True)
+
+    # convert to suvr units
+    ref = raw_df.loc[:,ref_key]
+
+    # convert to suvr, and then patterns
+    pattern_df = raw_df[column_order].copy()
+    pattern_df = pattern_df.divide(ref, axis='index')
+    pattern_df = pattern_df.divide(pattern_df.sum(axis=1),axis=0)
+    pattern_df['timepoint'] = raw_df['timepoint']
+    pattern_df.set_index(raw_df.index, inplace=True)
+    pattern_df.dropna(inplace=True)
+
+    # split by timepoint
+    pattern_bl_df = pattern_df[pattern_df.timepoint=='BL']
+    pattern_scan2_df = pattern_df[pattern_df.timepoint=='SCAN2']
+    pattern_scan3_df = pattern_df[pattern_df.timepoint=='SCAN3']
+
+    # drop timepoint 
+    pattern_bl_df.drop('timepoint',axis=1,inplace=True)
+    pattern_scan2_df.drop('timepoint',axis=1,inplace=True)
+    pattern_scan3_df.drop('timepoint',axis=1,inplace=True)
+
+    return (pattern_bl_df, pattern_scan2_df, pattern_scan3_df)
+
 
 def parseRawInput(patterns_csv, ref_key):
     # read in data
@@ -1064,7 +1094,207 @@ def testLobePatternDifferences(lobe_tp, groups, pattern=True):
     return full_results
 
 
-def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=False):
+def saveAV45LMEDataset(model, master_csv, pattern_bl_df, pattern_scan2_df, pattern_scan3_df, result_df, categorize=False, confident=False, calc_slope=False, split_timepoints=False):
+    # Scale inputs
+    prior_patterns_only, scaler = scaleRawInput(pattern_bl_df, scale_type='original')
+
+    # Scale timepoint inputs
+    scan2_patterns_only = pd.DataFrame(scaler.transform(pattern_scan2_df)).set_index(pattern_scan2_df.index)
+    scan3_patterns_only = pd.DataFrame(scaler.transform(pattern_scan3_df)).set_index(pattern_scan3_df.index)
+
+    # get membership prob
+    proba_df_bl = pd.DataFrame(model.predict_proba(prior_patterns_only)).set_index(prior_patterns_only.index).xs('prior',level='timepoint')
+    proba_df_scan2 = pd.DataFrame(model.predict_proba(scan2_patterns_only)).set_index(scan2_patterns_only.index)
+    proba_df_scan3 = pd.DataFrame(model.predict_proba(scan3_patterns_only)).set_index(scan3_patterns_only.index)
+
+    # groups
+    groups_df_bl = pd.DataFrame(model.predict(prior_patterns_only)).set_index(prior_patterns_only.index).xs('prior',level='timepoint')
+    groups_df_bl.columns = ['group']
+    groups_df_scan2 = pd.DataFrame(model.predict(scan2_patterns_only)).set_index(scan2_patterns_only.index)
+    groups_df_scan2.columns = ['group']
+    groups_df_scan3 = pd.DataFrame(model.predict(scan3_patterns_only)).set_index(scan3_patterns_only.index)
+    groups_df_scan3.columns = ['group']
+
+    # Drop patterns that don't have >1 members
+    member_counts_bl = proba_df_bl.sum()
+    member_counts_scan2 = proba_df_scan2.sum()
+    member_counts_scan3 = proba_df_scan3.sum()
+    valid_bl = set(member_counts_bl[member_counts_bl>1].index)
+    valid_scan2 = set(member_counts_scan2[member_counts_scan2>1].index)
+    valid_scan3 = set(member_counts_scan3[member_counts_scan3>1].index)
+    valid_patterns = list(valid_bl | valid_scan2 | valid_scan3)
+    proba_df_bl = proba_df_bl[valid_patterns]
+    proba_df_scan2 = proba_df_scan2[valid_patterns]
+    proba_df_scan3 = proba_df_scan3[valid_patterns]
+
+    # get Max confidences (group assignments)
+    proba_max_bl = proba_df_bl.max(axis=1)
+    confident_bl = proba_max_bl[proba_max_bl>=0.5].index
+    proba_max_scan2 = proba_df_scan2.max(axis=1)
+    confident_scan2 = proba_max_bl[proba_max_bl>=0.5].index
+    proba_max_scan3 = proba_df_scan3.max(axis=1)
+    confident_scan3 = proba_max_scan3[proba_max_scan3>=0.5].index
+
+    if categorize:
+        cont_suffix = ''
+        for c in proba_df_bl.columns:
+            proba_df_bl[c] = (proba_df_bl[c]==proba_max_bl)
+        for c in proba_df_scan2.columns:
+            proba_df_scan2[c] = (proba_df_scan2[c]==proba_max_scan2)
+        for c in proba_df_scan3.columns:
+            proba_df_scan3[c] = (proba_df_scan3[c]==proba_max_scan3)
+        proba_df_bl = proba_df_bl.applymap(lambda x: 1 if x else 0)
+        proba_df_scan2 = proba_df_scan2.applymap(lambda x: 1 if x else 0)
+        proba_df_scan3 = proba_df_scan3.applymap(lambda x: 1 if x else 0)
+    else:
+        cont_suffix = '_continuous'
+        proba_df_bl = proba_df_bl.applymap(lambda x: round(x,2))
+        proba_df_scan2 = proba_df_scan2.applymap(lambda x: round(x,2))
+        proba_df_scan3 = proba_df_scan3.applymap(lambda x: round(x,2))
+
+    if confident:
+        proba_df_bl = proba_df_bl.loc[confident_bl,:]
+        proba_df_scan2 = proba_df_scan2.loc[confident_scan2,:]
+        proba_df_scan3 = proba_df_scan3.loc[confident_scan3,:]
+
+    # Merge in pattern factor
+    proba_df_bl = proba_df_bl.merge(groups_df_bl, left_index=True, right_index=True, how='left')
+    proba_df_scan2 = proba_df_scan2.merge(groups_df_scan2, left_index=True, right_index=True, how='left')
+    proba_df_scan3 = proba_df_scan3.merge(groups_df_scan3, left_index=True, right_index=True, how='left')
+
+    # Get master df
+    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+    master_df.columns = master_df.columns.get_level_values(1)
+    master_df.set_index('RID', inplace=True)
+
+    # Add demographic data (baseline age, sex, e2 status, e4 status, education)
+    demo_df_bl = master_df.loc[:,['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','AV45_BigRef_BIN.79','AV45_BigRef','Diag@AV45_long']].copy()
+    demo_df_bl.Gender = demo_df_bl.Gender-1
+    demo_df_scan2 = master_df.loc[:,['Age@AV45_2','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','AV45_2_BigRef_BIN.79','AV45_2_BigRef','Diag@AV45_2_long']].copy()
+    demo_df_scan2.Gender = demo_df_scan2.Gender-1
+    proba_df_bl = proba_df_bl.merge(demo_df_bl, left_index=True, right_index=True, how='left')
+    proba_df_scan2 = proba_df_scan2.merge(demo_df_scan2, left_index=True, right_index=True, how='left')
+    col_translations = {'AV45_BigRef_BIN.79':'CORTICAL_SUMMARY_POSITIVE',
+                        'AV45_BigRef':'CORTICAL_SUMMARY_prior',
+                        'AV45_2_BigRef_BIN.79':'CORTICAL_SUMMARY_POSITIVE',
+                        'AV45_2_BigRef':'CORTICAL_SUMMARY_prior',
+                        'Diag@AV45_long':'diag_prior',
+                        'Diag@AV45_2_long':'diag_prior',
+                        'Age@AV45':'Age.AV45',
+                        'Age@AV45_2':'Age.AV45'}
+    proba_df_bl.rename(columns=col_translations,inplace=True)
+    proba_df_scan2.rename(columns=col_translations,inplace=True)
+
+
+    # get AV45 values
+    dep_value_keys = ['AV45_BigRef','AV45_2_BigRef','AV45_3_BigRef']
+    dep_time_keys = ['','AV45_1_2_Diff','AV45_1_3_Diff']
+    dep_by_subject = defaultdict(list)
+    for i, (dt_key, dv_key) in enumerate(zip(dep_time_keys, dep_value_keys)):
+        if i == 0:
+            tp_df = master_df[[dv_key]].dropna()
+        else:
+            tp_df = master_df[[dt_key, dv_key]].dropna()
+        for pid, row in tp_df.iterrows():
+            if i == 0:
+                tp_tuple = (0.0,float(row[dv_key]),'bl')
+            elif i == 1:
+                tp_tuple = (float(row[dt_key]), float(row[dv_key]), 'scan2')
+            elif i == 2:
+                tp_tuple = (float(row[dt_key]), float(row[dv_key]), 'scan3')
+            dep_by_subject[pid].append(tp_tuple)
+
+    full_df = pd.DataFrame()
+    if calc_slope:
+        if split_timepoints:
+            slope_suffix = '_slopesplit'
+            # create annualized slopes dataset
+            for pid, timepoints in dep_by_subject.iteritems():
+                timepoints = sorted(timepoints, key=lambda x: x[0])
+                for i, tp in enumerate(timepoints):
+                    tp_time, tp_value, tp_tp = tp
+                    if i == 0 or tp_tp == 'bl':
+                        continue
+                    prev_time, prev_value, prev_tp = timepoints[i-1]
+                    slope_val = slope([(prev_time, prev_value),(tp_time, tp_value)])
+                    if tp_tp == 'scan2':
+                        if pid not in proba_df_bl.index:
+                            print "%s bl not in patterns" % pid
+                            continue
+                        else:
+                            new_row = proba_df_bl.loc[pid].copy()
+                    elif tp_tp == 'scan3':
+                        if pid not in proba_df_scan2.index:
+                            print "%s scan2 not in patterns" % pid
+                            continue
+                        else:
+                            new_row = proba_df_scan2.loc[pid].copy()
+                    else:
+                        raise Exception("Unsupported AV45 timepoint %s" % tp_tp)
+                    new_row['AV45_slope'] = slope_val
+                    new_row['YrsPostBL'] = tp_time - prev_time
+                    full_df = pd.concat((full_df, new_row), axis=1)
+        else:
+            slope_suffix = '_slope'
+            # create annualized slopes dataset
+            for pid, timepoints in dep_by_subject.iteritems():
+                timepoints = sorted(timepoints, key=lambda x: x[0])
+                slope_timepoints = [(_[0],_[1]) for _ in timepoints]
+                slope_val = slope(slope_timepoints)
+                if slope_val is None:
+                    continue
+                bl = timepoints[0]
+                bl_tp = bl[-1]
+                if bl_tp == 'bl':
+                    if pid not in proba_df_bl.index:
+                        print "%s bl av45 not in patterns" % pid
+                        continue
+                    else:
+                        new_row = proba_df_bl.loc[pid].copy()
+                elif bl_tp == 'scan2':
+                    if pid not in proba_df_scan2.index:
+                        print "%s scan2 not in patterns" % pid
+                        continue
+                    else:
+                        new_row = proba_df_scan2.loc[pid].copy()
+                else:
+                    raise Exception("Unsupported baseline AV45 timepoint %s" % bl_tp)
+                new_row['AV45_slope'] = slope_val
+                new_row['YrsPostBL'] = timepoints[-1][0] - timepoints[0][0]
+                full_df = pd.concat((full_df, new_row),axis=1)
+    else:
+        slope_suffix = ''
+        # create longitudinal dataset
+        for pid, timepoints in dep_by_subject.iteritems():
+            timepoints = sorted(timepoints, key=lambda x: x[0])
+            base_time = timepoints[0][0]
+            for time, val in timepoints:
+                adjusted_time = time-base_time
+                if pid not in proba_df_bl.index:
+                    print "%s bl av45 not in patterns" % pid
+                    break
+                new_row = proba_df_bl.loc[pid].copy()
+                new_row['AV45'] = val
+                new_row['YrsPostBL'] = round(adjusted_time,1)
+                full_df = pd.concat((full_df, new_row),axis=1)
+
+    full_df = full_df.T
+    full_df.index.name='RID'
+    print full_df.shape
+    full_df.to_csv('test.csv')
+    full_df.dropna(inplace=True)
+    print full_df.shape
+
+    # drops rows with no pattern membership
+    member_sums = full_df[valid_patterns].sum(axis=1)
+    notmember = set(member_sums[member_sums==0].index)
+    full_df = full_df.drop(notmember) 
+
+    all_output_file = '%s_AV45_ALL_longdata%s%s.csv' % (generateFileRoot(model.alpha),cont_suffix,slope_suffix)
+    full_df.to_csv(all_output_file)
+
+
+def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False):
     '''
     If categorize, encode pattern membership by one-hot, where membership is determined by argmax(membership_probs)
     '''
@@ -1110,10 +1340,10 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     master_df.set_index('RID', inplace=True)
 
     # Add demographic data (baseline age, sex, e2 status, e4 status, education, baseline cortical summary suvr)
+    '''
     demo_df = master_df.loc[:,['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)']]
     demo_df.Gender = demo_df.Gender-1
     proba_df = proba_df.merge(demo_df, left_index=True, right_index=True, how='left')
-
     # Add diagnostic status + cortical summary
     cort_summ = result_df.loc[:,['CORTICAL_SUMMARY_prior']]
     cort_summ['CORTICAL_SUMMARY_POSITIVE'] = (result_df.CORTICAL_SUMMARY_prior >= threshold).astype(int)
@@ -1123,65 +1353,48 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     diag_list = diags_one_hot.columns
     proba_df = proba_df.merge(diags, left_index=True, right_index=True, how='left')
     proba_df = proba_df.merge(diags_one_hot, left_index=True, right_index=True, how='left')
+    '''
+
+    demo_df = master_df.loc[:,['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','AV45_BigRef_BIN.79','AV45_BigRef','Diag@AV45_long']].copy()
+    demo_df.Gender = demo_df.Gender-1
+    proba_df = proba_df.merge(demo_df, left_index=True, right_index=True, how='left')
+    col_translations = {'AV45_BigRef_BIN.79':'CORTICAL_SUMMARY_POSITIVE',
+                        'AV45_BigRef':'CORTICAL_SUMMARY_prior',
+                        'AV45_2_BigRef_BIN.79':'CORTICAL_SUMMARY_POSITIVE',
+                        'AV45_2_BigRef':'CORTICAL_SUMMARY_prior',
+                        'Diag@AV45_long':'diag_prior',
+                        'Diag@AV45_2_long':'diag_prior'}
+    proba_df.rename(columns=col_translations,inplace=True)
+
 
     # Add dependent variable and test times
-    if dep_val_var == 'AV45':
-        dep_value_keys = ['AV45_BigRef','AV45_2_BigRef','AV45_3_BigRef']
-        dep_time_keys = ['','AV45_1_2_Diff','AV45_1_3_Diff']
-        dep_by_subject = defaultdict(list)
-        for i, (dt_key, dv_key) in enumerate(zip(dep_time_keys, dep_value_keys)):
-            if i == 0:
-                tp_df = master_df[[dv_key]].dropna()
-            else:
-                tp_df = master_df[[dt_key, dv_key]].dropna()
-            for pid, row in tp_df.iterrows():
-                if pid not in proba_df.index:
-                    continue
-                if i == 0:
-                    tp_tuple = (0.0,float(row[dv_key]))
-                else:
-                    tp_tuple = (float(row[dt_key]), float(row[dv_key]))
-                dep_by_subject[pid].append(tp_tuple)
-    else:
-        dep_value_keys = ['%s%s' % (dep_val_var,i) for i in range(30) if '%s%s' % (dep_val_var,i) in master_df.columns]
-        dep_keypairs = {}
-        for dv_key in dep_value_keys:
-            dt_key = dv_key.replace(dep_val_var,dep_time_var)
-            timepoint_index = int(dv_key.replace(dep_val_var,''))
-            dep_keypairs[timepoint_index] = (dt_key, dv_key)
-        dep_by_subject = defaultdict(list)
-        for tp_index in sorted(dep_keypairs.keys()):
-            dt_key, dv_key = dep_keypairs[tp_index]
-            tp_df = master_df[[dt_key,dv_key]].dropna()
-            for pid, row in tp_df.iterrows():
-                if pid not in proba_df.index:
-                    continue
-                tp_tuple = (float(row[dt_key]),float(row[dv_key]))
-                dep_by_subject[pid].append(tp_tuple)
+    dep_value_keys = ['%s%s' % (dep_val_var,i) for i in range(30) if '%s%s' % (dep_val_var,i) in master_df.columns]
+    dep_keypairs = {}
+    for dv_key in dep_value_keys:
+        dt_key = dv_key.replace(dep_val_var,dep_time_var)
+        timepoint_index = int(dv_key.replace(dep_val_var,''))
+        dep_keypairs[timepoint_index] = (dt_key, dv_key)
+    dep_by_subject = defaultdict(list)
+    for tp_index in sorted(dep_keypairs.keys()):
+        dt_key, dv_key = dep_keypairs[tp_index]
+        tp_df = master_df[[dt_key,dv_key]].dropna()
+        for pid, row in tp_df.iterrows():
+            if pid not in proba_df.index:
+                continue
+            tp_tuple = (float(row[dt_key]),float(row[dv_key]))
+            dep_by_subject[pid].append(tp_tuple)
     
     full_df = pd.DataFrame()
-    if calc_slope:
-        slope_suffix = '_slope'
-        # create annualized slopes dataset
-        for pid, timepoints in dep_by_subject.iteritems():
-            timepoints = sorted(timepoints, key=lambda x: x[0])
-            slope_val = slope(timepoints)
+    # create longitudinal dataset
+    for pid, timepoints in dep_by_subject.iteritems():
+        timepoints = sorted(timepoints, key=lambda x: x[0])
+        base_time = timepoints[0][0]
+        for time, val in timepoints:
+            adjusted_time = time-base_time
             new_row = proba_df.loc[pid].copy()
-            new_row['%s_slope' % dep_val_var] = slope_val
-            new_row['YrsPostBL'] = timepoints[-1][0] - timepoints[0][0]
+            new_row[dep_val_var] = val
+            new_row['YrsPostBL'] = round(adjusted_time,1)
             full_df = pd.concat((full_df, new_row),axis=1)
-    else:
-        slope_suffix = ''
-        # create longitudnal dataset
-        for pid, timepoints in dep_by_subject.iteritems():
-            timepoints = sorted(timepoints, key=lambda x: x[0])
-            base_time = timepoints[0][0]
-            for time, val in timepoints:
-                adjusted_time = time-base_time
-                new_row = proba_df.loc[pid].copy()
-                new_row[dep_val_var] = val
-                new_row['YrsPostBL'] = round(adjusted_time,1)
-                full_df = pd.concat((full_df, new_row),axis=1)
 
     full_df = full_df.T
     full_df.index.name='RID'
@@ -1192,28 +1405,8 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     notmember = set(member_sums[member_sums==0].index)
     full_df = full_df.drop(notmember) 
 
-    '''
-    # split by diagnosis (N/SMC, EMCI/LMCI, AD)
-    n_df = full_df[full_df.N == 1]
-    smc_df = full_df[full_df.SMC == 1]
-    emci_df = full_df[full_df.EMCI == 1]
-    lmci_df = full_df[full_df.LMCI == 1]
-    ad_df = full_df[full_df.AD == 1]
-
-    N_full_df = pd.concat((n_df, smc_df)).drop(diag_list,axis=1)
-    MCI_full_df = pd.concat((emci_df, lmci_df)).drop(diag_list,axis=1)
-    AD_full_df = ad_df.drop(diag_list,axis=1)
-    
-    n_output_file = '%s_%s_N_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
-    mci_output_file = '%s_%s_MCI_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
-    ad_output_file = '%s_%s_AD_longdata%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix)
-    N_full_df.to_csv(n_output_file)
-    MCI_full_df.to_csv(mci_output_file)
-    AD_full_df.to_csv(ad_output_file)
-    '''
-
     clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
-    all_output_file = '%s_%s_ALL_longdata%s%s.csv' % (generateFileRoot(model.alpha),clean_varname,cont_suffix,slope_suffix)
+    all_output_file = '%s_%s_ALL_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
     full_df.to_csv(all_output_file)
 
 def createContrasts(columns, time_key, out_file=None):
@@ -1245,12 +1438,34 @@ def createLMContrast(columns,out_file=None):
     if out_file:
         new_df.to_csv(out_file,index=False)
 
+def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file):
+    valid_means = []
+    for i in valid_patterns:
+        members = lobe_members[lobe_members.membership==i]
+        members = members[lobe_keys]
+        member_patterns = members.divide(members.sum(axis=1),axis=0)
+        member_patterns_means = member_patterns.mean().to_dict()
+        new_row = {'pattern': i,
+                   'mean_suvr': cortical_summary[i]}
+        new_row.update(member_patterns_means)
+        valid_means.append(new_row)
+    df = pd.DataFrame(valid_means)
+    df.to_csv(out_file,index=False)
+
+
 if __name__ == '__main__':
     # parse input
     pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, lobes_change_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
+    pattern_col_order = list(pattern_prior_df.columns)
+
+    # parse timepoint split input
+    pattern_bl_df, pattern_scan2_df, pattern_scan3_df = parseRawSplitInput(patterns_split_csv, ref_key, pattern_col_order)
 
     # # Calculate
     # result_df = trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df)
+
+    # get scaler
+    scaled_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
 
     # Load
     model_file = '../dpgmm_alpha15.37_bilateral_model.pkl'
@@ -1260,11 +1475,13 @@ if __name__ == '__main__':
     npt.assert_array_equal(result_df.index,loaded_result_df.index)
     result_df = loaded_result_df
 
-    # generate conversion data
+    # get groups
     big_groups = bigGroups(result_df, threshold=3)
     all_groups = bigGroups(result_df, threshold=2)
     small_groups = smallGroups(result_df, threshold=50)
     medium_groups = list(set(big_groups) & set(small_groups))
+
+    # generate conversion data
     conversions = parseConversions(all_groups, result_df, threshold, master_keys)
     conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
     cortical_summary = conversions.cortical_summary.to_dict()
@@ -1281,6 +1498,9 @@ if __name__ == '__main__':
     merged_members = merged_members.merge(change_tp[change_keys].reset_index(), on=['rid','timepoint'], how='outer')
     all_keys = master_keys+summary_keys+pattern_keys+change_keys
 
+    # dump pattern lobe means
+    printMeanLobePatterns(lobe_members,all_groups,cortical_summary,'%s_pattern_means.csv' % generateFileRoot(alpha))
+
     # # save fake aparcs
     # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
     # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
@@ -1295,10 +1515,12 @@ if __name__ == '__main__':
     #                      ('AV45','')]
     LME_dep_variables = [('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
-        saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=False)
         if dep_val_var == 'AV45':
-            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False, calc_slope=True)
-            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=True, confident=False, calc_slope=True)
+            saveAV45LMEDataset(best_model, master_csv, pattern_prior_df, pattern_scan2_df, pattern_scan3_df, result_df, categorize=False, confident=False, calc_slope=True, split_timepoints=False)
+            saveAV45LMEDataset(best_model, master_csv, pattern_prior_df, pattern_scan2_df, pattern_scan3_df, result_df, categorize=False, confident=False, calc_slope=True, split_timepoints=True)
+        else:
+            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False)
+
 
     # lobe violin plots
     graphLobes(lobe_tp,big_groups,cortical_summary)
