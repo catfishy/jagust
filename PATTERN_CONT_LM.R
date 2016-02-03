@@ -94,7 +94,7 @@ polfit = function(x) fm_av45_onlycs$coefficients[3]*x^2 + fm_av45_onlycs$coeffic
 colors = rainbow(length(toplot))
 #colors = topo.colors(length(toplot))
 
-jpeg('fit_original_siggroups.jpeg')
+pdf('fit_original_siggroups.pdf',height=11,width=10)
 plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'], pch=4, cex=1, lwd=0.6, main='Significant Pattern Groups', xlab='Cortical Summary BL', ylab='Annualized AV45 Slope')
 for(i in 1:length(toplot)){
   g = toplot[i]

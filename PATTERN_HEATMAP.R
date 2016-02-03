@@ -5,14 +5,11 @@ lobe_keys = c('FRONTAL','PARIETAL','CINGULATE','SENSORY','TEMPORAL','OCCIPITAL',
               'MEDIALOCCIPITAL','BASALGANGLIA','LIMBIC','THALAMUS','CEREBELLUM_GRAY',
               'BRAIN_STEM','CEREBELLUM_WHITE','CEREBRAL_WHITE')
 
-
 patterns = read.csv('dpgmm_alpha15.37_bilateral_pattern_means.csv')
 patterns$pattern = factor(patterns$pattern)
 patterns$pattern = with(patterns, paste0(pattern,' (',round(mean_suvr,2),')'))
 
 patterns.m = melt(patterns, id.vars = c("pattern","mean_suvr"))
-#patterns.m$lobe_order = match(patterns.m$variable,lobe_keys)
-#patterns.m = patterns.m[order(patterns.m$lobe_order),]
 patterns.m$variable = as.character(patterns.m$variable)
 patterns.m$variable = factor(patterns.m$variable, levels=lobe_keys)
 patterns.m$pattern = factor(patterns.m$pattern, levels=(patterns.m$pattern)[order(patterns.m$mean_suvr)])
