@@ -23,10 +23,10 @@ p = ggplot(patterns.m, aes(variable,pattern)) +
         plot.title=element_text(size=22),
         axis.title.x=element_text(size=18),
         axis.title.y=element_text(size=18),
-        axis.text.y=element_text(face='bold', size=12, angle=30), 
-        axis.text.x=element_text(angle=330, face='bold', size=10, hjust=0, vjust=1, color='grey50')) + 
+        axis.text.y=element_text(face='bold', size=14, angle=30), 
+        axis.text.x=element_text(angle=300, face='bold', size=14, hjust=0, vjust=1, color='grey50')) + 
   ggtitle('Regional Contributions to Global Uptake by Pattern') +
   xlab('Brain Regions') +
-  ylab('Patterns (Mean Cortical Summary SUVR)')
+  ylab('Patterns (Avg. Cortical Summary SUVR)')
   
 print(p)
