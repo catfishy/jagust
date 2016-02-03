@@ -772,9 +772,28 @@ def plotValueDensity(result_df, groups, value_key):
     means_members = zip(groups_means, groups_members, groups)
     means_members_sorted = sorted(means_members, key=lambda x: x[0])
     for mean_val, members, g in means_members_sorted:
-        members['value'].plot(kind='density', label="Pattern %s (n=%s, SUVR=%s)" % (int(g),int(len(members.index)),mean_val), alpha=0.8)
+        sns.kdeplot(members)
+        members['value'].plot(kind='kde', label="Pattern %s (n=%s, SUVR=%s)" % (int(g),int(len(members.index)),mean_val), alpha=0.8)
+    plt.xlabel
     plt.legend()
     plt.show()
+
+
+def plotValueDensity(result_df, groups, value_key):
+    long_df = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)
+    plt.figure(1)
+    plt.title("Cortical Summary SUVR Density, by Pattern Group (n>3)")
+    groups_members = [long_df[long_df.membership_prior==g] for g in groups]
+    groups_means = [_['value'].mean() for _ in groups_members]
+    means_members = zip(groups_means, groups_members, groups)
+    means_members_sorted = sorted(means_members, key=lambda x: x[0])
+    for mean_val, members, g in means_members_sorted:
+        sns.kdeplot(members['value'], label="Pattern %s (n=%s, SUVR=%s)" % (int(g),int(len(members.index)),mean_val))
+    plt.xlabel('Cortical Summary SUVR (PVC-corrected, whole cerebellum reference region)')
+    plt.ylabel('Density')
+    plt.legend()
+    plt.show()
+
 
 def plotValueBox(result_df, groups, value_key, save=False):
     long_df = pd.melt(result_df, id_vars=['membership_prior'], value_vars=value_key)

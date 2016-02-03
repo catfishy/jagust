@@ -80,7 +80,7 @@ sink('av45_lm_onlypattern_anova.txt'); print(fm_av45_onlypatterns_anova, correla
 sink('av45_mc_anova.txt'); print(fm_modelcomparison_anova, correlation=TRUE); sink(file=NULL)
 
 # plot fits
-toplot = c(0,1,9,25,22)
+toplot = c(0,1,25,22)
 labels =
 for(g in toplot){
   jpeg(paste('fit_original_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'], col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('Original Data, Group:',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
