@@ -601,6 +601,10 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
             bl_means_df.ix[i,'EXAMDATE'] = date
             bl_means_df.ix[i,'VISCODE'] = vc
             bl_means_df.ix[i,'VISCODE2'] = vc2
+    except Exception as e:
+        print "BL PET DATE Problem: %s, in meta: %s" % (rid,pet_dates[rid])
+        raise e
+    try:
         for i in v2_means_df.index:
             rid = v2_means_df.ix[i,'RID']
             date = pet_dates[rid][1]
@@ -608,6 +612,10 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
             v2_means_df.ix[i,'EXAMDATE'] = date
             v2_means_df.ix[i,'VISCODE'] = vc
             v2_means_df.ix[i,'VISCODE2'] = vc2
+    except Exception as e:
+        print "Scan2 PET DATE Problem: %s, in meta: %s" % (rid,pet_dates[rid])
+        raise e
+    try:
         for i in v3_means_df.index:
             rid = v3_means_df.ix[i,'RID']
             date = pet_dates[rid][2]
@@ -616,7 +624,7 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
             v3_means_df.ix[i,'VISCODE'] = vc
             v3_means_df.ix[i,'VISCODE2'] = vc2
     except Exception as e:
-        print "PET DATE Problem: %s" % rid
+        print "Scan3 PET DATE Problem: %s, in meta: %s" % (rid,pet_dates[rid])
         raise e
 
     # merge sizes
@@ -727,13 +735,13 @@ if __name__ == "__main__":
     dod_tau_pet_dates = importScanMeta(dod_meta_tau)
     
     #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '01_03_16'
+    timestamp = '02_05_16'
 
     # preprocess output folders
-    adni_av45_preprocess_folder = '../docs/AV45_preprocess_output_01_03_16'
-    dod_av45_preprocess_folder = '../docs/AV45_DOD_preprocess_output_01_03_16'
-    adni_tau_preprocess_folder = '../docs/TAU_preprocess_output_01_03_16'
-    dod_tau_preprocess_folder = '../docs/TAU_DOD_preprocess_output_01_03_16'
+    adni_av45_preprocess_folder = '../docs/AV45_preprocess_output_02_05_16'
+    dod_av45_preprocess_folder = '../docs/AV45_DOD_preprocess_output_02_05_16'
+    adni_tau_preprocess_folder = '../docs/TAU_preprocess_output_02_05_16'
+    dod_tau_preprocess_folder = '../docs/TAU_DOD_preprocess_output_02_05_16'
 
     # create output folder
     output_folder = '../output/%s' % timestamp
