@@ -735,13 +735,14 @@ if __name__ == "__main__":
     dod_tau_pet_dates = importScanMeta(dod_meta_tau)
     
     #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '02_05_16'
+    timestamp = '02_19_16'
 
     # preprocess output folders
-    adni_av45_preprocess_folder = '../docs/AV45_preprocess_output_02_05_16'
-    dod_av45_preprocess_folder = '../docs/AV45_DOD_preprocess_output_02_05_16'
-    adni_tau_preprocess_folder = '../docs/TAU_preprocess_output_02_05_16'
-    dod_tau_preprocess_folder = '../docs/TAU_DOD_preprocess_output_02_05_16'
+    preprocess_folder = '../docs/preprocess_output/%s/' % timestamp
+    adni_av45_preprocess_folder = '%sAV45' % preprocess_folder
+    dod_av45_preprocess_folder = '%sAV45_DOD' % preprocess_folder
+    adni_tau_preprocess_folder = '%sTAU' % preprocess_folder
+    dod_tau_preprocess_folder = '%sTAU_DOD' % preprocess_folder
 
     # create output folder
     output_folder = '../output/%s' % timestamp

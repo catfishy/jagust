@@ -43,7 +43,6 @@ fm_avlt = lmer(AVLT. ~ group + group*TIMEpostAV45_AVLT. + factor(diag_prior) + f
 fm_adas = lmer(ADAScog. ~ group + group*TIMEpostAV45_ADAS. + factor(diag_prior) + factor(diag_prior)*TIMEpostAV45_ADAS. + factor(APOE4_BIN) + factor(APOE4_BIN)*TIMEpostAV45_ADAS. + CORTICAL_SUMMARY_prior + CORTICAL_SUMMARY_prior*TIMEpostAV45_ADAS. + Age.AV45 + factor(Gender) + Edu..Yrs. + TIMEpostAV45_ADAS. + (1 + TIMEpostAV45_ADAS. | RID), df_adas)
 
 
-contrasts = read.csv('contrasts.csv')
 uwef_anova = as.matrix(anova(fm_uwef))
 uwmem_anova = as.matrix(anova(fm_uwmem))
 hcicv_anova = as.matrix(anova(fm_hcicv))
@@ -52,8 +51,10 @@ adas_anova = as.matrix(anova(fm_adas))
 avlt_anova = as.matrix(anova(fm_avlt))
 
 summary(fm1)
-anova(fm1)
 lsmeans(fm1)
+
+contrasts = read.csv('contrasts.csv')
+
 
 test = glht(fm_uwmem,linfct=data.matrix(contrasts))
 summary(test)

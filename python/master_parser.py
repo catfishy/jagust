@@ -2075,7 +2075,7 @@ if __name__ == '__main__':
     
     # Output files
     av45_file = None # overwrites nontp if specified
-    av45_nontp_file = "../output/01_03_16/UCBERKELEYAV45_01_03_16_merged_nontp.csv"
+    av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_nontp.csv"
     rousset_matfile_bl = '../output/rousset_output/rousset_output_BL_agg.mat'
     rousset_matfile_scan2 = '../output/rousset_output/rousset_output_Scan2_agg.mat'
     rousset_matfile_scan3 = '../output/rousset_output/rousset_output_Scan3_agg.mat'

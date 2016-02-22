@@ -789,7 +789,7 @@ def plotValueDensity(result_df, groups, value_key):
     means_members_sorted = sorted(means_members, key=lambda x: x[0])
     for mean_val, members, g in means_members_sorted:
         sns.kdeplot(members['value'], label="Pattern %s (n=%s, SUVR=%s)" % (int(g),int(len(members.index)),mean_val))
-    plt.xlabel('Cortical Summary SUVR (PVC-corrected, whole cerebellum reference region)')
+    plt.xlabel('Cortical Summary SUVR (partial volume corrected, whole cerebellum reference region)')
     plt.ylabel('Density')
     plt.legend()
     plt.show()
