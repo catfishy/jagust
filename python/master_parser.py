@@ -662,9 +662,9 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
     arm = importARM(arm_file)
     pet_meta = importPetMETA(pet_meta_file)
 
-    pivot_date = datetime(day=1, month=6, year=2015)
-    pivot_date_closest_diag_key = 'Closest_DX_Jun15'
-    pivot_date_closest_date_key = 'DX_Jun15_closestdate'
+    pivot_date = datetime(day=1, month=2, year=2016)
+    pivot_date_closest_diag_key = 'Closest_DX_Feb16'
+    pivot_date_closest_date_key = 'DX_Feb16_closestdate'
 
     to_add_headers = ['AV45_Date','AV45_2_Date','AV45_3_Date',
                       'BD MM-YY','Age@AV45','Age@AV45_2','Age@AV45_3',
@@ -796,14 +796,14 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
     return (new_headers, new_lines)
 
 
-def syncAV45Data(old_headers, old_lines, av45_file, av45_nontp_file, registry_file, dump_to=None):
+def syncAV45Data(old_headers, old_lines, av45_file, registry_file, suffix=None, dump_to=None):
     '''
     This function does not follow the pattern of the other sync functions because
     the header/data update is accomplished in a nested function, and it also allows
     for the possibility of introducing new subjects via the dataset being synced in
     '''
     registry = importRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, av45_nontp_file, registry=registry)
+    av45_by_subj = importAV45(av45_file, registry=registry)
     print "SUBJECTS WITH AV45: %s" % len(av45_by_subj)
     new_headers = None
     new_lines = []
@@ -817,7 +817,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, av45_nontp_file, registry_fi
             continue 
         old_subjects.add(subj)
 
-        updated_headers, new_data = parseAV45Entries(old_headers, av45_by_subj.get(subj,[]))
+        updated_headers, new_data = parseAV45Entries(old_headers, av45_by_subj.get(subj,[]), suffix=suffix)
         if new_headers is None:
             new_headers = updated_headers
         new_data = convertToCSVDataType(new_data, decimal_places=5)
@@ -832,7 +832,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, av45_nontp_file, registry_fi
     for ns in new_subjects:
         new_subj_row = {k: '' for k in new_headers}
         new_subj_row['RID'] = str(ns)
-        updated_headers, new_columns = parseAV45Entries(old_headers, av45_by_subj[ns])
+        updated_headers, new_columns = parseAV45Entries(old_headers, av45_by_subj[ns], suffix=suffix)
         new_subj_row.update(new_columns)
         new_lines.append(new_subj_row)
 
@@ -842,7 +842,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, av45_nontp_file, registry_fi
 
     return (new_headers, new_lines)
 
-def parseAV45Entries(old_headers, subj_av45):
+def parseAV45Entries(old_headers, subj_av45, suffix=None):
     subj_av45 = sorted(subj_av45, key=lambda x: x['EXAMDATE'])
     exam_times = [_['EXAMDATE'] for _ in subj_av45]
     exam_timedeltas = [(_-exam_times[0]).days / 365.0 for _ in exam_times]
@@ -865,7 +865,6 @@ def parseAV45Entries(old_headers, subj_av45):
     temporal_bigref_keys = ['AV45_Temporal/BigRef','AV45_2_Temporal/BigRef','AV45_3_Temporal/BigRef']
 
     # generate additional keys and arrange into header list
-    all_tp_keys = ['AV45_TP_SPECIFIC_BL', 'AV45_TP_SPECIFIC_SCAN2', 'AV45_TP_SPECIFIC_SCAN3']
     all_wm70_composite_keys = wm70_composite_keys + \
                          ["%s_pchange" % _ for _ in wm70_composite_keys[1:]] + \
                          ["%s_pchange_ABS" % _ for _ in wm70_composite_keys[1:]] + \
@@ -955,8 +954,7 @@ def parseAV45Entries(old_headers, subj_av45):
                       ["%s_diff" % _ for _ in temporal_bigref_keys[1:]] + \
                       ['AV45_Temporal/BigRef_Slope_2pts', 'AV45_Temporal/BigRef_Slope_3pts'] + \
                       ['AV45_Temporal/BigRef_Slope_1and3', 'AV45_Temporal/BigRef_Slope_2and3']
-    all_av45_key_lists = [all_tp_keys,
-                          all_wm70_composite_keys,
+    all_av45_key_lists = [all_wm70_composite_keys,
                           all_wm70_cerebg_keys,
                           all_wm70_wcereb_keys,
                           all_unilateral_keys,
@@ -993,7 +991,6 @@ def parseAV45Entries(old_headers, subj_av45):
                  all_brainstem_keys,
                  all_wmratio_keys]
     all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
-    new_headers = rearrangeHeaders(old_headers, all_av45_keys, after='AV45_1_3_Diff')
 
     data = {k:'' for k in all_av45_keys}
     wm70_0 = None
@@ -1017,7 +1014,6 @@ def parseAV45Entries(old_headers, subj_av45):
         rightcaudate = float(point['RIGHT_CAUDATE'])
         leftpallidum = float(point['LEFT_PALLIDUM'])
         rightpallidum = float(point['RIGHT_PALLIDUM'])
-        tp_spec = 1 if point['TP_SPECIFIC'] else 0
 
         # fill in basic keys
         data[wm70_composite_keys[i]] = wm70/compositeroi
@@ -1049,7 +1045,6 @@ def parseAV45Entries(old_headers, subj_av45):
             data['AV45_LeftPallidum/WM70'] = leftpallidum/wm70
             data['AV45_RightPallidum/WM70'] = rightpallidum/wm70
             data[wmratio_keys[i]] = (compositeroi/wcereb)
-            data['AV45_TP_SPECIFIC_BL'] = tp_spec
             wm70_0 = wm70
         elif i == 1 or i == 2:
             data[wmratio_keys[i]] = (compositeroi/wcereb) / (wm70/wm70_0)
@@ -1061,7 +1056,6 @@ def parseAV45Entries(old_headers, subj_av45):
                 data["%s_pchange_ABS" % al[i]] = abs(data["%s_pchange" % al[i]])
                 data["%s_diff_ABS" % al[i]] = abs(data["%s_diff" % al[i]])
             if i == 1:
-                data['AV45_TP_SPECIFIC_SCAN2'] = tp_spec
                 times = exam_timedeltas[:2]
                 data['AV45_BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in bigref_keys[:2]])))
                 data['AV45_WM70_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_keys[:2]])))
@@ -1077,7 +1071,6 @@ def parseAV45Entries(old_headers, subj_av45):
                 data['AV45_Parietal/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[:2]])))
                 data['AV45_Temporal/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[:2]])))
             if i == 2:
-                data['AV45_TP_SPECIFIC_SCAN3'] = tp_spec
                 # using all 3 timepoints
                 times = exam_timedeltas[:3]
                 data['AV45_BigRef_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in bigref_keys[:3]])))
@@ -1123,6 +1116,18 @@ def parseAV45Entries(old_headers, subj_av45):
                 data['AV45_Cingulate/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[0::2]])))
                 data['AV45_Parietal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[0::2]])))
                 data['AV45_Temporal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[0::2]])))
+
+    if suffix is not None:
+        # add suffix to headers
+        new_all_av45_keys = []
+        for old_key in all_av45_keys:
+            new_key = old_key.replace('AV45_','AV45_%s_' % suffix)
+            new_all_av45_keys.append(new_key)
+            data[new_key] = data.pop(old_key)
+        new_headers = rearrangeHeaders(old_headers, new_all_av45_keys, after='AV45_1_3_Diff')
+    else:
+        new_headers = rearrangeHeaders(old_headers, all_av45_keys, after='AV45_1_3_Diff')
+
     return (new_headers, data)
 
 def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
@@ -1894,7 +1899,12 @@ def eliminateColumns(headers, lines):
                  'ICV',
                  'Hippocampal_Volume_normalizd',
                  'HippVol_norm_BIN0.0047',
-                 'ICV_pchange(yrs)',]
+                 'ICV_pchange(yrs)',
+                 'AV45_TP_SPECIFIC_BL',
+                 'AV45_TP_SPECIFIC_SCAN2',
+                 'AV45_TP_SPECIFIC_SCAN3',
+                 'Closest_DX_Jun15',
+                 'DX_Jun15_closestdate']
     to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
     to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
     to_remove += ['TAU.%s' % (i+1) for i in range(7)]
@@ -1904,6 +1914,8 @@ def eliminateColumns(headers, lines):
     to_remove += ['MMSE_DATE%s' % (i+1) for i in range(11)]
     to_remove += ['AVLT_DATE.%s' % (i+1) for i in range(11)]
     to_remove += ['TBMSyn_DATE.%s' % (i+1) for i in range(11)]
+    to_remove += [_ for _ in headers if _.startswith('AV45_')]
+
 
     for tm in to_remove:
         while tm in headers:
@@ -2004,12 +2016,14 @@ def runPipeline():
     new_headers, new_lines = parseCSV(master_file, use_second_line=True)
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
-    print "\nSYNCING AV45\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, av45_nontp_file, registry_file, dump_to=None) # adds new patients
-    print "\nMANUALLY ADDING SUBJECTS"
-    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
+    print "\nSYNCING AV45 NONTP\n"
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_nontp_file, registry_file, suffix='NONTP', dump_to=None) # adds new patients
+    print "\nSYNCING AV45 TP\n"
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_tp_file, registry_file, suffix='TP', dump_to=None) # adds new patients
+    print "\nMANUALLY ADDING SUBJECTS"
+    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
     print "\nSYNCING FAQ\n"
     new_headers, new_lines = syncFAQData(new_headers, new_lines, faq_file, registry_file, dump_to=None)
     print "\nSYNCING NPI\n"
@@ -2074,7 +2088,7 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
     
     # Output files
-    av45_file = None # overwrites nontp if specified
+    av45_tp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_tp.csv"
     av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_nontp.csv"
     rousset_matfile_bl = '../output/rousset_output/rousset_output_BL_agg.mat'
     rousset_matfile_scan2 = '../output/rousset_output/rousset_output_Scan2_agg.mat'
@@ -2086,7 +2100,7 @@ if __name__ == '__main__':
     adnigo2_adas_file = '../cog_tests/ADAS_ADNIGO2.csv'
     neuro_battery_file = '../cog_tests/NEUROBAT.csv'
     gd_file = '../cog_tests/GDSCALE.csv'
-    uw_file = '../cog_tests/UWNPSYCHSUM_10_26_15.csv'
+    uw_file = '../cog_tests/UWNPSYCHSUM_01_12_16.csv'
     
     # MR files
     tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'

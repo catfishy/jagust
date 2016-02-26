@@ -447,7 +447,7 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, diags, dump_t
     If PID is < 6000, then filter by ADNI1_CONTROLS
     '''
     registry = importDODRegistry(registry_file)
-    av45_by_subj = importAV45('', av45_file, registry=registry)
+    av45_by_subj = importAV45(av45_file, registry=registry)
     ADNI1_CONTROLS = [rid for rid,diag in diags.iteritems() if diag == 'N']
 
     new_headers = None

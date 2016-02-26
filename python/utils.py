@@ -388,7 +388,7 @@ def parseAllRegionOutput(all_region_file, lut_file):
 def parseRawAV45Output(av45_file, registry_file, lut_file):
     lut_table = importFreesurferLookup(lut_file)
     registry =  importRegistry(registry_file)
-    data = importAV45(av45_file, None, registry=registry)
+    data = importAV45(av45_file, registry=registry)
 
     # save column names
     index_lookup = {lut_table[code].upper().replace('-','_'):[code] for code in SUMMARY}
@@ -1634,62 +1634,33 @@ def importAV1451(av1451_file):
     return subj_dict
 
 
-def importAV45(av45_tp_file, av45_nontp_file, registry=None):
-    if av45_tp_file:
-        # PARSE TIMEPOINT SPECIFIC DATA
-        tp_df = pd.read_csv(av45_tp_file)
-        tp_df.loc[:,'TP_SPECIFIC'] = True
-        for i in tp_df.index:
-            raw_date = tp_df.loc[i,'EXAMDATE']
-            date = None
-            if raw_date:
-                date = parseDate(raw_date)
-            else:
-                print "Can't find examdate: %s" % i
-                date = np.nan
-            tp_df.loc[i,'EXAMDATE'] = date
-        # remove rows with no date
-        tp_df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
-    else:
-        tp_df = None
-
-    if av45_nontp_file:
-        # PARSE TIMEPOINT SPECIFIC DATA
-        nontp_df = pd.read_csv(av45_nontp_file)
-        nontp_df.loc[:,'TP_SPECIFIC'] = False
-        for i in nontp_df.index:
-            raw_date = nontp_df.loc[i,'EXAMDATE']
-            date = None
-            if raw_date:
-                date = parseDate(raw_date)
-            else:
-                print "Can't find examdate: %s" % i
-                date = np.nan
-            nontp_df.loc[i,'EXAMDATE'] = date
-        # remove rows with no date
-        nontp_df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
-    else:
-        nontp_df = None
-
-    if tp_df is not None and nontp_df is not None:
-        all_df = pd.concat((tp_df, nontp_df))
-    elif tp_df is not None:
-        all_df = tp_df
-    elif nontp_df is not None:
-        all_df = nontp_df
-    else:
-        raise Exception("No input file given")
+def importAV45(av45_file, registry=None):
+    df = pd.read_csv(av45_file)
+    df.loc[:,'TP_SPECIFIC'] = True
+    for i in df.index:
+        raw_date = df.loc[i,'EXAMDATE']
+        date = None
+        if raw_date:
+            date = parseDate(raw_date)
+        else:
+            print "Can't find examdate: %s" % i
+            date = np.nan
+        df.loc[i,'EXAMDATE'] = date
+    # remove rows with no date
+    df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
 
     # set id
-    if 'SCRNO' in all_df.columns:
+    if 'SCRNO' in df.columns:
         group_col = 'SCRNO'
-    elif 'RID' in all_df.columns:
+    elif 'RID' in df.columns:
         group_col = 'RID'
-    elif 'PID' in all_df.columns:
+    elif 'PID' in df.columns:
         group_col = 'PID'
     else:
         raise Exception("Can't find subject column")
-    grouped = all_df.groupby(by=[group_col])
+    grouped = df.groupby(by=[group_col])
+    
+    # convert to dictionary
     av45_by_subj = {}
     for key, val in grouped:
         av45_by_subj[key] = [dict(_) for i,_ in val.iterrows()]

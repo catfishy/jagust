@@ -7,7 +7,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils import parseDate
+from utils import parseDate, isnan
 
 
 NONTP_FILE = '../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_nontp.csv'
@@ -42,7 +42,7 @@ def createMeanVarLabels(df, group_key, value_key):
     '''
     dfg = df.groupby(group_key)
     mean_vars = [(k, np.mean(v[value_key]),np.var(v[value_key])) for k,v in dfg]
-    labels = ['%s\nMean: %.3f\nVar: %.3f' % (k,m,v) for k,m,v in mean_vars]
+    labels = ['%s\nMean: %.5f\nVar: %.5f' % (k,m,v) for k,m,v in mean_vars]
     return labels
 
 
@@ -63,51 +63,78 @@ if __name__ == "__main__":
     tp_long_df = convertToLongitudinalChange(tp_df,'RID','EXAMDATE',long_keys)
 
     # stratify by BL Dx and positivity
-    to_add_df = master_df[['Init_Diagnosis','AV45_wcereb_BIN1.11']]
+    def sum_dx_and_bl_pos(row):
+        dx = row['Init_Diagnosis']
+        pos = row['AV45_wcereb_BIN1.11']
+        if isnan(dx) or isnan(pos):
+            return np.nan
+        if float(pos) == 0.0:
+            new_val = '%s_BLNeg' % (dx,)
+        elif float(pos) == 1.0:
+            new_val = '%s_BLPos' % (dx,)
+        else:
+            raise Exception("Unknown positivity: %s" % pos)
+        return new_val
+
+    master_df['Dx_and_BLPos'] = master_df.apply(sum_dx_and_bl_pos, axis=1)
+    to_add_df = master_df[['Init_Diagnosis','AV45_wcereb_BIN1.11','Dx_and_BLPos']]
     nontp_long_df = nontp_long_df.merge(to_add_df, how='left', left_index=True, right_index=True)
     tp_long_df = tp_long_df.merge(to_add_df, how='left', left_index=True, right_index=True)
 
-    print nontp_long_df
-    print tp_long_df
-
-    # violin plots
-    plot1 = sns.violinplot(x='Init_Diagnosis',y='SUMMARYSUVR_WHOLECEREBNORM',data=nontp_long_df)
-    plot1.set_xticklabels(createMeanVarLabels(nontp_long_df, 'Init_Diagnosis', 'SUMMARYSUVR_WHOLECEREBNORM'))
-    plt.title("Summary SUVR (wcereb ref) annualized slope, NON TIMEPOINT SPEC., by Dx")
-    plt.show()
-
-    plot2 = sns.violinplot(x='Init_Diagnosis',y='SUMMARYSUVR_WHOLECEREBNORM',data=tp_long_df)
-    plot2.set_xticklabels(createMeanVarLabels(tp_long_df, 'Init_Diagnosis', 'SUMMARYSUVR_WHOLECEREBNORM'))
-    plt.title("Summary SUVR (wcereb ref) annualized slope, TIMEPOINT SPEC., by Dx")
-    plt.show()
-
-    plot3 = sns.violinplot(x='AV45_wcereb_BIN1.11',y='SUMMARYSUVR_WHOLECEREBNORM',data=nontp_long_df)
-    plot3.set_xticklabels(createMeanVarLabels(nontp_long_df, 'AV45_wcereb_BIN1.11', 'SUMMARYSUVR_WHOLECEREBNORM'))
-    plt.title("Summary SUVR (wcereb ref) annualized slope, NON TIMEPOINT SPEC., by BL Pos")
-    plt.show()
-
-    plot4 = sns.violinplot(x='AV45_wcereb_BIN1.11',y='SUMMARYSUVR_WHOLECEREBNORM',data=tp_long_df)
-    plot4.set_xticklabels(createMeanVarLabels(tp_long_df, 'AV45_wcereb_BIN1.11', 'SUMMARYSUVR_WHOLECEREBNORM'))
-    plt.title("Summary SUVR (wcereb ref) annualized slope, TIMEPOINT SPEC., by BL Pos")
-    plt.show()
-
     # direct comparison scatter plot
     suvr_merged_df = nontp_long_df[['SUMMARYSUVR_WHOLECEREBNORM']].merge(tp_long_df[['SUMMARYSUVR_WHOLECEREBNORM','HIPPOCAMPUS_SIZE']], how='inner', left_index=True, right_index=True, suffixes=('_nontp','_tp'))
-    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='SUMMARYSUVR_WHOLECEREBNORM_tp')
-    plt.show()
-
     # regression and add residuals
     slope, intercept, r, p, stderr = linregress(suvr_merged_df['SUMMARYSUVR_WHOLECEREBNORM_nontp'], suvr_merged_df['SUMMARYSUVR_WHOLECEREBNORM_tp'])
+
+    print '\tR2: %s' % (r**2,)
+    print '\ty ~ %sx + %s' % (slope, intercept)
+
     p1 = np.poly1d([slope, intercept])
     suvr_merged_df['reg_fit'] = suvr_merged_df.loc[:,'SUMMARYSUVR_WHOLECEREBNORM_nontp'].apply(p1)
     suvr_merged_df['R'] = suvr_merged_df['SUMMARYSUVR_WHOLECEREBNORM_tp'] - suvr_merged_df['reg_fit']
     suvr_merged_df['R2'] = suvr_merged_df.loc[:,'R'].apply(np.square)
 
-    # plot residuals
-    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='R')
-    plt.show()
-    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='R2')
-    plt.show()
-    suvr_merged_df.plot(kind='scatter',x='HIPPOCAMPUS_SIZE',y='R2')
-    plt.show()
+    ylim = (-0.2,0.35)
 
+    # plots
+    plt.figure(1)
+    plot1 = sns.violinplot(x='Dx_and_BLPos',y='SUMMARYSUVR_WHOLECEREBNORM',data=nontp_long_df)
+    plot1.set_xticklabels(createMeanVarLabels(nontp_long_df, 'Dx_and_BLPos', 'SUMMARYSUVR_WHOLECEREBNORM'))
+    axes = plot1.axes
+    axes[0,0].set_ylim(*ylim)
+    plt.title("Summary SUVR (wcereb ref) annualized slope, NON TIMEPOINT SPEC., by Dx")
+
+    plt.figure(2)
+    plot2 = sns.violinplot(x='Dx_and_BLPos',y='SUMMARYSUVR_WHOLECEREBNORM',data=tp_long_df)
+    plot2.set_xticklabels(createMeanVarLabels(tp_long_df, 'Dx_and_BLPos', 'SUMMARYSUVR_WHOLECEREBNORM'))
+    plt.title("Summary SUVR (wcereb ref) annualized slope, TIMEPOINT SPEC., by Dx")
+
+    '''
+    plt.figure(3)
+    plot3 = sns.violinplot(x='AV45_wcereb_BIN1.11',y='SUMMARYSUVR_WHOLECEREBNORM',data=nontp_long_df)
+    plot3.set_xticklabels(createMeanVarLabels(nontp_long_df, 'AV45_wcereb_BIN1.11', 'SUMMARYSUVR_WHOLECEREBNORM'))
+    plt.title("Summary SUVR (wcereb ref) annualized slope, NON TIMEPOINT SPEC., by BL Pos")
+
+    plt.figure(4)
+    plot4 = sns.violinplot(x='AV45_wcereb_BIN1.11',y='SUMMARYSUVR_WHOLECEREBNORM',data=tp_long_df)
+    plot4.set_xticklabels(createMeanVarLabels(tp_long_df, 'AV45_wcereb_BIN1.11', 'SUMMARYSUVR_WHOLECEREBNORM'))
+    plt.title("Summary SUVR (wcereb ref) annualized slope, TIMEPOINT SPEC., by BL Pos")
+    '''
+
+    plt.figure(3)
+    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='SUMMARYSUVR_WHOLECEREBNORM_tp')
+    plt.title("NonTP vs. TP annualized summary change")
+
+    plt.figure(4)
+    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='R')
+    plt.title("NonTP annualized summary change vs. linear regression residual")
+
+    plt.figure(5)
+    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='R2')
+    plt.title("NonTP annualized summary change vs. linear regression residual squared")
+
+    plt.figure(6)
+    suvr_merged_df.plot(kind='scatter',x='HIPPOCAMPUS_SIZE',y='R2')
+    plt.title("Annualized Hippocampus size change vs. linear regression residual squared")
+
+    plt.show()

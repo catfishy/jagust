@@ -55,8 +55,8 @@ if __name__ == "__main__":
     master_file = '../FDG_AV45_COGdata_09_25_15.csv'
 
     registry = importRegistry(registry_file)
-    tp_data = importAV45(tp_file, av45_nontp_file=None ,registry=registry)
-    nontp_data = importAV45(nontp_file, av45_nontp_file=None, registry=registry)
+    tp_data = importAV45(tp_file, registry=registry)
+    nontp_data = importAV45(nontp_file, registry=registry)
     master_data = importMaster(master_file) 
 
     size_changes = {}
