@@ -16,7 +16,7 @@ mprage_df2 = pd.read_csv(mprage_file_2)
 mprage_df = pd.concat((mprage_df0, mprage_df1, mprage_df2))
 mprage_df.set_index('IMAGEUID',inplace=True)
 raw_numrows = float(len(mprage_df.index))
-mprage_df = mprage_df[mprage_df.OVERALLQC!='Pass']
+#mprage_df = mprage_df[mprage_df.OVERALLQC!='Pass']
 filtered_numrows = float(len(mprage_df.index))
 
 print 'Passed: %s' % (filtered_numrows/raw_numrows,)

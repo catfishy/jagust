@@ -7,12 +7,32 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils import parseDate, isnan
+from utils import parseDate, isnan, FRONTAL, PARIETAL, TEMPORAL, CINGULATE, WHOLECEREBELLUM, importFreesurferLookup
 
+LUT_FILE='../FreeSurferColorLUT.txt'
 
 NONTP_FILE = '../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_nontp.csv'
 TP_FILE = '../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_tp.csv'
 MASTER_FILE = '../FDG_AV45_COGdata/FDG_AV45_COGdata_02_22_16.csv'
+
+
+def extractLobeVolumes(av45_df):
+    '''
+    Sums up the voxel counts for regions that fall into
+    frontal, parietal, temporal, cingulate
+    '''
+    lut = importFreesurferLookup(LUT_FILE, flip=False)
+    frontal_columns = ['%s_SIZE' % lut[_].replace('-','_').upper() for _ in FRONTAL]
+    parietal_columns = ['%s_SIZE' % lut[_].replace('-','_').upper() for _ in PARIETAL]
+    temporal_columns = ['%s_SIZE' % lut[_].replace('-','_').upper() for _ in TEMPORAL]
+    cingulate_columns = ['%s_SIZE' % lut[_].replace('-','_').upper() for _ in CINGULATE]
+    cereb_columns = ['%s_SIZE' % lut[_].replace('-','_').upper() for _ in WHOLECEREBELLUM]
+    av45_df['FRONTAL_SIZE'] = av45_df[frontal_columns].sum(axis=1)
+    av45_df['PARIETAL_SIZE'] = av45_df[parietal_columns].sum(axis=1)
+    av45_df['TEMPORAL_SIZE'] = av45_df[temporal_columns].sum(axis=1)
+    av45_df['CINGULATE_SIZE'] = av45_df[cingulate_columns].sum(axis=1)
+    av45_df['WHOLECEREBELLUM_SIZE'] = av45_df[cereb_columns].sum(axis=1)
+    return av45_df
 
 def convertToLongitudinalChange(av45_df, group_key, time_key, long_keys):
     '''
@@ -45,7 +65,6 @@ def createMeanVarLabels(df, group_key, value_key):
     labels = ['%s\nMean: %.5f\nVar: %.5f' % (k,m,v) for k,m,v in mean_vars]
     return labels
 
-
 if __name__ == "__main__":
     nontp_df = pd.read_csv(NONTP_FILE)
     tp_df = pd.read_csv(TP_FILE)
@@ -56,9 +75,21 @@ if __name__ == "__main__":
     # add some fields
     nontp_df['HIPPOCAMPUS_SIZE'] = nontp_df['LEFT_HIPPOCAMPUS_SIZE'] + nontp_df['RIGHT_HIPPOCAMPUS_SIZE']
     tp_df['HIPPOCAMPUS_SIZE'] = tp_df['LEFT_HIPPOCAMPUS_SIZE'] + tp_df['RIGHT_HIPPOCAMPUS_SIZE']
+    nontp_df = extractLobeVolumes(nontp_df)
+    tp_df = extractLobeVolumes(tp_df)
 
     # convert to annualized slopes
-    long_keys = ['SUMMARYSUVR_WHOLECEREBNORM','HIPPOCAMPUS_SIZE']
+    long_keys = ['SUMMARYSUVR_WHOLECEREBNORM',
+                 'FRONTAL',
+                 'PARIETAL',
+                 'TEMPORAL',
+                 'CINGULATE',
+                 'WHOLECEREBELLUM',
+                 'FRONTAL_SIZE',
+                 'PARIETAL_SIZE',
+                 'TEMPORAL_SIZE',
+                 'CINGULATE_SIZE',
+                 'WHOLECEREBELLUM_SIZE']
     nontp_long_df = convertToLongitudinalChange(nontp_df,'RID','EXAMDATE',long_keys)
     tp_long_df = convertToLongitudinalChange(tp_df,'RID','EXAMDATE',long_keys)
 
@@ -82,59 +113,56 @@ if __name__ == "__main__":
     tp_long_df = tp_long_df.merge(to_add_df, how='left', left_index=True, right_index=True)
 
     # direct comparison scatter plot
-    suvr_merged_df = nontp_long_df[['SUMMARYSUVR_WHOLECEREBNORM']].merge(tp_long_df[['SUMMARYSUVR_WHOLECEREBNORM','HIPPOCAMPUS_SIZE']], how='inner', left_index=True, right_index=True, suffixes=('_nontp','_tp'))
-    # regression and add residuals
-    slope, intercept, r, p, stderr = linregress(suvr_merged_df['SUMMARYSUVR_WHOLECEREBNORM_nontp'], suvr_merged_df['SUMMARYSUVR_WHOLECEREBNORM_tp'])
+    uptake_keys = ['SUMMARYSUVR_WHOLECEREBNORM', 'FRONTAL', 'PARIETAL', 'TEMPORAL', 'CINGULATE', 'WHOLECEREBELLUM']
+    suvr_merged_df = nontp_long_df[uptake_keys].merge(tp_long_df, how='inner', left_index=True, right_index=True, suffixes=('_nontp','_tp'))
 
-    print '\tR2: %s' % (r**2,)
-    print '\ty ~ %sx + %s' % (slope, intercept)
+    for uk in uptake_keys:
+        # regression and add residuals
+        print uk
+        uk_nontp = '%s_nontp' % uk
+        uk_tp = '%s_tp' % uk
+        slope, intercept, r, p, stderr = linregress(suvr_merged_df[uk_nontp], suvr_merged_df[uk_tp])
+        print '\tR2: %s' % (r**2,)
+        print '\ty ~ %sx + %s' % (slope, intercept)
+        p1 = np.poly1d([slope, intercept])
+        suvr_merged_df['%s_regfit' % uk] = suvr_merged_df.loc[:,uk_nontp].apply(p1)
+        suvr_merged_df['%s_R' % uk] = suvr_merged_df[uk_tp] - suvr_merged_df['%s_regfit' % uk]
 
-    p1 = np.poly1d([slope, intercept])
-    suvr_merged_df['reg_fit'] = suvr_merged_df.loc[:,'SUMMARYSUVR_WHOLECEREBNORM_nontp'].apply(p1)
-    suvr_merged_df['R'] = suvr_merged_df['SUMMARYSUVR_WHOLECEREBNORM_tp'] - suvr_merged_df['reg_fit']
-    suvr_merged_df['R2'] = suvr_merged_df.loc[:,'R'].apply(np.square)
+    # weird = suvr_merged_df[suvr_merged_df.R2>0.08]
+    # print weird
 
-    ylim = (-0.2,0.35)
+    ylim = (-0.2,0.2)
 
-    # plots
+
+    # violinplots
     plt.figure(1)
     plot1 = sns.violinplot(x='Dx_and_BLPos',y='SUMMARYSUVR_WHOLECEREBNORM',data=nontp_long_df)
     plot1.set_xticklabels(createMeanVarLabels(nontp_long_df, 'Dx_and_BLPos', 'SUMMARYSUVR_WHOLECEREBNORM'))
-    axes = plot1.axes
-    axes[0,0].set_ylim(*ylim)
     plt.title("Summary SUVR (wcereb ref) annualized slope, NON TIMEPOINT SPEC., by Dx")
 
     plt.figure(2)
     plot2 = sns.violinplot(x='Dx_and_BLPos',y='SUMMARYSUVR_WHOLECEREBNORM',data=tp_long_df)
     plot2.set_xticklabels(createMeanVarLabels(tp_long_df, 'Dx_and_BLPos', 'SUMMARYSUVR_WHOLECEREBNORM'))
     plt.title("Summary SUVR (wcereb ref) annualized slope, TIMEPOINT SPEC., by Dx")
+    plt.show()
 
-    '''
-    plt.figure(3)
-    plot3 = sns.violinplot(x='AV45_wcereb_BIN1.11',y='SUMMARYSUVR_WHOLECEREBNORM',data=nontp_long_df)
-    plot3.set_xticklabels(createMeanVarLabels(nontp_long_df, 'AV45_wcereb_BIN1.11', 'SUMMARYSUVR_WHOLECEREBNORM'))
-    plt.title("Summary SUVR (wcereb ref) annualized slope, NON TIMEPOINT SPEC., by BL Pos")
-
-    plt.figure(4)
-    plot4 = sns.violinplot(x='AV45_wcereb_BIN1.11',y='SUMMARYSUVR_WHOLECEREBNORM',data=tp_long_df)
-    plot4.set_xticklabels(createMeanVarLabels(tp_long_df, 'AV45_wcereb_BIN1.11', 'SUMMARYSUVR_WHOLECEREBNORM'))
-    plt.title("Summary SUVR (wcereb ref) annualized slope, TIMEPOINT SPEC., by BL Pos")
-    '''
-
-    plt.figure(3)
-    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='SUMMARYSUVR_WHOLECEREBNORM_tp')
-    plt.title("NonTP vs. TP annualized summary change")
-
-    plt.figure(4)
-    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='R')
-    plt.title("NonTP annualized summary change vs. linear regression residual")
-
-    plt.figure(5)
-    suvr_merged_df.plot(kind='scatter',x='SUMMARYSUVR_WHOLECEREBNORM_nontp',y='R2')
-    plt.title("NonTP annualized summary change vs. linear regression residual squared")
-
-    plt.figure(6)
-    suvr_merged_df.plot(kind='scatter',x='HIPPOCAMPUS_SIZE',y='R2')
-    plt.title("Annualized Hippocampus size change vs. linear regression residual squared")
+    # scatter plots
+    scatter_pairs = [('FRONTAL_SIZE', 'SUMMARYSUVR_WHOLECEREBNORM_R'),
+                     ('PARIETAL_SIZE', 'SUMMARYSUVR_WHOLECEREBNORM_R'),
+                     ('TEMPORAL_SIZE', 'SUMMARYSUVR_WHOLECEREBNORM_R'),
+                     ('CINGULATE_SIZE', 'SUMMARYSUVR_WHOLECEREBNORM_R'),
+                     ('WHOLECEREBELLUM_SIZE', 'SUMMARYSUVR_WHOLECEREBNORM_R'),
+                     ('SUMMARYSUVR_WHOLECEREBNORM_nontp', 'SUMMARYSUVR_WHOLECEREBNORM_tp'),
+                     ('SUMMARYSUVR_WHOLECEREBNORM_nontp', 'SUMMARYSUVR_WHOLECEREBNORM_R')]
+    scatter_pairs = [('FRONTAL_SIZE', 'FRONTAL_R'),
+                     ('PARIETAL_SIZE', 'PARIETAL_R'),
+                     ('TEMPORAL_SIZE', 'TEMPORAL_R'),
+                     ('CINGULATE_SIZE', 'CINGULATE_R'),
+                     ('WHOLECEREBELLUM_SIZE', 'WHOLECEREBELLUM_R')]
+    for fignum, (xkey,ykey) in enumerate(scatter_pairs):
+        plt.figure(fignum)
+        suvr_merged_df[[xkey,ykey]].plot(kind='scatter', x=xkey, y=ykey, ylim=ylim)
+        plt.title('%s vs %s, Annualized Change' % (xkey,ykey))
 
     plt.show()
+

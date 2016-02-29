@@ -2016,14 +2016,14 @@ def runPipeline():
     new_headers, new_lines = parseCSV(master_file, use_second_line=True)
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
+    print "\nMANUALLY ADDING SUBJECTS"
+    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
     print "\nSYNCING DIAGNOSES\n"
     new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING AV45 NONTP\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_nontp_file, registry_file, suffix='NONTP', dump_to=None) # adds new patients
     print "\nSYNCING AV45 TP\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_tp_file, registry_file, suffix='TP', dump_to=None) # adds new patients
-    print "\nMANUALLY ADDING SUBJECTS"
-    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
     print "\nSYNCING FAQ\n"
     new_headers, new_lines = syncFAQData(new_headers, new_lines, faq_file, registry_file, dump_to=None)
     print "\nSYNCING NPI\n"
