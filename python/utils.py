@@ -1327,11 +1327,12 @@ def importCSF(csf_files, registry=None):
         data[k] = sorted(flattened, key=lambda x: x['EXAMDATE'])
     return data
 
-def importScanMeta(meta_file):
+def importScanMeta(meta_file, with_viscode=False):
     df = pd.read_csv(meta_file)
     # get exam date column
     subj_col = None
     date_col = None
+    viscode_cols = ['VISCODE']
     if 'SCRNO' in df.columns:
         subj_col = 'SCRNO'
     elif 'RID' in df.columns:
@@ -1340,20 +1341,24 @@ def importScanMeta(meta_file):
         date_col = 'SCANDATE'
     elif 'EXAMDATE' in df.columns:
         date_col = 'EXAMDATE'
+    if 'VISCODE2' in df.columns:
+        viscode_cols.append('VISCODE2')
     if subj_col is None or date_col is None:
         raise Exception("No subj/date column in %s" % meta_file)
     df.dropna(axis=0, subset=[subj_col, date_col], inplace=True)
     df.loc[:,date_col] = df.loc[:,date_col].apply(parseDate)
-    # IF TWO ENTRIES HAVE THE SAME VISIT CODE, TAKE THE ONE WITH THE LATER DATE
     scans = {}
     for pid, rows in df.groupby(subj_col):
-        by_viscode = defaultdict(list)
-        for i,r in rows.iterrows():
-            viscode_key = (r.get('VISCODE',None),r.get('VISCODE2',None))
-            visit_date = r[date_col]
-            by_viscode[viscode_key].append(visit_date)
-        by_viscode_filtered = [sorted(by_viscode[k])[-1] for k in by_viscode.keys()]
-        scans[pid] = sorted(by_viscode_filtered)
+        # IF TWO ENTRIES HAVE THE SAME VISIT CODE, TAKE THE ONE WITH THE LATER DATE
+        rows = rows[[date_col] + viscode_cols]
+        rows = rows.sort_values(by=date_col)
+        dedup_rows = rows[rows.shift(-1) != rows]
+        dedup_rows.dropna(inplace=True)
+        if with_viscode:
+            dedup_rows.set_index(date_col,inplace=True)
+            scans[pid] = dedup_rows.to_dict(orient='index')
+        else:
+            scans[pid] = sorted(list(dedup_rows[date_col]))
     return scans
 
 def importPetMETA(pet_meta_file):

@@ -27,393 +27,70 @@ import pandas as pd
 
 from utils import *
 
-ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
+
+ALL_REGION_KEYS = ['BRAIN_STEM','BRAIN_STEM_SIZE','3RD_VENTRICLE','3RD_VENTRICLE_SIZE','4TH_VENTRICLE','4TH_VENTRICLE_SIZE','5TH_VENTRICLE','5TH_VENTRICLE_SIZE','CC_ANTERIOR','CC_ANTERIOR_SIZE',
+                  'CC_CENTRAL','CC_CENTRAL_SIZE','CC_MID_ANTERIOR','CC_MID_ANTERIOR_SIZE','CC_MID_POSTERIOR','CC_MID_POSTERIOR_SIZE','CC_POSTERIOR','CC_POSTERIOR_SIZE',
+                  'CSF','CSF_SIZE','CTX_LH_BANKSSTS','CTX_LH_BANKSSTS_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
+                  'CTX_LH_CAUDALMIDDLEFRONTAL','CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_CUNEUS','CTX_LH_CUNEUS_SIZE','CTX_LH_ENTORHINAL','CTX_LH_ENTORHINAL_SIZE',
+                  'CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE','CTX_LH_FUSIFORM','CTX_LH_FUSIFORM_SIZE','CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE',
+                  'CTX_LH_INFERIORTEMPORAL','CTX_LH_INFERIORTEMPORAL_SIZE','CTX_LH_INSULA','CTX_LH_INSULA_SIZE','CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE',
+                  'CTX_LH_LATERALOCCIPITAL','CTX_LH_LATERALOCCIPITAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE','CTX_LH_LINGUAL','CTX_LH_LINGUAL_SIZE',
+                  'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_MIDDLETEMPORAL','CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_PARACENTRAL','CTX_LH_PARACENTRAL_SIZE',
+                  'CTX_LH_PARAHIPPOCAMPAL','CTX_LH_PARAHIPPOCAMPAL_SIZE','CTX_LH_PARSOPERCULARIS','CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE',
+                  'CTX_LH_PARSTRIANGULARIS','CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_PERICALCARINE','CTX_LH_PERICALCARINE_SIZE','CTX_LH_POSTCENTRAL','CTX_LH_POSTCENTRAL_SIZE',
+                  'CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE','CTX_LH_PRECENTRAL','CTX_LH_PRECENTRAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE',
+                  'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
+                  'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_SUPERIORPARIETAL','CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE',
+                  'CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_LH_TEMPORALPOLE','CTX_LH_TEMPORALPOLE_SIZE','CTX_LH_TRANSVERSETEMPORAL','CTX_LH_TRANSVERSETEMPORAL_SIZE',
+                  'CTX_LH_UNKNOWN','CTX_LH_UNKNOWN_SIZE','CTX_RH_BANKSSTS','CTX_RH_BANKSSTS_SIZE','CTX_RH_CAUDALANTERIORCINGULATE','CTX_RH_CAUDALANTERIORCINGULATE_SIZE',
+                  'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_CUNEUS','CTX_RH_CUNEUS_SIZE','CTX_RH_ENTORHINAL','CTX_RH_ENTORHINAL_SIZE',
+                  'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_RH_FUSIFORM','CTX_RH_FUSIFORM_SIZE','CTX_RH_INFERIORPARIETAL','CTX_RH_INFERIORPARIETAL_SIZE',
+                  'CTX_RH_INFERIORTEMPORAL','CTX_RH_INFERIORTEMPORAL_SIZE','CTX_RH_INSULA','CTX_RH_INSULA_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE',
+                  'CTX_RH_LATERALOCCIPITAL','CTX_RH_LATERALOCCIPITAL_SIZE','CTX_RH_LATERALORBITOFRONTAL','CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_LINGUAL','CTX_RH_LINGUAL_SIZE',
+                  'CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE','CTX_RH_MIDDLETEMPORAL','CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_PARACENTRAL','CTX_RH_PARACENTRAL_SIZE',
+                  'CTX_RH_PARAHIPPOCAMPAL','CTX_RH_PARAHIPPOCAMPAL_SIZE','CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
+                  'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_PERICALCARINE','CTX_RH_PERICALCARINE_SIZE','CTX_RH_POSTCENTRAL','CTX_RH_POSTCENTRAL_SIZE',
+                  'CTX_RH_POSTERIORCINGULATE','CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_PRECENTRAL','CTX_RH_PRECENTRAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE',
+                  'CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL','CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE',
+                  'CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE','CTX_RH_SUPERIORPARIETAL','CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE',
+                  'CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_RH_TEMPORALPOLE','CTX_RH_TEMPORALPOLE_SIZE','CTX_RH_TRANSVERSETEMPORAL','CTX_RH_TRANSVERSETEMPORAL_SIZE',
+                  'CTX_RH_UNKNOWN','CTX_RH_UNKNOWN_SIZE','LEFT_ACCUMBENS_AREA','LEFT_ACCUMBENS_AREA_SIZE','LEFT_AMYGDALA','LEFT_AMYGDALA_SIZE','LEFT_CAUDATE','LEFT_CAUDATE_SIZE',
+                  'LEFT_CEREBELLUM_CORTEX','LEFT_CEREBELLUM_CORTEX_SIZE','LEFT_CEREBELLUM_WHITE_MATTER','LEFT_CEREBELLUM_WHITE_MATTER_SIZE','LEFT_CEREBRAL_WHITE_MATTER','LEFT_CEREBRAL_WHITE_MATTER_SIZE',
+                  'LEFT_CHOROID_PLEXUS','LEFT_CHOROID_PLEXUS_SIZE','LEFT_HIPPOCAMPUS','LEFT_HIPPOCAMPUS_SIZE','LEFT_INF_LAT_VENT','LEFT_INF_LAT_VENT_SIZE','LEFT_LATERAL_VENTRICLE','LEFT_LATERAL_VENTRICLE_SIZE',
+                  'LEFT_PALLIDUM','LEFT_PALLIDUM_SIZE','LEFT_PUTAMEN','LEFT_PUTAMEN_SIZE','LEFT_THALAMUS_PROPER','LEFT_THALAMUS_PROPER_SIZE','LEFT_VENTRALDC','LEFT_VENTRALDC_SIZE',
+                  'LEFT_VESSEL','LEFT_VESSEL_SIZE','NON_WM_HYPOINTENSITIES','NON_WM_HYPOINTENSITIES_SIZE','OPTIC_CHIASM','OPTIC_CHIASM_SIZE','RIGHT_ACCUMBENS_AREA','RIGHT_ACCUMBENS_AREA_SIZE',
+                  'RIGHT_AMYGDALA','RIGHT_AMYGDALA_SIZE','RIGHT_CAUDATE','RIGHT_CAUDATE_SIZE','RIGHT_CEREBELLUM_CORTEX','RIGHT_CEREBELLUM_CORTEX_SIZE','RIGHT_CEREBELLUM_WHITE_MATTER','RIGHT_CEREBELLUM_WHITE_MATTER_SIZE',
+                  'RIGHT_CEREBRAL_WHITE_MATTER','RIGHT_CEREBRAL_WHITE_MATTER_SIZE','RIGHT_CHOROID_PLEXUS','RIGHT_CHOROID_PLEXUS_SIZE','RIGHT_HIPPOCAMPUS','RIGHT_HIPPOCAMPUS_SIZE','RIGHT_INF_LAT_VENT','RIGHT_INF_LAT_VENT_SIZE',
+                  'RIGHT_LATERAL_VENTRICLE','RIGHT_LATERAL_VENTRICLE_SIZE','RIGHT_PALLIDUM','RIGHT_PALLIDUM_SIZE','RIGHT_PUTAMEN','RIGHT_PUTAMEN_SIZE','RIGHT_THALAMUS_PROPER','RIGHT_THALAMUS_PROPER_SIZE',
+                  'RIGHT_VENTRALDC','RIGHT_VENTRALDC_SIZE','RIGHT_VESSEL','RIGHT_VESSEL_SIZE','WM_HYPOINTENSITIES','WM_HYPOINTENSITIES_SIZE']
+
+ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
-                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
-                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
-                   'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
-                   'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
-                   'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
-                   'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
-                   'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
-                   'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
-                   'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
-                   'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
-                   'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
-                   'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
-                   'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
-                   'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
-                   'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
-                   'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
-                   'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
-                   'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
-                   'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
-                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
-                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
-                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','BRAIN_STEM','WHOLECEREBELLUM',
+                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
+ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','WHOLECEREBELLUM',
                    'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                    'LEFT_PUTAMEN','RIGHT_PUTAMEN','LEFT_CAUDATE','RIGHT_CAUDATE','LEFT_PALLIDUM','RIGHT_PALLIDUM',
-                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
-                   'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
-                   'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
-                   'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
-                   'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
-                   'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
-                   'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
-                   'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
-                   'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
-                   'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
-                   'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
-                   'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
-                   'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
-                   'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
-                   'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
-                   'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
-                   'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
-                   'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
-                   'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
-                   'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
-                   'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
-                   'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE','update_stamp']
-DOD_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
+                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
+DOD_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','WHOLECEREBELLUM',
                   'FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
-                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
-                  'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
-                  'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
-                  'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
-                  'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
-                  'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
-                  'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
-                  'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
-                  'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
-                  'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
-                  'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
-                  'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
-                  'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
-                  'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
-                  'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
-                  'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
-                  'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
-                  'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
-                  'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
-                  'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
-                  'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
-                  'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
+                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
 DOD_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRAIN_STEM','WHOLECEREBELLUM',
                   'FRONTAL','FRONTAL_SIZE','CINGULATE','CINGULATE_SIZE','PARIETAL','PARIETAL_SIZE','TEMPORAL','TEMPORAL_SIZE',
                   'COMPOSITE','COMPOSITE_REF','ERODED_SUBCORTICALWM',
                   'LEFT_PUTAMEN','RIGHT_PUTAMEN','LEFT_CAUDATE','RIGHT_CAUDATE','LEFT_PALLIDUM','RIGHT_PALLIDUM',
                   'LEFT_PUTAMEN_SIZE','RIGHT_PUTAMEN_SIZE','LEFT_CAUDATE_SIZE','RIGHT_CAUDATE_SIZE','LEFT_PALLIDUM_SIZE','RIGHT_PALLIDUM_SIZE',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
-                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF','CTX_LH_CAUDALMIDDLEFRONTAL',
-                  'CTX_LH_CAUDALMIDDLEFRONTAL_SIZE','CTX_LH_LATERALORBITOFRONTAL','CTX_LH_LATERALORBITOFRONTAL_SIZE',
-                  'CTX_LH_MEDIALORBITOFRONTAL','CTX_LH_MEDIALORBITOFRONTAL_SIZE','CTX_LH_PARSOPERCULARIS',
-                  'CTX_LH_PARSOPERCULARIS_SIZE','CTX_LH_PARSORBITALIS','CTX_LH_PARSORBITALIS_SIZE','CTX_LH_PARSTRIANGULARIS',
-                  'CTX_LH_PARSTRIANGULARIS_SIZE','CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_LH_ROSTRALMIDDLEFRONTAL_SIZE',
-                  'CTX_LH_SUPERIORFRONTAL','CTX_LH_SUPERIORFRONTAL_SIZE','CTX_LH_FRONTALPOLE','CTX_LH_FRONTALPOLE_SIZE',
-                  'CTX_RH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL_SIZE','CTX_RH_LATERALORBITOFRONTAL',
-                  'CTX_RH_LATERALORBITOFRONTAL_SIZE','CTX_RH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL_SIZE',
-                  'CTX_RH_PARSOPERCULARIS','CTX_RH_PARSOPERCULARIS_SIZE','CTX_RH_PARSORBITALIS','CTX_RH_PARSORBITALIS_SIZE',
-                  'CTX_RH_PARSTRIANGULARIS','CTX_RH_PARSTRIANGULARIS_SIZE','CTX_RH_ROSTRALMIDDLEFRONTAL',
-                  'CTX_RH_ROSTRALMIDDLEFRONTAL_SIZE','CTX_RH_SUPERIORFRONTAL','CTX_RH_SUPERIORFRONTAL_SIZE',
-                  'CTX_RH_FRONTALPOLE','CTX_RH_FRONTALPOLE_SIZE','CTX_LH_CAUDALANTERIORCINGULATE','CTX_LH_CAUDALANTERIORCINGULATE_SIZE',
-                  'CTX_LH_ISTHMUSCINGULATE','CTX_LH_ISTHMUSCINGULATE_SIZE','CTX_LH_POSTERIORCINGULATE','CTX_LH_POSTERIORCINGULATE_SIZE',
-                  'CTX_LH_ROSTRALANTERIORCINGULATE','CTX_LH_ROSTRALANTERIORCINGULATE_SIZE','CTX_RH_CAUDALANTERIORCINGULATE',
-                  'CTX_RH_CAUDALANTERIORCINGULATE_SIZE','CTX_RH_ISTHMUSCINGULATE','CTX_RH_ISTHMUSCINGULATE_SIZE','CTX_RH_POSTERIORCINGULATE',
-                  'CTX_RH_POSTERIORCINGULATE_SIZE','CTX_RH_ROSTRALANTERIORCINGULATE','CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
-                  'CTX_LH_INFERIORPARIETAL','CTX_LH_INFERIORPARIETAL_SIZE','CTX_LH_PRECUNEUS','CTX_LH_PRECUNEUS_SIZE','CTX_LH_SUPERIORPARIETAL',
-                  'CTX_LH_SUPERIORPARIETAL_SIZE','CTX_LH_SUPRAMARGINAL','CTX_LH_SUPRAMARGINAL_SIZE','CTX_RH_INFERIORPARIETAL',
-                  'CTX_RH_INFERIORPARIETAL_SIZE','CTX_RH_PRECUNEUS','CTX_RH_PRECUNEUS_SIZE','CTX_RH_SUPERIORPARIETAL',
-                  'CTX_RH_SUPERIORPARIETAL_SIZE','CTX_RH_SUPRAMARGINAL','CTX_RH_SUPRAMARGINAL_SIZE','CTX_LH_MIDDLETEMPORAL',
-                  'CTX_LH_MIDDLETEMPORAL_SIZE','CTX_LH_SUPERIORTEMPORAL','CTX_LH_SUPERIORTEMPORAL_SIZE','CTX_RH_MIDDLETEMPORAL',
-                  'CTX_RH_MIDDLETEMPORAL_SIZE','CTX_RH_SUPERIORTEMPORAL','CTX_RH_SUPERIORTEMPORAL_SIZE']
-TAU_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE',
-                  'BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
-                  'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
-                  'CEREBELLUMGREYMATTER', 'CEREBELLUMGREYMATTER_SIZE']
-DOD_TAU_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE',
-                      'BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
-                      'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
-                      'CEREBELLUMGREYMATTER', 'CEREBELLUMGREYMATTER_SIZE']
+                  'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
+TAU_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
+TAU_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
+                        'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
+DOD_TAU_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
+DOD_TAU_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE','BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
+                            'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE', 'ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
 
-
-
-'''
-ADNI_OMIT = ['LEFT_CEREBELLUM_CORTEX',
-             'RIGHT_CEREBELLUM_CORTEX',
-             'LEFT_UNSEGMENTEDWHITEMATTER',
-             'RIGHT_UNSEGMENTEDWHITEMATTER']
-ADNI_EXTRA_OMIT = ADNI_OMIT
-DOD_OMIT = ADNI_OMIT
-DOD_EXTRA_OMIT = ADNI_OMIT
-ADNI_OMIT_SIZES = ['SCRNO', 'RID', 'PID', 'FRONTAL', 'CINGULATE', 'PARIETAL', 'BRAINSTEM', 'TEMPORAL', 'COMPOSITE', 
-                   'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER', 'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
-                   'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
-                   'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
-                   'CEREBELLUMWHITEMATTER', 'LEFT-PALLIDUM', 'LEFT-CAUDATE', 'LEFT-PUTAMEN', 
-                   'RIGHT-PALLIDUM', 'RIGHT-CAUDATE', 'RIGHT-PUTAMEN']
-ADNI_EXTRA_OMIT_SIZES = ADNI_OMIT_SIZES
-DOD_OMIT_SIZES = ADNI_OMIT_SIZES
-DOD_EXTRA_OMIT_SIZES = ['SCRNO', 'RID', 'PID', 'COMPOSITE', 'ERODED_SUBCORTICALWM', 'CEREBELLUMGREYMATTER',
-                        'WHOLECEREBELLUM', 'SUMMARYSUVR_WHOLECEREBNORM',
-                        'SUMMARYSUVR_COMPOSITE_REFNORM', 'COMPOSITE_REF', 'VISCODE', 'VISCODE2', 'EXAMDATE', 
-                        'SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF', 'SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF', 'update_stamp',
-                        'CEREBELLUMWHITEMATTER']
-
-def readHeaderAndLines(csv_file, limit=None):
-    bl_lines = []
-    bl_header = None
-    reader = csv.reader(open(csv_file, 'rU'))
-    for i, l in enumerate(reader):
-        if i == 0:
-            bl_header = l
-            continue
-        elif limit is not None and i > limit:
-            break
-        l = map(float, l)
-        if len(bl_header) != len(l):
-            raise Exception("%s, %s" % (bl_header, l))
-        bl_lines.append(l)
-    return (bl_header, bl_lines)
-
-
-def convertHeaderCodes(header):
-    lookup = {0: 'RID',
-            12: 'LEFT-PUTAMEN',
-            51: 'RIGHT-PUTAMEN',
-            11: 'LEFT-CAUDATE',
-            50: 'RIGHT-CAUDATE',
-            13: 'LEFT-PALLIDUM',
-            52: 'RIGHT-PALLIDUM',
-            1025: 'CTX_LH_PRECUNEUS',
-            1026: 'CTX_LH_ROSTRALANTERIORCINGULATE',
-            1027: 'CTX_LH_ROSTRALMIDDLEFRONTAL',
-            1028: 'CTX_LH_SUPERIORFRONTAL',
-            1029: 'CTX_LH_SUPERIORPARIETAL',
-            1030: 'CTX_LH_SUPERIORTEMPORAL',
-            1031: 'CTX_LH_SUPRAMARGINAL',
-            8: 'LEFT_CEREBELLUM_CORTEX',
-            16: 'BRAINSTEM',
-            47: 'RIGHT_CEREBELLUM_CORTEX',
-            1032: 'CTX_LH_FRONTALPOLE',
-            2026: 'CTX_RH_ROSTRALANTERIORCINGULATE',
-            1003: 'CTX_LH_CAUDALMIDDLEFRONTAL',
-            5000: 'WHOLECEREBELLUM',
-            5001: 'LEFT_UNSEGMENTEDWHITEMATTER',
-            5002: 'RIGHT_UNSEGMENTEDWHITEMATTER',
-            5003: 'CEREBELLUMGREYMATTER',
-            4000: 'ERODED_SUBCORTICALWM',
-            2032: 'CTX_RH_FRONTALPOLE',
-            3000: 'FRONTAL',
-            3001: 'CINGULATE',
-            3002: 'PARIETAL',
-            3003: 'TEMPORAL',
-            3004: 'COMPOSITE',
-            2002: 'CTX_RH_CAUDALANTERIORCINGULATE',
-            2003: 'CTX_RH_CAUDALMIDDLEFRONTAL',
-            2008: 'CTX_RH_INFERIORPARIETAL',
-            2010: 'CTX_RH_ISTHMUSCINGULATE',
-            2012: 'CTX_RH_LATERALORBITOFRONTAL',
-            2014: 'CTX_RH_MEDIALORBITOFRONTAL',
-            2015: 'CTX_RH_MIDDLETEMPORAL',
-            2018: 'CTX_RH_PARSOPERCULARIS',
-            2019: 'CTX_RH_PARSORBITALIS',
-            2020: 'CTX_RH_PARSTRIANGULARIS',
-            2023: 'CTX_RH_POSTERIORCINGULATE',
-            2025: 'CTX_RH_PRECUNEUS',
-            1002: 'CTX_LH_CAUDALANTERIORCINGULATE',
-            2027: 'CTX_RH_ROSTRALMIDDLEFRONTAL',
-            2028: 'CTX_RH_SUPERIORFRONTAL',
-            2029: 'CTX_RH_SUPERIORPARIETAL',
-            2030: 'CTX_RH_SUPERIORTEMPORAL',
-            2031: 'CTX_RH_SUPRAMARGINAL',
-            1008: 'CTX_LH_INFERIORPARIETAL',
-            1010: 'CTX_LH_ISTHMUSCINGULATE',
-            1012: 'CTX_LH_LATERALORBITOFRONTAL',
-            1014: 'CTX_LH_MEDIALORBITOFRONTAL',
-            1015: 'CTX_LH_MIDDLETEMPORAL',
-            1018: 'CTX_LH_PARSOPERCULARIS',
-            1019: 'CTX_LH_PARSORBITALIS',
-            1020: 'CTX_LH_PARSTRIANGULARIS',
-            1023: 'CTX_LH_POSTERIORCINGULATE'}
-    if isinstance(header,list):
-        converted = [str(lookup.get(int(h),h)) for h in header]
-    elif isinstance(header,str) or isinstance(header,int) or isinstance(header,float):
-        converted = str(lookup.get(int(header),header))
-    else:
-        raise Exception("Invalid header data type passed into conversion")
-    return converted
-
-def combineMeansAndSize(agg_type, mean_header, size_header, mean_values, size_values):
-    if agg_type == 'adni':
-        omit = ADNI_OMIT
-        omit_sizes = ADNI_OMIT_SIZES
-    elif agg_type == 'adni_extra':
-        omit = ADNI_EXTRA_OMIT
-        omit_sizes = ADNI_EXTRA_OMIT_SIZES
-    elif agg_type == 'dod':
-        omit = DOD_OMIT
-        omit_sizes = DOD_OMIT_SIZES
-    elif agg_type == 'dod_extra':
-        omit = DOD_EXTRA_OMIT
-        omit_sizes = DOD_EXTRA_OMIT_SIZES
-    else:
-        raise Exception("Bad agg_type")
-    mean_values = {convertHeaderCodes(k):v for k,v in mean_values.iteritems()}
-    size_values = {convertHeaderCodes(k):v for k,v in size_values.iteritems()}
-    rid = int(float(mean_values['RID']))
-
-    header_list, mean_values, size_values = additionalCalculations(mean_header, mean_values, size_values, agg_type)
-    all_headers = []
-    all_values = []
-    for h in header_list:
-        if h in omit:
-            continue
-        all_headers.append(str(h))
-        all_values.append(mean_values[h])
-        if h not in omit_sizes:
-            all_headers.append(str(h) + '_SIZE')
-            all_values.append(size_values[h])
-    return (rid, all_headers, all_values)
-
-def aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, meta_pet, registry, agg_type):
-    assert agg_type in set(['adni', 'adni_extra', 'dod', 'dod_extra'])
-
-    if agg_type == 'adni':
-        pet_dates = importPetMETA(meta_pet)
-        fieldnames = ADNI_FIELDNAMES
-    elif agg_type == 'adni_extra':
-        pet_dates = importPetMETA(meta_pet)
-        fieldnames = ADNI_FIELDNAMES_EXTRA
-    elif agg_type == 'dod':
-        fieldnames = DOD_FIELDNAMES
-    elif agg_type == 'dod_extra':
-        fieldnames = DOD_FIELDNAMES_EXTRA
-
-    num_bl = int(bl_means.split('_')[-1].replace('.csv',''))
-    num_v2 = int(v2_means.split('_')[-1].replace('.csv',''))
-    bl_header, bl_lines = parseCSV(bl_means)
-    bl_lines = bl_lines[:num_bl]
-    v2_header, v2_lines = parseCSV(v2_means)
-    v2_lines = v2_lines[:num_v2]
-    bl_size_header, bl_size_lines = parseCSV(bl_sizes)
-    bl_size_lines = bl_size_lines[:num_bl]
-    v2_size_header, v2_size_lines = parseCSV(v2_sizes)
-    v2_size_lines = v2_size_lines[:num_v2]
-
-    print "%s baseline scans" % len(bl_lines)
-    print "%s visit 2 scans" % len(v2_lines)
-
-    if agg_type in set(['adni', 'adni_extra']) and v3_means is not None and v3_sizes is not None:
-        num_v3 = int(v3_means.split('_')[-1].replace('.csv',''))
-        v3_header, v3_lines = parseCSV(v3_means)
-        v3_lines = v3_lines[:num_v3]
-        v3_size_header, v3_size_lines = parseCSV(v3_sizes)
-        v3_size_lines = v3_size_lines[:num_v3]
-        print "%s visit 3 scans" % len(v3_lines)
-        total_iter_chain = chain(izip(repeat('BL'), zip(bl_lines, bl_size_lines)), 
-                                 izip(repeat('V2'), zip(v2_lines, v2_size_lines)), 
-                                 izip(repeat('V3'), zip(v3_lines, v3_size_lines)))
-    else:
-        total_iter_chain = chain(izip(repeat('BL'), zip(bl_lines, bl_size_lines)), 
-                                 izip(repeat('V2'), zip(v2_lines, v2_size_lines)))
-    
-    # header list of converted here
-    # headers for the row dictionary are converted in combineMeansAndSize
-    mean_header = convertHeaderCodes(bl_header) # assuming headers are equivalent across files
-    size_header = convertHeaderCodes(bl_size_header)
-
-    # aggregate and write
-    writer = csv.DictWriter(open(output, 'w'), fieldnames)
-    writer.writeheader()
-    count = 0
-    for vis, (mean_line, size_line) in total_iter_chain:
-        rid, all_header, all_values = combineMeansAndSize(agg_type, copy.copy(mean_header), copy.copy(size_header), mean_line, size_line)
-
-        # add on metadata
-        if agg_type in set(['adni', 'adni_extra']):
-            subj_meta_list = pet_dates[rid]
-
-            date = None
-            if vis == 'BL':
-                date = subj_meta_list[0]
-            elif vis == 'V2':
-                date = subj_meta_list[1]
-            elif vis == 'V3':
-                date = subj_meta_list[2]
-            if date is None:
-                raise Exception("Date not found: %s on %s" % (rid, vis))
-
-            subj_reg = registry.get(rid,[])
-            if len(subj_reg) == 0:
-                raise Exception("No possible dates for %s (%s)" % (rid, date))
-            sorted_subj_reg = sorted(subj_reg, key=lambda x: abs(x['EXAMDATE']-date).days)
-            metadata = sorted_subj_reg[0]
-
-            if (date-metadata['EXAMDATE']).days > 120:
-                # don't accept the visit codes
-                print "%s, %s: %s, %s -> %s days" % (rid, vis, metadata, date, (date-metadata['EXAMDATE']).days)
-                metadata['VISCODE'] = ''
-                metadata['VISCODE2'] = ''
-                
-            # overwrite with actual date
-            metadata['EXAMDATE'] = date
-
-        elif agg_type in set(['dod', 'dod_extra']):
-            subj_registry = registry[rid]
-            metadata = None
-            if vis == 'BL':
-                metadata = subj_registry[0]
-            elif vis == 'V2':
-                metadata = subj_registry[1]
-            elif vis == 'V3':
-                metadata = subj_registry[2]
-            if metadata is None:
-                raise Exception("Date not found: %s on %s" % (rid, vis))
-
-        # insert viscode, viscode2, update_stamp
-        data = dict(zip(all_header, all_values))
-        data.update(metadata)
-        for k in data.keys():
-            if k not in fieldnames:
-                data.pop(k, None)
-        data = convertToCSVDataType(data, decimal_places=8)
-        writer.writerow(data)
-
-def additionalCalculations(headers, mean_values, size_values, agg_type):
-    composite = float(mean_values['COMPOSITE'])
-    wholecereb = float(mean_values['WHOLECEREBELLUM'])
-    cerebWM = (float(mean_values['LEFT_UNSEGMENTEDWHITEMATTER']) + float(mean_values['RIGHT_UNSEGMENTEDWHITEMATTER']))/2.0 #- float(mean_values['CEREBELLUMGREYMATTER'])
-    compref_components = [mean_values['ERODED_SUBCORTICALWM'], mean_values['BRAINSTEM'], mean_values['WHOLECEREBELLUM']]
-    composite_ref = np.mean([float(_) for _ in compref_components])
-
-    headers.append('CEREBELLUMWHITEMATTER')
-    mean_values['CEREBELLUMWHITEMATTER'] = cerebWM
-    headers.append('SUMMARYSUVR_WHOLECEREBNORM')
-    mean_values['SUMMARYSUVR_WHOLECEREBNORM'] = composite / wholecereb
-    headers.append('SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF')
-    mean_values['SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF'] = 1 if mean_values['SUMMARYSUVR_WHOLECEREBNORM'] >= 1.11 else 0
-    headers.append('SUMMARYSUVR_COMPOSITE_REFNORM')
-    mean_values['SUMMARYSUVR_COMPOSITE_REFNORM'] = composite / composite_ref
-    headers.append('SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF')
-    mean_values['SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] = 1 if mean_values['SUMMARYSUVR_COMPOSITE_REFNORM'] >= 0.79 else 0
-
-    headers.append('COMPOSITE_REF')
-    mean_values['COMPOSITE_REF'] = composite_ref
-
-    if agg_type in set(['dod', 'dod_extra']):
-        # convert RID -> SCRNO, then actual RID is added in with metadata
-        headers.append('SCRNO')
-        mean_values['SCRNO'] = int(mean_values['RID'])
-    else:
-        pass
-    return (headers, mean_values, size_values)
-
-'''
 
 def DFWeightedMean(df, keys):
     size_keys = ['%s_SIZE' % _ for _ in keys]
@@ -424,6 +101,7 @@ def DFWeightedMean(df, keys):
     return (means, sizes)
 
 def additionalTauCalculations(df, lut_table, keys=None):
+    df = df.copy()
     cerebg = [translateColumn(_, lut_table) for _ in CEREBG]
     braak1 = [translateColumn(_, lut_table) for _ in BRAAK1]
     braak2 = [translateColumn(_, lut_table) for _ in BRAAK2]
@@ -468,6 +146,7 @@ def additionalAV45Calculations(df, lut_table, keys=None):
     Do additional calculations
     If keys given, filter/sort by the list of keys before outputting
     '''
+    df = df.copy()
     cerebg = [translateColumn(_, lut_table) for _ in CEREBG]
     cerebw = [translateColumn(_, lut_table) for _ in CEREBW]
     cerebl = [translateColumn(_, lut_table) for _ in CEREBL]
@@ -551,7 +230,7 @@ def getVisitCode(rid, date, registry, cutoff=60):
             print "CLOSEST VISCODE AT %s > %s (%s, %s)" % (abs(date-metadata['EXAMDATE']).days, cutoff, rid, date)
     return (vc, vc2)
 
-def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, pet_dates, registry, dod=False):
+def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_file, dod=False):
     '''
     if dod:
         - RID -> SCRNO
@@ -593,38 +272,48 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     v3_means_df['EXAMDATE'] = ''
 
     # fill in exam dates + visit codes
+    visits = importScanMeta(meta_file, with_viscode=True)
     try:
         for i in bl_means_df.index:
             rid = bl_means_df.ix[i,'RID']
-            date = pet_dates[rid][0]
-            vc, vc2 = getVisitCode(rid, date, registry, cutoff=90)
+            subj_visits = visits[rid]
+            date = sorted(subj_visits.keys())[0]
+            vc = subj_visits[date]['VISCODE']
             bl_means_df.ix[i,'EXAMDATE'] = date
             bl_means_df.ix[i,'VISCODE'] = vc
-            bl_means_df.ix[i,'VISCODE2'] = vc2
+            if not dod:
+                vc2 = subj_visits[date]['VISCODE2']
+                bl_means_df.ix[i,'VISCODE2'] = vc2
     except Exception as e:
-        print "BL PET DATE Problem: %s, in meta: %s" % (rid,pet_dates[rid])
+        print "BL PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
         raise e
     try:
         for i in v2_means_df.index:
             rid = v2_means_df.ix[i,'RID']
-            date = pet_dates[rid][1]
-            vc, vc2 = getVisitCode(rid, date, registry, cutoff=90)
+            subj_visits = visits[rid]
+            date = sorted(subj_visits.keys())[1]
+            vc = subj_visits[date]['VISCODE']
             v2_means_df.ix[i,'EXAMDATE'] = date
             v2_means_df.ix[i,'VISCODE'] = vc
-            v2_means_df.ix[i,'VISCODE2'] = vc2
+            if not dod:
+                vc2 = subj_visits[date]['VISCODE2']
+                v2_means_df.ix[i,'VISCODE2'] = vc2
     except Exception as e:
-        print "Scan2 PET DATE Problem: %s, in meta: %s" % (rid,pet_dates[rid])
+        print "Scan2 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
         raise e
     try:
         for i in v3_means_df.index:
             rid = v3_means_df.ix[i,'RID']
-            date = pet_dates[rid][2]
-            vc, vc2 = getVisitCode(rid, date, registry, cutoff=90)
+            subj_visits = visits[rid]
+            date = sorted(subj_visits.keys())[2]
+            vc = subj_visits[date]['VISCODE']
             v3_means_df.ix[i,'EXAMDATE'] = date
             v3_means_df.ix[i,'VISCODE'] = vc
-            v3_means_df.ix[i,'VISCODE2'] = vc2
+            if not dod:
+                vc2 = subj_visits[date]['VISCODE2']
+                v3_means_df.ix[i,'VISCODE2'] = vc2
     except Exception as e:
-        print "Scan3 PET DATE Problem: %s, in meta: %s" % (rid,pet_dates[rid])
+        print "Scan3 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
         raise e
 
     # merge sizes
@@ -635,7 +324,7 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     # concat visits
     all_rows = pd.concat((bl_means_df, v2_means_df, v3_means_df), axis=0)
     all_rows.reset_index(inplace=True, drop=True)
-    all_rows.sort(['RID','EXAMDATE'], inplace=True)
+    all_rows.sort_values(by=['RID','EXAMDATE'], inplace=True)
     all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%Y-%m-%d'))
 
     # Order columns
@@ -712,6 +401,15 @@ def ADNINamingConventions(input_df):
     output_df = input_df.rename(columns=rename_dict)
     return output_df
 
+def CreateLONIVersions(allregions_df, fieldnames, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=False):
+    allregions_output = os.path.join(output_folder,'LONI_%s' % allregions_filename)
+    regular_output = os.path.join(output_folder,'LONI_%s' % regular_filename)
+    merged_output = os.path.join(output_folder,'LONI_%s' % merged_filename)
+    full_df = additionalAV45Calculations(allregions_df, lut_table, keys=fieldnames)
+    ADNINamingConventions(allregions_df).to_csv(allregions_output,index=False,float_format='%.4f')
+    ADNINamingConventions(full_df).to_csv(regular_output,index=False,float_format='%.4f')
+    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=dod)
+
 if __name__ == "__main__":
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
@@ -724,15 +422,15 @@ if __name__ == "__main__":
     dod_meta_pet = "../docs/DOD/AV45META.csv"
     dod_meta_tau = "../docs/DOD/TAUMETA.csv"
 
-    # registry imports
-    adni_registry = importRegistry(meta_pet) 
-    dod_registry = importDODRegistry(dod_registry_file)
+    # # registry imports
+    # adni_registry = importRegistry(registry_file) 
+    # dod_registry = importDODRegistry(dod_registry_file)
     
-    # pet date imports
-    adni_av45_pet_dates = importScanMeta(meta_pet)
-    adni_tau_pet_dates = importScanMeta(meta_tau)
-    dod_av45_pet_dates = importScanMeta(dod_meta_pet)
-    dod_tau_pet_dates = importScanMeta(dod_meta_tau)
+    # # pet date imports
+    # adni_av45_pet_dates = importScanMeta(meta_pet, with_viscode=True)
+    # adni_tau_pet_dates = importScanMeta(meta_tau, with_viscode=True)
+    # dod_av45_pet_dates = importScanMeta(dod_meta_pet, with_viscode=True)
+    # dod_tau_pet_dates = importScanMeta(dod_meta_tau, with_viscode=True)
     
     #timestamp = datetime.now().strftime('%m_%d_%y')
     timestamp = '02_19_16'
@@ -748,71 +446,76 @@ if __name__ == "__main__":
     output_folder = '../output/%s' % timestamp
     mkdir_p(output_folder)
 
-    # FOR LONI UPLOAD (ADNI AV45)
-    regular_output = os.path.join(output_folder, 'LONI_UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp))
-    allregions_output = os.path.join(output_folder, 'LONI_UCBERKELEYAV45_%s_allregions_nontp.csv' % (timestamp))
-    merged_output = os.path.join(output_folder, 'LONI_UCBERKELEYAV45_%s_merged_nontp.csv' % (timestamp))
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
-    ADNINamingConventions(df).to_csv(allregions_output,index=False,float_format='%.4f')
-    full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES)
-    ADNINamingConventions(full_df).to_csv(regular_output,index=False,float_format='%.4f')
-    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
-
     # ADNI AV45 NONTP
-    regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp))
-    allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_allregions_nontp.csv' % (timestamp))
-    merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_merged_nontp.csv' % (timestamp))
+    regular_filename = 'UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV45_%s_allregions_nontp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV45_%s_merged_nontp.csv' % (timestamp)
+    regular_output = os.path.join(output_folder, regular_filename)
+    allregions_output = os.path.join(output_folder, allregions_filename)
+    merged_output = os.path.join(output_folder, merged_filename)
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_pet)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
+    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
+    CreateLONIVersions(df, ADNI_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
 
     # ADNI AV45 TP
     regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_regular_tp.csv' % (timestamp))
     allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_allregions_tp.csv' % (timestamp))
     merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_merged_tp.csv' % (timestamp))
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_av45_pet_dates, adni_registry)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_pet)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
+    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
     # ADNI TAU TP
-    regular_output = os.path.join(output_folder, 'UCBERKELEYTAU_%s_regular_tp.csv' % (timestamp))
-    allregions_output = os.path.join(output_folder, 'UCBERKELEYTAU_%s_allregions_tp.csv' % (timestamp))
-    merged_output = os.path.join(output_folder, 'UCBERKELEYTAU_%s_merged_tp.csv' % (timestamp))
+    regular_filename = 'UCBERKELEYAV1451_%s_regular_tp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV1451_%s_allregions_tp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV1451_%s_merged_tp.csv' % (timestamp)
+    regular_output = os.path.join(output_folder, regular_filename)
+    allregions_output = os.path.join(output_folder, allregions_filename)
+    merged_output = os.path.join(output_folder, merged_filename)
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_tau_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, adni_tau_pet_dates, adni_registry)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_tau)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
-    full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES)
+    full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
+    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
+    CreateLONIVersions(df, TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
 
     # DOD AV45 NONTP
-    regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % (timestamp))
-    allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_allregions_nontp.csv' % (timestamp))
-    merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_DOD_%s_merged_nontp.csv' % (timestamp))
+    regular_filename = 'UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV45_DOD_%s_allregions_nontp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV45_DOD_%s_merged_nontp.csv' % (timestamp)
+    regular_output = os.path.join(output_folder, regular_filename)
+    allregions_output = os.path.join(output_folder, allregions_filename)
+    merged_output = os.path.join(output_folder, merged_filename)
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_av45_preprocess_folder, nontp=True)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_av45_pet_dates, dod_registry, dod=True)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_meta_pet, dod=True)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=DOD_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
+    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
+    CreateLONIVersions(df, DOD_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
 
     # DOD TAU TP
-    regular_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_regular_tp.csv' % (timestamp))
-    allregions_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_allregions_tp.csv' % (timestamp))
-    merged_output = os.path.join(output_folder, 'UCBERKELEYTAU_DOD_%s_merged_tp.csv' % (timestamp))
+    regular_filename = 'UCBERKELEYAV1451_DOD_%s_regular_tp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV1451_DOD_%s_allregions_tp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV1451_DOD_%s_merged_tp.csv' % (timestamp)
+    regular_output = os.path.join(output_folder, regular_filename)
+    allregions_output = os.path.join(output_folder, allregions_filename)
+    merged_output = os.path.join(output_folder, merged_filename)
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_tau_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_tau_pet_dates, dod_registry, dod=True)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_meta_tau, dod=True)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
-    full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES)
+    full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
+    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
+    CreateLONIVersions(df, DOD_TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
 
     ###############
     ### OLD CODE ##
