@@ -1679,6 +1679,20 @@ def getMagStrength(mprage_df, imageuid):
         print e
         return np.nan
 
+def importFSVolumes(vol_file):
+    columns = ['Subject', 'Scan', 'Date', 'MRI', 'EstimatedTotalIntraCranialVol', 'Left-Hippocampus', 'Right-Hippocampus']
+    df = pd.read_csv(vol_file)
+    df = df[columns]
+    df.loc[:,'Date'] = df.loc[:,'Date'].apply(parseDate)
+    df.loc[:,'Subject'] = df.loc[:,'Subject'].apply(lambda x: int(x.split('-')[-1]))
+    df['HCV'] = df['Left-Hippocampus'] + df['Right-Hippocampus']
+    df['HC/ICV'] = df['HCV'] / df['EstimatedTotalIntraCranialVol']
+    df.dropna(inplace=True)
+
+    by_subj = {subj: rows.sort_values(by='Date').to_dict(orient='record') for subj, rows in df.groupby('Subject')}
+    return by_subj
+
+
 def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False, as_df=False):
     mprage_df = pd.read_csv(mprage_file)
     mprage_df.set_index('ImageUID',inplace=True)
@@ -1716,65 +1730,16 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
     filtered.loc[:,'FLDSTRENG'] = df.loc[:,'IMAGEUID'].apply(lambda x: getMagStrength(mprage_df, x))
     filtered.loc[:,'version'] = version
     filtered = filtered.dropna(subset=['EXAMDATE'])
-    filtered.set_index('RID',inplace=True)
     print 'FIELD STRENGTH DOMAIN: %s' % (set(filtered['FLDSTRENG']),)
 
     if as_df:
         return filtered
     else:
-        data = defaultdict(list)
-        for rid, row in filtered.iterrows():
-            data[rid].append(dict(row))
+        data = {}
+        for rid, rows in filtered.groupby('RID'):
+            data[rid] = rows.to_dict(orient='records') 
         return data
 
-'''
-def importCrossSectionFreesurfer(crossfree_file, include_failed=False):
-    headers, lines = parseCSV(crossfree_file)
-    data = defaultdict(list)
-    failed = 0
-    for i, line in enumerate(lines):
-        if not include_failed and line['OVERALLQC'] == 'Fail':
-            failed += 1
-            continue
-        elif not include_failed and line['OVERALLQC'] == 'Partial' and line['VENTQC'] == 'Fail':
-            failed += 1
-            continue
-        subj = int(line['RID'])
-        vc = line['VISCODE'].strip().lower()
-        vc2 = line['VISCODE2'].strip().lower()
-        examdate = parseDate(line['EXAMDATE'])
-        inner_data = {k: v for k,v in line.iteritems() if k.startswith('ST') and k not in set(['STATUS'])}
-        data[subj].append({'VISCODE': vc,
-                           'VISCODE2': vc2,
-                           'EXAMDATE': examdate,
-                           'inner_data': inner_data})
-    print "CROSS FREESURFER failed: %s" % failed
-    return dict(data)
-
-
-def importLongitudinalFreesurfer(longfree_file, include_failed = False):
-    headers, lines = parseCSV(longfree_file)
-    data = defaultdict(list)
-    failed = 0
-    for i, line in enumerate(lines):
-        if not include_failed and line['OVERALLQC'] == 'Fail':
-            failed += 1
-            continue
-        elif not include_failed and line['OVERALLQC'] == 'Partial' and line['VENTQC'] == 'Fail':
-            failed += 1
-            continue
-        subj = int(line['RID'])
-        vc = line['VISCODE'].strip().lower()
-        vc2 = line['VISCODE2'].strip().lower()
-        examdate = parseDate(line['EXAMDATE'])
-        inner_data = {k: v for k,v in line.iteritems() if k.startswith('ST') and k not in set(['STATUS'])}
-        data[subj].append({'VISCODE': vc,
-                           'VISCODE2': vc2,
-                           'EXAMDATE': examdate,
-                           'inner_data': inner_data})
-    print "LONG FREESURFER failed: %s" % failed
-    return dict(data)
-'''
 
 def slope(points):
     '''

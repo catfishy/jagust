@@ -1512,6 +1512,68 @@ def syncUWData(old_headers, old_lines, uw_file, registry_file, dump_to=None):
 
     return (new_headers, new_lines)
 
+def syncUCBFreesurferData(old_headers, old_lines, ucb_fs_volumes, dump_to=None):
+    tmpts = 3
+    fs_by_subj = importFSVolumes(ucb_fs_volumes)
+
+    to_add_headers = []
+    to_add_headers += ['UCB_FS_HC/ICV_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['UCB_FS_postAV45_%s' % (i+1) for i in range(tmpts)]
+    to_add_headers += ['UCB_FS_postAV45_count', 'UCB_FS_postAV45_interval', 'UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope', 'UCB_FS_HC/ICV_BL_3months']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    wipeKeys(old_lines, to_add_headers)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        subj_fs = sorted(subj_row, key=lambda x: x['Date'])
+        if len(subj_fs) > tmpts:
+            raise Exception("INCREASE NUMBER OF UCB FS TIMEPOINTS TO > %s" % (len(subj_fs)))
+
+        new_data = {}
+        slope_points = []
+        avg_slope_points = []
+        bl_icv = subj_fs[0]['EstimatedTotalIntraCranialVol']
+        avg_icv = np.mean([float(_['EstimatedTotalIntraCranialVol']) for _ in subj_fs])
+        for i in range(tmpts):
+            if i < len(subj_fs):
+                datapoint = subj_fs[i]
+                examdate = datapoint['Date']
+                hc_icv = datapoint['HCV']/bl_icv
+                hc_icv_avg = datapoint['HCV']/avg_icv
+                timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
+                if timediff <= -(90.0/365.0):
+                    timediff = ''
+                if timediff != '':
+                    slope_points.append((timediff, hc_icv))
+                    avg_slope_points.append((timediff,hc_icv_avg))
+                if timediff != '' and abs(timediff) <= (90.0/365.0) and 'UCB_FS_HC/ICV_BL_3months' not in new_data:
+                    new_data['UCB_FS_HC/ICV_BL_3months'] = hc_icv
+                new_data['UCB_FS_HC/ICV_%s' % (i+1)] = hc_icv
+                new_data['UCB_FS_postAV45_%s' % (i+1)] = timediff
+        
+        # calc slope
+        new_data['UCB_FS_postAV45_count'] = len(slope_points)
+        new_data['UCB_FS_HC/ICV_slope'] = slope(slope_points)
+        new_data['UCB_FS_HC/ICVavg_slope'] = slope(avg_slope_points)
+        if len(slope_points) > 0:
+            new_data['UCB_FS_postAV45_interval'] = max([_[0] for _ in slope_points])
+        else:
+            new_data['UCB_FS_postAV45_interval'] = 0
+        return new_data
+
+    new_lines = []
+    for old_l in old_lines:
+        new_data = updateLine(old_l, fs_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None, decimal_places=5)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
 def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file, dump_to=None):
     tmpts = 12
 
@@ -1539,16 +1601,6 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file,
         '''
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
 
-        # filter by field strength
-        '''
-        if int(subj) < 2000:
-            subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
-        else:
-            subj_row = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
-        if len(subj_row) == 0:
-            print "%s had all potential scans eliminated by field strength: %s" % (subj,mristrengths)
-            return {}
-        '''
         # FILTER: Only use 1.5T scans if 3T scans aren't present
         onefive_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
         three_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
@@ -2034,8 +2086,10 @@ def runPipeline():
     new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING UCSF LONG FreeSurfer\n"
     new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, mprage_file, dump_to=None)
-    print "\nSYCNING UCSF CROSS FreeSurfer"
+    print "\nSYNCING UCSF CROSS FreeSurfer"
     new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, mprage_file, dump_to=None)
+    print "\nSYNCING UCB Freesurfer\n"
+    new_headers, new_lines = syncUCBFreesurferData(new_headers, new_lines, ucb_fs_volumes, dump_to=None)
     print "\nSYNCING ROUSSET BL\n"
     new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
     print "\nSYNCING ROUSSET SCAN2\n"
@@ -2088,8 +2142,8 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
     
     # Output files
-    av45_tp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_tp.csv"
-    av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_merged_nontp.csv"
+    av45_tp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_tp.csv"
+    av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_nontp.csv"
     rousset_matfile_bl = '../output/rousset_output/rousset_output_BL_agg.mat'
     rousset_matfile_scan2 = '../output/rousset_output/rousset_output_Scan2_agg.mat'
     rousset_matfile_scan3 = '../output/rousset_output/rousset_output_Scan3_agg.mat'
@@ -2109,6 +2163,7 @@ if __name__ == '__main__':
     ucsf_cross_files = [('4.3','../mr_docs/UCSF/cross_section/UCSFFSX_11_02_15.csv'),
                         ('5.1','../mr_docs/UCSF/cross_section/UCSFFSX51_11_02_15.csv'),
                         ('5.1','../mr_docs/UCSF/cross_section/UCSFFSX51_ADNI1_3T_11_02_15.csv')]
+    ucb_fs_volumes = '../mr_docs/UCB/adni_av45_fs_volumes_03-07-2016.csv'
 
     # Run pipeline
     runPipeline()
