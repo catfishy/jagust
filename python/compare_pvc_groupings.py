@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-all_df = pd.read_csv('../datasets/pvc_adni_av1451/mostregions_output.csv')
-tau_df = pd.read_csv('../datasets/pvc_adni_av1451/tauregions_output.csv')
+all_df = pd.read_csv('../datasets/pvc_adni_av45/allregions_output.csv')
+tau_df = pd.read_csv('../datasets/pvc_adni_av45/mostregions_output.csv')
 
 BRAAK_KEYS = ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5']
 
