@@ -739,28 +739,6 @@ def convertToCSVDataType(new_data, decimal_places=2):
     return new_data
 
 
-def updateLine(old_line, new_data, extraction_fn, 
-               pid_key='RID', pet_meta=None, decimal_places=4):
-    try:
-        subj = int(old_line[pid_key])
-    except Exception as e:
-        print "No subject column %s found" % pid_key
-        return {}
-
-    subj_row = new_data.get(subj,None)
-    if subj_row is None:
-        # print "No subj row found for %s" % (subj)
-        return {}
-
-    patient_pets = None
-    if pet_meta is not None:
-        patient_pets = sorted(pet_meta.get(subj,[]))
-
-    new_data = extraction_fn(subj, subj_row, old_line, patient_pets) # patient_pets is passed in as context
-    new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
-    return new_data
-
-
 def importRegistry(registry_file, include_all=False):
     df = pd.read_csv(registry_file,low_memory=False)
     df = df.loc[:,['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']]
@@ -1390,12 +1368,12 @@ def importScanMeta(meta_file, with_viscode=False):
             scans[pid] = sorted(list(dedup_rows[date_col]))
     return scans
 
-def importPetMETA(pet_meta_file):
+def importPetMETA(pet_meta_file, tracer='AV45'):
     headers, lines = parseCSV(pet_meta_file)
     pets = defaultdict(list)
     for row in lines:
         # filter
-        if row['Sequence'].strip() != 'AV45 Coreg, Avg, Std Img and Vox Siz, Uniform Resolution':
+        if row['Sequence'].strip() != '%s Coreg, Avg, Std Img and Vox Siz, Uniform Resolution' % tracer:
             continue
         subj = int(row['Subject'].split('_')[-1].strip())
         new_date = parseDate(row['Scan Date'])
@@ -1663,9 +1641,10 @@ def importAV1451(av1451_file):
         subj_col = 'SCRNO'
     else:
         subj_col = 'RID'
-    df.set_index(subj_col,inplace=True)
-    subj_dict = df.T.to_dict()
-    subj_dict = {int(k):v for k,v in subj_dict.iteritems()}
+    df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+    subj_dict = {}
+    for subj, rows in df.groupby(subj_col):
+        subj_dict[int(subj)] = rows.set_index('RID').to_dict(orient='records')
     return subj_dict
 
 

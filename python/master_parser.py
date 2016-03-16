@@ -17,7 +17,7 @@ import itertools
 from utils import *
 
 '''
-def syncTemplate(old_headers, old_lines, input_file, dump_to=None):
+def syncTemplate(old_headers, old_lines, input_file):
     data = importTemplate(input_file)
 
     to_add_headers = []
@@ -34,9 +34,6 @@ def syncTemplate(old_headers, old_lines, input_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 '''
@@ -44,8 +41,140 @@ def syncTemplate(old_headers, old_lines, input_file, dump_to=None):
 
 RID_ADDONS = [78,93,108,458,514,691,724,739,821,853,916,1080,1271]
 
+######### SYNCING INFRASTRUCTURE (MOST FUNCTIONS DEPEND ON THESE) ##################
 
-def syncAV1451RoussetResults(old_headers, old_lines, rousset_csv, dump_to=None):
+def updateLine(old_line, new_data, extraction_fn, 
+               pid_key='RID', pet_meta=None, decimal_places=4):
+    try:
+        subj = int(old_line[pid_key])
+    except Exception as e:
+        print "No subject column %s found" % pid_key
+        return {}
+
+    subj_row = new_data.get(subj,None)
+    if subj_row is None:
+        # print "No subj row found for %s" % (subj)
+        return {}
+
+    patient_pets = None
+    if pet_meta is not None:
+        patient_pets = sorted(pet_meta.get(subj,[]))
+
+    new_data = extraction_fn(subj, subj_row, old_line, patient_pets) # patient_pets is passed in as context
+    new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
+    return new_data
+
+def getClosestToAV45(points, bl_av45, av45_2, av45_3, day_limit=550):
+    used = set()
+    # match up with av45 scans
+    av45_bl_closest = av45_2_closest = av45_3_closest = None
+    if bl_av45 is not None:
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(bl_av45 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(bl_av45-x['EXAMDATE']))
+        if len(cand) > 0:
+            av45_bl_closest = cand[0]
+            used.add(av45_bl_closest['EXAMDATE'])
+    if av45_2 is not None:
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_2 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(av45_2-x['EXAMDATE']))
+        if len(cand) > 0:
+            av45_2_closest = cand[0]
+            used.add(av45_2_closest['EXAMDATE'])
+    if av45_3 is not None:
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_3 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(av45_3-x['EXAMDATE']))
+        if len(cand) > 0:
+            av45_3_closest = cand[0]
+            used.add(av45_3_closest['EXAMDATE'])
+    return av45_bl_closest, av45_2_closest, av45_3_closest
+
+def getAV45Dates(old_l, patient_pets=None):
+    if patient_pets is None:
+        patient_pets = []
+    # Get AV45 Scan dates
+    if old_l.get('AV45_Date','') != '':
+        bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 1:
+        bl_av45 = patient_pets[0]
+    else:
+        bl_av45 = None
+    if old_l.get('AV45_2_Date','') != '':
+        av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 2:
+        av45_2 = patient_pets[1]
+    else:
+        av45_2 = None
+    if old_l.get('AV45_3_Date','') != '':
+        av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 3:
+        av45_3 = patient_pets[2]
+    else:
+        av45_3 = None
+    return (bl_av45, av45_2, av45_3)
+
+def wipeKeys(lines, keys):
+    empty_dict = {k:'' for k in keys}
+    new_lines = []
+    for l in lines:
+        l.update(empty_dict)
+        new_lines.append(l)
+    return l
+
+def addCategories(output_file):
+    colcats_df = pd.read_csv('column_categories.csv')
+    colcats_df.set_index('COLUMN',inplace=True)
+    df = pd.read_csv(output_file, low_memory=False)
+    cats = []
+    for col in df.columns:
+        try:
+            cat = colcats_df.loc[col.strip(),'CATEGORY']
+        except Exception as e:
+            cat = 'Unknown'
+            print col
+        cats.append(cat)
+    df.columns = [cats, df.columns]
+    df.to_csv(output_file, index=False)
+
+def mergeSlopes(output_file):
+    # merge 2/3 point slope columns into one column (replacing 2pt slopes where 3pt slopes are available)
+    # add merged column in after 3 point column
+    df = pd.read_csv(output_file, low_memory=False)
+    twopoint_cols = [i for i in df.columns if '2pts' in i or '2points' in i]
+    threepoint_cols = [i for i in df.columns if '3pts' in i or '3points' in i]
+    for two_col in twopoint_cols:
+        # find three point col
+        new_col = two_col.replace('_2pts','').replace('_2points','')
+        if new_col in df.columns:
+            continue
+        three_col = two_col.replace('2pts','3pts').replace('2points', '3points')
+        if three_col not in threepoint_cols:
+            print "Could not find 3 point slope column for %s" % (three_col,)
+            continue
+        three_col_ind = df.columns.get_loc(three_col)
+        df.insert(three_col_ind+1, new_col, df.loc[:,two_col])
+        df[new_col].update(df[three_col])
+    df.to_csv(output_file, index=False)
+
+def manualAddOns(old_headers, old_lines, rid_list):
+    '''
+    Manually add on subjects who may not have AV45 records
+    '''
+    old_rids = set([int(_['RID']) for _ in old_lines])
+    new_rids = set([int(_) for _ in rid_list])
+    to_add = list(set(new_rids) - set(old_rids))
+
+    print "MANUALLY ADDING: %s" % to_add
+    for rid in to_add:
+        new_subj_row = {k: '' for k in old_headers}
+        new_subj_row['RID'] = str(rid)
+        old_lines.append(new_subj_row)
+
+    return old_headers, old_lines
+
+######### END SYNCING INFRASTRUCTURE ###############################################
+
+
+def syncAV1451RoussetResults(old_headers, old_lines, rousset_csv):
     '''
     Braak12, Braak34, Braak 56 (weighted avg divided by cerebellar gray matter)
     '''
@@ -94,13 +223,10 @@ def syncAV1451RoussetResults(old_headers, old_lines, rousset_csv, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
-def syncAV45RoussetResults(old_headers, old_lines, rousset_csv, dump_to=None):
+def syncAV45RoussetResults(old_headers, old_lines, rousset_csv):
     by_subj, threshold = importRoussetCSV(rousset_csv, translate_threshold=1.11)
     valid_timepoints = ['BL', 'Scan2', 'Scan3']
 
@@ -158,14 +284,11 @@ def syncAV45RoussetResults(old_headers, old_lines, rousset_csv, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
 '''
-def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_to=None):
+def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint):
     assert timepoint in set(['BL', 'Scan2', 'Scan3'])
 
     group_names, sorted_data = importRoussetResults(rousset_matfile)
@@ -288,14 +411,11 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
                     old_l['AV45_PVC_%s_HemiWM_slope_3points' % (vg)] = ''
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 '''
 
-def syncFAQData(old_headers, old_lines, faq_file, registry_file, dump_to=None):
+def syncFAQData(old_headers, old_lines, faq_file, registry_file):
     tmpts = 12
     registry = importRegistry(registry_file)
     faq_by_subj = importFAQ(faq_file, registry)
@@ -353,12 +473,9 @@ def syncFAQData(old_headers, old_lines, faq_file, registry_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncNPIData(old_headers, old_lines, npi_file, dump_to=None):
+def syncNPIData(old_headers, old_lines, npi_file):
     tmpts = 5
     npi_by_subj = importNPI(npi_file)
 
@@ -415,12 +532,9 @@ def syncNPIData(old_headers, old_lines, npi_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncMHISTData(old_headers, old_lines, mhist_file, dump_to=None):
+def syncMHISTData(old_headers, old_lines, mhist_file):
     mhist_by_subj = importMedicalHistory(mhist_file)
 
     to_add_headers = ['SMOKING','DIABETES','HYPERLIPIDEMIA']
@@ -440,12 +554,9 @@ def syncMHISTData(old_headers, old_lines, mhist_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncGDData(old_headers, old_lines, gd_file, registry_file, dump_to=None):
+def syncGDData(old_headers, old_lines, gd_file, registry_file):
     tmpts = 10
     registry = importRegistry(registry_file, include_all=True)
     gd_by_subj = importGD(gd_file, registry=registry)
@@ -516,14 +627,11 @@ def syncGDData(old_headers, old_lines, gd_file, registry_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
 
-def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None):
+def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, registry_file):
     tmpts=11
     registry = importRegistry(registry_file)
     adas_by_subj = importADASCog(adni1_adas_file, adnigo2_adas_file, registry=registry)
@@ -604,13 +712,10 @@ def syncADASCogData(old_headers, old_lines, adni1_adas_file, adnigo2_adas_file, 
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
-def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None):
+def syncMMSEData(old_headers, old_lines, mmse_file, registry_file):
     tmpts = 11
     registry = importRegistry(registry_file, include_all=True)
     mmse_by_subj = importMMSE(mmse_file, registry=registry)
@@ -682,13 +787,10 @@ def syncMMSEData(old_headers, old_lines, mmse_file, registry_file, dump_to=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return new_headers, new_lines
 
-def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump_to=None):
+def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file):
     tmpts = 11
     registry = importRegistry(registry_file, include_all=True)
     avlt_by_subj = importAVLT(neuro_battery_file, registry=registry)
@@ -769,13 +871,10 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
-def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file, dump_to=None):
+def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file):
     demogs = importDemog(demog_file)
     pet_meta = importPetMETA(pet_meta_file)
     to_add_headers = ['AV45_Date','AV45_2_Date','AV45_3_Date',
@@ -819,14 +918,11 @@ def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file, dump_to=Non
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
 
-def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file, dump_to=None):
+def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file):
     registry = importRegistry(registry_file)
     diag_by_subj = importADNIDiagnosis(diag_file, registry=registry)
     arm = importARM(arm_file)
@@ -835,7 +931,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
     pivot_date_closest_diag_key = 'Closest_DX_Feb16'
     pivot_date_closest_date_key = 'DX_Feb16_closestdate'
 
-    to_add_headers = ['MCItoADConv(fromav45)','MCItoADConvDate','MCItoADconv_','AV45_MCItoAD_ConvTime','Baseline_MCItoAD_ConvTime',
+    to_add_headers = ['MCItoADConv','MCItoADConvDate','AV45_MCItoAD_ConvTime','Baseline_MCItoAD_ConvTime',
                       'Diag@AV45_long','Diag@AV45_2_long','Diag@AV45_3_long','FollowupTimetoDX','Baseline','Init_Diagnosis',
                       pivot_date_closest_diag_key,pivot_date_closest_date_key]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after='AV45_1_3_Diff')
@@ -881,45 +977,37 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
                 subj_diags[idx]['diag'] = 'N'
         
         # find very first visit date in registry (excluding scmri)
-        subj_registry = [_ for _ in registry[subj] if _['VISCODE'] != 'scmri' and _['VISCODE2'] != 'scmri']
-        sorted_registry = sorted(subj_registry, key=lambda x: x['EXAMDATE'])
-        baseline_registry = sorted_registry[0]
+        subj_registry = sorted([_ for _ in registry[subj] if _['VISCODE'] != 'scmri' and _['VISCODE2'] != 'scmri'], key=lambda x: x['EXAMDATE'])
+        baseline_registry = subj_registry[0]
 
         # find pivot data point
         sorted_by_pivot = sorted(subj_diags, key=lambda x: abs(x['EXAMDATE'] - pivot_date))
         closest_to_pivot = sorted_by_pivot[0]
 
-        new_data = {'MCItoADConv(fromav45)': '0',
-                    'MCItoADConvDate': '',
-                    'MCItoADconv_': '',
-                    'AV45_MCItoAD_ConvTime': '',
-                    'Baseline_MCItoAD_ConvTime': '',
-                    'Diag@AV45_long': '',
-                    'Diag@AV45_2_long': '',
-                    'Diag@AV45_3_long': '',
+        # get closest to av45
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_diags, bl_av45, av45_2, av45_3)
+
+        # find MCI to AD conversion
+        mci_to_ad = None
+        for diag_row in subj_diags:
+            if diag_row['change'] == 5:
+                mci_to_ad = diag_row
+                break
+
+        new_data = {'MCItoADConv': 1 if mci_to_ad else 0,
+                    'MCItoADConvDate': mci_to_ad['EXAMDATE'] if mci_to_ad else '',
+                    'AV45_MCItoAD_ConvTime': (mci_to_ad['EXAMDATE'] - bl_av45).days / 365.0 if mci_to_ad is not None and bl_av45 is not None else '',
+                    'Baseline_MCItoAD_ConvTime': (mci_to_ad['EXAMDATE'] - baseline_registry['EXAMDATE']).days / 365.0 if mci_to_ad else '',
+                    'Diag@AV45_long': av45_bl_closest['diag'] if av45_bl_closest else '',
+                    'Diag@AV45_2_long': av45_2_closest['diag'] if av45_2_closest else '',
+                    'Diag@AV45_3_long': av45_3_closest['diag'] if av45_3_closest else '',
                     'FollowupTimetoDX': (pivot_date - baseline_registry['EXAMDATE']).days / 365.0,
                     'Baseline': baseline_registry['EXAMDATE'],
                     'Init_Diagnosis': init_diag,
                     pivot_date_closest_diag_key: closest_to_pivot['diag'],
                     pivot_date_closest_date_key: closest_to_pivot['EXAMDATE']}
 
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_diags, bl_av45, av45_2, av45_3)
-        if av45_bl_closest:
-            new_data['Diag@AV45_long'] = av45_bl_closest['diag']
-        if av45_2_closest:
-            new_data['Diag@AV45_2_long'] = av45_2_closest['diag']
-        if av45_3_closest:
-            new_data['Diag@AV45_3_long'] = av45_3_closest['diag'] 
-
-        for i, diag_row in enumerate(subj_diags):
-            # parse change based on init diag
-            if diag_row['change'] == 5:
-                new_data['MCItoADConv(fromav45)'] = '1'
-                new_data['MCItoADConvDate'] = new_data['MCItoADconv_'] = diag_row['EXAMDATE']
-                new_data['Baseline_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - new_data['Baseline']).days / 365.0
-                if bl_av45 is not None:
-                    new_data['AV45_MCItoAD_ConvTime'] = (diag_row['EXAMDATE'] - bl_av45).days / 365.0
         return new_data
 
     new_lines = []
@@ -929,14 +1017,68 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+def syncAV1451Data(old_headers, old_lines, av1451_file, pet_meta_file):
+    av1451_by_subj = importAV1451(av1451_file)
+    pet_meta = importPetMETA(pet_meta_file, tracer='AV1451')
+
+    valid_timepoints = ['BL', 'Scan2', 'Scan3']
+    to_add_headers = ['AV1451_Date','AV1451_2_Date','AV1451_3_Date']
+    to_add_headers += ['AV1451_Braak12_CerebGray_%s' % tp for tp in valid_timepoints]
+    to_add_headers += ['AV1451_Braak34_CerebGray_%s' % tp for tp in valid_timepoints]
+    to_add_headers += ['AV1451_Braak56_CerebGray_%s' % tp for tp in valid_timepoints]
+    after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
+    wipeKeys(old_lines, to_add_headers)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        subj_row = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+        new_data = {}
+        for i, av1451_row in enumerate(subj_row):
+            if i == 0:
+                tp = 'BL'
+                date_key = 'AV1451_Date'
+            elif i == 1:
+                tp = 'Scan2'
+                date_key = 'AV1451_2_Date'
+            elif i == 2:
+                tp = 'Scan3'
+                date_key = 'AV1451_3_Date'
+            else:
+                raise Exception("Raise # of AV1451 timepoints")
+            
+            cerebg_left = (av1451_row['LEFT_CEREBELLUM_CORTEX_SIZE'],av1451_row['LEFT_CEREBELLUM_CORTEX'])
+            cerebg_right = (av1451_row['RIGHT_CEREBELLUM_CORTEX_SIZE'],av1451_row['RIGHT_CEREBELLUM_CORTEX'])
+            braak1 = (av1451_row['BRAAK1_SIZE'],av1451_row['BRAAK1'])
+            braak2 = (av1451_row['BRAAK2_SIZE'],av1451_row['BRAAK2'])
+            braak3 = (av1451_row['BRAAK3_SIZE'],av1451_row['BRAAK3'])
+            braak4 = (av1451_row['BRAAK4_SIZE'],av1451_row['BRAAK4'])
+            braak5 = (av1451_row['BRAAK5_SIZE'],av1451_row['BRAAK5'])
+            braak6 = (av1451_row['BRAAK6_SIZE'],av1451_row['BRAAK6'])
+
+            cerebg = weightedMean([cerebg_left,cerebg_right])
+            braak12 = weightedMean([braak1,braak2]) / cerebg
+            braak34 = weightedMean([braak3,braak4]) / cerebg
+            braak56 = weightedMean([braak5,braak6]) / cerebg
+
+            new_data[date_key] = patient_pets[i]
+            new_data['AV1451_Braak12_CerebGray_%s' % tp] = braak12
+            new_data['AV1451_Braak34_CerebGray_%s' % tp] = braak34
+            new_data['AV1451_Braak56_CerebGray_%s' % tp] = braak56
+        return new_data
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, av1451_by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=pet_meta)
+        old_l.update(new_data)
+        new_lines.append(old_l)
 
     return (new_headers, new_lines)
 
 
-def syncAV45Data(old_headers, old_lines, av45_file, registry_file, suffix=None, dump_to=None):
+def syncAV45Data(old_headers, old_lines, av45_file, registry_file, suffix=None):
     '''
     This function does not follow the pattern of the other sync functions because
     the header/data update is accomplished in a nested function, and it also allows
@@ -976,9 +1118,6 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, suffix=None, 
         new_subj_row.update(new_columns)
         new_lines.append(new_subj_row)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
@@ -1270,7 +1409,7 @@ def parseAV45Entries(old_headers, subj_av45, suffix=None):
 
     return (new_headers, data)
 
-def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
+def syncFDGData(old_headers, old_lines, fdg_file, registry_file):
     fdg_by_subj = importFDG(fdg_file)
 
     to_add_headers = []
@@ -1342,14 +1481,11 @@ def syncFDGData(old_headers, old_lines, fdg_file, registry_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
 
-def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None):
+def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file):
     tbm_by_subj = importTBMSyn(tbm_file)
 
     # add new headers as needed
@@ -1415,13 +1551,10 @@ def syncTBMSynData(old_headers, old_lines, tbm_file, registry_file, dump_to=None
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
-def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
+def syncCSFData(old_headers, old_lines, csf_files, registry_file):
     tmpts = 7
     registry = importRegistry(registry_file)
     csf_by_subj = importCSF(csf_files, registry)
@@ -1579,13 +1712,10 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
-def syncUWData(old_headers, old_lines, uw_file, registry_file, dump_to=None):
+def syncUWData(old_headers, old_lines, uw_file, registry_file):
     tmpts=12
     registry = importRegistry(registry_file)
     uw_by_subj = importUW(uw_file, registry=registry)
@@ -1646,13 +1776,10 @@ def syncUWData(old_headers, old_lines, uw_file, registry_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
-def syncUCBFreesurferData(old_headers, old_lines, ucb_fs_volumes, dump_to=None):
+def syncUCBFreesurferData(old_headers, old_lines, ucb_fs_volumes):
     tmpts = 3
     fs_by_subj = importFSVolumes(ucb_fs_volumes)
 
@@ -1708,13 +1835,10 @@ def syncUCBFreesurferData(old_headers, old_lines, ucb_fs_volumes, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
-def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file, dump_to=None):
+def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file):
     tmpts = 12
 
     fs_by_subj_list = [importUCSFFreesurfer(filename, mprage_file, version=fsversion, include_failed=False) for fsversion,filename in ucsf_files]
@@ -1823,14 +1947,11 @@ def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file,
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
 
-def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file, dump_to=None):
+def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file):
     tmpts = 12
 
     fs_by_subj_list = [importUCSFFreesurfer(filename, mprage_file, version=fsversion, include_failed=False) for fsversion,filename in ucsf_files]
@@ -1946,14 +2067,11 @@ def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file, 
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
 
 
-def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
+def syncWMHData(old_headers, old_lines, wmh_file, registry_file):
     tmpts = 7
     wmh_by_subj = importWMH(wmh_file)
     registry = importRegistry(registry_file)
@@ -2013,36 +2131,8 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
-
-
-def getClosestToAV45(points, bl_av45, av45_2, av45_3, day_limit=550):
-    used = set()
-    # match up with av45 scans
-    av45_bl_closest = av45_2_closest = av45_3_closest = None
-    if bl_av45 is not None:
-        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(bl_av45 - p['EXAMDATE']).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(bl_av45-x['EXAMDATE']))
-        if len(cand) > 0:
-            av45_bl_closest = cand[0]
-            used.add(av45_bl_closest['EXAMDATE'])
-    if av45_2 is not None:
-        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_2 - p['EXAMDATE']).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(av45_2-x['EXAMDATE']))
-        if len(cand) > 0:
-            av45_2_closest = cand[0]
-            used.add(av45_2_closest['EXAMDATE'])
-    if av45_3 is not None:
-        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_3 - p['EXAMDATE']).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(av45_3-x['EXAMDATE']))
-        if len(cand) > 0:
-            av45_3_closest = cand[0]
-            used.add(av45_3_closest['EXAMDATE'])
-    return av45_bl_closest, av45_2_closest, av45_3_closest
 
 
 def eliminateColumns(headers, lines):
@@ -2092,11 +2182,10 @@ def eliminateColumns(headers, lines):
                  'Hippocampal_Volume_normalizd',
                  'HippVol_norm_BIN0.0047',
                  'ICV_pchange(yrs)',
-                 'AV45_TP_SPECIFIC_BL',
-                 'AV45_TP_SPECIFIC_SCAN2',
-                 'AV45_TP_SPECIFIC_SCAN3',
                  'Closest_DX_Jun15',
-                 'DX_Jun15_closestdate']
+                 'DX_Jun15_closestdate',
+                 'MCItoADConv(fromav45)',
+                 'MCItoADconv_']
     to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
     to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
     to_remove += ['TAU.%s' % (i+1) for i in range(7)]
@@ -2108,7 +2197,6 @@ def eliminateColumns(headers, lines):
     to_remove += ['TBMSyn_DATE.%s' % (i+1) for i in range(11)]
     to_remove += [_ for _ in headers if _.startswith('AV45_')]
 
-
     for tm in to_remove:
         while tm in headers:
             headers.remove(tm)
@@ -2119,89 +2207,6 @@ def eliminateColumns(headers, lines):
         new_lines.append(l)
     return headers, new_lines
 
-def getAV45Dates(old_l, patient_pets=None):
-    if patient_pets is None:
-        patient_pets = []
-    # Get AV45 Scan dates
-    if old_l.get('AV45_Date','') != '':
-        bl_av45 = datetime.strptime(old_l['AV45_Date'], '%m/%d/%y')
-    elif len(patient_pets) >= 1:
-        bl_av45 = patient_pets[0]
-    else:
-        bl_av45 = None
-    if old_l.get('AV45_2_Date','') != '':
-        av45_2 = datetime.strptime(old_l['AV45_2_Date'], '%m/%d/%y')
-    elif len(patient_pets) >= 2:
-        av45_2 = patient_pets[1]
-    else:
-        av45_2 = None
-    if old_l.get('AV45_3_Date','') != '':
-        av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
-    elif len(patient_pets) >= 3:
-        av45_3 = patient_pets[2]
-    else:
-        av45_3 = None
-    return (bl_av45, av45_2, av45_3)
-
-def wipeKeys(lines, keys):
-    empty_dict = {k:'' for k in keys}
-    new_lines = []
-    for l in lines:
-        l.update(empty_dict)
-        new_lines.append(l)
-    return l
-
-def addCategories(output_file):
-    colcats_df = pd.read_csv('column_categories.csv')
-    colcats_df.set_index('COLUMN',inplace=True)
-    df = pd.read_csv(output_file, low_memory=False)
-    cats = []
-    for col in df.columns:
-        try:
-            cat = colcats_df.loc[col.strip(),'CATEGORY']
-        except Exception as e:
-            cat = 'Unknown'
-            print col
-        cats.append(cat)
-    df.columns = [cats, df.columns]
-    df.to_csv(output_file, index=False)
-
-def mergeSlopes(output_file):
-    # merge 2/3 point slope columns into one column (replacing 2pt slopes where 3pt slopes are available)
-    # add merged column in after 3 point column
-    df = pd.read_csv(output_file, low_memory=False)
-    twopoint_cols = [i for i in df.columns if '2pts' in i or '2points' in i]
-    threepoint_cols = [i for i in df.columns if '3pts' in i or '3points' in i]
-    for two_col in twopoint_cols:
-        # find three point col
-        new_col = two_col.replace('_2pts','').replace('_2points','')
-        if new_col in df.columns:
-            continue
-        three_col = two_col.replace('2pts','3pts').replace('2points', '3points')
-        if three_col not in threepoint_cols:
-            print "Could not find 3 point slope column for %s" % (three_col,)
-            continue
-        three_col_ind = df.columns.get_loc(three_col)
-        df.insert(three_col_ind+1, new_col, df.loc[:,two_col])
-        df[new_col].update(df[three_col])
-    df.to_csv(output_file, index=False)
-
-def manualAddOns(old_headers, old_lines, rid_list):
-    '''
-    Manually add on subjects who may not have AV45 records
-    '''
-    old_rids = set([int(_['RID']) for _ in old_lines])
-    new_rids = set([int(_) for _ in rid_list])
-    to_add = list(set(new_rids) - set(old_rids))
-
-    print "MANUALLY ADDING: %s" % to_add
-    for rid in to_add:
-        new_subj_row = {k: '' for k in old_headers}
-        new_subj_row['RID'] = str(rid)
-        old_lines.append(new_subj_row)
-
-    return old_headers, old_lines
-
 
 def runPipeline():
     # syncing pipeline
@@ -2209,51 +2214,54 @@ def runPipeline():
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
     print "\nSYNCING AV45 NONTP\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_nontp_file, registry_file, suffix='NONTP', dump_to=None) # adds new patients
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_nontp_file, registry_file, suffix='NONTP') # adds new patients
     print "\nSYNCING AV45 TP\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_tp_file, registry_file, suffix='TP', dump_to=None) # adds new patients
+    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_tp_file, registry_file, suffix='TP') # adds new patients
     print "\nMANUALLY ADDING SUBJECTS"
     new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
     print "\nSYNCING DEMOG\n"
-    new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, pet_meta_file, dump_to=None) # refreshes AV45 dates
+    new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, pet_meta_file) # refreshes AV45 dates
+    print "\nSYNCING AV1451 TP\n"
+    new_headers, new_lines = syncAV1451Data(new_headers, new_lines, av1451_tp_file, pet_meta_file)
     print "\nSYNCING AV45 ROUSSET PVC\n"
-    new_headers, new_lines = syncAV45RoussetResults(new_headers, new_lines, av45_rousset_csv, dump_to=None)
+    new_headers, new_lines = syncAV45RoussetResults(new_headers, new_lines, av45_rousset_csv)
     print "\nSYNCING AV1451 ROUSSET PVC\n"
-    new_headers, new_lines = syncAV1451RoussetResults(new_headers, new_lines, av1451_rousset_csv, dump_to=None)
+    new_headers, new_lines = syncAV1451RoussetResults(new_headers, new_lines, av1451_rousset_csv)
     print "\nSYNCING DIAGNOSES\n"
-    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, dump_to=None)
+    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file)
     print "\nSYNCING FAQ\n"
-    new_headers, new_lines = syncFAQData(new_headers, new_lines, faq_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncFAQData(new_headers, new_lines, faq_file, registry_file)
     print "\nSYNCING NPI\n"
-    new_headers, new_lines = syncNPIData(new_headers, new_lines, npi_file, dump_to=None)
+    new_headers, new_lines = syncNPIData(new_headers, new_lines, npi_file)
     print "\nSYNCING MHIST\n"
-    new_headers, new_lines = syncMHISTData(new_headers, new_lines, mhist_file, dump_to=None)
+    new_headers, new_lines = syncMHISTData(new_headers, new_lines, mhist_file)
     print "\nSYNCING UW NEURO\n"
-    new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file)
     print "\nSYNCING UCSF LONG FreeSurfer\n"
-    new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, mprage_file, dump_to=None)
+    new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, mprage_file)
     print "\nSYNCING UCSF CROSS FreeSurfer"
-    new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, mprage_file, dump_to=None)
+    new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, mprage_file)
     print "\nSYNCING UCB Freesurfer\n"
-    new_headers, new_lines = syncUCBFreesurferData(new_headers, new_lines, ucb_fs_volumes, dump_to=None)
+    new_headers, new_lines = syncUCBFreesurferData(new_headers, new_lines, ucb_fs_volumes)
     print "\nSYNCING FDG\n"
-    new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file)
     print "\nSYNCING TBMSYN\n"
-    new_headers, new_lines = syncTBMSynData(new_headers, new_lines, tbm_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncTBMSynData(new_headers, new_lines, tbm_file, registry_file)
     print "\nSYNCING MMSE\n"
-    new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncMMSEData(new_headers, new_lines, mmse_file, registry_file)
     print "\nSYNCING ADASCOG\n"
-    new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncADASCogData(new_headers, new_lines, adni1_adas_file, adnigo2_adas_file, registry_file)
     print "\nSYNCING AVLT\n"
-    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncAVLTData(new_headers, new_lines, neuro_battery_file, registry_file)
     print "\nSYNCING CSF\n"
-    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file, dump_to=None)
+    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_files, registry_file)
     print "\nSYNCING GD\n"
-    new_headers, new_lines = syncGDData(new_headers, new_lines, gd_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncGDData(new_headers, new_lines, gd_file, registry_file)
     print "\nSYNCING WMH\n"
-    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, registry_file, dump_to=output_file)
-
-    # postprocessing
+    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, registry_file)
+    
+    # Save + Post Process
+    dumpCSV(output_file, new_headers, new_lines)
     mergeSlopes(output_file)
     addCategories(output_file)
 
@@ -2284,8 +2292,9 @@ if __name__ == '__main__':
     # Output files
     av45_tp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_tp.csv"
     av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_nontp.csv"
+    av1451_tp_file = "../output/02_19_16/UCBERKELEYAV1451_02_19_16_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/mostregions_output.csv"
-    av1451_rousset_csv = "../datasets/pvc_adni_av1451/mostregions_output.csv"
+    av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauregions_output.csv"
 
     # Cog files
     mmse_file = "../cog_tests/MMSE.csv"
