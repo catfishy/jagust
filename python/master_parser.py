@@ -45,6 +45,126 @@ def syncTemplate(old_headers, old_lines, input_file, dump_to=None):
 RID_ADDONS = [78,93,108,458,514,691,724,739,821,853,916,1080,1271]
 
 
+def syncAV1451RoussetResults(old_headers, old_lines, rousset_csv, dump_to=None):
+    '''
+    Braak12, Braak34, Braak 56 (weighted avg divided by cerebellar gray matter)
+    '''
+    by_subj, threshold = importRoussetCSV(rousset_csv, translate_threshold=None)
+    valid_timepoints = ['BL', 'Scan2', 'Scan3']
+
+    to_add_headers = []
+    to_add_headers += ['AV1451_PVC_Braak12_CerebGray_%s' % tp for tp in valid_timepoints]
+    to_add_headers += ['AV1451_PVC_Braak34_CerebGray_%s' % tp for tp in valid_timepoints]
+    to_add_headers += ['AV1451_PVC_Braak56_CerebGray_%s' % tp for tp in valid_timepoints]
+    after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
+    wipeKeys(old_lines, to_add_headers)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        new_subj_data = {}
+        
+        # USE ONCE FUNCTION IS WRITTEN & THERE ARE SLOPES TO BE CALCULATED
+        #bl_av1451, av1451_2, av1451_3 = getAV1451Dates(old_l, patient_pets=patient_pets)
+        #examdates = {'BL': bl_av1451, 'Scan2': av1451_2, 'Scan3': av1451_3}
+        
+        for tp in valid_timepoints:
+            if tp not in subj_row:
+                continue
+            tp_data = subj_row[tp]
+            cerebg = tp_data['CEREBGM']['pvcval']
+            braak1 = (tp_data['BRAAK1']['groupsize'],tp_data['BRAAK1']['pvcval'])
+            braak2 = (tp_data['BRAAK2']['groupsize'],tp_data['BRAAK2']['pvcval'])
+            braak3 = (tp_data['BRAAK3']['groupsize'],tp_data['BRAAK3']['pvcval'])
+            braak4 = (tp_data['BRAAK4']['groupsize'],tp_data['BRAAK4']['pvcval'])
+            braak5 = (tp_data['BRAAK5']['groupsize'],tp_data['BRAAK5']['pvcval'])
+            braak6 = (tp_data['BRAAK6']['groupsize'],tp_data['BRAAK6']['pvcval'])
+            braak12 = weightedMean([braak1,braak2]) / cerebg
+            braak34 = weightedMean([braak3,braak4]) / cerebg
+            braak56 = weightedMean([braak5,braak6]) / cerebg
+            new_subj_data['AV1451_PVC_Braak12_CerebGray_%s' % tp] = braak12
+            new_subj_data['AV1451_PVC_Braak34_CerebGray_%s' % tp] = braak34
+            new_subj_data['AV1451_PVC_Braak56_CerebGray_%s' % tp] = braak56
+
+        return new_subj_data
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+def syncAV45RoussetResults(old_headers, old_lines, rousset_csv, dump_to=None):
+    by_subj, threshold = importRoussetCSV(rousset_csv, translate_threshold=1.11)
+    valid_timepoints = ['BL', 'Scan2', 'Scan3']
+
+    to_add_headers = []
+    to_add_headers += ['AV45_PVC_CorticalSummary_WholeCereb_%s' % tp for tp in valid_timepoints]
+    to_add_headers += ['AV45_PVC_CorticalSummary_WholeCereb_%s_%s' % (threshold,tp) for tp in valid_timepoints]
+    to_add_headers += ['AV45_PVC_CorticalSummary_WholeCereb_slope_2points', 'AV45_PVC_CorticalSummary_WholeCereb_slope_3points']
+    to_add_headers += ['AV45_PVC_CorticalSummary_BigRef_%s' % tp for tp in valid_timepoints]
+    to_add_headers += ['AV45_PVC_CorticalSummary_BigRef_slope_2points', 'AV45_PVC_CorticalSummary_BigRef_slope_3points']
+    after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
+    wipeKeys(old_lines, to_add_headers)
+
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        new_subj_data = {}
+        wcereb_slope_points = []
+        bigref_slope_points = []
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        examdates = {'BL': bl_av45, 'Scan2': av45_2, 'Scan3': av45_3}
+        for tp in valid_timepoints:
+            if tp not in subj_row:
+                continue
+            tp_data = subj_row[tp]
+            summary = tp_data['COMPOSITE']['pvcval']
+            wcereb = tp_data['WHOLECEREB']['pvcval']
+            
+            #bigref = tp_data['BIGREF']['pvcval'] # PUT IT BACK WHEN REGION EXISTS
+            bigref = np.nan
+            
+            wcereb_suvr = summary/wcereb
+            bigref_suvr = summary/bigref
+            new_subj_data['AV45_PVC_CorticalSummary_WholeCereb_%s' % tp] = wcereb_suvr
+            new_subj_data['AV45_PVC_CorticalSummary_BigRef_%s' % tp] = bigref_suvr
+            new_subj_data['AV45_PVC_CorticalSummary_WholeCereb_%s_%s' % (threshold,tp)] = 1 if wcereb_suvr >= threshold else 0
+            time_diff = (examdates[tp]-bl_av45).days / 365.0
+            if not isnan(wcereb_suvr):
+                wcereb_slope_points.append((time_diff, wcereb_suvr))
+            if not isnan(bigref_suvr):
+                bigref_slope_points.append((time_diff, bigref_suvr))
+        # calculate slopes
+        if len(wcereb_slope_points) >= 2:
+            new_subj_data['AV45_PVC_CorticalSummary_WholeCereb_slope_2points'] = slope(wcereb_slope_points[:2])
+        if len(wcereb_slope_points) >= 3:
+            new_subj_data['AV45_PVC_CorticalSummary_WholeCereb_slope_3points'] = slope(wcereb_slope_points)
+        if len(bigref_slope_points) >= 2:
+            new_subj_data['AV45_PVC_CorticalSummary_BigRef_slope_2points'] = slope(bigref_slope_points[:2])
+        if len(bigref_slope_points) >= 3:
+            new_subj_data['AV45_PVC_CorticalSummary_BigRef_slope_3points'] = slope(bigref_slope_points)
+        return new_subj_data
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, by_subj, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+'''
 def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_to=None):
     assert timepoint in set(['BL', 'Scan2', 'Scan3'])
 
@@ -173,6 +293,7 @@ def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint, dump_
         dumpCSV(dump_to, new_headers, new_lines)
 
     return (new_headers, new_lines)
+'''
 
 def syncFAQData(old_headers, old_lines, faq_file, registry_file, dump_to=None):
     tmpts = 12
@@ -654,25 +775,70 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file, dump
 
     return (new_headers, new_lines)
 
+def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file, dump_to=None):
+    demogs = importDemog(demog_file)
+    pet_meta = importPetMETA(pet_meta_file)
+    to_add_headers = ['AV45_Date','AV45_2_Date','AV45_3_Date',
+                      'BD MM-YY','Age@AV45','Age@AV45_2','Age@AV45_3',
+                      'AV45_1_2_Diff','AV45_1_3_Diff']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='APOE4_NUM')
+    wipeKeys(old_lines, to_add_headers)
 
-def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None):
+    def extraction_fn(subj, subj_row, old_l, patient_pets):
+        # Get AV45 Scan dates
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=sorted(subj_row))
+        patient_dob = demogs.get(subj,{}).get('dob',None)
+        av45_age = ''
+        av45_age2 = ''
+        av45_age3 = ''
+        if patient_dob is not None:
+            if bl_av45:
+                av45_age = (bl_av45-patient_dob).days / 365.25
+            if av45_2:
+                av45_age2 = (av45_2-patient_dob).days / 365.25
+            if av45_3:
+                av45_age3 = (av45_3-patient_dob).days / 365.25
+        # Date differences between scans
+        av45_1_2_diff = ((av45_2 - bl_av45).days/365.0) if (bl_av45 is not None and av45_2 is not None) else ''
+        av45_1_3_diff = ((av45_3 - bl_av45).days/365.0) if (bl_av45 is not None and av45_3 is not None) else ''
+        new_data = {'AV45_Date': bl_av45,
+                    'AV45_2_Date': av45_2,
+                    'AV45_3_Date': av45_3,
+                    'BD MM-YY': patient_dob,
+                    'Age@AV45': av45_age,
+                    'Age@AV45_2' : av45_age2,
+                    'Age@AV45_3' : av45_age3,
+                    'AV45_1_2_Diff': av45_1_2_diff,
+                    'AV45_1_3_Diff': av45_1_3_diff}
+        return new_data
+
+    new_lines = []
+    for linenum, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, pet_meta, extraction_fn, 
+                              pid_key='RID', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+
+    return (new_headers, new_lines)
+
+
+def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file, dump_to=None):
     registry = importRegistry(registry_file)
     diag_by_subj = importADNIDiagnosis(diag_file, registry=registry)
-    demogs = importDemog(demog_file)
     arm = importARM(arm_file)
-    pet_meta = importPetMETA(pet_meta_file)
 
     pivot_date = datetime(day=1, month=2, year=2016)
     pivot_date_closest_diag_key = 'Closest_DX_Feb16'
     pivot_date_closest_date_key = 'DX_Feb16_closestdate'
 
-    to_add_headers = ['AV45_Date','AV45_2_Date','AV45_3_Date',
-                      'BD MM-YY','Age@AV45','Age@AV45_2','Age@AV45_3',
-                      'AV45_1_2_Diff','AV45_1_3_Diff',
-                      'MCItoADConv(fromav45)','MCItoADConvDate','MCItoADconv_','AV45_MCItoAD_ConvTime','Baseline_MCItoAD_ConvTime',
+    to_add_headers = ['MCItoADConv(fromav45)','MCItoADConvDate','MCItoADconv_','AV45_MCItoAD_ConvTime','Baseline_MCItoAD_ConvTime',
                       'Diag@AV45_long','Diag@AV45_2_long','Diag@AV45_3_long','FollowupTimetoDX','Baseline','Init_Diagnosis',
                       pivot_date_closest_diag_key,pivot_date_closest_date_key]
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='APOE4_NUM')
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='AV45_1_3_Diff')
     wipeKeys(old_lines, to_add_headers)
 
     # find initial diags per subject
@@ -713,25 +879,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
                 subj_diags[idx]['diag'] = mci_type
             elif change in set([7,9]): # reversion to normal
                 subj_diags[idx]['diag'] = 'N'
-
-        # Get AV45 Scan dates
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        patient_dob = demogs.get(subj, {}).get('dob',None)
-        av45_age = ''
-        av45_age2 = ''
-        av45_age3 = ''
-        if patient_dob is not None:
-            if bl_av45:
-                av45_age = (bl_av45-patient_dob).days / 365.25
-            if av45_2:
-                av45_age2 = (av45_2-patient_dob).days / 365.25
-            if av45_3:
-                av45_age3 = (av45_3-patient_dob).days / 365.25
         
-        # Date differences between scans
-        av45_1_2_diff = ((av45_2 - bl_av45).days/365.0) if (bl_av45 is not None and av45_2 is not None) else ''
-        av45_1_3_diff = ((av45_3 - bl_av45).days/365.0) if (bl_av45 is not None and av45_3 is not None) else ''
-
         # find very first visit date in registry (excluding scmri)
         subj_registry = [_ for _ in registry[subj] if _['VISCODE'] != 'scmri' and _['VISCODE2'] != 'scmri']
         sorted_registry = sorted(subj_registry, key=lambda x: x['EXAMDATE'])
@@ -741,16 +889,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
         sorted_by_pivot = sorted(subj_diags, key=lambda x: abs(x['EXAMDATE'] - pivot_date))
         closest_to_pivot = sorted_by_pivot[0]
 
-        new_data = {'AV45_Date': bl_av45,
-                    'AV45_2_Date': av45_2,
-                    'AV45_3_Date': av45_3,
-                    'BD MM-YY': patient_dob,
-                    'Age@AV45': av45_age,
-                    'Age@AV45_2' : av45_age2,
-                    'Age@AV45_3' : av45_age3,
-                    'AV45_1_2_Diff': av45_1_2_diff,
-                    'AV45_1_3_Diff': av45_1_3_diff,
-                    'MCItoADConv(fromav45)': '0',
+        new_data = {'MCItoADConv(fromav45)': '0',
                     'MCItoADConvDate': '',
                     'MCItoADconv_': '',
                     'AV45_MCItoAD_ConvTime': '',
@@ -763,7 +902,8 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
                     'Init_Diagnosis': init_diag,
                     pivot_date_closest_diag_key: closest_to_pivot['diag'],
                     pivot_date_closest_date_key: closest_to_pivot['EXAMDATE']}
-        
+
+        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
         av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_diags, bl_av45, av45_2, av45_3)
         if av45_bl_closest:
             new_data['Diag@AV45_long'] = av45_bl_closest['diag']
@@ -785,7 +925,7 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, demog_fi
     new_lines = []
     for linenum, old_l in enumerate(old_lines):
         new_data = updateLine(old_l, diag_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=pet_meta)
+                              pid_key='RID', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
@@ -1124,9 +1264,9 @@ def parseAV45Entries(old_headers, subj_av45, suffix=None):
             new_key = old_key.replace('AV45_','AV45_%s_' % suffix)
             new_all_av45_keys.append(new_key)
             data[new_key] = data.pop(old_key)
-        new_headers = rearrangeHeaders(old_headers, new_all_av45_keys, after='AV45_1_3_Diff')
+        new_headers = rearrangeHeaders(old_headers, new_all_av45_keys, after=None)
     else:
-        new_headers = rearrangeHeaders(old_headers, all_av45_keys, after='AV45_1_3_Diff')
+        new_headers = rearrangeHeaders(old_headers, all_av45_keys, after=None)
 
     return (new_headers, data)
 
@@ -2068,14 +2208,20 @@ def runPipeline():
     new_headers, new_lines = parseCSV(master_file, use_second_line=True)
     print "\nELIMINATING COLUMNS\n"
     new_headers, new_lines = eliminateColumns(new_headers, new_lines)
-    print "\nMANUALLY ADDING SUBJECTS"
-    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
-    print "\nSYNCING DIAGNOSES\n"
-    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, demog_file, arm_file, pet_meta_file, dump_to=None) # refreshes av45 dates
     print "\nSYNCING AV45 NONTP\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_nontp_file, registry_file, suffix='NONTP', dump_to=None) # adds new patients
     print "\nSYNCING AV45 TP\n"
     new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_tp_file, registry_file, suffix='TP', dump_to=None) # adds new patients
+    print "\nMANUALLY ADDING SUBJECTS"
+    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
+    print "\nSYNCING DEMOG\n"
+    new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, pet_meta_file, dump_to=None) # refreshes AV45 dates
+    print "\nSYNCING AV45 ROUSSET PVC\n"
+    new_headers, new_lines = syncAV45RoussetResults(new_headers, new_lines, av45_rousset_csv, dump_to=None)
+    print "\nSYNCING AV1451 ROUSSET PVC\n"
+    new_headers, new_lines = syncAV1451RoussetResults(new_headers, new_lines, av1451_rousset_csv, dump_to=None)
+    print "\nSYNCING DIAGNOSES\n"
+    new_headers, new_lines = syncDiagnosisData(new_headers, new_lines, diagnosis_file, registry_file, arm_file, dump_to=None)
     print "\nSYNCING FAQ\n"
     new_headers, new_lines = syncFAQData(new_headers, new_lines, faq_file, registry_file, dump_to=None)
     print "\nSYNCING NPI\n"
@@ -2083,19 +2229,13 @@ def runPipeline():
     print "\nSYNCING MHIST\n"
     new_headers, new_lines = syncMHISTData(new_headers, new_lines, mhist_file, dump_to=None)
     print "\nSYNCING UW NEURO\n"
-    new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file, dump_to=None) # refreshes av45 dates
+    new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file, dump_to=None)
     print "\nSYNCING UCSF LONG FreeSurfer\n"
     new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, mprage_file, dump_to=None)
     print "\nSYNCING UCSF CROSS FreeSurfer"
     new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, mprage_file, dump_to=None)
     print "\nSYNCING UCB Freesurfer\n"
     new_headers, new_lines = syncUCBFreesurferData(new_headers, new_lines, ucb_fs_volumes, dump_to=None)
-    print "\nSYNCING ROUSSET BL\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_bl, 'BL', dump_to=None)
-    print "\nSYNCING ROUSSET SCAN2\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan2, 'Scan2', dump_to=None)
-    print "\nSYNCING ROUSSET SCAN3\n"
-    new_headers, new_lines = syncRoussetResults(new_headers, new_lines, rousset_matfile_scan3, 'Scan3', dump_to=None)
     print "\nSYNCING FDG\n"
     new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file, dump_to=None)
     print "\nSYNCING TBMSYN\n"
@@ -2121,7 +2261,7 @@ if __name__ == '__main__':
     now = datetime.now()
 
     # IO files
-    master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_10_27_15.csv"
+    master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_03_07_16.csv"
     output_file = "../FDG_AV45_COGdata_%s.csv" % (now.strftime("%m_%d_%y"))
     
     # ADNI docs
@@ -2144,9 +2284,8 @@ if __name__ == '__main__':
     # Output files
     av45_tp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_tp.csv"
     av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_nontp.csv"
-    rousset_matfile_bl = '../output/rousset_output/rousset_output_BL_agg.mat'
-    rousset_matfile_scan2 = '../output/rousset_output/rousset_output_Scan2_agg.mat'
-    rousset_matfile_scan3 = '../output/rousset_output/rousset_output_Scan3_agg.mat'
+    av45_rousset_csv = "../datasets/pvc_adni_av45/mostregions_output.csv"
+    av1451_rousset_csv = "../datasets/pvc_adni_av1451/mostregions_output.csv"
 
     # Cog files
     mmse_file = "../cog_tests/MMSE.csv"

@@ -2,7 +2,7 @@ from utils import *
 
 lut_file = "../FreeSurferColorLUT.txt"
 groups_included = {}
-
+'''
 frontal=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
 parietal=[1008,1025,1029,1031,2008,2025,2029,2031]
 temporal=[1015,1030,2015,2030]
@@ -248,7 +248,7 @@ printROIGrouping(names, all_groups, lut_file)
 # create input for fake aparc so we can visualize grouping
 out_file = '../output/fake_aparc_inputs/GROUP_AGGLOWTWO.mat'
 sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
-
+'''
 
 clusters = [('ctx-lh-caudalmiddlefrontal', [1003]),
             ('ctx-lh-lateralorbitofrontal', [1012]),
@@ -306,15 +306,15 @@ clusters = [('ctx-lh-caudalmiddlefrontal', [1003]),
             ('left_hippocampus', [17,1006,1009,1016,1033,1034]),
             ('right_hippocampus', [53,2006,2009,2016,2033,2034]),
             ('other', [2000,1000,60,1035,2007,80,2001,18,2035,62,54,1001,58,1007,28,26,30])]
-print "\n\nGROUPING SUMMARY"
-filepath = "grouping_summary.mat"
+print "\n\nGROUPING AGG"
+filepath = "aggregions.mat"
 all_groups = [b for a,b in clusters]
 names = [a for a,b in clusters]
 groups_included[filepath] = [i for g in all_groups for i in g]
 createROIGrouping(names, all_groups, filepath)
 printROIGrouping(names, all_groups, lut_file)
 # create input for fake aparc so we can visualize grouping
-out_file = '../output/fake_aparc_inputs/GROUP_SUMMARY.mat'
+out_file = '../output/fake_aparc_inputs/GROUP_AGG.mat'
 sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
 print groups_included
 
@@ -425,7 +425,7 @@ clusters = [('ctx-lh-caudalmiddlefrontal', [1003]),
             ('Left-Accumbens-area', [26]), 
             ('Left-vessel', [30])]
 print "\n\nGROUPING ALLREGIONS"
-filepath = "grouping_allregions.mat"
+filepath = "allregions.mat"
 all_groups = [b for a,b in clusters]
 names = [a for a,b in clusters]
 groups_included[filepath] = [i for g in all_groups for i in g]
@@ -515,7 +515,7 @@ clusters = [('L_entorhinal',[1006]),
             ('other',[5,14,15,24,28,30,44,60,62,72,77,80,85,1000,1004,2000,2004]),
             ('choroid',[31,63])]
 print "\n\nGROUPING TAU"
-filepath = "grouping_tau.mat"
+filepath = "tauregions.mat"
 all_groups = [b for a,b in clusters]
 names = [a for a,b in clusters]
 groups_included[filepath] = [i for g in all_groups for i in g]
@@ -619,7 +619,7 @@ clusters = [('ctx-lh-caudalmiddlefrontal', [1003]),
             ('Left-Accumbens-area', [26]), 
             ('Other', [30,62,1004,2004,1000,2000,85,80,77,60,28])]
 print "\n\nGROUPING MOSTREGIONS"
-filepath = "grouping_mostregions.mat"
+filepath = "mostregions.mat"
 all_groups = [b for a,b in clusters]
 names = [a for a,b in clusters]
 groups_included[filepath] = [i for g in all_groups for i in g]
