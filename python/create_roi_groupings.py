@@ -318,7 +318,6 @@ out_file = '../output/fake_aparc_inputs/GROUP_AGG.mat'
 sio.savemat(out_file, {'regions': [{'inds': v, 'val': i} for i,v in enumerate(all_groups)]})
 print groups_included
 
-
 clusters = [('ctx-lh-caudalmiddlefrontal', [1003]),
             ('ctx-lh-lateralorbitofrontal', [1012]),
             ('ctx-lh-medialorbitofrontal', [1014]),

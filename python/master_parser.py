@@ -252,9 +252,7 @@ def syncAV45RoussetResults(old_headers, old_lines, rousset_csv):
             tp_data = subj_row[tp]
             summary = tp_data['COMPOSITE']['pvcval']
             wcereb = tp_data['WHOLECEREB']['pvcval']
-            
-            #bigref = tp_data['BIGREF']['pvcval'] # PUT IT BACK WHEN REGION EXISTS
-            bigref = np.nan
+            bigref = tp_data['BIGREF']['pvcval']
             
             wcereb_suvr = summary/wcereb
             bigref_suvr = summary/bigref
@@ -2293,7 +2291,7 @@ if __name__ == '__main__':
     av45_tp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_tp.csv"
     av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_nontp.csv"
     av1451_tp_file = "../output/02_19_16/UCBERKELEYAV1451_02_19_16_regular_tp.csv"
-    av45_rousset_csv = "../datasets/pvc_adni_av45/mostregions_output.csv"
+    av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauregions_output.csv"
 
     # Cog files

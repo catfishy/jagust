@@ -42,7 +42,7 @@ threshold = 1.2813
 
 result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
 lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
-             'SENSORY','BASALGANGLIA','THALAMUS','LIMBIC','CEREBELLUM_GRAY','CEREBELLUM_WHITE','CEREBRAL_WHITE','BRAIN_STEM']
+             'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','CEREBRAL_WHITE','BRAIN_STEM']
 master_keys = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','SMOKING','DIABETES',
                'UW_MEM_BL_3months','UW_MEM_slope',
                'UW_EF_BL_3months','UW_EF_slope',
@@ -80,7 +80,7 @@ lobe_change_keys = ['%s_change' % _ for _ in lobe_keys]
 class DPGMM_SCALE(DPGMM):
 
     def __init__(self, n_components=1, covariance_type='diag', 
-                 gamma_shape=1.0, gamma_inversescale=0.1,
+                 gamma_shape=1.0, gamma_inversescale=0.000001,
                  random_state=None, tol=1e-3, verbose=0, n_iter=10, 
                  min_covar=None, params='wmc', init_params='wmc'):
         self.gamma_shape = float(gamma_shape)
@@ -283,7 +283,7 @@ def group_comparisons(df, groups, keys, adjust=True):
     return data
 
 
-
+'''
 
 def parseRawSplitInput(patterns_split_csv, ref_key, column_order):
     raw_df = pd.read_csv(patterns_split_csv)
@@ -312,7 +312,7 @@ def parseRawSplitInput(patterns_split_csv, ref_key, column_order):
     pattern_scan3_df.drop('timepoint',axis=1,inplace=True)
 
     return (pattern_bl_df, pattern_scan2_df, pattern_scan3_df)
-
+'''
 
 def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', bilateral=True):
     df = pd.read_csv(data_csv)
@@ -323,6 +323,11 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
     size_df.columns = ["%s_SIZE" % (_.upper().replace('-','_'),) for _ in size_df.columns]
     original_keys = value_df.columns
     pivot_df = value_df.merge(size_df,left_index=True,right_index=True)
+
+    # drop subjects with no timepoint-specific baseline
+    valid_subjects = set([subj for subj,tp in pivot_df.index.values if tp == 'BL'])
+    valid_indices = [(subj,tp) for subj,tp in pivot_df.index.values if subj in valid_subjects]
+    pivot_df = pivot_df.loc[valid_indices,:]
 
     # weighted average into bilateral regions
     if bilateral:
@@ -352,7 +357,7 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
     # Get Diagnoses
     if tracer == 'AV45':
         diag_keys = {'BL': 'Diag@AV45_long',
-                     'Scan2': 'Diag@AV45_2_long'.
+                     'Scan2': 'Diag@AV45_2_long',
                      'Scan3': 'Diag@AV45_3_long'}
     else:
         raise Exception("Diag keys for tracer %s not specified" % tracer)
@@ -361,72 +366,69 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
         diags.append({'subject': subj, 'timepoint': tp, 'diag': master_df.loc[subj,diag_keys[tp]]})
     diags_df = pd.DataFrame(diags).set_index(['subject','timepoint'])
 
-    # separate patterns from lobes
+    # separate patterns/uptakes/lobes
     if len(set(pattern_keys) - set(pivot_df.columns)) > 0:
         raise Exception("Some pattern keys are unavailable: %s" % (set(pattern_keys) - set(pivot_df.columns),))
     uptake_df = pivot_df[pattern_keys].copy()
     pattern_df = uptake_df.divide(uptake_df.sum(axis=1),axis=0)
     if len(set(lobe_keys) - set(pivot_df.columns)) > 0:
         raise Exception("Some lobe keys are unavailable: %s" % (set(lobe_keys) - set(pivot_df.columns),))
-    lobe_df = pivot_df[lobe_keys].copy()
+    lobes_df = pivot_df[lobe_keys].copy()
 
-    # split timepoint
+    # split by timepoint
     pattern_bl_df = pattern_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
     pattern_scan2_df = pattern_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
     pattern_scan3_df = pattern_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
     uptake_bl_df = uptake_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
     uptake_scan2_df = uptake_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
     uptake_scan3_df = uptake_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
-    lobe_bl_df = lobe_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
-    lobe_scan2_df = lobe_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
-    lobe_scan3_df = lobe_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+    lobes_bl_df = lobes_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
+    lobes_scan2_df = lobes_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
+    lobes_scan3_df = lobes_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
 
     # Get years between scans
     yrs = {}
     for subj in pattern_scan3_df.index:
         yrs[subj] = master_df.loc[subj,'%s_1_3_Diff' % tracer]
     for subj in list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index)):
-        if subj not in yrs:
-            yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
+        yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
     yr_df = pd.DataFrame(yrs.items(), columns=['subject','yrs']).set_index('subject')
 
-    # join patterns into prior/post
+    # join patterns/lobes/uptakes into prior/post
     pattern_prior_df = pattern_bl_df.copy()
-    no_third = list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index))
-    pattern_post_df = pd.concat((pattern_scan3_df,pattern_scan2_df.loc[no_third,:]), axis=0)
-    
-    # join lobes into prior/post
+    pattern_post_df = pd.concat((pattern_scan3_df,pattern_scan2_df.loc[list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index)),:]), axis=0)
     lobes_prior_df = lobes_bl_df.copy()
-    no_third = list(set(lobes_scan2_df.index) - set(lobes_scan3_df.index))
-    lobes_post_df = pd.concat((lobes_scan3_df,lobes_scan2_df.loc[no_third,:]), axis=0)
-
-    # join uptakes into prior/post
+    lobes_post_df = pd.concat((lobes_scan3_df,lobes_scan2_df.loc[list(set(lobes_scan2_df.index) - set(lobes_scan3_df.index)),:]), axis=0)
     uptake_prior_df = uptake_bl_df.copy()
-    no_third = list(set(uptake_scan2_df.index) - set(uptake_scan3_df.index))
-    uptake_post_df = pd.concat((uptake_scan3_df,uptake_scan2_df.loc[no_third,:]), axis=0)
+    uptake_post_df = pd.concat((uptake_scan3_df,uptake_scan2_df.loc[list(set(uptake_scan2_df.index) - set(uptake_scan3_df.index)),:]), axis=0)
 
     # calculate uptake change and lobe change
-    uptake_change = uptake_post_df.subtract(uptake_prior_df).divide(yr_df, axis='index')
-    lobe_change = lobe_post_df.subtract(lobe_prior_df).divide(yr_df, axis='index')
+    uptake_change = uptake_post_df.subtract(uptake_prior_df.loc[uptake_post_df.index,:]).divide(yr_df.yrs, axis='index')
+    lobes_change = lobes_post_df.subtract(lobes_prior_df.loc[lobes_post_df.index,:]).divide(yr_df.yrs, axis='index')
 
     # create result df
-    # with columns result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
     results = []
-    for subj, rows in pivot_df.groupby(level=0)
-        yr_diff = yr_df.loc[subj,'yrs']
-        timepoints = rows.index.levels[1]
-        summary_prior = rows.loc[(subj,'BL'),'COMPOSITE']
-        diag_prior = diags_df.loc[(subj,'BL'),'diag']
-        summary_change = None
-        if 'Scan3' in timepoints:
+    for subj, rows in pivot_df.groupby(level=0):
+        try:
+            summary_prior = rows.loc[(subj,'BL'),'COMPOSITE']
+            diag_prior = diags_df.loc[(subj,'BL'),'diag']
+        except Exception as e:
+            print "%s has no BL row" % subj
+            continue
+        indices = set(rows.index.values)
+        if (subj,'Scan3') in indices:
+            yr_diff = yr_df.loc[subj,'yrs']
             summary_post = rows.loc[(subj,'Scan3'),'COMPOSITE']
             diag_post = diags_df.loc[(subj,'Scan3'),'diag']
-        elif 'Scan2' in timepoints:
+        elif (subj,'Scan2') in indices:
+            yr_diff = yr_df.loc[subj,'yrs']
             summary_post = rows.loc[(subj,'Scan2'),'COMPOSITE']
             diag_post = diags_df.loc[(subj,'Scan2'),'diag']
         else:
+            yr_diff = None
             summary_post = None
             diag_post = None
+        summary_change = None
         if summary_post is not None:
             summary_change = (summary_post-summary_prior)/yr_diff
         to_add = {'CORTICAL_SUMMARY_post': summary_post,
@@ -449,11 +451,10 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
             'lobes_prior_df': lobes_prior_df,
             'lobes_post_df': lobes_post_df,
             'change_df': uptake_change,
-            'lobe_change_df': lobe_change,
+            'lobes_change_df': lobes_change,
             'result_df': result_df}
     to_return = {}
     for k,v in data.iteritems():
-        v = v.dropna()
         if 'prior' in k:
             v['timepoint'] = 'prior'
             v.set_index('timepoint', append=True, inplace=True)
@@ -463,6 +464,7 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
         to_return[k] = v
     return to_return
 
+'''
 def parseRawInput(patterns_csv, ref_key):
     # read in data
     raw_df = pd.read_csv(patterns_csv)
@@ -530,7 +532,7 @@ def parseRawInput(patterns_csv, ref_key):
     lobes_change_df = raw_df[lobe_change_keys].copy()
 
     return (pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, lobes_change_df, result_df, rchange_df)
-
+'''
 
 def smallGroups(result_df, threshold=50):
     # determine small groups
@@ -1077,7 +1079,7 @@ def trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df):
     patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
 
     # Choose alpha + do model selection
-    best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.01, covar_type='spherical')
+    best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.000000001, covar_type='spherical')
     alpha = best_model.alpha
     with open("%s_model.pkl" % generateFileRoot(alpha, model=True), 'wb') as fid:
         cPickle.dump(best_model, fid)   
@@ -1625,15 +1627,29 @@ def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file)
 
 
 if __name__ == '__main__':
-    # parse input
-    pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, lobes_change_df, result_df, rchange_df = parseRawInput(patterns_csv, ref_key)
+    data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_03_07_16.csv'
+    data = parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', bilateral=True)
+
+    pattern_bl_df = data['pattern_bl_df']
+    pattern_scan2_df = data['pattern_scan2_df']
+    pattern_scan3_df = data['pattern_scan3_df']
+    pattern_prior_df = data['pattern_prior_df']
+    pattern_post_df = data['pattern_post_df']
+    uptake_prior_df = data['uptake_prior_df']
+    uptake_post_df = data['uptake_post_df']
+    lobes_prior_df = data['lobes_prior_df']
+    lobes_post_df = data['lobes_post_df']
+    lobes_change_df = data['lobes_change_df']
+    result_df = data['result_df']
+    rchange_df = data['change_df']
     pattern_col_order = list(pattern_prior_df.columns)
 
-    # parse timepoint split input
-    pattern_bl_df, pattern_scan2_df, pattern_scan3_df = parseRawSplitInput(patterns_split_csv, ref_key, pattern_col_order)
+    # Calculate
+    result_df = trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df)
 
-    # # Calculate
-    # result_df = trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df)
+    sys.exit(1)
+
 
     # get scaler
     scaled_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
