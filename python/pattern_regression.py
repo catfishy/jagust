@@ -34,7 +34,7 @@ patterns_split_csv = '../datasets/pvc_allregions_uptake_bilateral.csv'
 lut_file = "../FreeSurferColorLUT.txt"
 master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_26_16.csv'
 membership_conf = 0.50
-components = 100
+components = 1067
 ref_key = 'WHOLE_CEREBELLUM'
 threshold = 1.2813
 # ref_key = 'COMPOSITE_REF'
@@ -1079,6 +1079,7 @@ def trainDPGMM(components, pattern_prior_df, pattern_post_df, result_df):
     patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
 
     # Choose alpha + do model selection
+    components = len(patterns_only.index)
     best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.000000001, covar_type='spherical')
     alpha = best_model.alpha
     with open("%s_model.pkl" % generateFileRoot(alpha, model=True), 'wb') as fid:
