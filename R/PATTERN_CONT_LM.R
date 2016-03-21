@@ -12,7 +12,15 @@ library(car)
 library(stats)
 
 # Import data
-df_av45 = read.csv('dpgmm_alpha15.37_bilateral_AV45_ALL_longdata_continuous_slope.csv')
+df_av45 = read.csv('dpgmm_alpha14.36_bilateral_AV45_ALL_longdata_continuous_slope.csv')
+
+# Only keep N/SMC/EMCI/LMCI
+#valid_diags = c('N','SMC','EMCI','LMCI')
+#valid_diags = c('EMCI','LMCI')
+#valid_diags = c('N','SMC')
+#df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
+
+# Convert to factors
 df_av45$CORTICAL_SUMMARY_POSITIVE = factor(df_av45$CORTICAL_SUMMARY_POSITIVE)
 df_av45$RID = factor(df_av45$RID)
 df_av45$group = factor(df_av45$group)
@@ -20,29 +28,15 @@ df_av45$diag_prior = factor(df_av45$diag_prior)
 df_av45$APOE4_BIN = factor(df_av45$APOE4_BIN)
 df_av45$Gender = factor(df_av45$Gender)
 
-# Only keep N/SMC/EMCI/LMCI
-valid_diags = c('N','SMC','EMCI','LMCI')
-#valid_diags = c('EMCI','LMCI')
-#valid_diags = c('N','SMC')
-df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
-
-# only keep negatives
-#df_av45 = df_av45[which(df_av45$CORTICAL_SUMMARY_POSITIVE == 0),]
-
-# only keep patterns
-valid_patterns = c(1,4,22,25,9,0,34,2,19)
-#df_av45 = df_av45[which(df_av45$group %in% valid_patterns),]
+# patterns used
+valid_patterns = c(16,4,3,6,19,0,8,7)
 
 # pattern weight models
 fm_av45_onlycs = lm(AV45_slope ~ CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2), family=gaussian, df_av45)
 fm_av45_nopattern = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
-fm_av45 = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN +  I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + X1*APOE4_BIN + X4*APOE4_BIN + X22*APOE4_BIN + X25*APOE4_BIN + X9*APOE4_BIN + X0*APOE4_BIN + X34*APOE4_BIN + X2*APOE4_BIN + X19*APOE4_BIN + APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
-fm_av45_onlypatterns = lm(AV45_slope ~ diag_prior + X1*APOE4_BIN + X4*APOE4_BIN + X22*APOE4_BIN + X25*APOE4_BIN + X9*APOE4_BIN + X0*APOE4_BIN + X34*APOE4_BIN + X2*APOE4_BIN + X19*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
 
-# # pattern weight models with all patterns
-# fm_av45_nopattern = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
-# fm_av45 = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + X5*APOE4_BIN + X3*APOE4_BIN + X6*APOE4_BIN + X29*APOE4_BIN + X56*APOE4_BIN + X1*APOE4_BIN + X4*APOE4_BIN + X22*APOE4_BIN + X25*APOE4_BIN + X9*APOE4_BIN + X0*APOE4_BIN + X34*APOE4_BIN + X2*APOE4_BIN + X19*APOE4_BIN + APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
-# fm_av45_onlypatterns = lm(AV45_slope ~ diag_prior + X5*APOE4_BIN + X3*APOE4_BIN + X6*APOE4_BIN + X29*APOE4_BIN + X56*APOE4_BIN + X1*APOE4_BIN + X4*APOE4_BIN + X22*APOE4_BIN + X25*APOE4_BIN + X9*APOE4_BIN + X0*APOE4_BIN + X34*APOE4_BIN + X2*APOE4_BIN + X19*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
+fm_av45 = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN +  I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + X16*APOE4_BIN + X4*APOE4_BIN + X3*APOE4_BIN + X6*APOE4_BIN + X19*APOE4_BIN + X0*APOE4_BIN + X8*APOE4_BIN + X7*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
+fm_av45_onlypatterns = lm(AV45_slope ~ diag_prior + X16*APOE4_BIN + X4*APOE4_BIN + X3*APOE4_BIN + X6*APOE4_BIN + X19*APOE4_BIN + X0*APOE4_BIN + X8*APOE4_BIN + X7*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
 
 # summaries
 fm_av45_nopattern_summary = summary(fm_av45_nopattern)

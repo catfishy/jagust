@@ -2,10 +2,10 @@ library(ggplot2)
 library(reshape2)
 
 lobe_keys = c('FRONTAL','PARIETAL','CINGULATE','SENSORY','TEMPORAL','OCCIPITAL',
-              'MEDIALOCCIPITAL','BASALGANGLIA','LIMBIC','THALAMUS','CEREBELLUM_GRAY',
+              'MEDIALOCCIPITAL','BASALGANGLIA','LIMBIC','CEREBELLUM_GRAY',
               'BRAIN_STEM','CEREBELLUM_WHITE','CEREBRAL_WHITE')
 
-patterns = read.csv('dpgmm_alpha15.37_bilateral_pattern_means.csv')
+patterns = read.csv('dpgmm_alpha14.36_bilateral_pattern_means.csv')
 patterns$pattern = factor(patterns$pattern)
 patterns$pattern = with(patterns, paste0(pattern,' (',round(mean_suvr,2),')'))
 
