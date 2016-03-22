@@ -10,37 +10,44 @@ library(sjPlot)
 library(splines)
 library(car)
 library(stats)
+library(gdata)
 
 # Import data
 df_av45 = read.csv('dpgmm_alpha14.36_bilateral_AV45_ALL_longdata_continuous_slope.csv')
 
+# demean pattern variables + binary variables
+bin_variables = c('Gender','CORTICAL_SUMMARY_POSITIVE','APOE2_BIN','APOE4_BIN')
+for (i in names(df_av45)){
+  if (startsWith(i,'X') | i %in% bin_variables){
+    df_av45[,eval(i)] = (df_av45[,eval(i)] * 2) - 1.0
+  }
+}
+
 # Convert to factors
-df_av45$CORTICAL_SUMMARY_POSITIVE = factor(df_av45$CORTICAL_SUMMARY_POSITIVE)
-df_av45$RID = factor(df_av45$RID)
-df_av45$group = factor(df_av45$group)
-df_av45$diag_prior = factor(df_av45$diag_prior)
-df_av45$APOE4_BIN = factor(df_av45$APOE4_BIN)
-df_av45$Gender = factor(df_av45$Gender)
+to_factor = c('CORTICAL_SUMMARY_POSITIVE','RID','group','diag_prior','APOE4_BIN','APOE2_BIN','Gender')
+for (i in to_factor){
+  df_av45[,eval(i)] = factor(df_av45[,eval(i)])
+}
 
 # add indicator variables
 df_av45$AD = factor(as.numeric(df_av45$diag_prior == 'AD'))
-
-# patterns used
-valid_patterns = c(16,4,3,6,19,0,8,7)
-
-# pattern weight models
-fm_av45_cs = glm(AD ~ CORTICAL_SUMMARY_prior, family=binomial, df_av45)
-fm_av45_pattern = glm(AD ~ X0 + X3 + X4 + X6 + X7 + X8 + X16 + X19, family=binomial, df_av45)
+df_av45$EMCI = factor(as.numeric(df_av45$diag_prior == 'EMCI'))
+df_av45$LMCI = factor(as.numeric(df_av45$diag_prior == 'LMCI'))
+df_av45$N = factor(as.numeric(df_av45$diag_prior %in% c('N','SMC')))
 
 
-# summaries
-fm_av45_cs_summary = summary(fm_av45_cs)
-fm_av45_pattern_summary = summary(fm_av45_pattern)
+fm_av45_cs = glm(AD ~ CORTICAL_SUMMARY_prior, family='binomial', data=df_av45)
+fm_av45_patterns = glm(AD ~ 
+                            X23 +
+                            X18 +
+                            X42 +
+                            X12 +
+                            X16 +
+                            X6 +
+                            X19 +
+                            X7 +
+                            X1 +
+                            X0, family='binomial', data=df_av45)
 
-fm_av45_cs_summary$aic
-fm_av45_pattern_summary$aic
-
-# anova
-fm_av45_nopattern_anova = Anova(fm_av45_nopattern,type='III')
-fm_av45_anova = Anova(fm_av45,type='III')
-fm_av45_onlypatterns_anova = Anova(fm_av45_onlypatterns,type='III')
+cs_summary = summary(fm_av45_cs)
+patterns_summary = summary(fm_av45_patterns)

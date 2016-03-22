@@ -6,20 +6,25 @@ import itertools
 import multiprocessing as mp
 import cPickle
 
-from scipy.stats import f_oneway, norm, chi2_contingency, linregress
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable, get_cmap
+
+from scipy.stats import f_oneway, norm, chi2_contingency, linregress
 from pandas.stats.api import ols
 import seaborn as sns
+import networkx as nx
+import numpy.testing as npt
+from statsmodels.sandbox.stats.multicomp import multipletests
+
 from sklearn.mixture import GMM, VBGMM, DPGMM
-from sklearn.mixture.dpgmm import digamma
+from sklearn.mixture.dpgmm import digamma, _bound_state_log_lik, log_normalize
+from sklearn.utils.validation import check_is_fitted
+from sklearn.utils import check_array
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.cross_validation import LeaveOneOut
 from sklearn.preprocessing import StandardScaler
-from statsmodels.sandbox.stats.multicomp import multipletests
-import networkx as nx
-import numpy.testing as npt
+
 
 from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations, regCoeffZTest, slope
 
@@ -112,6 +117,27 @@ class DPGMM_SCALE(DPGMM):
             self.gamma_[i, 2] = self.gamma_[i + 1, 2] + sz[i]
         self.gamma_.T[2] += self.alpha
 
+    def predict_proba(self, X):
+        check_is_fitted(self, 'gamma_')
+
+        X = check_array(X)
+        if X.ndim == 1:
+            X = X[:, np.newaxis]
+
+        if self.covariance_type not in ['full', 'tied', 'diag', 'spherical']:
+            raise NotImplementedError("This ctype is not implemented: %s"
+                                      % self.covariance_type)
+        p = _bound_state_log_lik(X, self._initial_bound + self.bound_prec_,
+                                 self.precs_, self.means_,
+                                 self.covariance_type)
+        z = log_normalize(p, axis=-1)
+        return z
+
+    def predict(self, X):
+        responsibilities = self.predict_proba(X)
+        return responsibilities.argmax(axis=1)
+
+
 def sample(data):
     return data[np.random.randint(0,len(data),(1,len(data)))[0]]
 
@@ -170,6 +196,7 @@ def chooseBestModel(patterns, components, gamma_shape=1.0, gamma_inversescale=0.
         g = DPGMM_SCALE(n_components=components,
                         gamma_shape=gamma_shape,
                         gamma_inversescale=gamma_inversescale,
+                        covariance_type=covar_type,
                         tol=1e-7,
                         n_iter=1000,
                         params='wmc',
@@ -190,54 +217,6 @@ def chooseBestModel(patterns, components, gamma_shape=1.0, gamma_inversescale=0.
     best_score = max(models_scores.keys())
     best_model = models_scores[best_score]
     return best_model
-
-'''
-def gmm_sweep_alpha(components, data, covar_type='full', alphas=None, graph=False):
-    # model selection for alpha by looking at lower bound on marginal likelihood, or log prob of X under model
-    if alphas is None:
-        alphas = np.linspace(0.01,5,100)
-    alpha_to_clusters = {}
-    points = []
-    for a in alphas:
-        num_clusters = []
-        var_clusters = []
-        scores = []
-        print a
-        for i in range(10):
-            g = DPGMM(n_components=components, 
-                      covariance_type=covar_type,
-                      alpha=a,
-                      tol=1e-3,
-                      n_iter=700,
-                      params='wmc', 
-                      init_params='wmc',
-                      verbose=False)
-            g.fit(data)
-            print g.converged_
-            y_ = g.predict(data)
-            counter = dict(Counter(y_))
-            score = np.mean(g.score(data))
-            bic = g.bic(data)
-            scores.append(bic)
-            num_clusters.append(len(counter.keys()))
-            var_clusters.append(np.var(counter.values()))
-        print np.mean(scores)
-        points.append((a,np.mean(num_clusters),np.mean(var_clusters)))
-        print points
-        alpha_to_clusters[a] = np.mean(scores)
-    if graph:
-        plt.figure(1)
-        alphas = [_[0] for _ in points]
-        counts = [_[1] for _ in points]
-        stds = [np.sqrt(_[2]) for _ in points]
-        scores = [alpha_to_clusters[_] for _ in alphas]
-        plt.plot(alphas, counts, label='counts')
-        plt.plot(alphas, stds, label='stds')
-        plt.plot(alphas, scores, label='scores')
-        plt.legend()
-        plt.show()
-    return alpha_to_clusters
-'''
 
 def compareTwoGroups(group1, group2, df, keys, adjust=True):
     group1_members = df[df['membership']==group1]
@@ -282,37 +261,6 @@ def group_comparisons(df, groups, keys, adjust=True):
         data[(group1,group2)] = compareTwoGroups(group1, group2, df, keys, adjust=adjust)
     return data
 
-
-'''
-
-def parseRawSplitInput(patterns_split_csv, ref_key, column_order):
-    raw_df = pd.read_csv(patterns_split_csv)
-    raw_df.set_index('rid',inplace=True,drop=True)
-    raw_df.sort_index(inplace=True)
-
-    # convert to suvr units
-    ref = raw_df.loc[:,ref_key]
-
-    # convert to suvr, and then patterns
-    pattern_df = raw_df[column_order].copy()
-    pattern_df = pattern_df.divide(ref, axis='index')
-    pattern_df = pattern_df.divide(pattern_df.sum(axis=1),axis=0)
-    pattern_df['timepoint'] = raw_df['timepoint']
-    pattern_df.set_index(raw_df.index, inplace=True)
-    pattern_df.dropna(inplace=True)
-
-    # split by timepoint
-    pattern_bl_df = pattern_df[pattern_df.timepoint=='BL']
-    pattern_scan2_df = pattern_df[pattern_df.timepoint=='SCAN2']
-    pattern_scan3_df = pattern_df[pattern_df.timepoint=='SCAN3']
-
-    # drop timepoint 
-    pattern_bl_df.drop('timepoint',axis=1,inplace=True)
-    pattern_scan2_df.drop('timepoint',axis=1,inplace=True)
-    pattern_scan3_df.drop('timepoint',axis=1,inplace=True)
-
-    return (pattern_bl_df, pattern_scan2_df, pattern_scan3_df)
-'''
 
 def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', bilateral=True):
     df = pd.read_csv(data_csv)
@@ -464,75 +412,6 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
         to_return[k] = v
     return to_return
 
-'''
-def parseRawInput(patterns_csv, ref_key):
-    # read in data
-    raw_df = pd.read_csv(patterns_csv)
-    raw_df.set_index('rid',inplace=True,drop=True)
-    raw_df.sort_index(inplace=True)
-
-    # convert to SUVR units and calculate change
-    priors = [_ for _ in raw_df.columns if '_prior' in _ and 'diag' not in _]
-    posts = [_ for _ in raw_df.columns if '_post' in _ and 'diag' not in _]
-    prior_ref = raw_df.loc[:,'%s_prior' % ref_key]
-    post_ref = raw_df.loc[:,'%s_post' % ref_key]
-
-    # convert to SUVR
-    raw_df[priors] = raw_df[priors].divide(prior_ref,axis='index')
-    raw_df[posts] = raw_df[posts].divide(post_ref,axis='index')
-
-    # annualize change
-    yrs = raw_df['yrs']
-    for prior_key in priors:
-        post_key = prior_key.replace('_prior','_post')
-        change_key = prior_key.replace('_prior','_change')
-        raw_df[change_key] = (raw_df[post_key]-raw_df[prior_key]).divide(yrs,axis='index')
-
-    # split pattern keys from aggregate (lobe) keys
-    prior_keys_pattern = [_ for _ in priors if _.replace('_prior','') in pattern_keys]
-    prior_keys_lobes = [_ for _ in priors if _.replace('_prior','') in lobe_keys]
-    post_keys_pattern = [_ for _ in posts if _.replace('_post','') in pattern_keys]
-    post_keys_lobes = [_ for _ in posts if _.replace('_post','') in lobe_keys]
-
-    # convert to patterns
-    pattern_prior_df = raw_df[prior_keys_pattern].copy()
-    pattern_prior_df.columns = [_.replace('_prior','') for _ in pattern_prior_df.columns]
-    pattern_prior_df = pattern_prior_df.divide(pattern_prior_df.sum(axis=1),axis=0)
-    pattern_prior_df['timepoint'] = 'prior'
-    pattern_prior_df.set_index(raw_df.index, inplace=True)
-    pattern_prior_df.set_index('timepoint', append=True, inplace=True)
-    pattern_prior_df.dropna(inplace=True)
-
-    pattern_post_df = raw_df[post_keys_pattern].copy()
-    pattern_post_df.columns = [_.replace('_post','') for _ in pattern_post_df.columns]
-    pattern_post_df = pattern_post_df.divide(pattern_post_df.sum(axis=1),axis=0)
-    pattern_post_df['timepoint'] = 'post'
-    pattern_post_df.set_index(raw_df.index, inplace=True)
-    pattern_post_df.set_index('timepoint', append=True, inplace=True)
-    pattern_post_df.dropna(inplace=True)
-
-    uptake_prior_df = raw_df[prior_keys_pattern].copy()
-    uptake_prior_df.columns = [_.replace('_prior','') for _ in uptake_prior_df.columns]
-    uptake_prior_df.dropna(inplace=True)
-
-    uptake_post_df = raw_df[post_keys_pattern].copy()
-    uptake_post_df.columns = [_.replace('_post','') for _ in uptake_post_df.columns]
-    uptake_post_df.dropna(inplace=True)
-
-    lobes_prior_df = raw_df[prior_keys_lobes].copy()
-    lobes_prior_df.columns = [_.replace('_prior','') for _ in lobes_prior_df.columns]
-    lobes_prior_df.dropna(inplace=True)
-
-    lobes_post_df = raw_df[post_keys_lobes].copy()
-    lobes_post_df.columns = [_.replace('_post','') for _ in lobes_post_df.columns]
-    lobes_post_df.dropna(inplace=True)
-
-    result_df = raw_df[result_keys].copy()
-    rchange_df = raw_df[change_keys].copy()
-    lobes_change_df = raw_df[lobe_change_keys].copy()
-
-    return (pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, lobes_change_df, result_df, rchange_df)
-'''
 
 def smallGroups(result_df, threshold=50):
     # determine small groups

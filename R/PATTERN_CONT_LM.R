@@ -10,42 +10,121 @@ library(sjPlot)
 library(splines)
 library(car)
 library(stats)
+library(gdata)
+
+isPatternColumn = function(i){
+  if (startsWith(i,'X')) return(TRUE) else return(FALSE)
+}
+isPatternColumn = Vectorize(isPatternColumn)
 
 # Import data
 df_av45 = read.csv('dpgmm_alpha14.36_bilateral_AV45_ALL_longdata_continuous_slope.csv')
+pattern_columns = Filter(isPatternColumn,names(df_av45))
+df_patterns = df_av45[pattern_columns]
+
+# demean pattern variables + binary variables
+bin_variables = c('Gender','CORTICAL_SUMMARY_POSITIVE','APOE2_BIN','APOE4_BIN')
+pattern_columns = c()
+for (i in names(df_av45)){
+  if (startsWith(i,'X') | i %in% bin_variables){
+    df_av45[,eval(i)] = (df_av45[,eval(i)] * 2) - 1.0
+  }
+}
+
+# Run PCA
+df_patterns.pca = prcomp(df_patterns, center=TRUE, scale.s=TRUE)
+df_patterns.transformed = predict(df_patterns.pca)
+df_av45 = as.data.frame(cbind(as.matrix(df_av45),df_patterns.transformed))
+
+
+# Convert to non factors to floats
+to_factor = c('CORTICAL_SUMMARY_POSITIVE','RID','group','diag_prior','APOE4_BIN','APOE2_BIN','Gender')
+for (i in names(df_av45)){
+  if (!(i %in% to_factor)){
+    df_av45[,eval(i)] = as.numeric(as.character(df_av45[,eval(i)]))
+  }
+}
 
 # Only keep N/SMC/EMCI/LMCI
-#valid_diags = c('N','SMC','EMCI','LMCI')
+valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('EMCI','LMCI')
 #valid_diags = c('N','SMC')
-#df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
+df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 
-# Convert to factors
-df_av45$CORTICAL_SUMMARY_POSITIVE = factor(df_av45$CORTICAL_SUMMARY_POSITIVE)
-df_av45$RID = factor(df_av45$RID)
-df_av45$group = factor(df_av45$group)
-df_av45$diag_prior = factor(df_av45$diag_prior)
-df_av45$APOE4_BIN = factor(df_av45$APOE4_BIN)
-df_av45$Gender = factor(df_av45$Gender)
-
-# patterns used
-valid_patterns = c(16,4,3,6,19,0,8,7)
+# Convert negative slopes to 0
+#df_av45$AV45_slope[df_av45$AV45_slope<0] = 0
 
 # pattern weight models
-fm_av45_onlycs = lm(AV45_slope ~ CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2), family=gaussian, df_av45)
-fm_av45_nopattern = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
-
-fm_av45 = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN +  I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + X16*APOE4_BIN + X4*APOE4_BIN + X3*APOE4_BIN + X6*APOE4_BIN + X19*APOE4_BIN + X0*APOE4_BIN + X8*APOE4_BIN + X7*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
-fm_av45_onlypatterns = lm(AV45_slope ~ diag_prior + X16*APOE4_BIN + X4*APOE4_BIN + X3*APOE4_BIN + X6*APOE4_BIN + X19*APOE4_BIN + X0*APOE4_BIN + X8*APOE4_BIN + X7*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., family=gaussian, df_av45)
-
+fm_av45_onlycs = lm(AV45_slope ~ CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2), df_av45)
+fm_av45_nopattern = lm(AV45_slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs., df_av45)
+fm_av45 = lm(AV45_slope ~ diag_prior + 
+                CORTICAL_SUMMARY_prior*APOE4_BIN +  
+               I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
+               X23*APOE4_BIN +
+               X18*APOE4_BIN +
+               X42*APOE4_BIN +
+               X12*APOE4_BIN +
+               X16*APOE4_BIN +
+               X6*APOE4_BIN +
+               X19*APOE4_BIN +
+               X8*APOE4_BIN +
+               X7*APOE4_BIN +
+               X1*APOE4_BIN +
+               X0*APOE4_BIN +
+               Age.AV45 + Gender + Edu..Yrs., df_av45)
+fm_av45_onlypatterns = lm(AV45_slope ~ diag_prior + 
+                            X23*APOE4_BIN +
+                            X18*APOE4_BIN +
+                            X42*APOE4_BIN +
+                            X12*APOE4_BIN +
+                            X16*APOE4_BIN +
+                            X6*APOE4_BIN +
+                            X19*APOE4_BIN +
+                            X8*APOE4_BIN +
+                            X7*APOE4_BIN +
+                            X1*APOE4_BIN +
+                            X0*APOE4_BIN +
+                            Age.AV45 + Gender + Edu..Yrs., df_av45)
+fm_av45_onlypca = lm(AV45_slope ~ diag_prior + 
+                            PC1*APOE4_BIN +
+                            PC2*APOE4_BIN +
+                            PC3*APOE4_BIN +
+                            PC4*APOE4_BIN +
+                            PC5*APOE4_BIN +
+                            PC6*APOE4_BIN +
+                            PC7*APOE4_BIN +
+                            PC8*APOE4_BIN +
+                            PC9*APOE4_BIN +
+                            PC10*APOE4_BIN +
+                            PC11*APOE4_BIN +
+                            Age.AV45 + Gender + Edu..Yrs., df_av45)
+fm_av45_pca = lm(AV45_slope ~ diag_prior + 
+                   CORTICAL_SUMMARY_prior*APOE4_BIN +  
+                   I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
+                   PC1*APOE4_BIN +
+                   PC2*APOE4_BIN +
+                   PC3*APOE4_BIN +
+                   PC4*APOE4_BIN +
+                   PC5*APOE4_BIN +
+                   PC6*APOE4_BIN +
+                   PC7*APOE4_BIN +
+                   PC8*APOE4_BIN +
+                   PC9*APOE4_BIN +
+                   PC10*APOE4_BIN +
+                   PC11*APOE4_BIN +
+                   Age.AV45 + Gender + Edu..Yrs., df_av45)
 # summaries
 fm_av45_nopattern_summary = summary(fm_av45_nopattern)
 fm_av45_summary = summary(fm_av45)
 fm_av45_onlypatterns_summary = summary(fm_av45_onlypatterns)
+fm_av45_onlypca_summary = summary(fm_av45_onlypca)
+fm_av45_pca_summary = summary(fm_av45_pca)
 
 fm_av45_nopattern_summary$r.squared
 fm_av45_summary$r.squared
 fm_av45_onlypatterns_summary$r.squared
+fm_av45_onlypca_summary$r.squared
+fm_av45_pca_summary$r.squared
 
 fm_av45_nopattern_summary$aic
 fm_av45_summary$aic
@@ -55,9 +134,6 @@ fm_av45_onlypatterns_summary$aic
 fm_av45_nopattern_anova = Anova(fm_av45_nopattern,type='III')
 fm_av45_anova = Anova(fm_av45,type='III')
 fm_av45_onlypatterns_anova = Anova(fm_av45_onlypatterns,type='III')
-# fm_av45_nopattern_anova = Anova(fm_av45_nopattern,type='III')
-# fm_av45_anova = Anova(fm_av45,type='III')
-# fm_av45_onlypatterns_anova = Anova(fm_av45_onlypatterns,,type='III')
 
 # anova model comparisons
 fm_modelcomparison_anova = anova(fm_av45_nopattern, fm_av45, test='LRT')
@@ -74,8 +150,7 @@ sink('av45_lm_onlypattern_anova.txt'); print(fm_av45_onlypatterns_anova, correla
 sink('av45_mc_anova.txt'); print(fm_modelcomparison_anova, correlation=TRUE); sink(file=NULL)
 
 # plot fits
-toplot = c(0,1,25,22)
-labels =
+toplot = c(42,19,8,7,1,0,12)
 for(g in toplot){
   jpeg(paste('fit_original_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'], col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('Original Data, Group:',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
   jpeg(paste('fit_withpattern_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45), col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('LM Predicted (with patterns)',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
@@ -83,12 +158,9 @@ for(g in toplot){
   jpeg(paste('fit_onlypattern_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_onlypatterns), col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('LM Predicted (only patterns)',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
 }
 
-
+# plot together
 polfit = function(x) fm_av45_onlycs$coefficients[3]*x^2 + fm_av45_onlycs$coefficients[2]*x + fm_av45_onlycs$coefficients[1]
 colors = rainbow(length(toplot))
-#colors = topo.colors(length(toplot))
-
-#pdf('fit_original_siggroups.pdf',height=11,width=10)
 plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'], pch=4, cex=1, lwd=0.6, main='Significant Pattern Groups', xlab='Baseline Florbetapir Cortical Summary SUVR', ylab='Cortical Summary SUVR Annualized Change')
 for(i in 1:length(toplot)){
   g = toplot[i]
@@ -99,7 +171,6 @@ for(i in 1:length(toplot)){
 }
 curve(polfit,add=T)
 legend('topright', legend=sapply(toplot, function(x) paste('Group #',x,sep='')), fill=colors)
-#dev.off()
 
 # plot fits
 plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'],bg='yellow',pch=21)
