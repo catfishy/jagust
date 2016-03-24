@@ -117,26 +117,6 @@ class DPGMM_SCALE(DPGMM):
             self.gamma_[i, 2] = self.gamma_[i + 1, 2] + sz[i]
         self.gamma_.T[2] += self.alpha
 
-    def predict_proba(self, X):
-        check_is_fitted(self, 'gamma_')
-
-        X = check_array(X)
-        if X.ndim == 1:
-            X = X[:, np.newaxis]
-
-        if self.covariance_type not in ['full', 'tied', 'diag', 'spherical']:
-            raise NotImplementedError("This ctype is not implemented: %s"
-                                      % self.covariance_type)
-        p = _bound_state_log_lik(X, self._initial_bound + self.bound_prec_,
-                                 self.precs_, self.means_,
-                                 self.covariance_type)
-        z = log_normalize(p, axis=-1)
-        return z
-
-    def predict(self, X):
-        responsibilities = self.predict_proba(X)
-        return responsibilities.argmax(axis=1)
-
 
 def sample(data):
     return data[np.random.randint(0,len(data),(1,len(data)))[0]]
@@ -189,15 +169,15 @@ def bootstrap_mean(vals, nboot=1000):
         tboot[i] = np.mean(sboot)
     return np.mean(tboot)
 
-def chooseBestModel(patterns, components, gamma_shape=1.0, gamma_inversescale=0.01, covar_type='spherical'):
+def chooseBestModel(patterns, components, covar_type, gamma_shape=1.0, gamma_inversescale=0.01):
     # Cluster
     models_scores = {}
-    for i in range(60):
+    for i in range(40):
         g = DPGMM_SCALE(n_components=components,
                         gamma_shape=gamma_shape,
                         gamma_inversescale=gamma_inversescale,
                         covariance_type=covar_type,
-                        tol=1e-7,
+                        tol=1e-4,
                         n_iter=1000,
                         params='wmc',
                         init_params='wmc',
@@ -307,6 +287,10 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
         diag_keys = {'BL': 'Diag@AV45_long',
                      'Scan2': 'Diag@AV45_2_long',
                      'Scan3': 'Diag@AV45_3_long'}
+    elif tracer = 'AV1451'
+        diag_keys = {'BL': 'Diag@AV1451',
+                     'Scan2': 'Diag@AV45_2',
+                     'Scan3': 'Diag@AV45_3'}
     else:
         raise Exception("Diag keys for tracer %s not specified" % tracer)
     diags = []
@@ -915,15 +899,15 @@ def scaleInput(pattern_prior_df, pattern_post_df):
     post_patterns_only.set_index(pattern_post_df.index, inplace=True)
     return (patterns_only, post_patterns_only)
 
-def trainDPGMM(pattern_prior_df, pattern_post_df, result_df):
+def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type):
     # Scale inputs
     patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
 
     # Choose alpha + do model selection
     components = len(patterns_only.index)
-    best_model = chooseBestModel(patterns_only, components, gamma_shape=1.0, gamma_inversescale=0.000000001, covar_type='spherical')
+    best_model = chooseBestModel(patterns_only, components, covar_type, gamma_shape=1.0, gamma_inversescale=0.000000001)
     alpha = best_model.alpha
-    with open("%s_model.pkl" % generateFileRoot(alpha, model=True), 'wb') as fid:
+    with open("%s_%s_model.pkl" % (generateFileRoot(alpha, model=True),covar_type), 'wb') as fid:
         cPickle.dump(best_model, fid)   
 
     # Look at top pca components (top 10)
@@ -1353,17 +1337,19 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     master_df.set_index('RID', inplace=True)
 
 
-    demo_df = master_df.loc[:,['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','AV45_BigRef_BIN.79','AV45_BigRef','Diag@AV45_long']].copy()
+    # Add demographic data (baseline age, sex, e2 status, e4 status, education)
+    demo_df = master_df.loc[:,['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','AV45_NONTP_wcereb_BIN1.11','AV45_NONTP_wcereb','Diag@AV45_long']].copy()
     demo_df.Gender = demo_df.Gender-1
     proba_df = proba_df.merge(demo_df, left_index=True, right_index=True, how='left')
-    col_translations = {'AV45_BigRef_BIN.79':'CORTICAL_SUMMARY_POSITIVE',
-                        'AV45_BigRef':'CORTICAL_SUMMARY_prior',
-                        'AV45_2_BigRef_BIN.79':'CORTICAL_SUMMARY_POSITIVE',
-                        'AV45_2_BigRef':'CORTICAL_SUMMARY_prior',
+    col_translations = {'AV45_NONTP_wcereb_BIN1.11':'CORTICAL_SUMMARY_POSITIVE',
+                        'AV45_NONTP_wcereb':'CORTICAL_SUMMARY_prior',
+                        'AV45_NONTP_2_wcereb_BIN1.11':'CORTICAL_SUMMARY_POSITIVE',
+                        'AV45_NONTP_2_wcereb':'CORTICAL_SUMMARY_prior',
                         'Diag@AV45_long':'diag_prior',
-                        'Diag@AV45_2_long':'diag_prior'}
+                        'Diag@AV45_2_long':'diag_prior',
+                        'Age@AV45':'Age.AV45',
+                        'Age@AV45_2':'Age.AV45'}
     proba_df.rename(columns=col_translations,inplace=True)
-
 
     # Add dependent variable and test times
     dep_value_keys = ['%s%s' % (dep_val_var,i) for i in range(30) if '%s%s' % (dep_val_var,i) in master_df.columns]
@@ -1394,19 +1380,42 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
             new_row['YrsPostBL'] = round(adjusted_time,1)
             full_df = pd.concat((full_df, new_row),axis=1)
 
+    # create slope dataset
+    slope_df = pd.DataFrame()
+    for pid, timepoints in dep_by_subject.iteritems():
+        timepoints = sorted(timepoints, key=lambda x: x[0])
+        base_time = timepoints[0][0]
+        adj_timepoints = []
+        for time, val in timepoints:
+            adjusted_time = time-base_time
+            adj_timepoints.append((round(adjusted_time,1),val))
+        row_slope = slope(adj_timepoints)
+        if row_slope is not None:
+            new_row = proba_df.loc[pid].copy()
+            new_row['%s_slope' % dep_val_var] = row_slope
+            slope_df = pd.concat((slope_df,new_row),axis=1)
+
     full_df = full_df.T
     full_df.index.name='RID'
     full_df.dropna(inplace=True)
+    slope_df = slope_df.T
+    slope_df.index.name='RID'
+    slope_df.dropna(inplace=True)
 
     # drops rows with no pattern membership
     member_sums = full_df[valid_patterns].sum(axis=1)
     notmember = set(member_sums[member_sums==0].index)
     full_df = full_df.drop(notmember) 
+    member_sums = slope_df[valid_patterns].sum(axis=1)
+    notmember = set(member_sums[member_sums==0].index)
+    slope_df = slope_df.drop(notmember)
 
     # write out
     clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
     all_output_file = '%s_%s_ALL_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    slope_output_file = '%s_%s_ALL_slopedata.csv' % (generateFileRoot(model.alpha),clean_varname)
     full_df.to_csv(all_output_file)
+    slope_df.to_csv(slope_output_file)
 
 def createContrasts(columns, time_key, out_file=None):
     new_df = pd.DataFrame(columns=columns)
@@ -1454,7 +1463,7 @@ def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file)
 
 if __name__ == '__main__':
     data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_03_07_16.csv'
+    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_03_23_16.csv'
     data = parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', bilateral=True)
 
     pattern_bl_df = data['pattern_bl_df']
@@ -1472,13 +1481,14 @@ if __name__ == '__main__':
     pattern_col_order = list(pattern_prior_df.columns)
 
     # # Calculate
-    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df)
+    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical')
+    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'tied')
 
     # get scaler
     scaled_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
 
     # Load
-    model_file = '../dpgmm_alpha14.36_bilateral_model.pkl'
+    model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
     loaded_result_df = loadResults(alpha, master_csv)
@@ -1501,22 +1511,17 @@ if __name__ == '__main__':
     # merge memberships into data
     uptake_members, pattern_members, lobe_members, change_members = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, rchange_df)
 
-    # dump pattern lobe means
-    printMeanLobePatterns(lobe_members,all_groups,cortical_summary,'%s_pattern_means.csv' % generateFileRoot(alpha))
+    # # dump pattern lobe means
+    # printMeanLobePatterns(lobe_members,all_groups,cortical_summary,'%s_pattern_means.csv' % generateFileRoot(alpha))
 
     # # save fake aparcs
     # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
     # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
 
     # dump LMM Dataset
-    # LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
-    #                      ('UW_EF_','UW_EF_postAV45_'),
-    #                      ('AVLT.','TIMEpostAV45_AVLT.'),
-    #                      ('ADAScog.','TIMEpostAV45_ADAS.'),
-    #                      ('FSX_HC/ICV_','FSX_postAV45_'),
-    #                      ('WMH_percentOfICV.','WMH_postAV45.'),
-    #                      ('AV45','')]
-    LME_dep_variables = [('AV45','')]
+    LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
+                         ('UW_EF_','UW_EF_postAV45_')]
+    # LME_dep_variables = [('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
         if dep_val_var == 'AV45':
             saveAV45LMEDataset(best_model, master_csv, pattern_bl_df, pattern_scan2_df, pattern_scan3_df, result_df, categorize=False, confident=False, calc_slope=True, split_timepoints=False)

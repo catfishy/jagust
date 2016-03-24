@@ -64,29 +64,29 @@ def updateLine(old_line, new_data, extraction_fn,
     new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
     return new_data
 
-def getClosestToAV45(points, bl_av45, av45_2, av45_3, day_limit=550):
+def getClosestToScans(points, bl_scan, scan_2, scan_3, day_limit=550):
     used = set()
     # match up with av45 scans
-    av45_bl_closest = av45_2_closest = av45_3_closest = None
-    if bl_av45 is not None:
-        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(bl_av45 - p['EXAMDATE']).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(bl_av45-x['EXAMDATE']))
+    scan_bl_closest = scan_2_closest = scan_3_closest = None
+    if bl_scan is not None:
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(bl_scan - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(bl_scan-x['EXAMDATE']))
         if len(cand) > 0:
-            av45_bl_closest = cand[0]
-            used.add(av45_bl_closest['EXAMDATE'])
-    if av45_2 is not None:
-        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_2 - p['EXAMDATE']).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(av45_2-x['EXAMDATE']))
+            scan_bl_closest = cand[0]
+            used.add(scan_bl_closest['EXAMDATE'])
+    if scan_2 is not None:
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(scan_2 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(scan_2-x['EXAMDATE']))
         if len(cand) > 0:
-            av45_2_closest = cand[0]
-            used.add(av45_2_closest['EXAMDATE'])
-    if av45_3 is not None:
-        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(av45_3 - p['EXAMDATE']).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(av45_3-x['EXAMDATE']))
+            scan_2_closest = cand[0]
+            used.add(scan_2_closest['EXAMDATE'])
+    if scan_3 is not None:
+        eligible = [p for p in points if p['EXAMDATE'] not in used and (abs(scan_3 - p['EXAMDATE']).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(scan_3-x['EXAMDATE']))
         if len(cand) > 0:
-            av45_3_closest = cand[0]
-            used.add(av45_3_closest['EXAMDATE'])
-    return av45_bl_closest, av45_2_closest, av45_3_closest
+            scan_3_closest = cand[0]
+            used.add(scan_3_closest['EXAMDATE'])
+    return scan_bl_closest, scan_2_closest, scan_3_closest
 
 def getAV45Dates(old_l, patient_pets=None):
     if patient_pets is None:
@@ -106,6 +106,30 @@ def getAV45Dates(old_l, patient_pets=None):
         av45_2 = None
     if old_l.get('AV45_3_Date','') != '':
         av45_3 = datetime.strptime(old_l['AV45_3_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 3:
+        av45_3 = patient_pets[2]
+    else:
+        av45_3 = None
+    return (bl_av45, av45_2, av45_3)
+
+def getAV1451Dates(old_l, patient_pets=None):
+    if patient_pets is None:
+        patient_pets = []
+    # Get AV45 Scan dates
+    if old_l.get('AV1451_Date','') != '':
+        bl_av45 = datetime.strptime(old_l['AV1451_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 1:
+        bl_av45 = patient_pets[0]
+    else:
+        bl_av45 = None
+    if old_l.get('AV1451_2_Date','') != '':
+        av45_2 = datetime.strptime(old_l['AV1451_2_Date'], '%m/%d/%y')
+    elif len(patient_pets) >= 2:
+        av45_2 = patient_pets[1]
+    else:
+        av45_2 = None
+    if old_l.get('AV1451_3_Date','') != '':
+        av45_3 = datetime.strptime(old_l['AV1451_3_Date'], '%m/%d/%y')
     elif len(patient_pets) >= 3:
         av45_3 = patient_pets[2]
     else:
@@ -285,133 +309,6 @@ def syncAV45RoussetResults(old_headers, old_lines, rousset_csv):
 
     return (new_headers, new_lines)
 
-'''
-def syncRoussetResults(old_headers, old_lines, rousset_matfile, timepoint):
-    assert timepoint in set(['BL', 'Scan2', 'Scan3'])
-
-    group_names, sorted_data = importRoussetResults(rousset_matfile)
-
-    valid_timepoints = ['BL', 'Scan2', 'Scan3']
-    valid_groupings = ['summary']
-    to_add_headers = []
-    for vg in valid_groupings:
-        to_add_headers += ['AV45_PVC_%s_CorticalSummary/Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
-        to_add_headers += ['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg), 'AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)]
-        to_add_headers += ['AV45_PVC_%s_CorticalSummary/Bigref_%s' % (vg, tp) for tp in valid_timepoints]
-        to_add_headers += ['AV45_PVC_%s_CorticalSummary/Bigref_slope_2points' % (vg), 'AV45_PVC_%s_CorticalSummary/Bigref_slope_3points' % (vg)]
-        to_add_headers += ['AV45_PVC_%s_HemiWM/Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
-        to_add_headers += ['AV45_PVC_%s_HemiWM_slope_2points' % (vg), 'AV45_PVC_%s_HemiWM_slope_3points' % (vg)]
-        to_add_headers += ['AV45_PVC_%s_Wholecereb_%s' % (vg, tp) for tp in valid_timepoints]
-        to_add_headers += ['AV45_PVC_%s_CerebGM_%s' % (vg, tp) for tp in valid_timepoints]
-        to_add_headers += ['AV45_PVC_%s_CerebWM_%s' % (vg, tp) for tp in valid_timepoints]
-        if vg == 'summary':
-            # SOME HARDCODED THRESHOLDING
-            to_add_headers += ['AV45_PVC_summary_accumulator.0081', 'AV45_PVC_summary_wcereb1.27_BL']
-    after = old_headers[max(i for i,_ in enumerate(old_headers) if _.startswith('AV45_') and 'PVC' not in _)] # last element that contains 'AV45'
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
-    timepoint_headers = [t for t in to_add_headers if timepoint in t]
-    wipeKeys(old_lines, timepoint_headers)
-
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        #valid_groupings = ['summary']
-        new_subj_data = {}
-        for k in subj_row.keys():
-            if k in valid_groupings:
-                v = subj_row[k]
-                if v is None:
-                    continue
-                wholecereb = float(v['wholecereb']['pvcval'])
-                bigref = float(v['bigref']['pvcval'])
-                for region, values in v.iteritems():
-                    pvcval = float(values.get('pvcval',0.0))
-                    if region == 'composite':
-                        new_subj_data['AV45_PVC_%s_CorticalSummary/Wholecereb' % k] = pvcval/wholecereb
-                        new_subj_data['AV45_PVC_%s_CorticalSummary/Bigref' % k] = pvcval/bigref
-                    elif region == 'cerebGM':
-                        new_subj_data['AV45_PVC_%s_CerebGM' % k] = pvcval
-                    elif region == 'hemiWM':
-                        new_subj_data['AV45_PVC_%s_HemiWM/Wholecereb' % k] = pvcval/wholecereb
-                    elif region == 'wholecereb':
-                        new_subj_data['AV45_PVC_%s_Wholecereb' % k] = pvcval
-                    elif region == 'cerebWM':
-                        new_subj_data['AV45_PVC_%s_CerebWM' % k] = pvcval
-        return new_subj_data
-
-    new_lines = []
-    for linenum, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, sorted_data, extraction_fn, 
-                              pid_key='RID', pet_meta=None)
-        new_data = {'%s_%s' % (k, timepoint): v for k,v in new_data.iteritems()}
-        old_l.update(new_data)
-        if timepoint == 'BL':
-            bl_val = old_l.get('AV45_PVC_summary_CorticalSummary/Wholecereb_BL',0.0)
-            try:
-                old_l['AV45_PVC_summary_wcereb1.27_BL'] = 1 if float(bl_val) >= 1.27 else 0
-            except ValueError as e:
-                old_l['AV45_PVC_summary_wcereb1.27_BL'] = ''
-        elif timepoint == 'Scan2':
-            # try to calculate slope with 2 points
-            for vg in valid_groupings:
-                try:
-                    diff1 = float(old_l.get('AV45_1_2_Diff'))
-                    x = [0.0, diff1]
-
-                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
-                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
-                    slope, intercept, r, p, stderr = linregress(x, [val1, val2])
-                    old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = slope
-                    if vg == 'summary':
-                        old_l['AV45_PVC_summary_accumulator.0081'] = 1 if slope >= 0.0081 else 0
-
-                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
-                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
-                    slope, intercept, r, p, stderr = linregress(x, [val1, val2])
-                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_2points' % (vg)] = slope
-
-                    val1 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_BL' % vg))
-                    val2 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan2' % vg))
-                    slope, intercept, r, p, stderr = linregress(x, [val1, val2])
-                    old_l['AV45_PVC_%s_HemiWM_slope_2points' % (vg)] = slope
-                except Exception as e:
-                    old_l['AV45_PVC_%s_CorticalSummary_slope_2points' % (vg)] = ''
-                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_2points' % (vg)] = ''
-                    old_l['AV45_PVC_%s_HemiWM_slope_2points' % (vg)] = ''
-        elif timepoint == 'Scan3':
-            # try to calculate slope with 3 points
-            for vg in valid_groupings:
-                try:
-                    diff1 = float(old_l.get('AV45_1_2_Diff'))
-                    diff2 = float(old_l.get('AV45_1_3_Diff'))
-                    x = [0.0, diff1, diff2]
-
-                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_BL' % vg))
-                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan2' % vg))
-                    val3 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Wholecereb_Scan3' % vg))
-                    slope, intercept, r, p, stderr = linregress(x, [val1, val2, val3])
-                    old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = slope
-                    if vg == 'summary':
-                        old_l['AV45_PVC_summary_accumulator.0081'] = 1 if slope >= 0.0081 else 0
-
-                    val1 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_BL' % vg))
-                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan2' % vg))
-                    val2 = float(old_l.get('AV45_PVC_%s_CorticalSummary/Bigref_Scan3' % vg))
-                    slope, intercept, r, p, stderr = linregress(x, [val1, val2, val3])
-                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_3points' % (vg)] = slope
-
-                    val1 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_BL' % vg))
-                    val2 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan2' % vg))
-                    val3 = float(old_l.get('AV45_PVC_%s_HemiWM/Wholecereb_Scan3' % vg))
-                    slope, intercept, r, p, stderr = linregress(x, [val1, val2, val3])
-                    old_l['AV45_PVC_%s_HemiWM_slope_3points' % (vg)] = slope
-                except Exception as e:
-                    old_l['AV45_PVC_%s_CorticalSummary_slope_3points' % (vg)] = ''
-                    old_l['AV45_PVC_%s_CorticalSummary/Bigref_slope_3points' % (vg)] = ''
-                    old_l['AV45_PVC_%s_HemiWM_slope_3points' % (vg)] = ''
-        new_lines.append(old_l)
-
-
-    return (new_headers, new_lines)
-'''
 
 def syncFAQData(old_headers, old_lines, faq_file, registry_file):
     tmpts = 12
@@ -436,7 +333,7 @@ def syncFAQData(old_headers, old_lines, faq_file, registry_file):
         
         # get closest to av45s
         six_months = 31 * 6
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
         new_subj_data['FAQTOTAL_AV45_6MTHS'] = av45_bl_closest['FAQTOTAL'] if av45_bl_closest else ''
         new_subj_data['FAQTOTAL_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
         new_subj_data['FAQTOTAL_AV45_2_6MTHS'] = av45_2_closest['FAQTOTAL'] if av45_2_closest else ''
@@ -496,7 +393,7 @@ def syncNPIData(old_headers, old_lines, npi_file):
 
         # get closest to av45s
         six_months = 31 * 6
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
         new_subj_data['NPITOTAL_AV45_6MTHS'] = av45_bl_closest['NPITOTAL'] if av45_bl_closest else ''
         new_subj_data['NPITOTAL_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
         new_subj_data['NPITOTAL_AV45_2_6MTHS'] = av45_2_closest['NPITOTAL'] if av45_2_closest else ''
@@ -575,7 +472,7 @@ def syncGDData(old_headers, old_lines, gd_file, registry_file):
         new_subj_data = {}
         
         six_months = 31 * 6
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(scores, bl_av45, av45_2, av45_3, day_limit=six_months)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(scores, bl_av45, av45_2, av45_3, day_limit=six_months)
         if av45_bl_closest:
             new_subj_data['GD_AV45_6MTHS'] = av45_bl_closest['GDTOTAL']
             new_subj_data['GD_AV45_DATE'] = av45_bl_closest['EXAMDATE']
@@ -823,7 +720,7 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file):
         first_scan_date = dates[0]
 
         three_months = 31 * 3
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(tests, bl_av45, av45_2, av45_3, day_limit=three_months)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(tests, bl_av45, av45_2, av45_3, day_limit=three_months)
         new_subj_data['AVLT_AV45_1_3MTHS'] = av45_bl_closest['TOTS'] if av45_bl_closest else ''
         new_subj_data['AVLT_AV45_1_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
         new_subj_data['AVLT_AV45_2_3MTHS'] = av45_2_closest['TOTS'] if av45_2_closest else ''
@@ -930,7 +827,9 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
     pivot_date_closest_date_key = 'DX_Feb16_closestdate'
 
     to_add_headers = ['MCItoADConv','MCItoADConvDate','AV45_MCItoAD_ConvTime','Baseline_MCItoAD_ConvTime',
-                      'Diag@AV45_long','Diag@AV45_2_long','Diag@AV45_3_long','FollowupTimetoDX','Baseline','Init_Diagnosis',
+                      'Diag@AV45_long','Diag@AV45_2_long','Diag@AV45_3_long',
+                      'Diag@AV1451','Diag@AV1451_2','Diag@AV1451_3',
+                      'FollowupTimetoDX','Baseline','Init_Diagnosis',
                       pivot_date_closest_diag_key,pivot_date_closest_date_key]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after='AV45_1_3_Diff')
     wipeKeys(old_lines, to_add_headers)
@@ -984,7 +883,10 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
 
         # get closest to av45
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=None)
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_diags, bl_av45, av45_2, av45_3)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_diags, bl_av45, av45_2, av45_3)
+
+        bl_av1451, av1451_2, av1451_3 = getAV1451Dates(old_l, patient_pets=None)
+        av1451_bl_closest, av1451_2_closest, av1451_3_closest = getClosestToScans(subj_diags, bl_av1451, av1451_2, av1451_3)
 
         # find MCI to AD conversion
         mci_to_ad = None
@@ -1000,6 +902,9 @@ def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file
                     'Diag@AV45_long': av45_bl_closest['diag'] if av45_bl_closest else '',
                     'Diag@AV45_2_long': av45_2_closest['diag'] if av45_2_closest else '',
                     'Diag@AV45_3_long': av45_3_closest['diag'] if av45_3_closest else '',
+                    'Diag@AV1451': av1451_bl_closest['diag'] if av1451_bl_closest else '',
+                    'Diag@AV1451_2': av1451_2_closest['diag'] if av1451_2_closest else '',
+                    'Diag@AV1451_3': av1451_3_closest['diag'] if av1451_3_closest else '',
                     'FollowupTimetoDX': (pivot_date - baseline_registry['EXAMDATE']).days / 365.0,
                     'Baseline': baseline_registry['EXAMDATE'],
                     'Init_Diagnosis': init_diag,
@@ -1437,7 +1342,7 @@ def syncFDGData(old_headers, old_lines, fdg_file, registry_file):
 
         # get closest to av45s
         six_months = 31 * 6
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_fdg, av45_bl, av45_2, av45_3, day_limit=six_months)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_fdg, av45_bl, av45_2, av45_3, day_limit=six_months)
         new_data['FDG_PONS_AV45_6MTHS'] = av45_bl_closest['PONS'] if av45_bl_closest else ''
         new_data['FDG_PONS_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
         new_data['FDG_PONS_AV45_2_6MTHS'] = av45_2_closest['PONS'] if av45_2_closest else ''
@@ -1649,7 +1554,7 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file):
                         ptau_slope_points.append((timediff, ptau_val))
 
         # match up with av45 scans
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_csf, bl_av45, av45_2, av45_3, day_limit=93)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_csf, bl_av45, av45_2, av45_3, day_limit=93)
         if av45_bl_closest:
             tau_val = av45_bl_closest['tau']
             ptau_val = av45_bl_closest['ptau']
@@ -2091,7 +1996,7 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file):
 
         # get closest to av45s
         six_months = 31 * 6
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToAV45(subj_wmh, bl_av45, av45_2, av45_3, day_limit=six_months)
+        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_wmh, bl_av45, av45_2, av45_3, day_limit=six_months)
         new_data['WMH_percentOfICV_AV45_6MTHS'] = av45_bl_closest['wmh_percent'] if av45_bl_closest else ''
         new_data['WMH_percentOfICV_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
         new_data['WMH_percentOfICV_AV45_2_6MTHS'] = av45_2_closest['wmh_percent'] if av45_2_closest else ''

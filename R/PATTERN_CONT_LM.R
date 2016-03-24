@@ -33,6 +33,7 @@ for (i in names(df_av45)){
 
 # Run PCA
 df_patterns.pca = prcomp(df_patterns, center=TRUE, scale.s=TRUE)
+df_patterns.pca_rotation = df_patterns.pca$rotation
 df_patterns.transformed = predict(df_patterns.pca)
 df_av45 = as.data.frame(cbind(as.matrix(df_av45),df_patterns.transformed))
 
@@ -50,9 +51,6 @@ valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('EMCI','LMCI')
 #valid_diags = c('N','SMC')
 df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
-
-# Convert negative slopes to 0
-#df_av45$AV45_slope[df_av45$AV45_slope<0] = 0
 
 # pattern weight models
 fm_av45_onlycs = lm(AV45_slope ~ CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2), df_av45)
@@ -120,11 +118,11 @@ fm_av45_onlypatterns_summary = summary(fm_av45_onlypatterns)
 fm_av45_onlypca_summary = summary(fm_av45_onlypca)
 fm_av45_pca_summary = summary(fm_av45_pca)
 
-fm_av45_nopattern_summary$r.squared
-fm_av45_summary$r.squared
-fm_av45_onlypatterns_summary$r.squared
-fm_av45_onlypca_summary$r.squared
-fm_av45_pca_summary$r.squared
+fm_av45_nopattern_summary$adj.r.squared
+fm_av45_summary$adj.r.squared
+fm_av45_onlypatterns_summary$adj.r.squared
+fm_av45_onlypca_summary$adj.r.squared
+fm_av45_pca_summary$adj.r.squared
 
 fm_av45_nopattern_summary$aic
 fm_av45_summary$aic
