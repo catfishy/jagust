@@ -17,7 +17,7 @@ isPatternColumn = function(i){
 isPatternColumn = Vectorize(isPatternColumn)
 
 # Import data
-df_av45 = read.csv('dpgmm_alpha14.36_bilateral_UW_MEM__ALL_slopedata.csv')
+df_av45 = read.csv('dpgmm_alpha13.13_bilateral_UW_MEM__ALL_slopedata.csv')
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 df_patterns = df_av45[pattern_columns]
 
@@ -46,13 +46,13 @@ for (i in names(df_av45)){
 }
 
 # Only keep negatives
-df_av45 = df_av45[which(df_av45$CORTICAL_SUMMARY_POSITIVE == -1),]
+# df_av45 = df_av45[which(df_av45$CORTICAL_SUMMARY_POSITIVE == -1),]
 
 # Only keep N/SMC/EMCI/LMCI
-#valid_diags = c('N','SMC','EMCI','LMCI')
+valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('EMCI','LMCI')
 #valid_diags = c('N','SMC')
-#df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
+df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 
 # pattern weight models
 fm_av45_onlycs = lm(UW_MEM__slope ~ CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2), df_av45)
@@ -60,30 +60,32 @@ fm_av45_nopattern = lm(UW_MEM__slope ~ diag_prior + CORTICAL_SUMMARY_prior*APOE4
 fm_av45 = lm(UW_MEM__slope ~ diag_prior + 
                CORTICAL_SUMMARY_prior*APOE4_BIN +  
                I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
-               X23*APOE4_BIN +
-               X18*APOE4_BIN +
-               X42*APOE4_BIN +
-               X12*APOE4_BIN +
-               X16*APOE4_BIN +
-               X6*APOE4_BIN +
-               X19*APOE4_BIN +
-               X8*APOE4_BIN +
-               X7*APOE4_BIN +
-               X1*APOE4_BIN +
                X0*APOE4_BIN +
+               X3*APOE4_BIN +
+               X6*APOE4_BIN +
+               X7*APOE4_BIN +
+               X8*APOE4_BIN +
+               X9*APOE4_BIN +
+               X12*APOE4_BIN +
+               X13*APOE4_BIN +
+               X14*APOE4_BIN +
+               X17*APOE4_BIN +
+               X26*APOE4_BIN +
+               X29*APOE4_BIN +
                Age.AV45 + Gender + Edu..Yrs., df_av45)
 fm_av45_onlypatterns = lm(UW_MEM__slope ~ diag_prior + 
-                            X23*APOE4_BIN +
-                            X18*APOE4_BIN +
-                            X42*APOE4_BIN +
-                            X12*APOE4_BIN +
-                            X16*APOE4_BIN +
-                            X6*APOE4_BIN +
-                            X19*APOE4_BIN +
-                            X8*APOE4_BIN +
-                            X7*APOE4_BIN +
-                            X1*APOE4_BIN +
                             X0*APOE4_BIN +
+                            X3*APOE4_BIN +
+                            X6*APOE4_BIN +
+                            X7*APOE4_BIN +
+                            X8*APOE4_BIN +
+                            X9*APOE4_BIN +
+                            X12*APOE4_BIN +
+                            X13*APOE4_BIN +
+                            X14*APOE4_BIN +
+                            X17*APOE4_BIN +
+                            X26*APOE4_BIN +
+                            X29*APOE4_BIN +
                             Age.AV45 + Gender + Edu..Yrs., df_av45)
 fm_av45_onlypca = lm(UW_MEM__slope ~ diag_prior + 
                        PC1*APOE4_BIN +

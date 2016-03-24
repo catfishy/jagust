@@ -287,7 +287,7 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
         diag_keys = {'BL': 'Diag@AV45_long',
                      'Scan2': 'Diag@AV45_2_long',
                      'Scan3': 'Diag@AV45_3_long'}
-    elif tracer = 'AV1451'
+    elif tracer == 'AV1451':
         diag_keys = {'BL': 'Diag@AV1451',
                      'Scan2': 'Diag@AV45_2',
                      'Scan3': 'Diag@AV45_3'}
@@ -910,47 +910,59 @@ def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type):
     with open("%s_%s_model.pkl" % (generateFileRoot(alpha, model=True),covar_type), 'wb') as fid:
         cPickle.dump(best_model, fid)   
 
-    # Look at top pca components (top 10)
-    top = 10
-    columns = list(pattern_prior_df.columns)
-    pca_patterns_only, pca_model = scaleRawInput(patterns_only, scale_type='pca', whiten=False)
-    pca_post_patterns_only = pd.DataFrame(pca_model.transform(post_patterns_only))
-    pca_post_patterns_only.set_index(post_patterns_only.index, inplace=True)
-    pca_patterns_only = pca_patterns_only[range(top)]
-    pca_post_patterns_only = pca_post_patterns_only[range(top)]
-    top_components = []
-    for i in range(top):
-        explained_ratio = pca_model.explained_variance_ratio_[i]
-        component = pca_model.components_[i]
-        comps = zip(columns,component)
-        comps = sorted(comps,key=lambda x: abs(x[1]), reverse=True)
-        comps = pd.DataFrame(comps, columns=['REGION','WEIGHT'])
-        top_components.append(comps)
+def generateResults(model, pattern_prior_df, pattern_post_df, result_df, conf_filter=False):
+    alpha = model.alpha
+
+    # Scale inputs
+    patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
+
+    # # Look at top pca components (top 10)
+    # top = 10
+    # columns = list(pattern_prior_df.columns)
+    # pca_patterns_only, pca_model = scaleRawInput(patterns_only, scale_type='pca', whiten=False)
+    # pca_post_patterns_only = pd.DataFrame(pca_model.transform(post_patterns_only))
+    # pca_post_patterns_only.set_index(post_patterns_only.index, inplace=True)
+    # pca_patterns_only = pca_patterns_only[range(top)]
+    # pca_post_patterns_only = pca_post_patterns_only[range(top)]
+    # top_components = []
+    # for i in range(top):
+    #     explained_ratio = pca_model.explained_variance_ratio_[i]
+    #     component = pca_model.components_[i]
+    #     comps = zip(columns,component)
+    #     comps = sorted(comps,key=lambda x: abs(x[1]), reverse=True)
+    #     comps = pd.DataFrame(comps, columns=['REGION','WEIGHT'])
+    #     top_components.append(comps)
 
     # Predict pattern groups and add to result df
-    y_df = pd.DataFrame(best_model.predict(patterns_only))
+    y_df = pd.DataFrame(model.predict(patterns_only))
     y_df.columns = ['group']
     y_df.set_index(patterns_only.index, inplace=True)
-    y_proba_df = pd.DataFrame(best_model.predict_proba(patterns_only)).set_index(patterns_only.index).xs('prior',level='timepoint')
+    y_proba_df = pd.DataFrame(model.predict_proba(patterns_only)).set_index(patterns_only.index).xs('prior',level='timepoint')
     probsums = y_proba_df.sum()
     components_distr_max = y_proba_df[probsums[probsums >= 0.1].index].max(axis=1)
-    confident_assignments_prior = components_distr_max[components_distr_max>=membership_conf].index
+    if conf_filter:
+        confident_assignments_prior = components_distr_max[components_distr_max>=membership_conf].index
+    else:
+        confident_assignments_prior = components_distr_max.index
 
-    y_df_post = pd.DataFrame(best_model.predict(post_patterns_only))
+    y_df_post = pd.DataFrame(model.predict(post_patterns_only))
     y_df_post.columns = ['group']
     y_df_post.set_index(post_patterns_only.index, inplace=True)
-    y_proba_df_post = pd.DataFrame(best_model.predict_proba(post_patterns_only)).set_index(post_patterns_only.index).xs('post',level='timepoint')
+    y_proba_df_post = pd.DataFrame(model.predict_proba(post_patterns_only)).set_index(post_patterns_only.index).xs('post',level='timepoint')
     probsums = y_proba_df_post.sum()
     components_distr_max = y_proba_df_post[probsums[probsums > 0.1].index].max(axis=1)
-    confident_assignments_post = components_distr_max[components_distr_max>=membership_conf].index
+    if conf_filter:
+        confident_assignments_post = components_distr_max[components_distr_max>=membership_conf].index
+    else:
+        confident_assignments_post = components_distr_max.index
     for rid in result_df.index:
         result_df.loc[rid,'membership_prior'] = y_df.loc[(rid,'prior'),'group']
-        for pca_col in pca_patterns_only.columns:
-            result_df.loc[rid,'pca_%s_prior' % pca_col] = pca_patterns_only.loc[(rid, 'prior'),pca_col]
+        # for pca_col in pca_patterns_only.columns:
+        #     result_df.loc[rid,'pca_%s_prior' % pca_col] = pca_patterns_only.loc[(rid, 'prior'),pca_col]
         if (rid, 'post') in y_df_post.index:
             result_df.loc[rid,'membership_post'] = y_df_post.loc[(rid,'post'),'group']
-            for pca_col in pca_post_patterns_only.columns:
-                result_df.loc[rid,'pca_%s_post' % pca_col] = pca_post_patterns_only.loc[(rid, 'post'),pca_col]
+            # for pca_col in pca_post_patterns_only.columns:
+            #     result_df.loc[rid,'pca_%s_post' % pca_col] = pca_post_patterns_only.loc[(rid, 'post'),pca_col]
         if rid in confident_assignments_prior:
             result_df.loc[rid,'membership_prior_conf'] = result_df.loc[rid,'membership_prior']
         if rid in confident_assignments_post:
@@ -1484,13 +1496,14 @@ if __name__ == '__main__':
     # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical')
     # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'tied')
 
-    # get scaler
-    scaled_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
-
     # Load
-    model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'
+    # model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'
+    # model_file = '../dpgmm_alpha13.13_bilateral_tied_model.pkl'
+    model_file = '../dpgmm_alpha12.66_bilateral_spherical_model.pkl'
+
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
+    result_df = generateResults(best_model, pattern_prior_df, pattern_post_df, result_df, conf_filter=False)
     loaded_result_df = loadResults(alpha, master_csv)
     npt.assert_array_equal(result_df.index,loaded_result_df.index)
     result_df = loaded_result_df
@@ -1520,8 +1533,8 @@ if __name__ == '__main__':
 
     # dump LMM Dataset
     LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
-                         ('UW_EF_','UW_EF_postAV45_')]
-    # LME_dep_variables = [('AV45','')]
+                         ('UW_EF_','UW_EF_postAV45_'),
+                         ('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
         if dep_val_var == 'AV45':
             saveAV45LMEDataset(best_model, master_csv, pattern_bl_df, pattern_scan2_df, pattern_scan3_df, result_df, categorize=False, confident=False, calc_slope=True, split_timepoints=False)
