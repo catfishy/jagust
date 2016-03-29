@@ -1,0 +1,192 @@
+GROUPING TAU
+	L_entorhinal
+		1006: ctx-lh-entorhinal
+	R_entorhinal
+		2006: ctx-rh-entorhinal
+	L_hippocampus
+		17: Left-Hippocampus
+	R_hippocampus
+		53: Right-Hippocampus
+	L_parahippocampal
+		1016: ctx-lh-parahippocampal
+	L_fusiform
+		1007: ctx-lh-fusiform
+	L_lingual
+		1013: ctx-lh-lingual
+	L_amygdala
+		18: Left-Amygdala
+	R_parahippocampal
+		2016: ctx-rh-parahippocampal
+	R_fusiform
+		2007: ctx-rh-fusiform
+	R_lingual
+		2013: ctx-rh-lingual
+	R_amygdala
+		54: Right-Amygdala
+	L_middletemporal
+		1015: ctx-lh-middletemporal
+	L_thalamus
+		10: Left-Thalamus-Proper
+	L_caudantcing
+		1002: ctx-lh-caudalanteriorcingulate
+	L_rostantcing
+		1026: ctx-lh-rostralanteriorcingulate
+	L_postcing
+		1023: ctx-lh-posteriorcingulate
+	L_isthmuscing
+		1010: ctx-lh-isthmuscingulate
+	L_insula
+		1035: ctx-lh-insula
+	L_inferiortemporal
+		1009: ctx-lh-inferiortemporal
+	L_temppole
+		1033: ctx-lh-temporalpole
+	R_middletemporal
+		2015: ctx-rh-middletemporal
+	R_thalamus
+		49: Right-Thalamus-Proper
+	R_caudantcing
+		2002: ctx-rh-caudalanteriorcingulate
+	R_rostantcing
+		2026: ctx-rh-rostralanteriorcingulate
+	R_postcing
+		2023: ctx-rh-posteriorcingulate
+	R_isthmuscing
+		2010: ctx-rh-isthmuscingulate
+	R_insula
+		2035: ctx-rh-insula
+	R_inferiortemporal
+		2009: ctx-rh-inferiortemporal
+	R_temppole
+		2033: ctx-rh-temporalpole
+	L_frontalassociationctx_SUPFR
+		1028: ctx-lh-superiorfrontal
+	L_frontalassociationctx_FPORB
+		1012: ctx-lh-lateralorbitofrontal
+		1014: ctx-lh-medialorbitofrontal
+		1032: ctx-lh-frontalpole
+	L_frontalassociationctx_MIDFR
+		1003: ctx-lh-caudalmiddlefrontal
+		1027: ctx-lh-rostralmiddlefrontal
+	L_frontalassociationctx_PARSFR
+		1018: ctx-lh-parsopercularis
+		1019: ctx-lh-parsorbitalis
+		1020: ctx-lh-parstriangularis
+	L_caudate
+		11: Left-Caudate
+	L_putamen
+		12: Left-Putamen
+	L_lateraloccipital
+		1011: ctx-lh-lateraloccipital
+	L_parietalsupramarginal
+		1031: ctx-lh-supramarginal
+	L_parietalinferior
+		1008: ctx-lh-inferiorparietal
+	L_superiortemporal
+		1030: ctx-lh-superiortemporal
+	L_pallidum
+		13: Left-Pallidum
+	L_parietalsuperior
+		1029: ctx-lh-superiorparietal
+	L_precuneus
+		1025: ctx-lh-precuneus
+	L_bankSTS
+		1001: ctx-lh-bankssts
+	L_accumbens
+		26: Left-Accumbens-area
+	L_tranvtemp
+		1034: ctx-lh-transversetemporal
+	R_frontalassociationctx_SUPFR
+		2028: ctx-rh-superiorfrontal
+	R_frontalassociationctx_FPORB
+		2012: ctx-rh-lateralorbitofrontal
+		2014: ctx-rh-medialorbitofrontal
+		2032: ctx-rh-frontalpole
+	R_frontalassociationctx_MIDFR
+		2003: ctx-rh-caudalmiddlefrontal
+		2027: ctx-rh-rostralmiddlefrontal
+	R_frontalassociationctx_PARSFR
+		2018: ctx-rh-parsopercularis
+		2019: ctx-rh-parsorbitalis
+		2020: ctx-rh-parstriangularis
+	R_caudate
+		50: Right-Caudate
+	R_putamen
+		51: Right-Putamen
+	R_lateraloccipital
+		2011: ctx-rh-lateraloccipital
+	R_parietalsupramarginal
+		2031: ctx-rh-supramarginal
+	R_parietalinferior
+		2008: ctx-rh-inferiorparietal
+	R_superiortemporal
+		2030: ctx-rh-superiortemporal
+	R_pallidum
+		52: Right-Pallidum
+	R_parietalsuperior
+		2029: ctx-rh-superiorparietal
+	R_precuneus
+		2025: ctx-rh-precuneus
+	R_bankSTS
+		2001: ctx-rh-bankssts
+	R_accumbens
+		58: Right-Accumbens-area
+	R_tranvtemp
+		2034: ctx-rh-transversetemporal
+	L_pericalcarine
+		1021: ctx-lh-pericalcarine
+	L_postcentral
+		1022: ctx-lh-postcentral
+	L_cuneus
+		1005: ctx-lh-cuneus
+	L_precentral
+		1024: ctx-lh-precentral
+	L_paracentral
+		1017: ctx-lh-paracentral
+	R_pericalcarine
+		2021: ctx-rh-pericalcarine
+	R_postcentral
+		2022: ctx-rh-postcentral
+	R_cuneus
+		2005: ctx-rh-cuneus
+	R_precentral
+		2024: ctx-rh-precentral
+	R_paracentral
+		2017: ctx-rh-paracentral
+	A_hemiw
+		2: Left-Cerebral-White-Matter
+		41: Right-Cerebral-White-Matter
+		251: CC_Posterior
+		252: CC_Mid_Posterior
+		253: CC_Central
+		254: CC_Mid_Anterior
+		255: CC_Anterior
+	A_cereg
+		8: Left-Cerebellum-Cortex
+		47: Right-Cerebellum-Cortex
+	A_cerew
+		7: Left-Cerebellum-White-Matter
+		46: Right-Cerebellum-White-Matter
+	brainstem
+		16: Brain-Stem
+	other
+		5: Left-Inf-Lat-Vent
+		14: 3rd-Ventricle
+		15: 4th-Ventricle
+		24: CSF
+		28: Left-VentralDC
+		30: Left-vessel
+		44: Right-Inf-Lat-Vent
+		60: Right-VentralDC
+		62: Right-vessel
+		72: 5th-Ventricle
+		77: WM-hypointensities
+		80: non-WM-hypointensities
+		85: Optic-Chiasm
+		1000: ctx-lh-unknown
+		1004: ctx-lh-corpuscallosum
+		2000: ctx-rh-unknown
+		2004: ctx-rh-corpuscallosum
+	choroid
+		31: Left-choroid-plexus
+		63: Right-choroid-plexus

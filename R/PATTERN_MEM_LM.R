@@ -17,18 +17,18 @@ isPatternColumn = function(i){
 isPatternColumn = Vectorize(isPatternColumn)
 
 # Import data
-df_av45 = read.csv('dpgmm_alpha13.13_bilateral_UW_MEM__ALL_slopedata.csv')
+df_av45 = read.csv('dpgmm_alpha12.66_bilateral_UW_MEM__ALL_slopedata.csv')
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 df_patterns = df_av45[pattern_columns]
 
-# demean pattern variables + binary variables
-bin_variables = c('Gender','CORTICAL_SUMMARY_POSITIVE','APOE2_BIN','APOE4_BIN')
-pattern_columns = c()
-for (i in names(df_av45)){
-  if (startsWith(i,'X') | i %in% bin_variables){
-    df_av45[,eval(i)] = (df_av45[,eval(i)] * 2) - 1.0
-  }
-}
+# # demean pattern variables + binary variables
+# bin_variables = c('Gender','CORTICAL_SUMMARY_POSITIVE','APOE2_BIN','APOE4_BIN')
+# pattern_columns = c()
+# for (i in names(df_av45)){
+#   if (startsWith(i,'X') | i %in% bin_variables){
+#     df_av45[,eval(i)] = (df_av45[,eval(i)] * 2) - 1.0
+#   }
+# }
 
 # Run PCA
 df_patterns.pca = prcomp(df_patterns, center=TRUE, scale.s=TRUE)
@@ -38,7 +38,7 @@ df_av45 = as.data.frame(cbind(as.matrix(df_av45),df_patterns.transformed))
 
 
 # Convert to non factors to floats
-to_factor = c('CORTICAL_SUMMARY_POSITIVE','RID','group','diag_prior','APOE4_BIN','APOE2_BIN','Gender')
+to_factor = c('RID','diag_prior','APOE4_BIN','APOE2_BIN','Gender')
 for (i in names(df_av45)){
   if (!(i %in% to_factor)){
     df_av45[,eval(i)] = as.numeric(as.character(df_av45[,eval(i)]))
@@ -61,31 +61,37 @@ fm_av45 = lm(UW_MEM__slope ~ diag_prior +
                CORTICAL_SUMMARY_prior*APOE4_BIN +  
                I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
                X0*APOE4_BIN +
+               X1*APOE4_BIN +
+               X2*APOE4_BIN +
                X3*APOE4_BIN +
-               X6*APOE4_BIN +
+               X4*APOE4_BIN +
+               X4*APOE4_BIN +
                X7*APOE4_BIN +
                X8*APOE4_BIN +
                X9*APOE4_BIN +
                X12*APOE4_BIN +
-               X13*APOE4_BIN +
                X14*APOE4_BIN +
-               X17*APOE4_BIN +
-               X26*APOE4_BIN +
-               X29*APOE4_BIN +
+               X15*APOE4_BIN +
+               X20*APOE4_BIN +
+               X23*APOE4_BIN +
+               X24*APOE4_BIN +
                Age.AV45 + Gender + Edu..Yrs., df_av45)
 fm_av45_onlypatterns = lm(UW_MEM__slope ~ diag_prior + 
                             X0*APOE4_BIN +
+                            X1*APOE4_BIN +
+                            X2*APOE4_BIN +
                             X3*APOE4_BIN +
-                            X6*APOE4_BIN +
+                            X4*APOE4_BIN +
+                            X4*APOE4_BIN +
                             X7*APOE4_BIN +
                             X8*APOE4_BIN +
                             X9*APOE4_BIN +
                             X12*APOE4_BIN +
-                            X13*APOE4_BIN +
                             X14*APOE4_BIN +
-                            X17*APOE4_BIN +
-                            X26*APOE4_BIN +
-                            X29*APOE4_BIN +
+                            X15*APOE4_BIN +
+                            X20*APOE4_BIN +
+                            X23*APOE4_BIN +
+                            X24*APOE4_BIN +
                             Age.AV45 + Gender + Edu..Yrs., df_av45)
 fm_av45_onlypca = lm(UW_MEM__slope ~ diag_prior + 
                        PC1*APOE4_BIN +
