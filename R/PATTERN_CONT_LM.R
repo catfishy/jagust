@@ -51,7 +51,7 @@ for (i in names(df_av45)){
 valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('EMCI','LMCI')
 #valid_diags = c('N','SMC')
-df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
+#df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 
 
 # Choose valid groups
