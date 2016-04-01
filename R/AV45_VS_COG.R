@@ -35,7 +35,7 @@ df_value_long = melt(df_value_wide,
                      value.name='value')
 merge_on = c(demo_columns,av45_columns,'timepoint')
 df_long = merge(df_time_long,df_value_long,merge_on)
-df_long = df_long[complete.cases(df_long[,'time']),]
+df_long = df_long[complete.cases(df_long[,names(df_long)]),]
 
 # Separate Diag groups
 df_long_n = df_long[which(df_long$Diag.AV45_long %in% c('N','SMC')),] 
@@ -43,12 +43,29 @@ df_long_mci = df_long[which(df_long$Diag.AV45_long %in% c('EMCI','LMCI')),]
 df_long_ad = df_long[which(df_long$Diag.AV45_long %in% c('AD')),] 
 
 # Baseline AV45 vs Cog change LME models
+fm_null_n = lmer(value ~ Age.AV45 + Gender + Edu..Yrs. + Diag.AV45_long + APOE4_BIN*time + (1 + time | RID), df_long_n)
+fm_null_mci = lmer(value ~ Age.AV45 + Gender + Edu..Yrs. + Diag.AV45_long + APOE4_BIN*time + (1 + time | RID), df_long_mci)
+fm_null_ad = lmer(value ~ Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN*time + (1 + time | RID), df_long_ad)
 fm_tp_n = lmer(value ~ AV45_TP_wcereb + Age.AV45 + Gender + Edu..Yrs. + Diag.AV45_long + APOE4_BIN*time + (1 + time | RID), df_long_n)
 fm_pvc_n = lmer(value ~ AV45_PVC_CorticalSummary_WholeCereb_BL + Age.AV45 + Gender + Edu..Yrs. + Diag.AV45_long + APOE4_BIN*time + (1 + time | RID), df_long_n)
 fm_tp_mci = lmer(value ~ AV45_TP_wcereb + Age.AV45 + Gender + Edu..Yrs. + Diag.AV45_long + APOE4_BIN*time + (1 + time | RID), df_long_mci)
 fm_pvc_mci = lmer(value ~ AV45_PVC_CorticalSummary_WholeCereb_BL + Age.AV45 + Gender + Edu..Yrs. + Diag.AV45_long + APOE4_BIN*time + (1 + time | RID), df_long_mci)
 fm_tp_ad = lmer(value ~ AV45_TP_wcereb + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN*time + (1 + time | RID), df_long_ad)
 fm_pvc_ad = lmer(value ~ AV45_PVC_CorticalSummary_WholeCereb_BL + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN*time + (1 + time | RID), df_long_ad)
+
+fm_tp_n_anova = anova(fm_null_n,fm_tp_n)
+fm_pvc_n_anova = anova(fm_null_n,fm_pvc_n)
+fm_tp_mci_anova = anova(fm_null_mci,fm_tp_mci)
+fm_pvc_mci_anova = anova(fm_null_mci,fm_pvc_mci)
+fm_tp_ad_anova = anova(fm_null_ad,fm_tp_ad)
+fm_pvc_ad_anova = anova(fm_null_ad,fm_pvc_ad)
+
+fm_tp_n_anova$`Pr(>Chisq)`[2]
+fm_pvc_n_anova$`Pr(>Chisq)`[2]
+fm_tp_mci_anova$`Pr(>Chisq)`[2]
+fm_pvc_mci_anova$`Pr(>Chisq)`[2]
+fm_tp_ad_anova$`Pr(>Chisq)`[2]
+fm_pvc_ad_anova$`Pr(>Chisq)`[2]
 
 Age.AV45
 Gender

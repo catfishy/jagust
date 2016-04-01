@@ -41,9 +41,8 @@ master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_26_16.csv'
 membership_conf = 0.50
 components = 1067
 ref_key = 'WHOLE_CEREBELLUM'
-threshold = 1.2813
-# ref_key = 'COMPOSITE_REF'
-# threshold = 0.91711
+threshold = 1.15
+
 
 result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
 lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
@@ -1258,7 +1257,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
             adjusted_time = time-base_time
             new_row = proba_df.loc[pid].copy()
             new_row[dep_val_var] = val
-            new_row['YrsPostBL'] = round(adjusted_time,1)
+            new_row['YrsPostBL'] = round(adjusted_time,3)
             full_df = pd.concat((full_df, new_row),axis=1)
 
     # create slope dataset
@@ -1269,7 +1268,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
         adj_timepoints = []
         for time, val in timepoints:
             adjusted_time = time-base_time
-            adj_timepoints.append((round(adjusted_time,1),val))
+            adj_timepoints.append((round(adjusted_time,3),val))
         row_slope = slope(adj_timepoints)
         if row_slope is not None:
             new_row = proba_df.loc[pid].copy()
@@ -1380,7 +1379,7 @@ if __name__ == '__main__':
 
     # generate conversion data
     conversions = parseConversions(all_groups, result_df, threshold, master_keys)
-    conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
+    # conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
     cortical_summary = conversions.cortical_summary.to_dict()
     positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.9].index)
@@ -1398,7 +1397,8 @@ if __name__ == '__main__':
     # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
 
     # dump LMM Dataset
-    LME_dep_variables = [('UW_MEM_','UW_MEM_postAV45_'),
+    LME_dep_variables = [('ADAScog.','TIMEpostAV45_ADAS.'),   
+                         ('UW_MEM_','UW_MEM_postAV45_'),
                          ('UW_EF_','UW_EF_postAV45_'),
                          ('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
