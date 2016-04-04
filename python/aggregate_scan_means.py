@@ -369,7 +369,7 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     Assumes preprocess outputs include all freesurfer regions (no pre-aggregation)
     '''
     bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
-    addon = "_nontp" if nontp else ""
+    addon = "_nontp" if nontp else "_tp"
     for filename in os.listdir(folder_name):
         '''
         if allregions and 'allregions' not in filename:
@@ -377,16 +377,19 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
         '''
         if "BL%s_means" % addon in filename:
             bl_means = os.path.join(folder_name, filename)
-        elif "V2%s_means" % addon in filename:
+        elif "SCAN2%s_means" % addon in filename:
             v2_means = os.path.join(folder_name, filename)
-        elif "V3%s_means" % addon in filename:
+        elif "SCAN3%s_means" % addon in filename:
             v3_means = os.path.join(folder_name, filename)
         elif "BL%s_roisize" % addon in filename:
             bl_sizes = os.path.join(folder_name, filename)
-        elif "V2%s_roisize" % addon in filename:
+        elif "SCAN2%s_roisize" % addon in filename:
             v2_sizes = os.path.join(folder_name, filename)
-        elif "V3%s_roisize" % addon in filename:
+        elif "SCAN3%s_roisize" % addon in filename:
             v3_sizes = os.path.join(folder_name, filename)
+    to_return = (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
+    if not all([_ for _ in to_return]):
+        raise Exception("Couldn't find preprocess output: %s" % (to_return,))
     return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
 
 def ADNINamingConventions(input_df):
@@ -433,7 +436,7 @@ if __name__ == "__main__":
     # dod_tau_pet_dates = importScanMeta(dod_meta_tau, with_viscode=True)
     
     #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '02_19_16'
+    timestamp = '04_04_16'
 
     # preprocess output folders
     preprocess_folder = '../docs/preprocess_output/%s/' % timestamp

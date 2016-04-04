@@ -311,7 +311,7 @@ def syncAV45RoussetResults(old_headers, old_lines, rousset_csv):
 
 
 def syncFAQData(old_headers, old_lines, faq_file, registry_file):
-    tmpts = 12
+    tmpts = 13
     registry = importRegistry(registry_file)
     faq_by_subj = importFAQ(faq_file, registry)
 
@@ -371,7 +371,7 @@ def syncFAQData(old_headers, old_lines, faq_file, registry_file):
     return (new_headers, new_lines)
 
 def syncNPIData(old_headers, old_lines, npi_file):
-    tmpts = 5
+    tmpts = 6
     npi_by_subj = importNPI(npi_file)
 
     to_add_headers = []
@@ -2193,28 +2193,28 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
     
     # Output files
-    av45_tp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_tp.csv"
-    av45_nontp_file = "../output/02_19_16/UCBERKELEYAV45_02_19_16_regular_nontp.csv"
-    av1451_tp_file = "../output/02_19_16/UCBERKELEYAV1451_02_19_16_regular_tp.csv"
+    av45_tp_file = "../output/04_04_16/UCBERKELEYAV45_04_04_16_regular_tp.csv"
+    av45_nontp_file = "../output/04_04_16/UCBERKELEYAV45_04_04_16_regular_nontp.csv"
+    av1451_tp_file = "../output/04_04_16/UCBERKELEYAV1451_04_04_16_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauregions_output.csv"
 
     # Cog files
-    mmse_file = "../cog_tests/MMSE.csv"
-    adni1_adas_file = '../cog_tests/ADASSCORES.csv'
-    adnigo2_adas_file = '../cog_tests/ADAS_ADNIGO2.csv'
-    neuro_battery_file = '../cog_tests/NEUROBAT.csv'
-    gd_file = '../cog_tests/GDSCALE.csv'
-    uw_file = '../cog_tests/UWNPSYCHSUM_01_12_16.csv'
+    mmse_file = "../docs/ADNI/MMSE.csv"
+    adni1_adas_file = '../docs/ADNI/ADASSCORES.csv'
+    adnigo2_adas_file = '../docs/ADNI/ADAS_ADNIGO2.csv'
+    neuro_battery_file = '../docs/ADNI/NEUROBAT.csv'
+    gd_file = '../docs/ADNI/GDSCALE.csv'
+    uw_file = '../docs/ADNI/UWNPSYCHSUM_01_12_16.csv'
     
     # MR files
-    tbm_file = '../mr_docs/Mayo/MAYOADIRL_MRI_TBMSYN_05_07_15.csv'
-    ucsf_long_files = [('4.4','../mr_docs/UCSF/longitudinal/UCSFFSL_11_02_15.csv'),
-                       ('5.1','../mr_docs/UCSF/longitudinal/UCSFFSL51Y1_11_02_15.csv')]
-    ucsf_cross_files = [('4.3','../mr_docs/UCSF/cross_section/UCSFFSX_11_02_15.csv'),
-                        ('5.1','../mr_docs/UCSF/cross_section/UCSFFSX51_11_02_15.csv'),
-                        ('5.1','../mr_docs/UCSF/cross_section/UCSFFSX51_ADNI1_3T_11_02_15.csv')]
-    ucb_fs_volumes = '../mr_docs/UCB/adni_av45_fs_volumes_03-07-2016.csv'
+    tbm_file = '../docs/ADNI/MAYOADIRL_MRI_TBMSYN_12_08_15.csv'
+    ucsf_long_files = [('4.4','../docs/ADNI/UCSFFSL_02_01_16.csv'),
+                       ('5.1','../docs/ADNI/UCSFFSL51Y1_02_24_16.csv')]
+    ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
+                        ('5.1','../docs/ADNI/UCSFFSX51_11_02_15_V2.csv'),
+                        ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_04-01-2016.csv'
 
     # Run pipeline
     runPipeline()

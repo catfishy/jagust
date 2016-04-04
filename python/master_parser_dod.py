@@ -713,9 +713,9 @@ if __name__ == '__main__':
     # ADNI master file
     av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_19_16.csv'
     # AV45 file
-    av45_file = '../output/01_03_16/UCBERKELEYAV45_DOD_01_03_16_merged_nontp.csv'
+    av45_file = '../output/04_04_16/UCBERKELEYAV45_DOD_04_04_16_regular_nontp.csv'
     # AV1451 file
-    av1451_file = '../output/01_03_16/UCBERKELEYTAU_DOD_01_03_16_merged_tp.csv'
+    av1451_file = '../output/04_04_16/UCBERKELEYTAU_DOD_04_04_16_regular_tp.csv'
 
     # Registry file
     registry_file = "../docs/DOD/REGISTRY.csv"
