@@ -381,41 +381,64 @@ def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
 def syncAV1451Data(old_headers, old_lines, av1451_file, dump_to=None):
     av1451_by_subj = importAV1451(av1451_file)
 
-    to_add_headers = ['AV1451_BRAAK1_wcereb', 'AV1451_BRAAK2_wcereb', 
-                      'AV1451_BRAAK3_wcereb', 'AV1451_BRAAK4_wcereb', 
-                      'AV1451_BRAAK5_wcereb', 'AV1451_BRAAK6_wcereb',
-                      'AV1451_LEFT_CAUDATE_wcereb', 'AV1451_RIGHT_CAUDATE_wcereb',
-                      'AV1451_LEFT_PUTAMEN_wcereb', 'AV1451_RIGHT_PUTAMEN_wcereb',
-                      'AV1451_LEFT_CHOROID_PLEXUS_wcereb', 'AV1451_RIGHT_CHOROID_PLEXUS_wcereb',
-                      'AV1451_CEREBELLUMGREYMATTER', 'AV1451_BRAIN_STEM', 
-                      'AV1451_WHOLECEREBELLUM']
+    timepoints = 2
+
+    row_indices = range(1,timepoints+1)
+    to_add_headers = []
+    to_add_headers += ['AV1451_%s_DATE' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_BRAAK1_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_BRAAK2_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_BRAAK3_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_BRAAK4_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_BRAAK5_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_BRAAK6_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_LEFT_CAUDATE_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_RIGHT_CAUDATE_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_LEFT_CHOROID_PLEXUS_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_RIGHT_CHOROID_PLEXUS_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_CEREBELLUMGREYMATTER' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_BRAIN_STEM' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_WHOLECEREBELLUM' % i for i in row_indices]
+
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
     new_lines = []
 
     def extraction_fn(subj, subj_row, old_line, patient_pets):
         new_data = {}
-        new_data['AV1451_CEREBELLUMGREYMATTER'] = float(subj_row['CEREBELLUMGREYMATTER'])
-        new_data['AV1451_BRAIN_STEM'] = float(subj_row['BRAIN_STEM'])
+        subj_row = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+        if len(subj_row) > timepoints:
+            raise Exception("Raise # AV1451 Timepoints to > %s" % timepoints)
+        for i, row in enumerate(subj_row):
+            row_i = i + 1
 
-        # get whole cerebellum
-        cerebellum_parts = ['RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBELLUM_CORTEX', 'LEFT_CEREBELLUM_WHITE_MATTER']
-        weights_values = [(float(subj_row["%s_SIZE" % _]), float(subj_row[_])) for _ in cerebellum_parts]
-        wcereb = weightedMean(weights_values)
-        new_data['AV1451_WHOLECEREBELLUM'] = wcereb
+            new_data['AV1451_%s_DATE' % row_i] = row['EXAMDATE']
+            new_data['AV1451_%s_BRAIN_STEM' % row_i] = float(row['BRAIN_STEM'])
 
-        # region suvrs
-        new_data['AV1451_BRAAK1_wcereb'] = float(subj_row['BRAAK1'])/wcereb
-        new_data['AV1451_BRAAK2_wcereb'] = float(subj_row['BRAAK2'])/wcereb
-        new_data['AV1451_BRAAK3_wcereb'] = float(subj_row['BRAAK3'])/wcereb
-        new_data['AV1451_BRAAK4_wcereb'] = float(subj_row['BRAAK4'])/wcereb
-        new_data['AV1451_BRAAK5_wcereb'] = float(subj_row['BRAAK5'])/wcereb
-        new_data['AV1451_BRAAK6_wcereb'] = float(subj_row['BRAAK6'])/wcereb
-        new_data['AV1451_LEFT_CAUDATE_wcereb'] = float(subj_row['LEFT_CAUDATE'])/wcereb
-        new_data['AV1451_RIGHT_CAUDATE_wcereb'] = float(subj_row['RIGHT_CAUDATE'])/wcereb
-        new_data['AV1451_LEFT_PUTAMEN_wcereb'] = float(subj_row['LEFT_PUTAMEN'])/wcereb
-        new_data['AV1451_RIGHT_PUTAMEN_wcereb'] = float(subj_row['RIGHT_PUTAMEN'])/wcereb
-        new_data['AV1451_LEFT_CHOROID_PLEXUS_wcereb'] = float(subj_row['LEFT_CHOROID_PLEXUS'])/wcereb
-        new_data['AV1451_RIGHT_CHOROID_PLEXUS_wcereb'] = float(subj_row['RIGHT_CHOROID_PLEXUS'])/wcereb 
+            # get whole cerebellum
+            cerebellum_parts = ['RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBELLUM_CORTEX', 'LEFT_CEREBELLUM_WHITE_MATTER']
+            weights_values = [(float(row["%s_SIZE" % _]), float(row[_])) for _ in cerebellum_parts]
+            wcereb = weightedMean(weights_values)
+            new_data['AV1451_%s_WHOLECEREBELLUM' % row_i] = wcereb
+
+            # get cerebellar gray
+            cerebg_parts = ['RIGHT_CEREBELLUM_CORTEX', 'LEFT_CEREBELLUM_CORTEX']
+            weights_values = [(float(row["%s_SIZE" % _]), float(row[_])) for _ in cerebg_parts]
+            cerebg = weightedMean(weights_values)
+            new_data['AV1451_%s_CEREBELLUMGREYMATTER' % row_i] = cerebg
+
+            # region suvrs
+            new_data['AV1451_%s_BRAAK1_wcereb' % row_i] = float(row['BRAAK1'])/wcereb
+            new_data['AV1451_%s_BRAAK2_wcereb' % row_i] = float(row['BRAAK2'])/wcereb
+            new_data['AV1451_%s_BRAAK3_wcereb' % row_i] = float(row['BRAAK3'])/wcereb
+            new_data['AV1451_%s_BRAAK4_wcereb' % row_i] = float(row['BRAAK4'])/wcereb
+            new_data['AV1451_%s_BRAAK5_wcereb' % row_i] = float(row['BRAAK5'])/wcereb
+            new_data['AV1451_%s_BRAAK6_wcereb' % row_i] = float(row['BRAAK6'])/wcereb
+            new_data['AV1451_%s_LEFT_CAUDATE_wcereb' % row_i] = float(row['LEFT_CAUDATE'])/wcereb
+            new_data['AV1451_%s_RIGHT_CAUDATE_wcereb' % row_i] = float(row['RIGHT_CAUDATE'])/wcereb
+            new_data['AV1451_%s_LEFT_PUTAMEN_wcereb' % row_i] = float(row['LEFT_PUTAMEN'])/wcereb
+            new_data['AV1451_%s_RIGHT_PUTAMEN_wcereb' % row_i] = float(row['RIGHT_PUTAMEN'])/wcereb
+            new_data['AV1451_%s_LEFT_CHOROID_PLEXUS_wcereb' % row_i] = float(row['LEFT_CHOROID_PLEXUS'])/wcereb
+            new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_wcereb' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/wcereb 
 
         return new_data
 
@@ -484,7 +507,6 @@ def syncAV45Data(old_headers, old_lines, av45_file, registry_file, diags, dump_t
             continue
 
         av45_data = av45_by_subj[ns]
-        print "AV45 %s" % ns
         updated_headers, new_data = parseAV45Entries(old_headers, av45_data)
         if new_headers is None:
             new_headers = updated_headers
@@ -594,11 +616,6 @@ def parseAV45Entries(old_headers, subj_rows):
         right_temporal_size = np.sum([float(point["%s_SIZE" % k]) for k in right_temporal_keys])
         left_ventrical_size = np.sum([float(point["%s_SIZE" % k]) for k in left_ventrical_keys])
         right_ventrical_size = np.sum([float(point["%s_SIZE" % k]) for k in right_ventrical_keys])
-
-        print compositeroi
-        print wcereb
-        print bigref
-        print compositeroi/wcereb
 
         # Dates
         data['AV45_%s_EXAMDATE' % (i+1)] = examdate
@@ -713,9 +730,9 @@ if __name__ == '__main__':
     # ADNI master file
     av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_19_16.csv'
     # AV45 file
-    av45_file = '../output/04_04_16/UCBERKELEYAV45_DOD_04_04_16_regular_nontp.csv'
+    av45_file = '../output/04_05_16/UCBERKELEYAV45_DOD_04_05_16_regular_nontp.csv'
     # AV1451 file
-    av1451_file = '../output/04_04_16/UCBERKELEYTAU_DOD_04_04_16_regular_tp.csv'
+    av1451_file = '../output/04_05_16/UCBERKELEYAV1451_DOD_04_05_16_regular_tp.csv'
 
     # Registry file
     registry_file = "../docs/DOD/REGISTRY.csv"

@@ -164,6 +164,29 @@ out_df.to_csv(output)
 
 '''
 
+def updateLine(old_line, new_data, extraction_fn, 
+               pid_key='RID', pet_meta=None, decimal_places=4):
+    try:
+        subj = int(old_line[pid_key])
+    except Exception as e:
+        print "No subject column %s found" % pid_key
+        return {}
+
+    subj_row = new_data.get(subj,None)
+    if subj_row is None:
+        # print "No subj row found for %s" % (subj)
+        return {}
+
+    patient_pets = None
+    if pet_meta is not None:
+        patient_pets = sorted(pet_meta.get(subj,[]))
+
+    new_data = extraction_fn(subj, subj_row, old_line, patient_pets) # patient_pets is passed in as context
+    new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
+    return new_data
+
+
+
 
 def regCoeffZTest(B1, B2, se1, se2):
     pooledSE = np.sqrt(se1 + se2)
@@ -1644,7 +1667,7 @@ def importAV1451(av1451_file):
     df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
     subj_dict = {}
     for subj, rows in df.groupby(subj_col):
-        subj_dict[int(subj)] = rows.set_index('RID').to_dict(orient='records')
+        subj_dict[int(subj)] = rows.set_index(subj_col).to_dict(orient='records')
     return subj_dict
 
 

@@ -4,7 +4,7 @@ library(psych)
 library(reshape2)
 library(plyr)
 
-all_content = readLines('FDG_AV45_COGdata/FDG_AV45_COGdata_03_23_16.csv')
+all_content = readLines('FDG_AV45_COGdata/FDG_AV45_COGdata_04_04_16.csv')
 skip_first = all_content[-1]
 df = read.csv(textConnection(skip_first), header=TRUE, stringsAsFactors=FALSE)
 

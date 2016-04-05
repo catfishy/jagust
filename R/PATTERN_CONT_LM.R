@@ -13,6 +13,8 @@ library(stats)
 library(gdata)
 library(psych)
 
+threshold = 1.15
+
 isPatternColumn = function(i){
   if (startsWith(i,'X')) return(TRUE) else return(FALSE)
 }
@@ -38,8 +40,7 @@ df_patterns.pca_rotation = df_patterns.pca$rotation
 df_patterns.transformed = predict(df_patterns.pca)
 df_av45 = as.data.frame(cbind(as.matrix(df_av45),df_patterns.transformed))
 
-
-# Convert to non factors to floats
+# Convert non factors to floats
 to_factor = c('RID','diag_prior','APOE4_BIN','APOE2_BIN','Gender')
 for (i in names(df_av45)){
   if (!(i %in% to_factor)){
@@ -47,16 +48,24 @@ for (i in names(df_av45)){
   }
 }
 
+
 # Only keep N/SMC/EMCI/LMCI
 valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('EMCI','LMCI')
 #valid_diags = c('N','SMC')
 #df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 
+# Only keep negative
+df_av45 = df_av45[which(df_av45$CORTICAL_SUMMARY_prior <= threshold),]
+
+# Calculate time to threshold
+df_av45['threshold'] = threshold
+df_av45['threshold_diff'] = df_av45$threshold - df_av45$CORTICAL_SUMMARY_prior
+df_av45['to_threshold'] = df_av45$threshold_diff / df_av45$CORTICAL_SUMMARY_slope
+df_av45[which(df_av45$to_threshold < 0),'to_threshold'] = 0
 
 # Choose valid groups
 group_desc = describeBy(df_av45$CORTICAL_SUMMARY_prior,df_av45$group)
-
 
 # pattern weight models
 fm_av45_onlycs = lm(CORTICAL_SUMMARY_slope ~ CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2), df_av45)
@@ -69,16 +78,16 @@ fm_av45 = lm(CORTICAL_SUMMARY_slope ~ diag_prior +
                X2*APOE4_BIN +
                X3*APOE4_BIN +
                X4*APOE4_BIN +
-               X4*APOE4_BIN +
+               X5*APOE4_BIN +
                X7*APOE4_BIN +
                X8*APOE4_BIN +
                X9*APOE4_BIN +
+               X10*APOE4_BIN + 
+               X11*APOE4_BIN + 
                X12*APOE4_BIN +
                X14*APOE4_BIN +
-               X15*APOE4_BIN +
-               X20*APOE4_BIN +
+               X21*APOE4_BIN + 
                X23*APOE4_BIN +
-               X24*APOE4_BIN +
                Age.AV45 + Gender + Edu..Yrs., df_av45)
 fm_av45_onlypatterns = lm(CORTICAL_SUMMARY_slope ~ diag_prior + 
                             X0*APOE4_BIN +
@@ -86,57 +95,27 @@ fm_av45_onlypatterns = lm(CORTICAL_SUMMARY_slope ~ diag_prior +
                             X2*APOE4_BIN +
                             X3*APOE4_BIN +
                             X4*APOE4_BIN +
-                            X4*APOE4_BIN +
+                            X5*APOE4_BIN +
                             X7*APOE4_BIN +
                             X8*APOE4_BIN +
                             X9*APOE4_BIN +
+                            X10*APOE4_BIN + 
+                            X11*APOE4_BIN + 
                             X12*APOE4_BIN +
                             X14*APOE4_BIN +
-                            X15*APOE4_BIN +
-                            X20*APOE4_BIN +
+                            X21*APOE4_BIN + 
                             X23*APOE4_BIN +
-                            X24*APOE4_BIN +
                             Age.AV45 + Gender + Edu..Yrs., df_av45)
-fm_av45_onlypca = lm(CORTICAL_SUMMARY_slope ~ diag_prior + 
-                            PC1*APOE4_BIN +
-                            PC2*APOE4_BIN +
-                            PC3*APOE4_BIN +
-                            PC4*APOE4_BIN +
-                            PC5*APOE4_BIN +
-                            PC6*APOE4_BIN +
-                            PC7*APOE4_BIN +
-                            PC8*APOE4_BIN +
-                            PC9*APOE4_BIN +
-                            PC10*APOE4_BIN +
-                            PC11*APOE4_BIN +
-                            Age.AV45 + Gender + Edu..Yrs., df_av45)
-fm_av45_pca = lm(CORTICAL_SUMMARY_slope ~ diag_prior + 
-                   CORTICAL_SUMMARY_prior*APOE4_BIN +  
-                   I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
-                   PC1*APOE4_BIN +
-                   PC2*APOE4_BIN +
-                   PC3*APOE4_BIN +
-                   PC4*APOE4_BIN +
-                   PC5*APOE4_BIN +
-                   PC6*APOE4_BIN +
-                   PC7*APOE4_BIN +
-                   PC8*APOE4_BIN +
-                   PC9*APOE4_BIN +
-                   PC10*APOE4_BIN +
-                   PC11*APOE4_BIN +
-                   Age.AV45 + Gender + Edu..Yrs., df_av45)
+
+
 # summaries
 fm_av45_nopattern_summary = summary(fm_av45_nopattern)
 fm_av45_summary = summary(fm_av45)
 fm_av45_onlypatterns_summary = summary(fm_av45_onlypatterns)
-fm_av45_onlypca_summary = summary(fm_av45_onlypca)
-fm_av45_pca_summary = summary(fm_av45_pca)
 
 fm_av45_nopattern_summary$adj.r.squared
 fm_av45_summary$adj.r.squared
 fm_av45_onlypatterns_summary$adj.r.squared
-fm_av45_onlypca_summary$adj.r.squared
-fm_av45_pca_summary$adj.r.squared
 
 fm_av45_nopattern_summary$aic
 fm_av45_summary$aic
@@ -148,7 +127,7 @@ fm_av45_anova = Anova(fm_av45,type='III')
 fm_av45_onlypatterns_anova = Anova(fm_av45_onlypatterns,type='III')
 
 # anova model comparisons
-fm_modelcomparison_anova = anova(fm_av45_nopattern, fm_av45, test='LRT')
+fm_mc_anova = anova(fm_av45_nopattern, fm_av45, test='LRT')
 
 # PRINT MODEL OUTPUTS
 sink('av45_lm_nopattern.txt'); print(fm_av45_nopattern_summary, correlation=TRUE); sink(file=NULL)
@@ -198,8 +177,6 @@ points(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_onlypatterns),bg='gree
 plot(1,type-'n')
 points(fm_av45_nopattern$fitted.values, fm_av45_nopattern$residuals,bg='blue',pch=21)
 points(fm_av45$fitted.values, fm_av45$residuals, bg='red', pch=21)
-
-
 
 # get coeff names
 rownames = row.names(fm_av45_summary$coefficients)

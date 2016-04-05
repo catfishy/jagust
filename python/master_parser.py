@@ -43,27 +43,6 @@ RID_ADDONS = [78,93,108,458,514,691,724,739,821,853,916,1080,1271]
 
 ######### SYNCING INFRASTRUCTURE (MOST FUNCTIONS DEPEND ON THESE) ##################
 
-def updateLine(old_line, new_data, extraction_fn, 
-               pid_key='RID', pet_meta=None, decimal_places=4):
-    try:
-        subj = int(old_line[pid_key])
-    except Exception as e:
-        print "No subject column %s found" % pid_key
-        return {}
-
-    subj_row = new_data.get(subj,None)
-    if subj_row is None:
-        # print "No subj row found for %s" % (subj)
-        return {}
-
-    patient_pets = None
-    if pet_meta is not None:
-        patient_pets = sorted(pet_meta.get(subj,[]))
-
-    new_data = extraction_fn(subj, subj_row, old_line, patient_pets) # patient_pets is passed in as context
-    new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
-    return new_data
-
 def getClosestToScans(points, bl_scan, scan_2, scan_3, day_limit=550):
     used = set()
     # match up with av45 scans
@@ -2193,9 +2172,9 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
     
     # Output files
-    av45_tp_file = "../output/04_04_16/UCBERKELEYAV45_04_04_16_regular_tp.csv"
-    av45_nontp_file = "../output/04_04_16/UCBERKELEYAV45_04_04_16_regular_nontp.csv"
-    av1451_tp_file = "../output/04_04_16/UCBERKELEYAV1451_04_04_16_regular_tp.csv"
+    av45_tp_file = "../output/04_05_16/UCBERKELEYAV45_04_05_16_regular_tp.csv"
+    av45_nontp_file = "../output/04_05_16/UCBERKELEYAV45_04_05_16_regular_nontp.csv"
+    av1451_tp_file = "../output/04_05_16/UCBERKELEYAV1451_04_05_16_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauregions_output.csv"
 
@@ -2214,7 +2193,7 @@ if __name__ == '__main__':
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_11_02_15_V2.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
-    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_04-01-2016.csv'
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_04-05-2016.csv'
 
     # Run pipeline
     runPipeline()
