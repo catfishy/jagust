@@ -1176,7 +1176,8 @@ def importADASCog(adni1_file, adnigo2_file, registry=None):
             continue
         totscore = int(raw_totscore)
         if totscore < 0:
-            totscore = ''
+            print "%s (%s, %s) has invalid totscore" % (subj, viscode, viscode2)
+            continue
         examdate = None
         if registry is not None:
             examdate = findVisitDate(registry, subj, [viscode, viscode2])
