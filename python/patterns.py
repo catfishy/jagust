@@ -31,55 +31,6 @@ from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bila
 #plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
 
-bilateral=True
-normals_only=False
-
-patterns_csv = '../datasets/pvc_allregions_uptake_change_bilateral.csv'
-patterns_split_csv = '../datasets/pvc_allregions_uptake_bilateral.csv'
-lut_file = "../FreeSurferColorLUT.txt"
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_26_16.csv'
-membership_conf = 0.50
-components = 1067
-ref_key = 'WHOLE_CEREBELLUM'
-threshold = 1.15
-
-
-result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
-lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
-             'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','CEREBRAL_WHITE','BRAIN_STEM']
-master_keys = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','SMOKING','DIABETES',
-               'UW_MEM_BL_3months','UW_MEM_slope',
-               'UW_EF_BL_3months','UW_EF_slope',
-               'WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope',
-               'CSF_TAU_closest_AV45','CSF_TAU_slope',
-               'CSF_ABETA_closest_AV45','CSF_ABETA_slope',
-               'FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope',
-               'FDG_PONS_AV45_6MTHS','FDG_postAV45_slope']
-cat_keys = ['APOE4_BIN','APOE2_BIN','Gender','Handedness','SMOKING','DIABETES']
-summary_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change']
-pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 
-                'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 
-                'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL', 
-                'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE', 
-                'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL', 
-                'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE', 
-                'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL', 
-                'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL', 
-                'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS', 
-                'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS', 
-                'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL', 
-                'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX', 
-                'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER', 
-                'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 
-                'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER']
-if bilateral: # truncate keys
-    pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
-
-prior_keys = ['%s_prior' % _ for _ in pattern_keys]
-post_keys = ['%s_post' % _ for _ in pattern_keys]
-change_keys = ['%s_change' % _ for _ in pattern_keys]
-lobe_change_keys = ['%s_change' % _ for _ in lobe_keys]
-
 
 class DPGMM_SCALE(DPGMM):
 
@@ -241,7 +192,7 @@ def group_comparisons(df, groups, keys, adjust=True):
     return data
 
 
-def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', bilateral=True):
+def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', bilateral=True):
     df = pd.read_csv(data_csv)
     df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
     value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
@@ -308,14 +259,26 @@ def parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', b
 
     # split by timepoint
     pattern_bl_df = pattern_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
-    pattern_scan2_df = pattern_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
-    pattern_scan3_df = pattern_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
     uptake_bl_df = uptake_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
-    uptake_scan2_df = uptake_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
-    uptake_scan3_df = uptake_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
     lobes_bl_df = lobes_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
-    lobes_scan2_df = lobes_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
-    lobes_scan3_df = lobes_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+
+    try:
+        pattern_scan2_df = pattern_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
+        uptake_scan2_df = uptake_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
+        lobes_scan2_df = lobes_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
+    except:
+        pattern_scan2_df = pd.DataFrame(columns=pattern_bl_df.columns)
+        uptake_scan2_df = pd.DataFrame(columns=uptake_bl_df.columns)
+        lobes_scan2_df = pd.DataFrame(columns=lobes_bl_df.columns)
+
+    try:
+        pattern_scan3_df = pattern_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+        uptake_scan3_df = uptake_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+        lobes_scan3_df = lobes_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+    except:
+        pattern_scan3_df = pd.DataFrame(columns=pattern_bl_df.columns)
+        uptake_scan3_df = pd.DataFrame(columns=uptake_bl_df.columns)
+        lobes_scan3_df = pd.DataFrame(columns=lobes_bl_df.columns)
 
     # Get years between scans
     yrs = {}
@@ -559,7 +522,7 @@ def parseConversions(groups, result_df, threshold, master_keys):
     conversions = conversions[header_order]
     return conversions
 
-def saveAparcs(alpha, components, groups, pattern_members, uptake_members, change_members, lut_file):
+def saveAparcs(alpha, components, groups, pattern_members, uptake_members, change_members, lut_file, bilateral=True):
     if bilateral:
         index_lookup = bilateralTranslations(lut_file)
     else:
@@ -578,7 +541,7 @@ def saveAparcs(alpha, components, groups, pattern_members, uptake_members, chang
         saveFakeAparcInput(out_file_change, change_values, index_lookup)
         saveFakeAparcInput(out_file_uptake, uptake_values, index_lookup)
 
-def saveLobeAparcs(alpha, groups, lobe_tp, lut_file):
+def saveLobeAparcs(alpha, groups, lobe_tp, lut_file, bilateral=True):
     if bilateral:
         index_lookup = bilateralTranslations(lut_file)
     else:
@@ -873,49 +836,38 @@ def diagnosisChi2Test(pairs, diags):
     diags_comparisons_df = pd.DataFrame(diags_comparisons)
     return diags_comparisons_df
 
-def generateFileRoot(alpha, model=False):
+def generateFileRoot(alpha, bilateral):
     print alpha
     file_root = '../dpgmm_alpha%s' % round(alpha,2)
     if bilateral:
         file_root += '_bilateral'
-    if normals_only and not model:
-        file_root += '_normals'
     return file_root
-
-def loadResults(alpha, master_csv):
-    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
-    master_df.columns = master_df.columns.get_level_values(1)
-    master_df.set_index('RID', inplace=True)
-    master_df = master_df.loc[:,master_keys]
-    result_df = pd.read_csv('%s_result.csv' % generateFileRoot(alpha, model=True))
-    result_df.set_index('subject', inplace=True)
-    result_df.sort_index(inplace=True)
-    result_df.drop(['membership_prior','membership_post'], axis=1, inplace=True)
-    result_df.rename(columns={'membership_prior_conf':'membership_prior','membership_post_conf':'membership_post'},inplace=True)
-    result_df = result_df.merge(master_df,left_index=True,right_index=True,how='left')
-    if normals_only:
-        result_df = result_df[result_df.diag_prior.isin(['N','SMC'])]
-    return result_df
 
 def scaleInput(pattern_prior_df, pattern_post_df):
     scale_type = 'original'
     patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type=scale_type)
-    post_patterns_only = pd.DataFrame(scaler.transform(pattern_post_df))
-    post_patterns_only.set_index(pattern_post_df.index, inplace=True)
+
+    if len(pattern_post_df.index) > 0:
+        post_patterns_only = pd.DataFrame(scaler.transform(pattern_post_df))
+        post_patterns_only.set_index(pattern_post_df.index, inplace=True)
+    else:
+        post_patterns_only = pd.DataFrame(columns=patterns_only.columns)
+
     return (patterns_only, post_patterns_only)
 
-def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type):
+def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type, bilateral, tracer='AV45', shape=1.0, inversescale=0.0000001):
     # Scale inputs
     patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
 
     # Choose alpha + do model selection
     components = len(patterns_only.index)
-    best_model = chooseBestModel(patterns_only, components, covar_type, gamma_shape=1.0, gamma_inversescale=0.000000001)
+    
+    best_model = chooseBestModel(patterns_only, components, covar_type, gamma_shape=shape, gamma_inversescale=inversescale)
     alpha = best_model.alpha
-    with open("%s_%s_model.pkl" % (generateFileRoot(alpha, model=True),covar_type), 'wb') as fid:
+    with open("%s_%s_%s_model.pkl" % (generateFileRoot(alpha, bilateral),covar_type,tracer), 'wb') as fid:
         cPickle.dump(best_model, fid)   
 
-def generateResults(model, pattern_prior_df, pattern_post_df, result_df, conf_filter=False):
+def generateResults(model, pattern_prior_df, pattern_post_df, result_df, bilateral, conf_filter=False):
     alpha = model.alpha
 
     # Scale inputs
@@ -974,7 +926,7 @@ def generateResults(model, pattern_prior_df, pattern_post_df, result_df, conf_fi
             result_df.loc[rid,'membership_post_conf'] = result_df.loc[rid,'membership_post']
 
     # save
-    result_df.to_csv("%s_result.csv" % generateFileRoot(alpha, model=True))
+    result_df.to_csv("%s_result.csv" % generateFileRoot(alpha, bilateral))
     return result_df
 
 def pcaCorrelations(result_df):
@@ -1110,7 +1062,7 @@ def testLobePatternDifferences(lobe_tp, groups, pattern=True):
     return full_results
 
 
-def saveAV45LMEDataset(model, master_csv, pattern_prior_df, result_df, confident=False):
+def saveAV45LMEDataset(model, master_csv, pattern_prior_df, result_df, bilateral, confident=False):
     # Scale inputs
     bl_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
 
@@ -1167,11 +1119,11 @@ def saveAV45LMEDataset(model, master_csv, pattern_prior_df, result_df, confident
     member_sums = full_df[list(valid_bl)].sum(axis=1)
     notmember = set(member_sums[member_sums==0].index)
     full_df = full_df.drop(notmember) 
-    all_output_file = '%s_AV45_ALL_longdata_slope.csv' % (generateFileRoot(model.alpha))
+    all_output_file = '%s_AV45_ALL_longdata_slope.csv' % (generateFileRoot(model.alpha, bilateral))
     full_df.to_csv(all_output_file)
 
 
-def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=False):
+def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, bilateral, categorize=False, confident=False):
     '''
     If categorize, encode pattern membership by one-hot, where membership is determined by argmax(membership_probs)
     '''
@@ -1292,8 +1244,8 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
 
     # write out
     clean_varname = dep_val_var.replace('/','_').replace('.','_').strip()
-    all_output_file = '%s_%s_ALL_longdata.csv' % (generateFileRoot(model.alpha),clean_varname)
-    slope_output_file = '%s_%s_ALL_slopedata.csv' % (generateFileRoot(model.alpha),clean_varname)
+    all_output_file = '%s_%s_ALL_longdata.csv' % (generateFileRoot(model.alpha, bilateral),clean_varname)
+    slope_output_file = '%s_%s_ALL_slopedata.csv' % (generateFileRoot(model.alpha, bilateral),clean_varname)
     full_df.to_csv(all_output_file)
     slope_df.to_csv(slope_output_file)
 
@@ -1342,9 +1294,50 @@ def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file)
 
 
 if __name__ == '__main__':
+    # SETUP
+
+    bilateral=True
+    lut_file = "../FreeSurferColorLUT.txt"
+    membership_conf = 0.50
+    components = 1067
+    ref_key = 'WHOLE_CEREBELLUM'
+    threshold = 1.15
+    result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
+    lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
+                 'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','CEREBRAL_WHITE','BRAIN_STEM']
+    master_keys = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','SMOKING','DIABETES',
+                   'UW_MEM_BL_3months','UW_MEM_slope',
+                   'UW_EF_BL_3months','UW_EF_slope',
+                   'WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope',
+                   'CSF_TAU_closest_AV45','CSF_TAU_slope',
+                   'CSF_ABETA_closest_AV45','CSF_ABETA_slope',
+                   'FSX_HC/ICV_BL_3months','FSX_HC/ICV_slope',
+                   'FDG_PONS_AV45_6MTHS','FDG_postAV45_slope']
+    cat_keys = ['APOE4_BIN','APOE2_BIN','Gender','Handedness','SMOKING','DIABETES']
+    summary_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change']
+    pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 
+                    'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 
+                    'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL', 
+                    'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE', 
+                    'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL', 
+                    'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE', 
+                    'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL', 
+                    'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL', 
+                    'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS', 
+                    'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS', 
+                    'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL', 
+                    'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX', 
+                    'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER', 
+                    'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 
+                    'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER']
+    if bilateral: # truncate keys
+        pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
     data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_03_23_16.csv'
-    data = parseRawDataset(data_csv, master_csv, tracer='AV45', ref_key='WHOLECEREB', bilateral=True)
+    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
+
+
+
+    data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', bilateral=bilateral)
 
     pattern_bl_df = data['pattern_bl_df']
     pattern_scan2_df = data['pattern_scan2_df']
@@ -1361,8 +1354,8 @@ if __name__ == '__main__':
     pattern_col_order = list(pattern_prior_df.columns)
 
     # # Calculate
-    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical')
-    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'tied')
+    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral)
+    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'tied', bilateral)
 
     # Load
     # model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'
@@ -1371,7 +1364,7 @@ if __name__ == '__main__':
 
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
-    result_df = generateResults(best_model, pattern_prior_df, pattern_post_df, result_df, conf_filter=False)
+    result_df = generateResults(best_model, pattern_prior_df, pattern_post_df, result_df, bilateral, conf_filter=False)
 
     # get groups
     big_groups = bigGroups(result_df, threshold=3)
@@ -1379,7 +1372,7 @@ if __name__ == '__main__':
 
     # generate conversion data
     conversions = parseConversions(all_groups, result_df, threshold, master_keys)
-    # conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha))
+    # conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha, bilateral))
     cortical_summary = conversions.cortical_summary.to_dict()
     positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.9].index)
@@ -1390,11 +1383,11 @@ if __name__ == '__main__':
     uptake_members, pattern_members, lobe_members, change_members = mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, uptake_post_df, lobes_prior_df, lobes_post_df, rchange_df)
 
     # # dump pattern lobe means
-    # printMeanLobePatterns(lobe_members,all_groups,cortical_summary,'%s_pattern_means.csv' % generateFileRoot(alpha))
+    # printMeanLobePatterns(lobe_members,all_groups,cortical_summary,'%s_pattern_means.csv' % generateFileRoot(alpha, bilateral))
 
     # # save fake aparcs
-    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file)
-    # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file)
+    # saveAparcs(round(alpha,2), components, big_groups, pattern_members, uptake_members, change_members, lut_file, bilateral=bilateral)
+    # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file, bilateral=bilateral)
 
     # dump LMM Dataset
     LME_dep_variables = [('ADAScog.','TIMEpostAV45_ADAS.'),   
@@ -1403,9 +1396,9 @@ if __name__ == '__main__':
                          ('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
         if dep_val_var == 'AV45':
-            saveAV45LMEDataset(best_model, master_csv, pattern_prior_df, result_df, confident=True)
+            saveAV45LMEDataset(best_model, master_csv, pattern_prior_df, result_df, bilateral, confident=True)
         else:
-            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, categorize=False, confident=True)
+            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, bilateral, categorize=False, confident=True)
 
 
     # lobe violin plots
@@ -1422,9 +1415,9 @@ if __name__ == '__main__':
     uptake_ranks = regionRanks(big_groups, uptake_members, pattern_keys)
     change_ranks = regionRanks(big_groups, change_members, change_keys)
     pattern_ranks = regionRanks(big_groups, pattern_members, pattern_keys)
-    uptake_ranks.T.to_csv('%s_uptake_ranks.csv' % generateFileRoot(alpha))
-    change_ranks.T.to_csv('%s_change_ranks.csv' % generateFileRoot(alpha))
-    pattern_ranks.T.to_csv('%s_pattern_ranks.csv' % generateFileRoot(alpha))
+    uptake_ranks.T.to_csv('%s_uptake_ranks.csv' % generateFileRoot(alpha, bilateral))
+    change_ranks.T.to_csv('%s_change_ranks.csv' % generateFileRoot(alpha, bilateral))
+    pattern_ranks.T.to_csv('%s_pattern_ranks.csv' % generateFileRoot(alpha, bilateral))
 
     # plot pattern flows
     graphNetworkConversions(transition_patterns+positive_patterns, conversions, iterations=50, threshold=0.1, alternate_nodes=transition_patterns)
@@ -1444,10 +1437,10 @@ if __name__ == '__main__':
     # merged_members = merged_members.mergee(lobe_members, left_index=True, right_index=True)
     # all_keys = master_keys+summary_keys+pattern_keys+change_keys
     # pvalue_df = compareGroupPairs(itertools.combinations(big_groups,2), merged_members, ['CORTICAL_SUMMARY_prior'])
-    # pvalue_df.to_csv('%s_cortical_summary_pvalues.csv' % generateFileRoot(alpha), index=False)
+    # pvalue_df.to_csv('%s_cortical_summary_pvalues.csv' % generateFileRoot(alpha, bilateral), index=False)
 
     # read cortical summary pvalues
-    pvalue_df = pd.read_csv('%s_cortical_summary_pvalues.csv' % generateFileRoot(alpha))
+    pvalue_df = pd.read_csv('%s_cortical_summary_pvalues.csv' % generateFileRoot(alpha, bilateral))
     pvalue_df.set_index(['GROUP1','GROUP2'],inplace=True)
     sig_same = pvalue_df[pvalue_df.CORTICAL_SUMMARY_prior_PVALUE>0.05]
     sig_same_pairs = [_[0] for _ in zip(sig_same.index)]
@@ -1462,11 +1455,11 @@ if __name__ == '__main__':
     pairs_comparisons_df = pairs_comparisons_df.merge(diags_comparisons_df,on=['GROUP1','GROUP2'])
     pairs_comparisons_df.set_index(['GROUP1','GROUP2'], inplace=True)
     pairs_comparisons_df = pairs_comparisons_df.T
-    pairs_comparisons_df.to_csv('%s_pair_comparisons.csv' % generateFileRoot(alpha))
+    pairs_comparisons_df.to_csv('%s_pair_comparisons.csv' % generateFileRoot(alpha, bilateral))
     pvalue_indices = [_ for _ in pairs_comparisons_df.index if 'PVALUE' in _]
     # pvalues only
     pairs_comparisons_df_pvalues = pairs_comparisons_df.loc[pvalue_indices,:]
-    pairs_comparisons_df_pvalues.to_csv('%s_pair_pvalues.csv' % generateFileRoot(alpha), na_rep=-1)
+    pairs_comparisons_df_pvalues.to_csv('%s_pair_pvalues.csv' % generateFileRoot(alpha, bilateral), na_rep=-1)
     # means only
     reset_df = pairs_comparisons_df.T.reset_index()
     mean1_indices = ['GROUP1'] + [_ for _ in pairs_comparisons_df.index if 'MEAN1' in _]
@@ -1480,7 +1473,7 @@ if __name__ == '__main__':
     mean2_cleaned.set_index('GROUP',inplace=True)
     all_cleaned = pd.concat((mean1_cleaned,mean2_cleaned))
     mean_averages = all_cleaned.groupby(level='GROUP').mean().T
-    mean_averages.to_csv('%s_pair_means.csv' % generateFileRoot(alpha), na_rep='NA')
+    mean_averages.to_csv('%s_pair_means.csv' % generateFileRoot(alpha, bilateral), na_rep='NA')
 
 
     # SCATTER PLOTS! (FSX, WMH, FDG, EF, MEM)

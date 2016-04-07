@@ -244,6 +244,7 @@ def syncAV45RoussetResults(old_headers, old_lines, rousset_csv):
     wipeKeys(old_lines, to_add_headers)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
+        print subj
         new_subj_data = {}
         wcereb_slope_points = []
         bigref_slope_points = []
@@ -771,13 +772,16 @@ def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file):
     pet_meta = importPetMETA(pet_meta_file)
     to_add_headers = ['AV45_Date','AV45_2_Date','AV45_3_Date',
                       'BD MM-YY','Age@AV45','Age@AV45_2','Age@AV45_3',
-                      'AV45_1_2_Diff','AV45_1_3_Diff']
+                      'AV45_1_2_Diff','AV45_1_3_Diff',
+                      'AV1451_1_2_Diff','AV1451_1_3_Diff']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after='APOE4_NUM')
     wipeKeys(old_lines, to_add_headers)
 
     def extraction_fn(subj, subj_row, old_l, patient_pets):
-        # Get AV45 Scan dates
+        # Get Scan dates
         bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=sorted(subj_row))
+        bl_av1451, av1451_2, av1451_3 = getAV1451Dates(old_l, patient_pets=sorted(subj_row))
+
         patient_dob = demogs.get(subj,{}).get('dob',None)
         av45_age = ''
         av45_age2 = ''
@@ -792,6 +796,8 @@ def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file):
         # Date differences between scans
         av45_1_2_diff = ((av45_2 - bl_av45).days/365.0) if (bl_av45 is not None and av45_2 is not None) else ''
         av45_1_3_diff = ((av45_3 - bl_av45).days/365.0) if (bl_av45 is not None and av45_3 is not None) else ''
+        av1451_1_2_diff = ((av1451_2 - bl_av1451).days/365.0) if (bl_av1451 is not None and av1451_2 is not None) else ''
+        av1451_1_3_diff = ((av1451_3 - bl_av1451).days/365.0) if (bl_av1451 is not None and av1451_3 is not None) else ''
         new_data = {'AV45_Date': bl_av45,
                     'AV45_2_Date': av45_2,
                     'AV45_3_Date': av45_3,
@@ -800,13 +806,15 @@ def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file):
                     'Age@AV45_2' : av45_age2,
                     'Age@AV45_3' : av45_age3,
                     'AV45_1_2_Diff': av45_1_2_diff,
-                    'AV45_1_3_Diff': av45_1_3_diff}
+                    'AV45_1_3_Diff': av45_1_3_diff,
+                    'AV1451_1_2_Diff': av1451_1_2_diff,
+                    'AV1451_1_3_Diff': av1451_1_3_diff}
         return new_data
 
     new_lines = []
     for linenum, old_l in enumerate(old_lines):
         new_data = updateLine(old_l, pet_meta, extraction_fn, 
-                              pid_key='RID', pet_meta=None)
+                              pid_key='RID', pet_meta=pet_meta)
         old_l.update(new_data)
         new_lines.append(old_l)
 

@@ -386,16 +386,13 @@ def syncAV1451Data(old_headers, old_lines, av1451_file, dump_to=None):
     row_indices = range(1,timepoints+1)
     to_add_headers = []
     to_add_headers += ['AV1451_%s_DATE' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_BRAAK1_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_BRAAK2_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_BRAAK3_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_BRAAK4_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_BRAAK5_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_BRAAK6_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_LEFT_CAUDATE_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_RIGHT_CAUDATE_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_LEFT_CHOROID_PLEXUS_wcereb' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_RIGHT_CHOROID_PLEXUS_wcereb' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_Braak12_CerebGray' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_Braak34_CerebGray' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_Braak56_CerebGray' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_LEFT_CAUDATE_CerebGray' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_RIGHT_CAUDATE_CerebGray' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
+    to_add_headers += ['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
     to_add_headers += ['AV1451_%s_CEREBELLUMGREYMATTER' % i for i in row_indices]
     to_add_headers += ['AV1451_%s_BRAIN_STEM' % i for i in row_indices]
     to_add_headers += ['AV1451_%s_WHOLECEREBELLUM' % i for i in row_indices]
@@ -426,19 +423,26 @@ def syncAV1451Data(old_headers, old_lines, av1451_file, dump_to=None):
             cerebg = weightedMean(weights_values)
             new_data['AV1451_%s_CEREBELLUMGREYMATTER' % row_i] = cerebg
 
+            braak1 = (row['BRAAK1_SIZE'],row['BRAAK1'])
+            braak2 = (row['BRAAK2_SIZE'],row['BRAAK2'])
+            braak3 = (row['BRAAK3_SIZE'],row['BRAAK3'])
+            braak4 = (row['BRAAK4_SIZE'],row['BRAAK4'])
+            braak5 = (row['BRAAK5_SIZE'],row['BRAAK5'])
+            braak6 = (row['BRAAK6_SIZE'],row['BRAAK6'])
+            braak12 = weightedMean([braak1,braak2]) / cerebg
+            braak34 = weightedMean([braak3,braak4]) / cerebg
+            braak56 = weightedMean([braak5,braak6]) / cerebg
+
             # region suvrs
-            new_data['AV1451_%s_BRAAK1_wcereb' % row_i] = float(row['BRAAK1'])/wcereb
-            new_data['AV1451_%s_BRAAK2_wcereb' % row_i] = float(row['BRAAK2'])/wcereb
-            new_data['AV1451_%s_BRAAK3_wcereb' % row_i] = float(row['BRAAK3'])/wcereb
-            new_data['AV1451_%s_BRAAK4_wcereb' % row_i] = float(row['BRAAK4'])/wcereb
-            new_data['AV1451_%s_BRAAK5_wcereb' % row_i] = float(row['BRAAK5'])/wcereb
-            new_data['AV1451_%s_BRAAK6_wcereb' % row_i] = float(row['BRAAK6'])/wcereb
-            new_data['AV1451_%s_LEFT_CAUDATE_wcereb' % row_i] = float(row['LEFT_CAUDATE'])/wcereb
-            new_data['AV1451_%s_RIGHT_CAUDATE_wcereb' % row_i] = float(row['RIGHT_CAUDATE'])/wcereb
-            new_data['AV1451_%s_LEFT_PUTAMEN_wcereb' % row_i] = float(row['LEFT_PUTAMEN'])/wcereb
-            new_data['AV1451_%s_RIGHT_PUTAMEN_wcereb' % row_i] = float(row['RIGHT_PUTAMEN'])/wcereb
-            new_data['AV1451_%s_LEFT_CHOROID_PLEXUS_wcereb' % row_i] = float(row['LEFT_CHOROID_PLEXUS'])/wcereb
-            new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_wcereb' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/wcereb 
+            new_data['AV1451_%s_Braak12_CerebGray' % row_i] = braak12
+            new_data['AV1451_%s_Braak34_CerebGray' % row_i] = braak34
+            new_data['AV1451_%s_Braak56_CerebGray' % row_i] = braak56
+            new_data['AV1451_%s_LEFT_CAUDATE_CerebGray' % row_i] = float(row['LEFT_CAUDATE'])/cerebg
+            new_data['AV1451_%s_RIGHT_CAUDATE_CerebGray' % row_i] = float(row['RIGHT_CAUDATE'])/cerebg
+            new_data['AV1451_%s_LEFT_PUTAMEN_CerebGray' % row_i] = float(row['LEFT_PUTAMEN'])/cerebg
+            new_data['AV1451_%s_RIGHT_PUTAMEN_CerebGray' % row_i] = float(row['RIGHT_PUTAMEN'])/cerebg
+            new_data['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['LEFT_CHOROID_PLEXUS'])/cerebg
+            new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/cerebg 
 
         return new_data
 

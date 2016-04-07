@@ -80,24 +80,3 @@ fm_tp_lmci_anova$`Pr(>Chisq)`[2]
 fm_pvc_lmci_anova$`Pr(>Chisq)`[2]
 fm_tp_ad_anova$`Pr(>Chisq)`[2]
 fm_pvc_ad_anova$`Pr(>Chisq)`[2]
-
-Age.AV45
-Gender
-Edu..Yrs.
-
-AV45_PVC_CorticalSummary_WholeCereb_BL	AV45_PVC_CorticalSummary_WholeCereb_Scan2	AV45_PVC_CorticalSummary_WholeCereb_Scan3
-AV45_TP_wcereb	AV45_TP_2_wcereb	AV45_TP_3_wcereb
-AV45_NONTP_wcereb	AV45_NONTP_2_wcereb	AV45_NONTP_3_wcereb
-
-
-ADAScog.1
-ADAScog.2	
-ADAScog.3	
-ADAScog.4	
-ADAScog.5	
-ADAScog.6	
-ADAScog.7
-ADAScog.8	ADAScog.9	ADAScog.10	ADAScog.11	
-TIME_ADAS.1	TIME_ADAS.2	TIME_ADAS.3	TIME_ADAS.4	TIME_ADAS.5	TIME_ADAS.6	TIME_ADAS.7	TIME_ADAS.8	TIME_ADAS.9	TIME_ADAS.10	TIME_ADAS.11	
-TIMEreltoAV45_ADAS.1	TIMEreltoAV45_ADAS.2	TIMEreltoAV45_ADAS.3	TIMEreltoAV45_ADAS.4	TIMEreltoAV45_ADAS.5	TIMEreltoAV45_ADAS.6	TIMEreltoAV45_ADAS.7	TIMEreltoAV45_ADAS.8	TIMEreltoAV45_ADAS.9	TIMEreltoAV45_ADAS.10	TIMEreltoAV45_ADAS.11	
-TIMEpostAV45_ADAS.1	TIMEpostAV45_ADAS.2	TIMEpostAV45_ADAS.3	TIMEpostAV45_ADAS.4	TIMEpostAV45_ADAS.5	TIMEpostAV45_ADAS.6	TIMEpostAV45_ADAS.7	TIMEpostAV45_ADAS.8	TIMEpostAV45_ADAS.9	TIMEpostAV45_ADAS.10	TIMEpostAV45_ADAS.11
