@@ -1296,12 +1296,14 @@ def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file)
 if __name__ == '__main__':
     # SETUP
 
-    bilateral=True
-    lut_file = "../FreeSurferColorLUT.txt"
+    bilateral=False
     membership_conf = 0.50
-    components = 1067
-    ref_key = 'WHOLE_CEREBELLUM'
     threshold = 1.15
+
+    data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
+    lut_file = "../FreeSurferColorLUT.txt"
+
     result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
     lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
                  'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','CEREBRAL_WHITE','BRAIN_STEM']
@@ -1332,10 +1334,6 @@ if __name__ == '__main__':
                     'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER']
     if bilateral: # truncate keys
         pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
-    data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-    master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
-
-
 
     data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', bilateral=bilateral)
 
@@ -1354,8 +1352,12 @@ if __name__ == '__main__':
     pattern_col_order = list(pattern_prior_df.columns)
 
     # # Calculate
-    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral)
+    result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral)
     # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'tied', bilateral)
+
+    # save patterns as mat file
+    scipy.io.savemat('av45_pattern_bl.mat',{'Y':pattern_bl_df.T.as_matrix()})
+
 
     # Load
     # model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'

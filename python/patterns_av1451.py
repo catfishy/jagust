@@ -51,47 +51,6 @@ def chooseBestFactorModel(patterns, components):
     best_model = models_scores[best_score]
     return best_model
 
-def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type, bilateral, tracer='AV45', alpha=1.0):
-    # Scale inputs
-    patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
-
-    # Choose alpha + do model selection
-    components = len(patterns_only.index)
-    
-    best_model = chooseBestModel(patterns_only, components, covar_type, alpha)
-    alpha = best_model.alpha
-    with open("%s_%s_%s_model.pkl" % (generateFileRoot(alpha, bilateral),covar_type,tracer), 'wb') as fid:
-        cPickle.dump(best_model, fid)   
-
-
-def chooseBestModel(patterns, components, covar_type, alpha):
-    # Cluster
-    models_scores = {}
-    for i in range(40):
-        g = DPGMM(n_components=components,
-                  covariance_type=covar_type,
-                  alpha=alpha,
-                  tol=1e-4,
-                  n_iter=1000,
-                  params='wmc',
-                  init_params='wmc',
-                  verbose=False)
-        print "Fitting: %s" % i
-        g.fit(patterns)
-        print g.converged_
-        print g.alpha
-        y_ = g.predict(patterns)
-        print Counter(y_)
-        membership = np.zeros((len(patterns.index),components))
-        for i,member in enumerate(y_):
-            membership[i][member] = 1
-        bound = g.lower_bound(patterns, membership)
-        score = np.mean(g.score(patterns))
-        models_scores[bound] = g
-    best_score = max(models_scores.keys())
-    best_model = models_scores[best_score]
-    return best_model
-
 
 if __name__ == '__main__':
     # SETUP
@@ -152,4 +111,8 @@ if __name__ == '__main__':
     print pattern_bl_df
 
     # Calculate
-    result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral, tracer='AV1451', alpha=1.0)
+    trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral, tracer='AV1451', shape=1.0, inversescale=1.0)
+
+
+
+
