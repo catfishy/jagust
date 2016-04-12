@@ -192,7 +192,11 @@ def group_comparisons(df, groups, keys, adjust=True):
     return data
 
 
-def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', bilateral=True):
+def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type='L1' bilateral=True):
+    assert norm_type in set(['L1','L2','Linf'])
+    assert tracer in set(['AV45','AV1451'])
+    assert ref_key in set(['WHOLECEREB'])
+
     df = pd.read_csv(data_csv)
     df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
     value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
@@ -252,10 +256,30 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
     if len(set(pattern_keys) - set(pivot_df.columns)) > 0:
         raise Exception("Some pattern keys are unavailable: %s" % (set(pattern_keys) - set(pivot_df.columns),))
     uptake_df = pivot_df[pattern_keys].copy()
-    pattern_df = uptake_df.divide(uptake_df.sum(axis=1),axis=0)
     if len(set(lobe_keys) - set(pivot_df.columns)) > 0:
         raise Exception("Some lobe keys are unavailable: %s" % (set(lobe_keys) - set(pivot_df.columns),))
     lobes_df = pivot_df[lobe_keys].copy()
+
+    # Calculate normalization constant that would equate L1, L2, and Linf norms
+    l1_goal = 2.0
+    l2_goal = 1.0
+    linf_goal = 2.0
+    l1_denom = np.abs(uptake_df).sum(axis=1) / l1_goal
+    l2_denom = np.sqrt(np.square(uptake_df).sum(axis=1)) / l2_goal
+    linf_denom = np.abs(uptake_df).max(axis=1) / linf_goal
+
+    if norm_type == 'L1':
+        print l1_denom
+        pattern_df = uptake_df.divide(l1_denom,axis=0)
+    elif norm_type == 'L2':
+        print l2_denom
+        pattern_df = uptake_df.divide(l2_denom,axis=0)
+    elif norm_type == 'Linf':
+        print linf_denom
+        pattern_df = uptake_df.divide(linf_denom,axis=0)
+    else:
+        raise Exception("Invalid norm type")
+
 
     # split by timepoint
     pattern_bl_df = pattern_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
@@ -1336,6 +1360,7 @@ if __name__ == '__main__':
         pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
 
     data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', bilateral=bilateral)
+
 
     pattern_bl_df = data['pattern_bl_df']
     pattern_scan2_df = data['pattern_scan2_df']
