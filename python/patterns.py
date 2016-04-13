@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable, get_cmap
 
+import scipy
 from scipy.stats import f_oneway, norm, chi2_contingency, linregress
 from pandas.stats.api import ols
 import seaborn as sns
@@ -192,7 +193,7 @@ def group_comparisons(df, groups, keys, adjust=True):
     return data
 
 
-def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type='L1' bilateral=True):
+def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type='L1', bilateral=True):
     assert norm_type in set(['L1','L2','Linf'])
     assert tracer in set(['AV45','AV1451'])
     assert ref_key in set(['WHOLECEREB'])
@@ -261,21 +262,24 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
     lobes_df = pivot_df[lobe_keys].copy()
 
     # Calculate normalization constant that would equate L1, L2, and Linf norms
-    l1_goal = 2.0
-    l2_goal = 1.0
-    linf_goal = 2.0
+    l1_goal = 1000.0
+    l2_goal = np.sqrt(np.square(uptake_df).sum(axis=1)).mean()
+    linf_goal = np.abs(uptake_df).max(axis=1).mean()
     l1_denom = np.abs(uptake_df).sum(axis=1) / l1_goal
     l2_denom = np.sqrt(np.square(uptake_df).sum(axis=1)) / l2_goal
     linf_denom = np.abs(uptake_df).max(axis=1) / linf_goal
 
     if norm_type == 'L1':
         print l1_denom
+        print l1_goal
         pattern_df = uptake_df.divide(l1_denom,axis=0)
     elif norm_type == 'L2':
         print l2_denom
+        print l2_goal
         pattern_df = uptake_df.divide(l2_denom,axis=0)
     elif norm_type == 'Linf':
         print linf_denom
+        print linf_goal
         pattern_df = uptake_df.divide(linf_denom,axis=0)
     else:
         raise Exception("Invalid norm type")
@@ -612,10 +616,12 @@ def mergeResults(result_df, pattern_prior_df, pattern_post_df, uptake_prior_df, 
 
 
 def scaleRawInput(pattern_df, scale_type='original', whiten=True):
+    if scale_type is None:
+        return (pattern_df, None)
     assert scale_type in set(['original', 'pca', 'kernelpca'])
     if scale_type == 'original':
         # Scale in original space
-        scaler = StandardScaler().fit(pattern_df)
+        scaler = StandardScaler(with_std=False).fit(pattern_df)
         pattern_df_raw = pd.DataFrame(scaler.transform(pattern_df))
         pattern_df_raw.set_index(pattern_df.index, inplace=True)
         return (pattern_df_raw, scaler)
@@ -867,11 +873,12 @@ def generateFileRoot(alpha, bilateral):
         file_root += '_bilateral'
     return file_root
 
-def scaleInput(pattern_prior_df, pattern_post_df):
-    scale_type = 'original'
+def scaleInput(pattern_prior_df, pattern_post_df, scale_type='original'):
     patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type=scale_type)
 
-    if len(pattern_post_df.index) > 0:
+    if scaler is None:
+        post_patterns_only = pattern_post_df
+    elif len(pattern_post_df.index) > 0:
         post_patterns_only = pd.DataFrame(scaler.transform(pattern_post_df))
         post_patterns_only.set_index(pattern_post_df.index, inplace=True)
     else:
@@ -879,9 +886,9 @@ def scaleInput(pattern_prior_df, pattern_post_df):
 
     return (patterns_only, post_patterns_only)
 
-def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type, bilateral, tracer='AV45', shape=1.0, inversescale=0.0000001):
+def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type, bilateral, tracer='AV45', scale_type='original', shape=1.0, inversescale=0.0000001):
     # Scale inputs
-    patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
+    patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df, scale_type=scale_type)
 
     # Choose alpha + do model selection
     components = len(patterns_only.index)
@@ -891,11 +898,11 @@ def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type, bilater
     with open("%s_%s_%s_model.pkl" % (generateFileRoot(alpha, bilateral),covar_type,tracer), 'wb') as fid:
         cPickle.dump(best_model, fid)   
 
-def generateResults(model, pattern_prior_df, pattern_post_df, result_df, bilateral, conf_filter=False):
+def generateResults(model, pattern_prior_df, pattern_post_df, result_df, bilateral, scale_type='original', conf_filter=False):
     alpha = model.alpha
 
     # Scale inputs
-    patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df)
+    patterns_only, post_patterns_only = scaleInput(pattern_prior_df, pattern_post_df, scale_type=scale_type)
 
     # # Look at top pca components (top 10)
     # top = 10
@@ -1323,6 +1330,9 @@ if __name__ == '__main__':
     bilateral=False
     membership_conf = 0.50
     threshold = 1.15
+    scale_type = 'original'
+    norm_type = 'L1'
+    tracer = 'AV45'
 
     data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
     master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
@@ -1359,7 +1369,7 @@ if __name__ == '__main__':
     if bilateral: # truncate keys
         pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
 
-    data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', bilateral=bilateral)
+    data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type=norm_type, bilateral=bilateral)
 
 
     pattern_bl_df = data['pattern_bl_df']
@@ -1376,9 +1386,8 @@ if __name__ == '__main__':
     rchange_df = data['change_df']
     pattern_col_order = list(pattern_prior_df.columns)
 
-    # # Calculate
-    result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral)
-    # result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'tied', bilateral)
+    # Calculate 
+    result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
 
     # save patterns as mat file
     scipy.io.savemat('av45_pattern_bl.mat',{'Y':pattern_bl_df.T.as_matrix()})
@@ -1391,7 +1400,7 @@ if __name__ == '__main__':
 
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
-    result_df = generateResults(best_model, pattern_prior_df, pattern_post_df, result_df, bilateral, conf_filter=False)
+    result_df = generateResults(best_model, pattern_prior_df, pattern_post_df, result_df, bilateral, conf_filter=False, scale_type=scale_type)
 
     # get groups
     big_groups = bigGroups(result_df, threshold=3)
