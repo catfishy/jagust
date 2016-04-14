@@ -621,7 +621,7 @@ def scaleRawInput(pattern_df, scale_type='original', whiten=True):
     assert scale_type in set(['original', 'pca', 'kernelpca'])
     if scale_type == 'original':
         # Scale in original space
-        scaler = StandardScaler(with_std=False).fit(pattern_df)
+        scaler = StandardScaler().fit(pattern_df)
         pattern_df_raw = pd.DataFrame(scaler.transform(pattern_df))
         pattern_df_raw.set_index(pattern_df.index, inplace=True)
         return (pattern_df_raw, scaler)
