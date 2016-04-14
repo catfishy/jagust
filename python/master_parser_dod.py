@@ -148,6 +148,32 @@ def syncGDData(old_headers, old_lines, gd_file, dump_to=None):
         dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
+
+def syncAntidepData(old_headers, old_lines, backmeds_file, registry_file, dump_to=None):
+    antidep_by_subj = importDODAntidep(backmeds_file, registry_file)
+
+    to_add_headers = ['ANTIDEP_USE','WHICH_ANTIDEP','SSRI']
+    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    new_lines = []
+
+    def extraction_fn(subj, subj_row, old_line, patient_pets):
+        bl = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
+        return {'ANTIDEP_USE': 1 if bl['ANTIDEP_USE'] else 0,
+                'WHICH_ANTIDEP': bl['WHICH_ANTIDEP'],
+                'SSRI': 1 if bl['SSRI'] else 0}
+
+    for i, old_l in enumerate(old_lines):
+        new_data = updateLine(old_l, antidep_by_subj, extraction_fn, 
+                              pid_key='SCRNO', pet_meta=None)
+        old_l.update(new_data)
+        new_lines.append(old_l)
+
+    # dump out
+    if dump_to is not None:
+        dumpCSV(dump_to, new_headers, new_lines)
+    return (new_headers, new_lines)
+
+
 def syncCSFData(old_headers, old_lines, csf_file, registry_file, dump_to=None):
     registry = importDODRegistry(registry_file)
     csf_by_subj = importCSF([csf_file], registry)
@@ -701,6 +727,8 @@ def runPipeline():
     new_headers, new_lines = syncAV1451Data(new_headers, new_lines, av1451_file, dump_to=None) # adds new patients
     print "\nSYNCING DIAG\n"
     new_headers, new_lines = syncDiagData(new_headers, new_lines, diag_file, dump_to=None)
+    print "\nSYNCING ANTIDEP\n"
+    new_headers, new_lines = syncAntidepData(new_headers, new_lines, backmeds_file, registry_file, dump_to=None)
     print "\nSYNCING APOE\n"
     new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file, dump_to=None)
     print "\nSYNCING ADAS\n"
@@ -763,5 +791,7 @@ if __name__ == '__main__':
     elig_file = "../docs/DOD/VAELG.csv"
     # diag file
     diag_file = "../docs/DOD/DXSUM.csv"
+    # antidep file
+    backmeds_file = '../docs/DOD/BACKMEDS.csv'
 
     runPipeline()

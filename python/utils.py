@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import itertools
 import numpy as np
+import re
 import pandas as pd
 from ggplot import *
 
@@ -20,6 +21,7 @@ from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.decomposition import PCA
 from sklearn.mixture import GMM
 import statsmodels.api as sm
+import jellyfish
 
 #plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
@@ -802,6 +804,74 @@ def importDODRegistry(dod_registry_file):
         registry[k] = new_val
     return registry
 
+def importDODAntidep(backmeds_file, registry_file):
+    '''
+    FOR DOD BACKMEDS.CSV FILE ONLY
+    '''
+
+    SSRI = set(['citalopram',
+                'celexa',
+                'escitalopram',
+                'lexapro',
+                'fluoxetine',
+                'prozac',
+                'fluvoxamine',
+                'luvox',
+                'paroxetine',
+                'paxil',
+                'sertraline',
+                'zoloft'])
+    SNRI = set(['duloxetine',
+                'cymbalta',
+                'desvenlafaxine',
+                'pristiq',
+                'venlafaxine',
+                'effexor',
+                'milnacipran',
+                'savella',
+                'levomilnacipran',
+                'fetzima'])
+    registry = importDODRegistry(registry_file)
+
+    def findSSRI(med_str):
+        med_str = re.sub('[^a-zA-Z]+', ' ', med_str)
+        meds = [_.strip().lower() for _ in med_str.split()]
+        min_distances = []
+        for m in meds:
+            min_dist_ssri = min([jellyfish.damerau_levenshtein_distance(unicode(_), unicode(m)) for _ in SSRI])
+            min_dist_snri = min([jellyfish.damerau_levenshtein_distance(unicode(_), unicode(m)) for _ in SNRI])
+            if min_dist_ssri <= min_dist_snri:
+                min_distances.append(min_dist_ssri)
+        if len(min_distances) == 0:
+            return False
+        closest = min(min_distances)
+        if closest <= 2:
+            return True
+        return False
+
+    backmeds_df = pd.read_csv(backmeds_file)
+    backmeds_df = backmeds_df[backmeds_df.VISCODE.str.lower() != 'sc']
+    backmeds_df['ANTIDEP_USE'] = backmeds_df['KEYMED'].str.contains('6')
+    backmeds_df['WHICH_ANTIDEP'] = backmeds_df['ANTDEPDES']
+    backmeds_df.loc[backmeds_df.WHICH_ANTIDEP == '-4','WHICH_ANTIDEP'] = ''
+    backmeds_df.loc[:,'SSRI'] = backmeds_df.loc[:,'WHICH_ANTIDEP'].apply(findSSRI)
+
+    # keep relevant columns
+    backmeds_df = backmeds_df[['SCRNO','VISCODE','ANTIDEP_USE','WHICH_ANTIDEP','SSRI']]
+    backmeds_df.set_index('SCRNO',inplace=True)
+
+    # convert to dictionary
+    by_subj = defaultdict(list)
+    for sid, row in backmeds_df.iterrows():
+        data = dict(row)
+        examdate = findVisitDate(registry, sid, [data['VISCODE'].lower()])
+        if examdate is None:
+            print "Can't find date for %s, %s" % (sid, data['VISCODE'])
+        data['EXAMDATE'] = examdate
+        by_subj[sid].append(data)
+    by_subj = dict(by_subj)
+
+    return by_subj
 
 def importCAPS(caps_curr_file, caps_lifetime_file):
     curr_headers, curr_lines = parseCSV(caps_curr_file)
