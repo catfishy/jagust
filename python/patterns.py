@@ -218,19 +218,63 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
         for o_k in original_keys:
             new_k = o_k.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','')
             joins[new_k].append(o_k)
+
         for k,v in joins.items():
             if len(v) > 1:
                 weighted = pd.DataFrame([pivot_df[o_k]*pivot_df['%s_SIZE' % (o_k,)]  for o_k in v]).T.sum(axis=1)
                 weight_sum = pivot_df[["%s_SIZE" % o_k for o_k in v]].sum(axis=1)
                 weighted_avg = weighted/weight_sum
-                weighted_avg = pd.DataFrame(weighted_avg, columns=[k])
+                weighted_avg = pd.DataFrame(weighted_avg,columns=[k])
+                weights = pd.DataFrame(weight_sum,columns=['%s_SIZE' % k])
                 pivot_df = pivot_df.merge(weighted_avg, left_index=True, right_index=True)
-        pivot_df = pivot_df[joins.keys()]
+                pivot_df = pivot_df.merge(weights, left_index=True, right_index=True)
 
-    # convert to SUVR
+        new_keys = joins.keys()
+        new_size_keys = ['%s_SIZE' % _ for _ in new_keys]
+        pivot_df = pivot_df[new_keys + new_size_keys]
+    
+    # convert to SUVR + separate pattern region uptakes from lobe uptakes
     if ref_key not in pivot_df.columns:
         raise Exception("Ref Key %s not found in dataset" % ref_key)
-    pivot_df = pivot_df.divide(pivot_df[ref_key],axis='index')
+    uptake_keys = [_ for _ in pivot_df.columns if 'SIZE' not in _]
+    suvr_df = pivot_df[uptake_keys].divide(pivot_df[ref_key],axis='index')
+    if len(set(pattern_keys) - set(suvr_df.columns)) > 0:
+        raise Exception("Some pattern keys are unavailable: %s" % (set(pattern_keys) - set(suvr_df.columns),))
+    uptake_df = suvr_df[pattern_keys].copy()
+    if len(set(lobe_keys) - set(suvr_df.columns)) > 0:
+        raise Exception("Some lobe keys are unavailable: %s" % (set(lobe_keys) - set(suvr_df.columns),))
+    lobes_df = suvr_df[lobe_keys].copy()
+
+    # Calculate mass (total, unaveraged signal per region) --> use for patterns
+    signal_df = pivot_df[pattern_keys]
+    signal_sizes_df = pivot_df[["%s_SIZE" % _ for _ in pattern_keys]]
+    signal_sizes_df.columns = signal_df.columns
+    # Calculate normalization constant that would equate L1, L2, and Linf norms
+    l1 = np.abs(signal_df*signal_sizes_df).sum(axis=1)
+    l2 = np.sqrt((np.square(signal_df)*signal_sizes_df).sum(axis=1))
+    linf = np.abs(signal_df).max(axis=1)
+    l1_goal = int(l1.mean())
+    l2_goal = int(l2.mean())
+    linf_goal = int(linf.mean())
+    l1_denom = l1/l1_goal
+    l2_denom = l2/l2_goal
+    linf_denom = linf/linf_goal
+
+    if norm_type == 'L1':
+        print l1_denom
+        print l1_goal
+        pattern_df = signal_df.divide(l1_denom,axis=0)
+    elif norm_type == 'L2':
+        print l2_denom
+        print l2_goal
+        pattern_df = signal_df.divide(l2_denom,axis=0)
+    elif norm_type == 'Linf':
+        print linf_denom
+        print linf_goal
+        pattern_df = signal_df.divide(linf_denom,axis=0)
+    else:
+        raise Exception("Invalid norm type")
+
 
     # Import master csv
     master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
@@ -252,37 +296,6 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
     for subj, tp in pivot_df.index.values:
         diags.append({'subject': subj, 'timepoint': tp, 'diag': master_df.loc[subj,diag_keys[tp]]})
     diags_df = pd.DataFrame(diags).set_index(['subject','timepoint'])
-
-    # separate patterns/uptakes/lobes
-    if len(set(pattern_keys) - set(pivot_df.columns)) > 0:
-        raise Exception("Some pattern keys are unavailable: %s" % (set(pattern_keys) - set(pivot_df.columns),))
-    uptake_df = pivot_df[pattern_keys].copy()
-    if len(set(lobe_keys) - set(pivot_df.columns)) > 0:
-        raise Exception("Some lobe keys are unavailable: %s" % (set(lobe_keys) - set(pivot_df.columns),))
-    lobes_df = pivot_df[lobe_keys].copy()
-
-    # Calculate normalization constant that would equate L1, L2, and Linf norms
-    l1_goal = 1000.0
-    l2_goal = np.sqrt(np.square(uptake_df).sum(axis=1)).mean()
-    linf_goal = np.abs(uptake_df).max(axis=1).mean()
-    l1_denom = np.abs(uptake_df).sum(axis=1) / l1_goal
-    l2_denom = np.sqrt(np.square(uptake_df).sum(axis=1)) / l2_goal
-    linf_denom = np.abs(uptake_df).max(axis=1) / linf_goal
-
-    if norm_type == 'L1':
-        print l1_denom
-        print l1_goal
-        pattern_df = uptake_df.divide(l1_denom,axis=0)
-    elif norm_type == 'L2':
-        print l2_denom
-        print l2_goal
-        pattern_df = uptake_df.divide(l2_denom,axis=0)
-    elif norm_type == 'Linf':
-        print linf_denom
-        print linf_goal
-        pattern_df = uptake_df.divide(linf_denom,axis=0)
-    else:
-        raise Exception("Invalid norm type")
 
 
     # split by timepoint
@@ -1326,7 +1339,6 @@ def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file)
 
 if __name__ == '__main__':
     # SETUP
-
     bilateral=False
     membership_conf = 0.50
     threshold = 1.15
