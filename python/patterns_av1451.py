@@ -57,8 +57,6 @@ if __name__ == '__main__':
     bilateral=False
     lut_file = "../FreeSurferColorLUT.txt"
     membership_conf = 0.50
-    components = 1067
-    ref_key = 'WHOLE_CEREBELLUM'
     threshold = 1.15
     result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
     lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
