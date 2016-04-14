@@ -261,15 +261,12 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
     linf_denom = linf/linf_goal
 
     if norm_type == 'L1':
-        print l1_denom
         print l1_goal
         pattern_df = signal_df.divide(l1_denom,axis=0)
     elif norm_type == 'L2':
-        print l2_denom
         print l2_goal
         pattern_df = signal_df.divide(l2_denom,axis=0)
     elif norm_type == 'Linf':
-        print linf_denom
         print linf_goal
         pattern_df = signal_df.divide(linf_denom,axis=0)
     else:
@@ -344,8 +341,9 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
     uptake_post_df = uptake_scan2_df
 
     # calculate uptake change and lobe change
-    uptake_change = uptake_post_df.subtract(uptake_prior_df.loc[uptake_post_df.index,:]).divide(yr_df.yrs, axis='index')
-    lobes_change = lobes_post_df.subtract(lobes_prior_df.loc[lobes_post_df.index,:]).divide(yr_df.yrs, axis='index')
+    pattern_change_df = pattern_post_df.subtract(pattern_prior_df.loc[pattern_post_df.index,:]).divide(yr_df.yrs, axis='index')
+    uptake_change_df = uptake_post_df.subtract(uptake_prior_df.loc[uptake_post_df.index,:]).divide(yr_df.yrs, axis='index')
+    lobes_change_df = lobes_post_df.subtract(lobes_prior_df.loc[lobes_post_df.index,:]).divide(yr_df.yrs, axis='index')
 
     # create result df
     results = []
@@ -391,8 +389,9 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
             'uptake_post_df': uptake_post_df,
             'lobes_prior_df': lobes_prior_df,
             'lobes_post_df': lobes_post_df,
-            'change_df': uptake_change,
-            'lobes_change_df': lobes_change,
+            'pattern_change_df': pattern_change_df,
+            'change_df': uptake_change_df,
+            'lobes_change_df': lobes_change_df,
             'result_df': result_df}
     to_return = {}
     for k,v in data.iteritems():
@@ -908,8 +907,23 @@ def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type, bilater
     
     best_model = chooseBestModel(patterns_only, components, covar_type, gamma_shape=shape, gamma_inversescale=inversescale)
     alpha = best_model.alpha
-    with open("%s_%s_%s_model.pkl" % (generateFileRoot(alpha, bilateral),covar_type,tracer), 'wb') as fid:
-        cPickle.dump(best_model, fid)   
+    file_out = "%s_%s_%s_model.pkl" % (generateFileRoot(alpha, bilateral),covar_type,tracer)
+    with open(file_out, 'wb') as fid:
+        cPickle.dump(best_model, fid)
+    return file_out
+
+
+def trainChangeDPGMM(pattern_change_df, covar_type, bilateral, tracer='AV45', scale_type='original', shape=1.0, inversescale=0.0000001):
+    # Scale inputs
+    patterns_only, post_patterns_only = scaleInput(pattern_change_df, pd.DataFrame(), scale_type=scale_type)
+    components = len(patterns_only.index)
+    best_model = chooseBestModel(patterns_only, components, covar_type, gamma_shape=shape, gamma_inversescale=inversescale)
+    alpha = best_model.alpha
+    file_out = "%s_%s_%s_change_model.pkl" % (generateFileRoot(alpha, bilateral),covar_type,tracer)
+    with open(file_out, 'wb') as fid:
+        cPickle.dump(best_model, fid)
+    return file_out
+
 
 def generateResults(model, pattern_prior_df, pattern_post_df, result_df, bilateral, scale_type='original', conf_filter=False):
     alpha = model.alpha
@@ -1339,7 +1353,7 @@ def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file)
 
 if __name__ == '__main__':
     # SETUP
-    bilateral=False
+    bilateral=True
     membership_conf = 0.50
     threshold = 1.15
     scale_type = 'original'
@@ -1389,6 +1403,7 @@ if __name__ == '__main__':
     pattern_scan3_df = data['pattern_scan3_df']
     pattern_prior_df = data['pattern_prior_df']
     pattern_post_df = data['pattern_post_df']
+    pattern_change_df = data['pattern_change_df']
     uptake_prior_df = data['uptake_prior_df']
     uptake_post_df = data['uptake_post_df']
     lobes_prior_df = data['lobes_prior_df']
@@ -1399,11 +1414,15 @@ if __name__ == '__main__':
     pattern_col_order = list(pattern_prior_df.columns)
 
     # Calculate 
-    result_df = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
+    model_file = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
+
+    # Calculate regional change clusters
+    model_file = trainChangeDPGMM(pattern_change_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
+
 
     # save patterns as mat file
     scipy.io.savemat('av45_pattern_bl.mat',{'Y':pattern_bl_df.T.as_matrix()})
-
+    scipy.io.savemat('av45_pattern_change.mat',{'Y':pattern_change_df.T.as_matrix()})
 
     # Load
     # model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'
