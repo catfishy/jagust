@@ -6,8 +6,8 @@ library(pbkrtest)
 library(multcomp)
 library(contrast)
 
-# Import data for Ns
-df_long = read.csv('dpgmm_alpha12.66_bilateral_ADAScog__ALL_longdata.csv')
+# Import data
+df_long = read.csv('dpgmm_alpha22.38_bilateral_ADAScog__ALL_longdata.csv')
 
 # Convert to factors
 to_factor = c('RID','APOE4_BIN','APOE2_BIN','diag_prior','Gender')
@@ -20,11 +20,11 @@ df_long_ad = df_long[which(df_long$diag_prior %in% c('AD')),]
 
 # LME MODELS
 fm_cs_n = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + Age.AV45 + Gender + Edu..Yrs. + diag_prior + APOE4_BIN*YrsPostBL + (1 + YrsPostBL| RID), df_long_n)
-fm_pattern_n = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + X0 + X1 + X3 + X4 + X6 + X7 + X8 + X9 + X10 + X11 + X12 + X13 + X14 + X15 + X20 + X21 + X23 + X24 + Age.AV45 + Gender + Edu..Yrs. + diag_prior + APOE4_BIN*YrsPostBL + (1 + YrsPostBL| RID), df_long_n)
+fm_pattern_n = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + X0 + X1 + X2 + X7 + X8 + X9 + X10 + X11 + X13 + X18 + Age.AV45 + Gender + Edu..Yrs. + diag_prior + APOE4_BIN*YrsPostBL + (1 + YrsPostBL| RID), df_long_n)
 fm_cs_mci = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + Age.AV45 + Gender + Edu..Yrs. + diag_prior + APOE4_BIN*YrsPostBL + (1 + YrsPostBL | RID), df_long_mci)
-fm_pattern_mci = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + X0 + X1 + X3 + X4 + X6 + X7 + X8 + X9 + X10 + X11 + X12 + X13 + X14 + X15 + X20 + X21 + X23 + X24 + Age.AV45 + Gender + Edu..Yrs. + diag_prior + APOE4_BIN*YrsPostBL + (1 + YrsPostBL | RID), df_long_mci)
+fm_pattern_mci = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + X0 + X1 + X2 + X6 + X7 + X8 + X9 + X13 + X16 + X18 + X23 + Age.AV45 + Gender + Edu..Yrs. + diag_prior + APOE4_BIN*YrsPostBL + (1 + YrsPostBL | RID), df_long_mci)
 fm_cs_ad = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN*YrsPostBL + (1 + YrsPostBL | RID), df_long_ad)
-fm_pattern_ad = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + X0 + X1 + X3 + X4 + X6 + X7 + X8 + X9 + X10 + X11 + X12 + X13 + X14 + X15 + X20 + X21 + X23 + X24 + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN*YrsPostBL + (1 + YrsPostBL | RID), df_long_ad)
+fm_pattern_ad = lmer(ADAScog. ~ CORTICAL_SUMMARY_prior + X0 + X1 + X2 + X8 + X9 + X13 + X18 + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN*YrsPostBL + (1 + YrsPostBL | RID), df_long_ad)
 
 # MODEL SUMMARIES
 fm_cs_n_summary = summary(fm_cs_n)

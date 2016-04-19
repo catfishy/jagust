@@ -17,7 +17,7 @@ isPatternColumn = function(i){
 isPatternColumn = Vectorize(isPatternColumn)
 
 # Import data
-df_av45 = read.csv('dpgmm_alpha12.66_bilateral_UW_MEM__ALL_slopedata.csv')
+df_av45 = read.csv('dpgmm_alpha15.68_bilateral_UW_MEM__ALL_slopedata.csv')
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 df_patterns = df_av45[pattern_columns]
 
@@ -63,76 +63,41 @@ fm_av45 = lm(UW_MEM__slope ~ diag_prior +
                X0*APOE4_BIN +
                X1*APOE4_BIN +
                X2*APOE4_BIN +
-               X3*APOE4_BIN +
-               X4*APOE4_BIN +
-               X4*APOE4_BIN +
+               X6*APOE4_BIN +
                X7*APOE4_BIN +
                X8*APOE4_BIN +
                X9*APOE4_BIN +
-               X12*APOE4_BIN +
-               X14*APOE4_BIN +
-               X15*APOE4_BIN +
-               X20*APOE4_BIN +
+               X10*APOE4_BIN +
+               X11*APOE4_BIN +
+               X13*APOE4_BIN +
+               X16*APOE4_BIN +
+               X18*APOE4_BIN +
                X23*APOE4_BIN +
-               X24*APOE4_BIN +
                Age.AV45 + Gender + Edu..Yrs., df_av45)
 fm_av45_onlypatterns = lm(UW_MEM__slope ~ diag_prior + 
                             X0*APOE4_BIN +
                             X1*APOE4_BIN +
                             X2*APOE4_BIN +
-                            X3*APOE4_BIN +
-                            X4*APOE4_BIN +
-                            X4*APOE4_BIN +
+                            X6*APOE4_BIN +
                             X7*APOE4_BIN +
                             X8*APOE4_BIN +
                             X9*APOE4_BIN +
-                            X12*APOE4_BIN +
-                            X14*APOE4_BIN +
-                            X15*APOE4_BIN +
-                            X20*APOE4_BIN +
+                            X10*APOE4_BIN +
+                            X11*APOE4_BIN +
+                            X13*APOE4_BIN +
+                            X16*APOE4_BIN +
+                            X18*APOE4_BIN +
                             X23*APOE4_BIN +
-                            X24*APOE4_BIN +
                             Age.AV45 + Gender + Edu..Yrs., df_av45)
-fm_av45_onlypca = lm(UW_MEM__slope ~ diag_prior + 
-                       PC1*APOE4_BIN +
-                       PC2*APOE4_BIN +
-                       PC3*APOE4_BIN +
-                       PC4*APOE4_BIN +
-                       PC5*APOE4_BIN +
-                       PC6*APOE4_BIN +
-                       PC7*APOE4_BIN +
-                       PC8*APOE4_BIN +
-                       PC9*APOE4_BIN +
-                       PC10*APOE4_BIN +
-                       PC11*APOE4_BIN +
-                       Age.AV45 + Gender + Edu..Yrs., df_av45)
-fm_av45_pca = lm(UW_MEM__slope ~ diag_prior + 
-                   CORTICAL_SUMMARY_prior*APOE4_BIN +  
-                   I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
-                   PC1*APOE4_BIN +
-                   PC2*APOE4_BIN +
-                   PC3*APOE4_BIN +
-                   PC4*APOE4_BIN +
-                   PC5*APOE4_BIN +
-                   PC6*APOE4_BIN +
-                   PC7*APOE4_BIN +
-                   PC8*APOE4_BIN +
-                   PC9*APOE4_BIN +
-                   PC10*APOE4_BIN +
-                   PC11*APOE4_BIN +
-                   Age.AV45 + Gender + Edu..Yrs., df_av45)
+
 # summaries
 fm_av45_nopattern_summary = summary(fm_av45_nopattern)
 fm_av45_summary = summary(fm_av45)
 fm_av45_onlypatterns_summary = summary(fm_av45_onlypatterns)
-fm_av45_onlypca_summary = summary(fm_av45_onlypca)
-fm_av45_pca_summary = summary(fm_av45_pca)
 
 fm_av45_nopattern_summary$adj.r.squared
 fm_av45_summary$adj.r.squared
 fm_av45_onlypatterns_summary$adj.r.squared
-fm_av45_onlypca_summary$adj.r.squared
-fm_av45_pca_summary$adj.r.squared
 
 fm_av45_nopattern_summary$aic
 fm_av45_summary$aic
@@ -142,8 +107,6 @@ fm_av45_onlypatterns_summary$aic
 fm_av45_nopattern_anova = Anova(fm_av45_nopattern,type='III')
 fm_av45_anova = Anova(fm_av45,type='III')
 fm_av45_onlypatterns_anova = Anova(fm_av45_onlypatterns,type='III')
-fm_av45_onlypca_anova = Anova(fm_av45_onlypca,type='III')
-fm_av45_pca_anova = Anova(fm_av45_pca,type='III')
 
 # anova model comparisons
 fm_modelcomparison_anova = anova(fm_av45_nopattern, fm_av45, test='LRT')

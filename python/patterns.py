@@ -1148,7 +1148,8 @@ def saveAV45LMEDataset(model, master_csv, pattern_prior_df, result_df, bilateral
 
     # Merge in patterns
     proba_df_bl = proba_df_bl.merge(groups_df_bl, left_index=True, right_index=True, how='left')
-    proba_df_bl.index = proba_df_bl.index.droplevel(1)
+    if isinstance(proba_df_bl.index,pd.MultiIndex):
+        proba_df_bl.index = proba_df_bl.index.droplevel(1)
 
     # Get master df
     master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
@@ -1189,8 +1190,12 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     prior_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
 
     # Get membership probabilities
-    proba_df = pd.DataFrame(model.predict_proba(prior_patterns_only)).set_index(prior_patterns_only.index).xs('prior',level='timepoint')
-    groups_df = pd.DataFrame(model.predict(prior_patterns_only)).set_index(prior_patterns_only.index).xs('prior',level='timepoint')
+    proba_df = pd.DataFrame(model.predict_proba(prior_patterns_only)).set_index(prior_patterns_only.index)
+    groups_df = pd.DataFrame(model.predict(prior_patterns_only)).set_index(prior_patterns_only.index)
+    if isinstance(proba_df.index,pd.MultiIndex):
+        proba_df = proba_df.xs('prior',level='timepoint')
+    if isinstance(groups_df.index,pd.MultiIndex):
+        groups_df = groups_df.xs('prior',level='timepoint')
     groups_df.columns = ['group']
     # Remove components with insignificant membership
     probsums = proba_df.sum()
@@ -1419,7 +1424,6 @@ if __name__ == '__main__':
     # Calculate regional change clusters
     model_file = trainChangeDPGMM(pattern_change_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
 
-
     # save patterns as mat file
     scipy.io.savemat('av45_pattern_bl.mat',{'Y':pattern_bl_df.T.as_matrix()})
     scipy.io.savemat('av45_pattern_change.mat',{'Y':pattern_change_df.T.as_matrix()})
@@ -1427,7 +1431,7 @@ if __name__ == '__main__':
     # Load
     # model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'
     # model_file = '../dpgmm_alpha13.13_bilateral_tied_model.pkl'
-    model_file = '../dpgmm_alpha12.66_bilateral_spherical_model.pkl'
+    model_file = '../dpgmm_alpha22.38_bilateral_spherical_AV45_model.pkl'
 
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
@@ -1463,9 +1467,9 @@ if __name__ == '__main__':
                          ('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
         if dep_val_var == 'AV45':
-            saveAV45LMEDataset(best_model, master_csv, pattern_prior_df, result_df, bilateral, confident=True)
+            saveAV45LMEDataset(best_model, master_csv, pattern_prior_df, result_df, bilateral, confident=False)
         else:
-            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, bilateral, categorize=False, confident=True)
+            saveLMEDataset(best_model, master_csv, pattern_prior_df, result_df, dep_val_var, dep_time_var, bilateral, categorize=False, confident=False)
 
 
     # lobe violin plots

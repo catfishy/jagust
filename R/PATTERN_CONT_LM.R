@@ -21,7 +21,7 @@ isPatternColumn = function(i){
 isPatternColumn = Vectorize(isPatternColumn)
 
 # Import data
-df_av45 = read.csv('dpgmm_alpha12.66_bilateral_AV45_ALL_longdata_slope.csv')
+df_av45 = read.csv('dpgmm_alpha22.38_bilateral_AV45_ALL_longdata_slope.csv')
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 df_patterns = df_av45[pattern_columns]
 
@@ -53,10 +53,10 @@ for (i in names(df_av45)){
 valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('EMCI','LMCI')
 #valid_diags = c('N','SMC')
-#df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
+df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 
 # Only keep negative
-df_av45 = df_av45[which(df_av45$CORTICAL_SUMMARY_prior <= threshold),]
+#df_av45 = df_av45[which(df_av45$CORTICAL_SUMMARY_prior <= threshold),]
 
 # Calculate time to threshold
 df_av45['threshold'] = threshold
@@ -79,15 +79,12 @@ fm_av45 = lm(CORTICAL_SUMMARY_slope ~ diag_prior +
                X3*APOE4_BIN +
                X4*APOE4_BIN +
                X5*APOE4_BIN +
+               X6*APOE4_BIN +
                X7*APOE4_BIN +
                X8*APOE4_BIN +
-               X9*APOE4_BIN +
                X10*APOE4_BIN + 
-               X11*APOE4_BIN + 
-               X12*APOE4_BIN +
-               X14*APOE4_BIN +
-               X21*APOE4_BIN + 
-               X23*APOE4_BIN +
+               X72*APOE4_BIN + 
+               X53*APOE4_BIN +
                Age.AV45 + Gender + Edu..Yrs., df_av45)
 fm_av45_onlypatterns = lm(CORTICAL_SUMMARY_slope ~ diag_prior + 
                             X0*APOE4_BIN +
@@ -96,15 +93,12 @@ fm_av45_onlypatterns = lm(CORTICAL_SUMMARY_slope ~ diag_prior +
                             X3*APOE4_BIN +
                             X4*APOE4_BIN +
                             X5*APOE4_BIN +
+                            X6*APOE4_BIN +
                             X7*APOE4_BIN +
                             X8*APOE4_BIN +
-                            X9*APOE4_BIN +
                             X10*APOE4_BIN + 
-                            X11*APOE4_BIN + 
-                            X12*APOE4_BIN +
-                            X14*APOE4_BIN +
-                            X21*APOE4_BIN + 
-                            X23*APOE4_BIN +
+                            X72*APOE4_BIN + 
+                            X53*APOE4_BIN +
                             Age.AV45 + Gender + Edu..Yrs., df_av45)
 
 
