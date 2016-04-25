@@ -346,7 +346,7 @@ def ndcg(relevances, rank=20):
         return 0. 
     return dcg(relevances, rank) / best_dcg
 
-def importRoussetCSV(rousset_csv, translate_threshold=None):
+def importRoussetCSV(rousset_csv, translate_threshold=1.11):
     '''
     If include_threshold, translates to the new PVC threshold
     '''
@@ -360,8 +360,8 @@ def importRoussetCSV(rousset_csv, translate_threshold=None):
         for timepoint, tp_rows in subj_rows.groupby('timepoint'):
             pvc_df = tp_rows[['name','pvcval','nonpvcval','groupsize']]
             pvc_dict = pvc_df.set_index('name').to_dict(orient='index')
-            pvc_suvr = float(pvc_dict['WHOLECEREB']['pvcval'])/float(pvc_dict['COMPOSITE']['pvcval'])
-            nonpvc_suvr = float(pvc_dict['WHOLECEREB']['nonpvcval'])/float(pvc_dict['COMPOSITE']['nonpvcval'])
+            pvc_suvr = float(pvc_dict['COMPOSITE']['pvcval'])/float(pvc_dict['WHOLECEREB']['pvcval'])
+            nonpvc_suvr = float(pvc_dict['COMPOSITE']['nonpvcval'])/float(pvc_dict['WHOLECEREB']['nonpvcval'])
             slope_points.append((nonpvc_suvr,pvc_suvr))
             tp_results[timepoint] = pvc_dict
         by_subj[rid] = tp_results

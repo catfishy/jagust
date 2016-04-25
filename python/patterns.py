@@ -27,7 +27,7 @@ from sklearn.cross_validation import LeaveOneOut
 from sklearn.preprocessing import StandardScaler
 
 
-from utils import saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations, regCoeffZTest, slope
+from utils import importRoussetCSV, saveFakeAparcInput, importFreesurferLookup, importMaster, bilateralTranslations, regCoeffZTest, slope
 
 #plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
@@ -249,10 +249,19 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
     signal_df = pivot_df[pattern_keys]
     signal_sizes_df = pivot_df[["%s_SIZE" % _ for _ in pattern_keys]]
     signal_sizes_df.columns = signal_df.columns
-    # Calculate normalization constant that would equate L1, L2, and Linf norms
+
+    # weighted by region volume
+    '''
     l1 = np.abs(signal_df*signal_sizes_df).sum(axis=1)
     l2 = np.sqrt((np.square(signal_df)*signal_sizes_df).sum(axis=1))
     linf = np.abs(signal_df).max(axis=1)
+    '''
+    # unweighted
+    l1 = np.abs(signal_df).sum(axis=1)
+    l2 = np.sqrt(np.square(signal_df).sum(axis=1))
+    linf = np.abs(signal_df).max(axis=1)
+
+    # Calculate normalization constant that would equate L1, L2, and Linf norms
     l1_goal = int(l1.mean())
     l2_goal = int(l2.mean())
     linf_goal = int(linf.mean())
@@ -1358,16 +1367,17 @@ def printMeanLobePatterns(lobe_members,valid_patterns,cortical_summary,out_file)
 
 if __name__ == '__main__':
     # SETUP
-    bilateral=True
+    bilateral = True
     membership_conf = 0.50
-    threshold = 1.15
     scale_type = 'original'
     norm_type = 'L1'
     tracer = 'AV45'
-
-    data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
     master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
     lut_file = "../FreeSurferColorLUT.txt"
+    data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+
+    threshold = 1.27
+    #by_subj, threshold = importRoussetCSV(data_csv, translate_threshold=1.11)
 
     result_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change', 'diag_prior', 'diag_post']
     lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
@@ -1402,7 +1412,6 @@ if __name__ == '__main__':
 
     data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type=norm_type, bilateral=bilateral)
 
-
     pattern_bl_df = data['pattern_bl_df']
     pattern_scan2_df = data['pattern_scan2_df']
     pattern_scan3_df = data['pattern_scan3_df']
@@ -1425,13 +1434,16 @@ if __name__ == '__main__':
     model_file = trainChangeDPGMM(pattern_change_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
 
     # save patterns as mat file
-    scipy.io.savemat('av45_pattern_bl.mat',{'Y':pattern_bl_df.T.as_matrix()})
-    scipy.io.savemat('av45_pattern_change.mat',{'Y':pattern_change_df.T.as_matrix()})
+    scipy.io.savemat('av45_pattern_bl.mat',{'ID': list(pattern_bl_df.index), 
+                                            'Features': list(pattern_bl_df.columns), 
+                                            'Y':pattern_bl_df.T.as_matrix()})
+    scipy.io.savemat('av45_pattern_change.mat',{'ID': list(pattern_change_df.index), 
+                                                'Features': list(pattern_change_df.columns), 
+                                                'Y':pattern_change_df.T.as_matrix()})
 
     # Load
-    # model_file = '../dpgmm_alpha14.36_bilateral_diag_model.pkl'
-    # model_file = '../dpgmm_alpha13.13_bilateral_tied_model.pkl'
-    model_file = '../dpgmm_alpha22.38_bilateral_spherical_AV45_model.pkl'
+    #model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+    model_file = '../dpgmm_alpha15.58_bilateral_spherical_AV45_model_L2.pkl'
 
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
@@ -1443,7 +1455,7 @@ if __name__ == '__main__':
 
     # generate conversion data
     conversions = parseConversions(all_groups, result_df, threshold, master_keys)
-    # conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha, bilateral))
+    conversions.to_csv('%s_conversions.csv' % generateFileRoot(alpha, bilateral))
     cortical_summary = conversions.cortical_summary.to_dict()
     positive_patterns = list(conversions[conversions['pos-pos']>=0.8].index)
     negative_patterns = list(conversions[conversions['neg-neg']>=0.9].index)
@@ -1461,9 +1473,8 @@ if __name__ == '__main__':
     # saveLobeAparcs(round(alpha,2), big_groups, lobe_tp, lut_file, bilateral=bilateral)
 
     # dump LMM Dataset
-    LME_dep_variables = [('ADAScog.','TIMEpostAV45_ADAS.'),   
-                         ('UW_MEM_','UW_MEM_postAV45_'),
-                         ('UW_EF_','UW_EF_postAV45_'),
+    LME_dep_variables = [('ADAScog.','TIMEpostAV45_ADAS.'),
+                         ('AVLT.','TIMEpostAV45_AVLT.'),
                          ('AV45','')]
     for dep_val_var, dep_time_var in LME_dep_variables:
         if dep_val_var == 'AV45':
