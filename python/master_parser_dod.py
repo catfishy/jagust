@@ -7,7 +7,7 @@ import numpy as np
 from utils import *
 
 
-def syncAPOEData(old_headers, old_lines, apoe_file, registry_file, dump_to=None):
+def syncAPOEData(old_headers, old_lines, apoe_file, registry_file):
     apoe_by_subj = importAPOE(apoe_file)
 
     to_add_headers = ['APOE4BIN']
@@ -26,12 +26,9 @@ def syncAPOEData(old_headers, old_lines, apoe_file, registry_file, dump_to=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncDemogData(old_headers, old_lines, demog_file, registry_file, dump_to=None):
+def syncDemogData(old_headers, old_lines, demog_file, registry_file):
     demog_by_subj = importDemog(demog_file)
     
     to_add_headers = ['Sex', 'Age', 'Edu']
@@ -57,12 +54,9 @@ def syncDemogData(old_headers, old_lines, demog_file, registry_file, dump_to=Non
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncCAPSData(old_headers, old_lines, curr_file, lifetime_file, dump_to=None):
+def syncCAPSData(old_headers, old_lines, curr_file, lifetime_file):
     caps_by_subj = importCAPS(curr_file, lifetime_file)
 
     to_add_headers = ['CAPS_CURRSCORE', 'CAPS_LIFETIME_SCORE']
@@ -78,13 +72,10 @@ def syncCAPSData(old_headers, old_lines, curr_file, lifetime_file, dump_to=None)
                               pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
 
-def syncWMHData(old_headers, old_lines, wmh_file, dump_to=None):
+def syncWMHData(old_headers, old_lines, wmh_file):
     wmh_by_subj = importWMH(wmh_file)
 
     to_add_headers = ['WMH_WHITMATHYP', 'WMH_percentOfICV']
@@ -101,13 +92,10 @@ def syncWMHData(old_headers, old_lines, wmh_file, dump_to=None):
                               pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
 
-def syncMRIData(old_headers, old_lines, mri_file, dump_to=None):
+def syncMRIData(old_headers, old_lines, mri_file):
     mri_by_subj = importDODMRI(mri_file)
     to_add_headers = ["MRIDATE"]
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
@@ -123,13 +111,10 @@ def syncMRIData(old_headers, old_lines, mri_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
 
-def syncGDData(old_headers, old_lines, gd_file, dump_to=None):
+def syncGDData(old_headers, old_lines, gd_file):
     gd_by_subj = importGD(gd_file)
     to_add_headers = ['GDtotal']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
@@ -143,13 +128,10 @@ def syncGDData(old_headers, old_lines, gd_file, dump_to=None):
                               pid_key='SCRNO', pet_meta=None)
         old_l.update(new_data)
         new_lines.append(old_l)
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
 
-def syncAntidepData(old_headers, old_lines, backmeds_file, registry_file, dump_to=None):
+def syncAntidepData(old_headers, old_lines, backmeds_file, registry_file):
     antidep_by_subj = importDODAntidep(backmeds_file, registry_file)
 
     to_add_headers = ['ANTIDEP_USE','WHICH_ANTIDEP','SSRI']
@@ -168,13 +150,10 @@ def syncAntidepData(old_headers, old_lines, backmeds_file, registry_file, dump_t
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
 
-def syncCSFData(old_headers, old_lines, csf_file, registry_file, dump_to=None):
+def syncCSFData(old_headers, old_lines, csf_file, registry_file):
     registry = importDODRegistry(registry_file)
     csf_by_subj = importCSF([csf_file], registry)
 
@@ -194,12 +173,9 @@ def syncCSFData(old_headers, old_lines, csf_file, registry_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncADASData(old_headers, old_lines, adas_file, registry_file, dump_to=None):
+def syncADASData(old_headers, old_lines, adas_file, registry_file):
     registry = importDODRegistry(registry_file)
     adas_by_subj = importADASCog(None, adas_file, registry=registry)
     
@@ -217,12 +193,9 @@ def syncADASData(old_headers, old_lines, adas_file, registry_file, dump_to=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncAVLTData(old_headers, old_lines, avlt_file, registry_file, dump_to=None):
+def syncAVLTData(old_headers, old_lines, avlt_file, registry_file):
     registry = importDODRegistry(registry_file)
     avlt_by_subj = importAVLT(avlt_file, registry=registry)
 
@@ -262,12 +235,9 @@ def syncAVLTData(old_headers, old_lines, avlt_file, registry_file, dump_to=None)
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncADNIMasterData(old_headers, old_lines, adnimaster_file, dump_to=None):
+def syncADNIMasterData(old_headers, old_lines, adnimaster_file):
     master_by_subj = importMaster(adnimaster_file)
 
     new_headers = old_headers
@@ -328,50 +298,35 @@ def syncADNIMasterData(old_headers, old_lines, adnimaster_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
-def syncDiagData(old_headers, old_lines, diag_file, dump_to=None):
-    diag_by_subj = importADNIDiagnosis(diag_file, registry=None)
+def syncDiagData(master_df, diag_file):
+    diag_df = importADNIDiagnosis(diag_file, as_df=True)
+    timepoints = 3
 
-    to_add_headers = ['Diag_%s' % _ for _ in range(5)]
-    to_add_headers += ["Diag_%s_Date" % _ for _ in range(5)]
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
-    new_lines = []
+    # header order 
+    headers = ['Diag_%s' % (_+1,) for _ in range(timepoints)]
+    headers += ["Diag_Date_%s" % (_+1,) for _ in range(timepoints)]
 
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        subj_diags = sorted(subj_row, key=lambda x: x['EXAMDATE'])
-        conversion_dict = {1: 'N',
-                           2: 'MCI',
-                           3: 'AD',
-                           4: 'MCI',
-                           5: 'AD',
-                           6: 'AD',
-                           7: 'N',
-                           8: 'MCI',
-                           9: 'N'}
+    # extraction fn
+    def extraction_fn(scrno, subj_rows):
+        if len(subj_rows.index) > timepoints:
+            raise Exception("Raise # Diag Timepoints to %s" % len(subj_rows.index))
+        subj_rows.sort_values(by='EXAMDATE', inplace=True)
+        subj_rows['SCRNO'] = scrno
+        diag_long = pivotSubjectGroupValues(subj_rows, 'SCRNO','diag','Diag_')
+        date_long = pivotSubjectGroupValues(subj_rows, 'SCRNO','EXAMDATE','Diag_Date_')
+        merge_df = diag_long.merge(date_long,left_index=True,right_index=True)
+        agg_row = merge_df.reset_index().iloc[0]
+        return agg_row
 
-        new_data = {}
-        subj_dx = [(conversion_dict[_['change']],_['EXAMDATE']) for _ in subj_diags]
-        for i, (dx, dx_date) in enumerate(subj_dx):
-            new_data['Diag_%s' % i] = dx
-            new_data['Diag_%s_Date' % i] = dx_date
-        return new_data
+    parsed_df = parseSubjectGroups(diag_df, extraction_fn)
+    parsed_df.set_index('SCRNO',inplace=True)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after='Notes')
+    return master_df
 
-    for i, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, diag_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
-    return (new_headers, new_lines)
-
-def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
+def syncStudyData(old_headers, old_lines, elig_file):
     elig_by_subj = importDODEligibility(elig_file)
 
     to_add_headers = ['PTGroup', 'Study', 'GroupNum']
@@ -415,40 +370,35 @@ def syncStudyData(old_headers, old_lines, elig_file, dump_to=None):
         old_l.update(new_data)
         new_lines.append(old_l)
 
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
     return (new_headers, new_lines)
 
+def syncAV1451Data(master_df, av1451_file):
+    av1451_df = importAV1451(av1451_file, as_df=True)
 
-def syncAV1451Data(old_headers, old_lines, av1451_file, dump_to=None):
-    av1451_by_subj = importAV1451(av1451_file)
-
-    timepoints = 2
-
+    # create header order
+    timepoints = 1
     row_indices = range(1,timepoints+1)
-    to_add_headers = []
-    to_add_headers += ['AV1451_%s_DATE' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_Braak12_CerebGray' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_Braak34_CerebGray' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_Braak56_CerebGray' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_LEFT_CAUDATE_CerebGray' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_RIGHT_CAUDATE_CerebGray' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_CEREBELLUMGREYMATTER' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_BRAIN_STEM' % i for i in row_indices]
-    to_add_headers += ['AV1451_%s_WHOLECEREBELLUM' % i for i in row_indices]
+    headers = []
+    headers += ['AV1451_%s_DATE' % i for i in row_indices]
+    headers += ['AV1451_%s_Braak12_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_Braak34_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_Braak56_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_LEFT_CAUDATE_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_RIGHT_CAUDATE_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_CEREBELLUMGREYMATTER' % i for i in row_indices]
+    headers += ['AV1451_%s_BRAIN_STEM' % i for i in row_indices]
+    headers += ['AV1451_%s_WHOLECEREBELLUM' % i for i in row_indices]
 
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
-    new_lines = []
-
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        new_data = {}
-        subj_row = sorted(subj_row, key=lambda x: x['EXAMDATE'])
-        if len(subj_row) > timepoints:
+    # create extraction function
+    def extraction_fn(scrno, subj_rows):
+        new_data = {'SCRNO': scrno}
+        subj_rows.sort_values(by='EXAMDATE', inplace=True)
+        if len(subj_rows.index) > timepoints:
             raise Exception("Raise # AV1451 Timepoints to > %s" % timepoints)
-        for i, row in enumerate(subj_row):
+
+        for i, (idx, row) in enumerate(subj_rows.iterrows()):
             row_i = i + 1
 
             new_data['AV1451_%s_DATE' % row_i] = row['EXAMDATE']
@@ -487,90 +437,62 @@ def syncAV1451Data(old_headers, old_lines, av1451_file, dump_to=None):
             new_data['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['LEFT_CHOROID_PLEXUS'])/cerebg
             new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/cerebg 
 
-        return new_data
+        return pd.Series(new_data)
 
-    old_subjects = set()
-    for i, old_line in enumerate(old_lines):
-        subj = int(old_line['SCRNO'])
-        new_data = updateLine(old_line, av1451_by_subj, extraction_fn, pid_key='SCRNO', pet_meta=None)
-        old_line.update(new_data)
-        new_lines.append(old_line)
-        old_subjects.add(subj)
-
-    new_subjects = list(set(av1451_by_subj.keys()) - old_subjects)
-    for ns in new_subjects:
-        old_line = {k: '' for k in new_headers}
-        old_line['SCRNO'] = str(int(ns))
-        new_data = updateLine(old_line, av1451_by_subj, extraction_fn, pid_key='SCRNO', pet_meta=None)
-        old_line.update(new_data)
-        new_lines.append(old_line)
-
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
-    return (new_headers, new_lines)
+    parsed_df = parseSubjectGroups(av1451_df, extraction_fn)
+    parsed_df.set_index('SCRNO',inplace=True)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
 
 
-def syncAV45Data(old_headers, old_lines, av45_file, registry_file, diags, dump_to=None):
-    '''
-    Only take ADNI1 Controls:
-    If PID is < 6000, then filter by ADNI1_CONTROLS
-    '''
-    registry = importDODRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, registry=registry)
-    ADNI1_CONTROLS = [rid for rid,diag in diags.iteritems() if diag == 'N']
+def syncAV45Data(master_df, av45_file, diags_df):
+    av45_df = importAV45(av45_file, as_df=True)
+    adni_controls_df = set(diags_df[diags_df.diag.str.match('N')].index)
+    # create header order
+    row_indices = range(1,3)
+    headers = []
+    for r in row_indices:
+        # Dates
+        headers.append('AV45_%s_EXAMDATE' % r)
+        # SUVRs
+        headers.append('AV45_%s_Left-Putamen' % r)
+        headers.append('AV45_%s_Right-Putamen' % r)
+        headers.append('AV45_%s_Left-Caudate' % r)
+        headers.append('AV45_%s_Right-Caudate' % r)
+        headers.append('AV45_%s_Left-Pallidum' % r)
+        headers.append('AV45_%s_Right-Pallidum' % r)
+        headers.append('AV45_%s_Left_BG_avg' % r)
+        headers.append('AV45_%s_Right_BG_avg' % r)
+        headers.append('AV45_%s_BG_avg' % r)
+        headers.append('AV45_%s_comp/wcerb' % r)
+        headers.append('AV45_%s_wcerb_bin' % r)
+        headers.append('AV45_%s_comp/brainstem' % r)
+        headers.append('AV45_%s_comp/bigref' % r)
+        headers.append('AV45_%s_comp/cerbg' % r)
+        headers.append('AV45_%s_comp/wm70' % r)
+        # Assymetry values
+        headers.append('AV45_%s_frontal_asymmetry_negvalue_means_R<L' % r)
+        headers.append('AV45_%s_cingulate_asymmetry_negvalue_means_R<L' % r)
+        headers.append('AV45_%s_parietal_asymmetry_negvalue_means_R<L' % r)
+        headers.append('AV45_%s_temporal_asymmetry_negvalue_means_R<L' % r)
+        #headers.append('AV45_%s_asym_summary_absvals_negvalue_means_R<L' % r)
+        headers.append('AV45_%s_frontal_MR_asymmetry' % r)
+        headers.append('AV45_%s_cingulate_MR_asymmetry' % r)
+        headers.append('AV45_%s_parietal_MR_asymmetry' % r)
+        headers.append('AV45_%s_temporal__MR_asymmetry' % r)
+        headers.append('AV45_%s_ventrical_MR_asymmetry' % r)
+    # parse AV45 results
+    parsed_df = parseSubjectGroups(av45_df, parseAV45SubjectRows)
+    parsed_df.set_index('SCRNO',inplace=True)
+    # filter old subjects
+    valid_adni_subj = set(master_df.index) &  adni_controls_df
+    old_subj = valid_adni_subj | set(master_df[master_df.index >= 6000].index)
+    master_df = master_df.loc[list(old_subj),:]
+    # update
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
 
-    new_headers = None
-    new_lines = []
-    old_subjects = set()
-    for old_l in old_lines:
-        # get subject ID
-        try:
-            subj = int(old_l['SCRNO'])
-        except Exception as e:
-            continue
-
-        if subj <= 6000 and subj not in ADNI1_CONTROLS:
-            continue
-
-        old_subjects.add(subj)
-        if subj not in av45_by_subj:
-            print "No AV45 data for %s" % subj
-            new_lines.append(old_l)
-            continue
-        updated_headers, new_data = parseAV45Entries(old_headers, av45_by_subj[subj])
-        if new_headers is None:
-            new_headers = updated_headers
-        new_data = convertToCSVDataType(new_data, decimal_places=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-    # find new subjects - in av45 file but not in old master csv file
-    new_subjects = list(set(av45_by_subj.keys()) - old_subjects)
-    print "New AV45 subjects: %s" % new_subjects
-    for ns in new_subjects:
-
-        if int(ns) <= 6000 and int(ns) not in ADNI1_CONTROLS:
-            continue
-
-        av45_data = av45_by_subj[ns]
-        updated_headers, new_data = parseAV45Entries(old_headers, av45_data)
-        if new_headers is None:
-            new_headers = updated_headers
-        new_data = convertToCSVDataType(new_data, decimal_places=None)
-        old_l = {k: '' for k in new_headers}
-        old_l['SCRNO'] = str(int(ns))
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-    # dump out
-    if dump_to is not None:
-        dumpCSV(dump_to, new_headers, new_lines)
-    return (new_headers, new_lines)
-
-def parseAV45Entries(old_headers, subj_rows):
-    subj_rows = sorted(subj_rows, key=lambda x: x['EXAMDATE'])
-
+def parseAV45SubjectRows(scrno, subj_rows):
     # reference dicts
     left_frontal_keys = ['CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_PARSOPERCULARIS', 
                     'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_FRONTALPOLE']
@@ -587,44 +509,10 @@ def parseAV45Entries(old_headers, subj_rows):
     left_ventrical_keys = []
     right_ventrical_keys = []
 
-    # Rearrange the headers
-    row_indices = range(1,3)
-    to_add_headers = []
-    for r in row_indices:
-        # Dates
-        to_add_headers.append('AV45_%s_EXAMDATE' % r)
-        # SUVRs
-        to_add_headers.append('AV45_%s_Left-Putamen' % r)
-        to_add_headers.append('AV45_%s_Right-Putamen' % r)
-        to_add_headers.append('AV45_%s_Left-Caudate' % r)
-        to_add_headers.append('AV45_%s_Right-Caudate' % r)
-        to_add_headers.append('AV45_%s_Left-Pallidum' % r)
-        to_add_headers.append('AV45_%s_Right-Pallidum' % r)
-        to_add_headers.append('AV45_%s_Left_BG_avg' % r)
-        to_add_headers.append('AV45_%s_Right_BG_avg' % r)
-        to_add_headers.append('AV45_%s_BG_avg' % r)
-        to_add_headers.append('AV45_%s_comp/wcerb' % r)
-        to_add_headers.append('AV45_%s_wcerb_bin' % r)
-        to_add_headers.append('AV45_%s_comp/brainstem' % r)
-        to_add_headers.append('AV45_%s_comp/bigref' % r)
-        to_add_headers.append('AV45_%s_comp/cerbg' % r)
-        to_add_headers.append('AV45_%s_comp/wm70' % r)
-        # Assymetry values
-        to_add_headers.append('AV45_%s_frontal_asymmetry_negvalue_means_R<L' % r)
-        to_add_headers.append('AV45_%s_cingulate_asymmetry_negvalue_means_R<L' % r)
-        to_add_headers.append('AV45_%s_parietal_asymmetry_negvalue_means_R<L' % r)
-        to_add_headers.append('AV45_%s_temporal_asymmetry_negvalue_means_R<L' % r)
-        #to_add_headers.append('AV45_%s_asym_summary_absvals_negvalue_means_R<L' % r)
-        to_add_headers.append('AV45_%s_frontal_MR_asymmetry' % r)
-        to_add_headers.append('AV45_%s_cingulate_MR_asymmetry' % r)
-        to_add_headers.append('AV45_%s_parietal_MR_asymmetry' % r)
-        to_add_headers.append('AV45_%s_temporal__MR_asymmetry' % r)
-        to_add_headers.append('AV45_%s_ventrical_MR_asymmetry' % r)
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
+    data = {'SCRNO': scrno}
+    subj_rows.sort_values(by='EXAMDATE', inplace=True)
 
-    data = {}
-    for i, point in enumerate(subj_rows):
-
+    for i, (idx, point) in enumerate(subj_rows.iterrows()):
         examdate = point['EXAMDATE']
         # extract necessary values
         wcereb = float(point['WHOLECEREBELLUM'])
@@ -700,8 +588,9 @@ def parseAV45Entries(old_headers, subj_rows):
         data['AV45_%s_parietal_MR_asymmetry' % (i+1)] = asymIndex(left_parietal_size, right_parietal_size)
         data['AV45_%s_temporal__MR_asymmetry' % (i+1)] = asymIndex(left_temporal_size, right_temporal_size)
         data['AV45_%s_ventrical_MR_asymmetry' % (i+1)] = asymIndex(left_ventrical_size, right_ventrical_size)
+    
+    return pd.Series(data)
 
-    return (new_headers, data)
 
 
 def asymIndex(left, right):
@@ -729,45 +618,57 @@ def getAV45Dates(old_l, patient_pets=None):
 def runPipeline():
     # syncing pipeline
     try:
-        new_headers, new_lines = parseCSV(master_file)
-        print len(new_lines)
+        master_df = pd.read_csv(master_file)
+        master_df.set_index('SCRNO',inplace=True)
+        print len(master_df.index)
     except:
-        new_headers = ['SCRNO', 'Notes']
+        master_df = pd.DataFrame(columns=['Notes'])
         new_lines = []
 
     # get diagnoses
-    diags = extractDiagnosesFromMasterData(importMaster(av45_master_file))
+    diags_df = extractDiagnosesFromMasterData(importMaster(av45_master_file, as_df=True))
+    registry = importDODRegistry(registry_file)
 
     print "\nSYNCING AV45\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_file, registry_file, diags, dump_to=None) # adds new patients
+    master_df = syncAV45Data(master_df, av45_file, diags_df) # adds new patients
     print "\nSYNCING AV1451\n"
-    new_headers, new_lines = syncAV1451Data(new_headers, new_lines, av1451_file, dump_to=None) # adds new patients
+    master_df = syncAV1451Data(master_df, av1451_file) # adds new patients
     print "\nSYNCING DIAG\n"
-    new_headers, new_lines = syncDiagData(new_headers, new_lines, diag_file, dump_to=None)
+    master_df = syncDiagData(master_df, diag_file)
+
+
+    print master_df
+    return
+
+    print "\nSYNCING DIAG\n"
+    new_headers, new_lines = syncDiagData(new_headers, new_lines, diag_file)
     print "\nSYNCING ANTIDEP\n"
-    new_headers, new_lines = syncAntidepData(new_headers, new_lines, backmeds_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncAntidepData(new_headers, new_lines, backmeds_file, registry_file)
     print "\nSYNCING APOE\n"
-    new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file)
     print "\nSYNCING ADAS\n"
-    new_headers, new_lines = syncADASData(new_headers, new_lines, adas_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncADASData(new_headers, new_lines, adas_file, registry_file)
     print "\nSYNCING AVLT\n"
-    new_headers, new_lines = syncAVLTData(new_headers, new_lines, avlt_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncAVLTData(new_headers, new_lines, avlt_file, registry_file)
     print "\nSYNCING DEMOG\n"
-    new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, registry_file)
     print "\nSYNCING CAPS\n"
-    new_headers, new_lines = syncCAPSData(new_headers, new_lines, caps_curr_file, caps_lifetime_file, dump_to=None)
+    new_headers, new_lines = syncCAPSData(new_headers, new_lines, caps_curr_file, caps_lifetime_file)
     print "\nSYNCING WMH\n"
-    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file, dump_to=None)
+    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file)
     print "\nSYNCING GD\n"
-    new_headers, new_lines = syncGDData(new_headers, new_lines, gd_file, dump_to=None)
+    new_headers, new_lines = syncGDData(new_headers, new_lines, gd_file)
     print "\nSYNCING MRI\n"
-    new_headers, new_lines = syncMRIData(new_headers, new_lines, mri_file, dump_to=None)
+    new_headers, new_lines = syncMRIData(new_headers, new_lines, mri_file)
     print "\nSYNCING STUDY\n"
-    new_headers, new_lines = syncStudyData(new_headers, new_lines, elig_file, dump_to=None)
+    new_headers, new_lines = syncStudyData(new_headers, new_lines, elig_file)
     print "\nSYNCING CSF\n"
-    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_file, registry_file, dump_to=None)
+    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_file, registry_file)
     print "\nSYNCING ADNI MASTER\n"
-    new_headers, new_lines = syncADNIMasterData(new_headers, new_lines, av45_master_file, dump_to=output_file)
+    new_headers, new_lines = syncADNIMasterData(new_headers, new_lines, av45_master_file)
+
+    print "\nDUMPING CSV\n"
+    dumpDFtoCSV(master_df,output_file,decimal_places=2)
 
 if __name__ == '__main__':
     now = datetime.now()
