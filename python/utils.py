@@ -78,93 +78,8 @@ LOBES = {'FRONTAL': FRONTAL_LOBE,
 # BLACKLISTED REGIONS
 REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,85,24,14,15,72,4,43,75,76]
 
-'''
-import pandas as pd; from utils import fitGMM_1D
-df = pd.read_csv('../pvcsummary_bl_patterns_and_change.csv')
-fitGMM_1D(df['ctx-lh-middletemporal_change'],2,graph=True)
-'''
 
-'''
-import pandas as pd; from utils import scatterWithConfidence
-df = pd.read_json('../pvcsummary_bl_vs_change.json')
-keys = [_.replace('_bl','') for _ in df.columns if '_bl' in _ and 'ctx' in _]
-for k in keys:
-    # xkey = '%s_bl' % k
-    xkey = 'cortical_summary_bl'
-    ykey = '%s_change' % k
-    label = k
-    scatterWithConfidence(df, label, xkey, ykey, '../plots/%s_pvc_bl_vs_change.png' % k)
-'''
-'''
-import pandas as pd; from utils import fitLine; import numpy as np; import matplotlib.pyplot as plt
-df = pd.read_json('../pvcsummary_bl_vs_change.json')
-df = df[df['cortical_summary_bl']<1.36]
-df = df[df['cortical_summary_bl']>0.5]
-keys = [_.replace('_bl','') for _ in df.columns if '_bl' in _ and 'ctx' in _]
-xnew = np.linspace(df['cortical_summary_bl'].min(),df['cortical_summary_bl'].max(), 200)
-plt.figure(1)
-groups = {'high':[],'mid':[],'low':[]}
-testpts = [0.50131866629999999,
-           0.5500176993,
-           0.60029965890000003,
-           0.65183440459999997,
-           0.70266162240000007,
-           0.75155736560000008,
-           0.80735474860000001,
-           0.84944201800000008,
-           0.90135566740000006,
-           0.95089355310000001,
-           1.0093468031999999,
-           1.0530114480999999,
-           1.1023878562,
-           1.1575373425,
-           1.2002348844999999,
-           1.2509682801999999,
-           1.3011045959,
-           1.3513167401000001]
-test_ranks = {_:[] for _ in testpts}
-halfway_line = plt.axvline(x=0.897, color='k', label='Threshold')
-for k in keys:
-    xkey = 'cortical_summary_bl'
-    ykey = '%s_change' % k
-    label = k
-    xfit,yfit = fitLine(df, xkey, ykey, order=0)
-    # test = 0.57305707080000001
-    # ypos = [x for x,y in zip(xfit,yfit) if y >= 0][0]
-    # positivity[label] = ypos
-    # if ytest > 0.0:
-    #     groups['high'].append(label)
-    #     color = 'r'
-    # elif ytest > -0.00005:
-    #     groups['mid'].append(label)
-    #     color = 'k'
-    # else:
-    #     groups['low'].append(label)
-    #     color = 'b'
-    color = 'k'
-    ytest = None
-    for i, cur_test in enumerate(testpts):
-        cur_ytest = [y for x,y in zip(xfit,yfit) if x == cur_test][0]
-        if i == 1:
-            ytest = cur_ytest
-        test_ranks[cur_test].append((cur_ytest,k))
-    plt.plot(xfit,yfit,label=label)
-
-
-rows = {}
-for i in testpts:
-    print "BL STATUS: %s" % i
-    sortedvals = sorted(test_ranks[i],key=lambda x: x[0], reverse=True)
-    new_row = dict(enumerate([b for a,b in sortedvals]))
-    new_row_vals = dict(enumerate([a for a,b in sortedvals]))
-    rows['%.2f' % i] = new_row
-    rows['%.2f_val' % i] = new_row_vals
-
-output = '../regionalchange_order0.csv'
-out_df = pd.DataFrame(rows)
-out_df.to_csv(output)
-
-'''
+########## CSV UPDATING INFRASTRUCTURE ##############
 
 def updateLine(old_line, new_data, extraction_fn, 
                pid_key='RID', pet_meta=None, decimal_places=4):
@@ -188,14 +103,164 @@ def updateLine(old_line, new_data, extraction_fn,
     return new_data
 
 
+def isnan(arg):
+    try:
+        if np.isnan(arg):
+            return True
+    except Exception as e:
+        pass
+    return False
+
+def extractLongitudinalFields(datapoints, key, prefix):
+    data = {}
+    for i, point in enumerate(datapoints):
+        data['%s%s' % (prefix,i+1)] = point.get(key)
+    return data
+
+def getClosestToScans(points, bl_scan, scan_2, scan_3, day_limit=550, date_key='EXAMDATE'):
+    used = set()
+    # match up with av45 scans
+    scan_bl_closest = scan_2_closest = scan_3_closest = None
+    if bl_scan is not None:
+        eligible = [p for p in points if p[date_key] not in used and (abs(bl_scan - p[date_key]).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(bl_scan-x[date_key]))
+        if len(cand) > 0:
+            scan_bl_closest = cand[0]
+            used.add(scan_bl_closest[date_key])
+    if scan_2 is not None:
+        eligible = [p for p in points if p[date_key] not in used and (abs(scan_2 - p[date_key]).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(scan_2-x[date_key]))
+        if len(cand) > 0:
+            scan_2_closest = cand[0]
+            used.add(scan_2_closest[date_key])
+    if scan_3 is not None:
+        eligible = [p for p in points if p[date_key] not in used and (abs(scan_3 - p[date_key]).days <= day_limit)]
+        cand = sorted(eligible, key=lambda x: abs(scan_3-x[date_key]))
+        if len(cand) > 0:
+            scan_3_closest = cand[0]
+            used.add(scan_3_closest[date_key])
+    return scan_bl_closest, scan_2_closest, scan_3_closest
+
+def slope(points):
+    '''
+    Expects list of (x,y) points
+    '''
+    if len(points) >= 2:
+        x = [_[0] for _ in points]
+        y = [_[1] for _ in points]
+        slope, intercept, r, p, stderr = linregress(x,y)
+        return slope
+    return None
+
+def weightedMean(points):
+    '''
+    Expects list of (weight,value) points
+    '''
+    weights = np.array([_[0] for _ in points])
+    values = np.array([_[1] for _ in points])
+    weights = weights / float(sum(weights))
+    return sum(weights*values)
+
+def parseDate(date_str, registry=None):
+    if date_str == '' or isnan(date_str):
+        raise Exception("Blank date string")
+    date_str = date_str.replace('--','1')
+    formats = ['%Y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
+    for f in formats:
+        try:
+            date = datetime.strptime(date_str,f)
+            return date
+        except:
+            pass
+    raise Exception("Cannot parse date: %s" % date_str)
+
+def parseAllDates(date_str_list):
+    parsed = []
+    for d in date_str_list:
+        try:
+            new_date = parseDate(d)
+        except:
+            new_date = np.nan
+        parsed.append(new_date)
+    return parsed
+
+def parseOrFindDate(df, date_key, registry=None):
+    if date_key not in df.columns:
+        df[date_key] = None
+    df_null = df[df[date_key].isnull()]
+    if registry is not None:
+        df_null.loc[:,date_key] = df_null.apply(lambda x: findVisitDate(registry, x.name, [x.get('VISCODE',''),x.get('VISCODE2','')]), axis=1)
+    df_nonnull = df[~df[date_key].isnull()]
+    df_nonnull.loc[:,date_key] = df_nonnull.loc[:,date_key].apply(parseDate)
+    df = pd.concat((df_nonnull,df_null))
+    return df
+
+def dumpCSV(file_path, headers, lines):
+    print "DUMPING OUTPUT TO %s" % (file_path)
+    writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
+    writer.writeheader()
+    for l in lines:
+        filtered_line = {}
+        for k in headers:
+            filtered_line[k] = l[k] if k in l else ''
+        writer.writerow(filtered_line)
+
+def rearrangeHeaders(new_headers, to_add, after=None):
+    '''
+    if after is None, then stick in the end of the headers
+    '''
+    for ta in to_add:
+        if ta in new_headers:
+            new_headers.remove(ta)
+    if after is None:
+        new_headers.extend(to_add)
+    else:
+        idx = new_headers.index(after) + 1
+        new_headers = new_headers[:idx] + to_add + new_headers[idx:]
+    return new_headers
+
+def findVisitDate(registry, subj, viscodes):
+    vcs = [_.lower().strip() for _ in viscodes]
+    vcs = set([_ for _ in vcs if _ != ''])
+    subj_registry = registry.get(subj,[])
+    date = None
+    for reg_row in subj_registry:
+        row_visits = [reg_row.get('VISCODE','').lower().strip(), reg_row.get('VISCODE2','').lower().strip()]
+        row_visits = set([_ for _ in row_visits if _ != ''])
+        if len(vcs & row_visits) > 0:
+            date = reg_row['EXAMDATE']
+            break
+    return date
+
+def appendCSV(csv1, csv2):
+    '''
+    appends csv2 rows to csv1 (have to have same headers)
+    '''
+    h1, r1 = parseCSV(csv1)
+    h2, r2 = parseCSV(csv2)
+    all_rows = r1 + r2
+    all_headers = h1
+    dumpCSV(csv1, all_headers, all_rows)
+
+def removeFile(filename):
+    try:
+        os.remove(filename)
+    except OSError:
+        print "File to remove does not exist"
+
+def convertToSubjDict(df, sort_by=None):
+    by_subj = {}
+    index_name = df.index.name
+    for group_key, group_rows in df.reset_index().groupby(index_name):
+        if sort_by in group_rows.columns:
+            group_rows.sort_values(by=sort_by, inplace=True)
+        by_subj[group_key] = group_rows.to_dict(orient='records')
+    return by_subj
 
 
-def regCoeffZTest(B1, B2, se1, se2):
-    pooledSE = np.sqrt(se1 + se2)
-    z = (B1 - B2) / pooledSE
-    pval = 2*(1 - norm.cdf(abs(z)))
-    return (z, pval)
+######################################################
 
+################ SHELL UTILS ###################
 
 def mkdir_p(path):
     try:
@@ -206,13 +271,82 @@ def mkdir_p(path):
         else:
             raise
 
-def isnan(arg):
-    try:
-        if np.isnan(arg):
-            return True
-    except Exception as e:
-        pass
-    return False
+
+######################################################
+
+################# STATS/GRAPH UTILS ###################
+
+def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
+    """
+    Compute the Gap statistic for an nxm dataset in data.
+    Either give a precomputed set of reference distributions in refs as an (n,m,k) scipy array,
+    or state the number k of reference distributions in nrefs for automatic generation with a
+    uniformed distribution within the bounding box of data.
+    Give the list of k-values for which you want to compute the statistic in ks.
+    """
+    shape = data.shape
+
+    if use_pca:
+        pca_model = PCA(n_components=0.97, copy=True, whiten=False)
+        pca_data = pca_model.fit_transform(data)
+        pca_shape = pca_data.shape
+        tops = pca_data.max(axis=0)
+        bots = pca_data.min(axis=0)
+        dists = np.matrix(np.diag(tops-bots))
+        pca_rands = np.random.random_sample(size=(pca_shape[0],pca_shape[1],nrefs))
+        rands = np.zeros(shape=(shape[0],shape[1],nrefs))
+        for i in range(nrefs):
+            # convert back to original space
+            pca_samples = pca_rands[:,:,i]*dists+bots
+            samples = pca_model.inverse_transform(pca_samples)
+            rands[:,:,i] = samples
+    else:
+        shape = data.shape
+        tops = data.max(axis=0)
+        bots = data.min(axis=0)
+        dists = np.matrix(np.diag(tops-bots))
+        rands = np.random.random_sample(size=(shape[0],shape[1],nrefs))
+        for i in range(nrefs):
+            rands[:,:,i] = rands[:,:,i]*dists+bots
+
+    gaps = np.zeros((len(ks),))
+    sds = np.zeros((len(ks),))
+    for i,k in enumerate(ks):
+        print "k: %s" % k
+        model = KMeans(n_clusters=k, n_jobs=1, copy_x=True, verbose=True)
+        labels = model.fit_predict(data)
+        centers = model.cluster_centers_
+
+        print "fit data"
+        disp = sum([euclidean(data[m,:],centers[labels[m],:]) for m in range(shape[0])])
+
+        refdisps = np.zeros((rands.shape[2],))
+        for j in range(rands.shape[2]):
+            model = KMeans(n_clusters=k, n_jobs=1, copy_x=True, verbose=True)
+            labels = model.fit_predict(rands[:,:,j])
+            centers = model.cluster_centers_
+            refdisps[j] = sum([euclidean(rands[m,:,j],centers[labels[m],:]) for m in range(shape[0])])
+        print "fit random"
+        
+        gaps[i] = np.mean(np.log(refdisps))-np.log(disp)
+        sds[i] = np.sqrt(1.0 + 1.0/nrefs) * np.std(np.log(refdisps))
+        print gaps[i]
+        print sds[i]
+
+    valid_ks = []
+    for i, g in enumerate(gaps[:-1]):
+        if g >= gaps[i+1] - sds[i+1]:
+            diff = g - (gaps[i+1] - sds[i+1])
+            valid_ks.append((ks[i], diff))
+
+    return gaps, valid_ks
+
+def regCoeffZTest(B1, B2, se1, se2):
+    pooledSE = np.sqrt(se1 + se2)
+    z = (B1 - B2) / pooledSE
+    pval = 2*(1 - norm.cdf(abs(z)))
+    return (z, pval)
+
 
 def fitLine(df, xkey, ykey, order=0):
     curdf = df[[xkey, ykey]]
@@ -345,6 +479,11 @@ def ndcg(relevances, rank=20):
     if best_dcg == 0: 
         return 0. 
     return dcg(relevances, rank) / best_dcg
+
+
+######################################################
+
+
 
 def importRoussetCSV(rousset_csv, translate_threshold=1.11):
     '''
@@ -602,70 +741,7 @@ def parseResult(arg):
     data = zipFields(arg)
     return data
 
-def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
-    """
-    Compute the Gap statistic for an nxm dataset in data.
-    Either give a precomputed set of reference distributions in refs as an (n,m,k) scipy array,
-    or state the number k of reference distributions in nrefs for automatic generation with a
-    uniformed distribution within the bounding box of data.
-    Give the list of k-values for which you want to compute the statistic in ks.
-    """
-    shape = data.shape
 
-    if use_pca:
-        pca_model = PCA(n_components=0.97, copy=True, whiten=False)
-        pca_data = pca_model.fit_transform(data)
-        pca_shape = pca_data.shape
-        tops = pca_data.max(axis=0)
-        bots = pca_data.min(axis=0)
-        dists = np.matrix(np.diag(tops-bots))
-        pca_rands = np.random.random_sample(size=(pca_shape[0],pca_shape[1],nrefs))
-        rands = np.zeros(shape=(shape[0],shape[1],nrefs))
-        for i in range(nrefs):
-            # convert back to original space
-            pca_samples = pca_rands[:,:,i]*dists+bots
-            samples = pca_model.inverse_transform(pca_samples)
-            rands[:,:,i] = samples
-    else:
-        shape = data.shape
-        tops = data.max(axis=0)
-        bots = data.min(axis=0)
-        dists = np.matrix(np.diag(tops-bots))
-        rands = np.random.random_sample(size=(shape[0],shape[1],nrefs))
-        for i in range(nrefs):
-            rands[:,:,i] = rands[:,:,i]*dists+bots
-
-    gaps = np.zeros((len(ks),))
-    sds = np.zeros((len(ks),))
-    for i,k in enumerate(ks):
-        print "k: %s" % k
-        model = KMeans(n_clusters=k, n_jobs=1, copy_x=True, verbose=True)
-        labels = model.fit_predict(data)
-        centers = model.cluster_centers_
-
-        print "fit data"
-        disp = sum([euclidean(data[m,:],centers[labels[m],:]) for m in range(shape[0])])
-
-        refdisps = np.zeros((rands.shape[2],))
-        for j in range(rands.shape[2]):
-            model = KMeans(n_clusters=k, n_jobs=1, copy_x=True, verbose=True)
-            labels = model.fit_predict(rands[:,:,j])
-            centers = model.cluster_centers_
-            refdisps[j] = sum([euclidean(rands[m,:,j],centers[labels[m],:]) for m in range(shape[0])])
-        print "fit random"
-        
-        gaps[i] = np.mean(np.log(refdisps))-np.log(disp)
-        sds[i] = np.sqrt(1.0 + 1.0/nrefs) * np.std(np.log(refdisps))
-        print gaps[i]
-        print sds[i]
-
-    valid_ks = []
-    for i, g in enumerate(gaps[:-1]):
-        if g >= gaps[i+1] - sds[i+1]:
-            diff = g - (gaps[i+1] - sds[i+1])
-            valid_ks.append((ks[i], diff))
-
-    return gaps, valid_ks
 
 def extractDiagnosesFromMasterData(master_data):
     diags = {}
@@ -764,47 +840,43 @@ def convertToCSVDataType(new_data, decimal_places=2):
     return new_data
 
 
-def importRegistry(registry_file, include_all=False):
+def importRegistry(registry_file, include_all=False, as_df=False):
     df = pd.read_csv(registry_file,low_memory=False)
     df = df.loc[:,['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']]
     df['VISCODE2'] = df['VISCODE2'].fillna('')
     df['VISCODE'] = df['VISCODE'].fillna('')
     df.loc[:,'VISCODE'] = df.loc[:,'VISCODE'].apply(lambda x: x.lower().strip())
     df.loc[:,'VISCODE2'] = df.loc[:,'VISCODE2'].apply(lambda x: x.lower().strip())
+
     if not include_all:
-        df = df[df.VISCODE!='sc'] # filter out screening visits
-    df.loc[:,'EXAMDATE'] = parseAllDates(df.loc[:,'EXAMDATE'])
-    df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
-    grouped = df.groupby(by=['RID'])
-    by_subj = {}
-    for key, val in grouped:
-        by_subj[key] = sorted([dict(_) for i,_ in val.iterrows()], key=lambda x: x['EXAMDATE'])
-    return by_subj
+        df = df[~df.VISCODE.str.contains('sc')] # filter out screening visits
 
-def importDODRegistry(dod_registry_file):
-    headers, lines = parseCSV(dod_registry_file)
-    registry = defaultdict(list)
-    for data in lines:
-        subj = int(data['SCRNO'])
-        rid = int(data['RID'])
-        viscode = data['VISCODE'].strip().lower()
-        if viscode.startswith('sc'):
-            continue
-        date_string = data['EXAMDATE']
-        if date_string == '':
-            continue
-        date = parseDate(date_string)
-        registry[subj].append({'VISCODE': viscode,
-                               'EXAMDATE': date,
-                               'update_stamp': data['update_stamp'],
-                               'RID': rid})
-    registry = dict(registry)
-    for k in registry.keys():
-        new_val = sorted(registry[k], key=lambda x: x['EXAMDATE'])
-        registry[k] = new_val
-    return registry
+    df.dropna(subset=['EXAMDATE'],inplace=True)
+    df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+    df.set_index('RID',inplace=True)
 
-def importDODAntidep(backmeds_file, registry_file):
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df, sort_by='EXAMDATE')
+
+def importDODRegistry(dod_registry_file, as_df=False):
+    df = pd.read_csv(dod_registry_file)
+
+    all_columns = ['SCRNO','RID','VISCODE','EXAMDATE']
+    df = df[all_columns]
+    df.dropna(inplace=True)
+    df.set_index('SCRNO',inplace=True)
+
+    df = df[~df['VISCODE'].str.startswith('sc')]
+    df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df, sort_by='EXAMDATE')
+
+def importDODAntidep(backmeds_file, registry_file, as_df=False):
     '''
     FOR DOD BACKMEDS.CSV FILE ONLY
     '''
@@ -860,150 +932,124 @@ def importDODAntidep(backmeds_file, registry_file):
     backmeds_df = backmeds_df[['SCRNO','VISCODE','ANTIDEP_USE','WHICH_ANTIDEP','SSRI']]
     backmeds_df.set_index('SCRNO',inplace=True)
 
-    # convert to dictionary
-    by_subj = defaultdict(list)
-    for sid, row in backmeds_df.iterrows():
-        data = dict(row)
-        examdate = findVisitDate(registry, sid, [data['VISCODE'].lower()])
-        if examdate is None:
-            print "Can't find date for %s, %s" % (sid, data['VISCODE'])
-        data['EXAMDATE'] = examdate
-        by_subj[sid].append(data)
-    by_subj = dict(by_subj)
+    backmeds_df = parseOrFindDate(backmeds_df, 'EXAMDATE', registry=registry)
+    backmeds_df.dropna(subset=['EXAMDATE'],inplace=True)
 
-    return by_subj
+    if as_df:
+        return backmeds_df
+    else:
+        return convertToSubjDict(backmeds_df, sort_by='EXAMDATE')
+
 
 def importCAPS(caps_curr_file, caps_lifetime_file):
-    curr_headers, curr_lines = parseCSV(caps_curr_file)
-    life_headers, life_lines = parseCSV(caps_lifetime_file)
-    data = defaultdict(dict)
-    for line in curr_lines:
-        subj = int(line['SCRNO'])
-        try:
-            score = int(line['CAPSSCORE'])
-        except Exception as e:
-            score = ''
-        data[subj]['curr'] = score
-    for line in life_lines:
-        subj = int(line['SCRNO'])
-        try:
-            score = int(line['CAPSSCORE'])
-        except Exception as e:
-            score = ''
-        data[subj]['life'] = score
-    return dict(data)
+    curr_df = pd.read_csv(caps_curr_file)
+    life_df = pd.read_csv(caps_lifetime_file)
+    curr_df.set_index('SCRNO',inplace=True)
+    life_df.set_index('SCRNO',inplace=True)
+    curr_df = curr_df[['CAPSSCORE']]
+    curr_df.columns = ['curr']
+    life_df = life_df[['CAPSSCORE']]
+    life_df.columns = ['life']
+    df = curr_df.merge(life_df,left_index=True, right_index=True,how='outer')
+    df = pd.to_numeric(df, errors='coerce')
+    df.fillna('',inplace=True)
 
-def importADNIDiagnosis(diag_file, registry=None):
-    diag_headers, diag_lines = parseCSV(diag_file)
-    diag_by_subj = defaultdict(list)
-    for line in diag_lines:
-        if 'SCRNO' in line:
-            subj = int(line['SCRNO'])
-        else:
-            subj = int(line['RID'])
-        viscode = line.get('VISCODE','').strip().lower()
-        viscode2 = line.get('VISCODE2','').strip().lower()
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df)
+
+def deriveDiagCode(diag_row):
+    '''
+        DXCHANGE: (ADNI2 DIAG CHANGE): 
+            1=Stable: NL to NL; 
+            2=Stable: MCI to MCI; 
+            3=Stable: Dementia to Dementia; 
+            4=Conversion: NL to MCI; 
+            5=Conversion: MCI to Dementia; 
+            6=Conversion: NL to Dementia; 
+            7=Reversion: MCI to NL; 
+            8=Reversion: Dementia to MCI; 
+            9=Reversion: Dementia to NL
         
-        examdate = line['EXAMDATE']
-        change = line['DXCHANGE']
+        DXCURREN: (CURRENT DIAGNOSIS): 
+            1=NL;
+            2=MCI;
+            3=AD
+        DXCONV: 
+            1=Yes - Conversion; 
+            2=Yes - Reversion; 
+            0=No
+        DXCONTYP: 
+            1=Normal Control to MCI; 
+            2=Normal Control to AD; 
+            3=MCI to AD
+        DXREV: 
+            1=MCI to Normal Control; 
+            2=AD to MCI; 
+            3=AD to Normal Control
+    '''
+    diag_row = diag_row.fillna('')
+    change = diag_row['DXCHANGE']
+    change = int(change) if change != '' else None
+    current = diag_row['DXCURREN']
+    current = int(current) if current != '' else None
+    conv = diag_row['DXCONV']
+    conv = int(conv) if conv != '' else None
+    conv_type = diag_row['DXCONTYP']
+    conv_type = int(conv_type) if conv_type != '' and int(conv_type) >= 0 else None
+    rev_type = diag_row['DXREV']
+    rev_type = int(rev_type) if rev_type != '' and int(rev_type) >= 0 else None
 
-        current = line.get('DXCURREN','')
-        conv = line.get('DXCONV','')
-        conv_type = line.get('DXCONTYP','')
-        rev_type = line.get('DXREV','')
+    if change is None:
+        if conv == 1:
+            # conversion
+            if conv_type == 1:
+                change = 4
+            elif conv_type == 2:
+                change = 6
+            elif conv_type == 3:
+                change = 5
+        elif conv == 2:
+            # reversion
+            if rev_type == 1:
+                change = 7
+            elif rev_type == 2:
+                change = 8
+            elif rev_type == 3:
+                change = 9
+        elif conv == 0:
+            # stable
+            if current == 1:
+                change = 1
+            elif current == 2:
+                change = 2
+            elif current == 3:
+                change = 3
 
-        if change != '':
-            change = str(int(change))
-        if current != '':
-            current = str(int(current))
-        if conv != '':
-            conv = str(int(conv))
-        if conv_type != '':
-            conv_type = str(int(conv_type)).replace('-4','').strip()
-        if rev_type != '':
-            rev_type = str(int(rev_type)).replace('-4','').strip()
+    return change
 
-        if examdate:
-            examdate = parseDate(examdate)
-        else:
-            subj_listings = registry[subj]
-            for listing in subj_listings:
-                if listing['VISCODE'] == viscode and listing['VISCODE2'] == viscode2:
-                    examdate = listing['EXAMDATE']
-                    break
-            if not examdate:
-                print "Could not find exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-                continue
 
-        '''
-            DXCHANGE: (ADNI2 DIAG CHANGE): 
-                1=Stable: NL to NL; 
-                2=Stable: MCI to MCI; 
-                3=Stable: Dementia to Dementia; 
-                4=Conversion: NL to MCI; 
-                5=Conversion: MCI to Dementia; 
-                6=Conversion: NL to Dementia; 
-                7=Reversion: MCI to NL; 
-                8=Reversion: Dementia to MCI; 
-                9=Reversion: Dementia to NL
-            
-            DXCURREN: (CURRENT DIAGNOSIS): 
-                1=NL;
-                2=MCI;
-                3=AD
-            DXCONV: 
-                1=Yes - Conversion; 
-                2=Yes - Reversion; 
-                0=No
-            DXCONTYP: 
-                1=Normal Control to MCI; 
-                2=Normal Control to AD; 
-                3=MCI to AD
-            DXREV: 
-                1=MCI to Normal Control; 
-                2=AD to MCI; 
-                3=AD to Normal Control
-        '''
+def importADNIDiagnosis(diag_file, registry=None, as_df=False):
+    df = pd.read_csv(diag_file)
+    if 'SCRNO' in df.columns:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
 
-        # if adni 1 coding, convert to adni2 coding
-        if change == '' and current != '':
-            if conv == '1':
-                # conversion
-                if conv_type == '1':
-                    change = '4'
-                elif conv_type == '2':
-                    change = '6'
-                elif conv_type == '3':
-                    change = '5'
-            elif conv == '2':
-                # reversion
-                if rev_type == '1':
-                    change = '7'
-                elif rev_type == '2':
-                    change = '8'
-                elif rev_type == '3':
-                    change = '9'
-            elif conv == '0':
-                # stable
-                if current == '1':
-                    change = '1'
-                elif current == '2':
-                    change = '2'
-                elif current == '3':
-                    change = '3'
+    all_columns = ['VISCODE','VISCODE2','EXAMDATE','DXCHANGE','DXCURREN','DXCONV','DXCONTYP','DXREV']
+    all_columns = [_ for _ in all_columns if _ in df.columns]
+    df = df[all_columns]
 
-        if change == '':
-            print "Couldn't convert to adni2 coding: %s, %s, %s" % (subj, viscode, viscode2)
-            continue
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df['change'] = df.apply(lambda x: deriveDiagCode(x), axis=1)
+    df.dropna(subset=['change','EXAMDATE'],inplace=True)
 
-        diag_by_subj[subj].append({'VISCODE': viscode,
-                                   'VISCODE2': viscode2,
-                                   'EXAMDATE': examdate,
-                                   'change': int(change)})
-    diag_by_subj = dict(diag_by_subj)
-    for k,v in diag_by_subj.iteritems():
-        diag_by_subj[k] = sorted(v, key=lambda x: x['EXAMDATE'])
-    return diag_by_subj
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df, sort_by='EXAMDATE')
+
 
 def importFreesurferLookup(lut_file, flip=False):
     infile = open(lut_file, 'r')
@@ -1022,32 +1068,26 @@ def importFreesurferLookup(lut_file, flip=False):
             continue
     return data
 
-def importAPOE(apoe_file):
-    headers, lines = parseCSV(apoe_file)
-    apoe_by_subj = {}
-    for line in lines:
-        subj = int(line['SCRNO'])
-        apgen1 = int(line['APGEN1'])
-        apgen2 = int(line['APGEN2'])
-        apoe_by_subj[subj] = {'apgen1': apgen1, 'apgen2': apgen2}
+def importAPOE(apoe_file, as_df=False):
+    df = pd.read_csv(apoe_file)
+    df.set_index('SCRNO',inplace=True)
+    df = df[['APGEN1','APGEN2']]
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df)
     return apoe_by_subj
 
-def importFDG(fdg_file):
-    headers, lines = parseCSV(fdg_file)
-    by_subj = defaultdict(list)
-    for line in lines:
-        subj = int(line['RID'])
-        vc = line['VISCODE']
-        vc2 = line['VISCODE2']
-        date = parseDate(line['EXAMDATE'])
-        roiname = line['ROINAME']
-        mean = float(line['MEAN'])
-        by_subj[subj].append({'vc': vc,
-                              'vc2': vc2,
-                              'EXAMDATE': date,
-                              'ROI': roiname,
-                              'MEAN': mean})
-    return dict(by_subj)
+def importFDG(fdg_file, as_df=False):
+    df = pd.read_csv(fdg_file)
+    df.set_index('RID',inplace=True)
+    columns = ['VISCODE','VISCODE2','EXAMDATE','ROINAME','MEAN']
+    df = df[columns]
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df)
 
 
 def importExtractedFDG(fdg_file, registry):
@@ -1143,8 +1183,6 @@ def importDemog(demog_file):
     return demog_by_subj
 
 def importMMSE(mmse_file, registry=None):
-
-
     mmse_headers, mmse_lines = parseCSV(mmse_file)
     
     # restructure mmse lines by subject
@@ -1168,265 +1206,165 @@ def importMMSE(mmse_file, registry=None):
     return mmse_by_subject
 
 
-def importAVLT(avlt_file, registry=None):
-    headers, lines = parseCSV(avlt_file)
-    # restructure by subject
-    avlt_by_subj = defaultdict(list)
-    for line in lines:
-        if 'SCRNO' in line:
-            subj = int(line['SCRNO'])
-        else:
-            subj = int(line['RID'])
+def importAVLT(avlt_file, registry=None, as_df=False):
+    df = pd.read_csv(avlt_file)
+    if 'SCRNO' in df.columns:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
 
-        date_string = line.get('EXAMDATE')
-        viscode = line['VISCODE'].strip().lower() if 'VISCODE' in line else ''
-        viscode2 = line['VISCODE2'].strip().lower() if 'VISCODE2' in line else ''
-        if not date_string and registry is not None:
-            # get from registry
-            viscodes = [viscode, viscode2]
-            date = findVisitDate(registry, subj, viscodes)
-            if date is None:
-                print "Could not find visit in registry: %s, %s" % (subj, viscodes)
-                continue
-        else:
-            date = parseDate(date_string)
+    tp_columns = ['EXAMDATE', 'VISCODE', 'VISCODE2']
+    avlt_columns = ['AVTOT%s' % _ for _ in range(1,6)]
+    all_columns = [_ for _ in tp_columns+avlt_columns if _ in df]
+    df = df[all_columns]
 
-        tots = [line['AVTOT%s' % _ ] for _ in range(1,6)]
-        try:
-            score_sum = 0.0
-            for score_str in tots:
-                new_score = float(score_str)
-                if new_score < 0:
-                    raise Exception("Invalid score part")
-                score_sum += new_score
-            test_score = score_sum
-        except Exception as e:
-            continue
-        avlt_by_subj[subj].append({'VISCODE': viscode,
-                                   'VISCODE2': viscode2,
-                                   'EXAMDATE': date,
-                                   'TOTS': test_score})
-    return dict(avlt_by_subj)
-
-def importADASCog(adni1_file, adnigo2_file, registry=None):
-    try:
-        adni1_headers, adni1_lines = parseCSV(adni1_file)
-    except Exception as e:
-        adni1_lines = []
-    try:
-        adni2_headers, adni2_lines = parseCSV(adnigo2_file)
-    except Exception as e:
-        adni2_lines = []
-    # restructure by subject
-    adas_by_subj = defaultdict(list)
-    for line in adni1_lines:
-        subj = int(line['RID'])
-        viscode = line['VISCODE'].strip().lower()
-        examdate = parseDate(line['EXAMDATE'])
-        totscore = float(line['TOTAL11'])
-        if totscore < 0:
-            totscore = ''
-        adas_by_subj[subj].append({'VISCODE': viscode,
-                                   'VISCODE2': None,
-                                   'EXAMDATE': examdate,
-                                   'TOTSCORE': totscore})
-    for line in adni2_lines:
-        if 'SCRNO' in line:
-            subj = int(line['SCRNO'])
-        else:
-            subj = int(line['RID'])
-        viscode = line['VISCODE'].strip().lower()
-        try:
-            viscode2 = line['VISCODE2'].strip().lower()
-        except Exception as e:
-            viscode2 = ''
-        raw_totscore = line['TOTSCORE']
-        if raw_totscore == '':
-            print "%s (%s, %s) has missing totscore" % (subj, viscode, viscode2)
-            continue
-        totscore = int(raw_totscore)
-        if totscore < 0:
-            print "%s (%s, %s) has invalid totscore" % (subj, viscode, viscode2)
-            continue
-        examdate = None
+    if 'EXAMDATE' in df:
+        df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+    else:
         if registry is not None:
-            examdate = findVisitDate(registry, subj, [viscode, viscode2])
-        if examdate is None:
-            print "No exam date for %s (%s, %s)" % (subj, viscode, viscode2)
-            continue
-        adas_by_subj[subj].append({'VISCODE': viscode,
-                                   'VISCODE2': viscode2,
-                                   'EXAMDATE': examdate,
-                                   'TOTSCORE': totscore})
-    return dict(adas_by_subj)
-
-def importTBMSyn(tbm_file, registry=None):
-    df = pd.read_csv(tbm_file, low_memory=False)
-    df['EXAMDATE'] = df['EXAMDATE'].fillna('')
-    df['EXAMDATEBL'] = df['EXAMDATEBL'].fillna('')
-
-    for i in df.index:
-        # parse bl examdate
-        bl_date = df.loc[i,'EXAMDATEBL']
-        df.loc[i,'EXAMDATEBL'] = parseDate(bl_date)
-        # parse examdate
-        raw_date = df.loc[i,'EXAMDATE']
-        if raw_date == '':
-            # try to find date from viscode
-            date = findVisitDate(registry, df.loc[i,'RID'], [df.loc[i,'VISCODE']]) if registry is not None else None
-            if date is None:
-                date = np.nan
+            df.loc[:,'EXAMDATE'] = df.apply(lambda x: findVisitDate(registry, x.name, [x.get('VISCODE',''),x.get('VISCODE2','')]), axis=1)
         else:
-            date = parseDate(raw_date)
-        df.loc[i,'EXAMDATE'] = date
+            raise Exception("Import AVLT ERROR: No registry or examdate")
+
+    df = df[(df[avlt_columns] > 0).apply(all,axis=1)]
+    df.dropna(inplace=True)
+    df['TOTS'] = df[avlt_columns].sum(axis=1)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+def importADASCog(adni1_file, adnigo2_file, registry, as_df=False):
+    if adni1_file and os.path.isfile(adni1_file):
+        df1 = pd.read_csv(adni1_file)
+        df1.set_index('RID',inplace=True)
+        all_columns = ['VISCODE','EXAMDATE','TOTAL11']
+        df1 = df1[all_columns]
+        df1['VISCODE2'] = None
+        df1['VISCODE'] = df1['VISCODE'].apply(lambda x: x.lower().strip())
+        df1['TOTSCORE'] = df['TOTAL11']
         
-    df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
-    grouped = df.groupby(by=['RID'])
-    by_subj = {}
-    for key, val in grouped:
-        by_subj[key] = [dict(_) for i,_ in val.iterrows()]
-    return by_subj
-
-def importWMH(wmh_file):
-    headers, lines = parseCSV(wmh_file)
-    data = defaultdict(list)
-    for line in lines:
-        # get subject ID
-        try:
-            if 'SCRNO' in line:
-                subj = int(line['SCRNO'])
-            else:
-                subj = int(line['RID'])
-        except Exception as e:
-            continue
-        vc = line['VISCODE'].strip().lower()
-        try:
-            vc2 = line['VISCODE2'].strip().lower()
-        except:
-            vc2 = '' 
-        examdate = parseDate(line['EXAMDATE'])
-        wmh = float(line['WHITMATHYP'])
-        icv = float(line['ICV'])
-        wmh_percent = wmh/icv
-        data[subj].append({'vc': vc,
-                           'vc2': vc2,
-                           'EXAMDATE': examdate,
-                           'wmh': wmh,
-                           'icv': icv,
-                           'wmh_percent': wmh_percent})
-    return dict(data)
-
-def importUW(uw_file, registry=None):
-    df = pd.read_csv(uw_file, low_memory=False)
-    df['EXAMDATE'] = df['EXAMDATE'].fillna('')
-    for i in df.index:
-        raw_date = df.loc[i,'EXAMDATE']
-        if raw_date == '':
-            # try to find date from viscode
-            date = findVisitDate(registry, df.loc[i,'RID'], [df.loc[i,'VISCODE']]) if registry is not None else None
-            if date is None:
-                date = np.nan
+    else:
+        df1 = pd.DataFrame()
+    if adnigo2_file and os.path.isfile(adnigo2_file):
+        df2 = pd.read_csv(adnigo2_file)
+        if 'SCRNO' in df2:
+            df2.set_index('SCRNO',inplace=True)
         else:
-            date = parseDate(raw_date)
-        df.loc[i,'EXAMDATE'] = date
-    df.dropna(axis=0,subset=['EXAMDATE'],inplace=True)
-    
-    grouped = df.groupby(by=['RID'])
-    by_subj = {}
-    for key, val in grouped:
-        by_subj[key] = [dict(_) for i,_ in val.iterrows()]
-    return by_subj
+            df2.set_index('RID',inplace=True)
+        all_columns = ['VISCODE','VISCODE2','TOTSCORE']
+        all_columns = [_ for _ in all_columns if _ in df2.columns]
+        df2 = df2[all_columns]
+        df2 = parseOrFindDate(df2, 'EXAMDATE', registry=registry)
+    else:
+        df2 = pd.DataFrame()
 
-def importGD_DOD(gd_file):
-    headers, lines = parseCSV(gd_file)
-    data = defaultdict(dict)
-    for line in lines:
-        subj = int(line['SCRNO'])
-        gdtotal = line['GDTOTAL']
-        try:
-            gdtotal = int(gdtotal)
-        except:
-            pass
-        data[subj]['gdtotal']  = gdtotal
-    return dict(data)
+    df = pd.concat((df1,df2))
+    df.dropna(subset=['EXAMDATE','TOTSCORE'], inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+
+def importTBMSyn(tbm_file, as_df=False):
+    df = pd.read_csv(tbm_file, low_memory=False)
+    all_columns = ['RID','VISCODE','VISCODE2','EXAMDATE','EXAMDATEBL','TBMSYNSCOR']
+    df = df[all_columns]
+    df.set_index('RID',inplace=True)
+    df.dropna(inplace=True)
+    df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+    df.loc[:,'EXAMDATEBL'] = df.loc[:,'EXAMDATEBL'].apply(parseDate)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+def importWMH(wmh_file, as_df=False):
+    df = pd.read_csv(wmh_file)
+    if 'SCRNO' in df:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
+
+    all_columns = ['VISCODE','VISCODE2','EXAMDATE','WHITMATHYP','ICV']
+    all_columns = [_ for _ in all_columns if _ in df.columns]
+    df = df[all_columns]
+
+    df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+    df.loc[:,'wmh_percent'] = df['WHITMATHYP'] / df['ICV']
+    df['wmh'] = df['WHITMATHYP']
+    df['icv'] = df['ICV']
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+def importUW(uw_file, registry=None, as_df=False):
+    df = pd.read_csv(uw_file, low_memory=False)
+    df.set_index('RID',inplace=True)
+    all_columns = ['VISCODE','EXAMDATE','ADNI_MEM','ADNI_EF']
+    df = df[all_columns]
+
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df.dropna(subset=['EXAMDATE'], inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
 
 def importGD(gd_file, registry=None):
-    headers, lines = parseCSV(gd_file)
-    data = defaultdict(list)
-    for line in lines:
-        subj = int(line['RID'])
-        vc = line['VISCODE'].strip()
-        vc2 = line['VISCODE2'].strip()
-        try:
-            examdate = parseDate(line['EXAMDATE'])
-        except:
-            examdate = findVisitDate(registry, subj, [vc, vc2]) if registry is not None else None
-        if examdate is None:
-            print "Couldn't find GD examdate for %s, %s, %s" % (subj, vc, vc2)
-            continue
-        gdtotal = line['GDTOTAL']
-        data[subj].append({'vc': vc,
-                           'vc2': vc2,
-                           'EXAMDATE': examdate,
-                           'GDTOTAL': gdtotal})
-    data = dict(data)
-    return data
+    df = pd.read_csv(gd_file)
+    if 'SCRNO' in df:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
 
-def importCSF(csf_files, registry=None):
-    data = defaultdict(dict)
+    all_columns = ['VISCODE','VISCODE2','GDTOTAL','EXAMDATE']
+    all_columns = [_ for _ in all_columns if df.columns]
+    df = df[all_columns]
+
+    if 'EXAMDATE' in df:
+        df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+        df.dropna(subset=['EXAMDATE'], inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+
+def importCSF(csf_files, registry=None, as_df=False):
+    dfs = []
     for csffile in csf_files:
-        print "Importing CSF file %s" % csffile
-        headers, lines = parseCSV(csffile)
-        for i, line in enumerate(lines):
-            if 'SCRNO' in line: # for the dod patients
-                subj = int(line['SCRNO'])
-            else:
-                subj = int(line['RID'])
-            vc = line['VISCODE'].strip().lower()
-            rundate = parseDate(line['RUNDATE'])
-            try:
-                vc2 = line['VISCODE2'].strip().lower()
-            except:
-                vc2 = ''
-            try:
-                examdate = parseDate(line['EXAMDATE'])
-            except:
-                examdate = findVisitDate(registry, subj, [vc, vc2]) if registry is not None else None
-            try:
-                abeta = float(line['ABETA'])
-            except:
-                abeta = None
-            try:
-                tau = float(line['TAU'])
-            except:
-                tau = None
-            try:
-                ptau = float(line['PTAU'])
-            except:
-                ptau = None
-            visitkey = (vc,vc2)
-            newdata = {'rundate': rundate,
-                       'EXAMDATE': examdate,
-                       'file': csffile,
-                       'abeta': abeta,
-                       'tau': tau,
-                       'ptau': ptau,
-                       'vc': vc,
-                       'vc2' : vc2}
-            if examdate in data[subj]:
-                data[subj][examdate].append(newdata)
-            else:
-                data[subj][examdate] = [newdata]
-    # take the timepoint with the most recent run date for each visit
-    data = dict(data)
-    for k in data.keys():
-        userdata = data[k]
-        flattened = []
-        for examdate, inners in userdata.iteritems():
-            chosen = sorted(inners, key=lambda x: x['rundate'])[-1]
-            flattened.append(chosen)
-        data[k] = sorted(flattened, key=lambda x: x['EXAMDATE'])
-    return data
+        df = pd.read_csv(csffile)
+        if 'SCRNO' in df:
+            df.set_index('SCRNO',inplace=True)
+        else:
+            df.set_index('RID',inplace=True)
+        df.loc[:,'RUNDATE'] = df.loc[:,'RUNDATE'].apply(parseDate)
+        df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+        df.dropna(subset=['EXAMDATE','RUNDATE'],inplace=True)
+        dfs.append(df)
+
+    df_all = pd.concat(dfs)
+    df_all.index.name = 'RID'
+    id_name = df_all.index.name
+    df_all.reset_index(inplace=True)
+
+    idx = df_all['RUNDATE'] == df_all.groupby(by=[id_name,'EXAMDATE'])['RUNDATE'].transform(max)
+    df_all = df_all[idx]
+    df_all.set_index(id_name,inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
 
 def importScanMeta(meta_file, with_viscode=False):
     df = pd.read_csv(meta_file)
@@ -1446,8 +1384,10 @@ def importScanMeta(meta_file, with_viscode=False):
         viscode_cols.append('VISCODE2')
     if subj_col is None or date_col is None:
         raise Exception("No subj/date column in %s" % meta_file)
-    df.dropna(axis=0, subset=[subj_col, date_col], inplace=True)
+
+    df.dropna(subset=[subj_col, date_col], inplace=True)
     df.loc[:,date_col] = df.loc[:,date_col].apply(parseDate)
+
     scans = {}
     for pid, rows in df.groupby(subj_col):
         # IF TWO ENTRIES HAVE THE SAME VISIT CODE, TAKE THE ONE WITH THE LATER DATE
@@ -1463,21 +1403,21 @@ def importScanMeta(meta_file, with_viscode=False):
     return scans
 
 def importPetMETA(pet_meta_file, tracer='AV45'):
-    headers, lines = parseCSV(pet_meta_file)
-    pets = defaultdict(list)
-    for row in lines:
-        # filter
-        if row['Sequence'].strip() != '%s Coreg, Avg, Std Img and Vox Siz, Uniform Resolution' % tracer:
-            continue
-        subj = int(row['Subject'].split('_')[-1].strip())
-        new_date = parseDate(row['Scan Date'])
-        pets[subj].append(new_date)
-    pets = dict(pets)
-    for k in pets.keys():
-        pets[k] = sorted(list(set(pets[k])))
-    return pets
+    df = pd.read_csv(pet_meta_file)
+    seq_str = '%s Coreg, Avg, Std Img and Vox Siz, Uniform Resolution' % tracer
+    df.loc[:,'Sequence'] = df.loc[:,'Sequence'].apply(lambda x: x.strip())
+    df = df[df['Sequence'].str.match(seq_str)]
+    df['Subject'] = df.loc[:,'Subject'].apply(lambda x: int(x.split('_')[-1].strip()))
+    df['Scan Date'] = df.loc[:,'Scan Date'].apply(parseDate)
 
-def importARM(arm_file):
+    scans = {}
+    for pid, rows in df.groupby('Subject'):
+        dates = sorted(list(set(rows['Scan Date'])))
+        scans[pid] = dates
+    
+    return scans
+
+def importARM(arm_file, as_df=False):
     '''
         1=NL - (ADNI1 1.5T only)
         2=LMCI - (ADNI1 1.5T only)
@@ -1502,88 +1442,72 @@ def importARM(arm_file):
                    9: 'AD',
                    10: 'EMCI',
                    11: 'SMC'}
-    headers, lines = parseCSV(arm_file)
-    arms = defaultdict(list)
-    for data in lines:
-        subj = int(data['RID'])
-        status = data['ARM']
-        if status == '':
-            continue
-        userdate = parseDate(data['USERDATE'])
-        # convert status
-        status_str = translation[status]
-        arms[subj].append({'USERDATE': userdate,
-                           'STATUS': status_str})
-    return dict(arms)
 
-def importDODEligibility(elig_file):
-    headers, lines = parseCSV(elig_file)
-    data = defaultdict(dict)
-    for line in lines:
-        subj = int(line['SCRNO'])
-        try:
-            cohort = int(line['COHORT'])
-        except Exception as e:
-            cohort = ''
-        if cohort == '' and data[subj].get('cohort','') != '':
-            # don't overwrite good value with bad one
-            continue
-        data[subj]['cohort'] = cohort
-    return dict(data)
+    df = pd.read_csv(arm_file)
+    df.set_index('RID',inplace=True)
+    all_columns = ['USERDATE','ARM']
+    df = df[all_columns]
+    df.loc[:,'USERDATE'] = df.loc[:,'USERDATE'].apply(parseDate)
+    df['STATUS'] = df.loc[:,'ARM'].apply(lambda x: translation[x])
 
-def importMedicalHistory(mhist_file):
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='USERDATE')
+
+
+def importDODEligibility(elig_file, as_df=False):
+    df = pd.read_csv(elig_file)
+    df.set_index('SCRNO',inplace=True)
+    df = df[['COHORT']]
+    df.dropna(inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df)
+
+
+def importMedicalHistory(mhist_file, as_df=False):
     mhist_df = pd.read_csv(mhist_file)
-    mhist_df.set_index('RID',inplace=True)
-    mhist_df = mhist_df[['MHDESC']]
     mhist_df.loc[:,'MHDESC'] = mhist_df.MHDESC.apply(lambda x: x.lower())
     mhist_df.loc[:,'smoking'] = mhist_df.MHDESC.str.contains('smok')
     mhist_df.loc[:,'diabetes'] = mhist_df.MHDESC.str.contains('diabete')
     mhist_df.loc[:,'hyperlipidemia'] = mhist_df.MHDESC.str.contains('hyperlipidemia')
-    smoking = set(mhist_df[mhist_df.smoking].index)
-    diabetes = set(mhist_df[mhist_df.diabetes].index)
-    hyperlipidemia = set(mhist_df[mhist_df.hyperlipidemia].index)
-    by_rid = {}
-    for rid in set(mhist_df.index):
-        by_rid[rid] = {'smoking': rid in smoking,
-                       'diabetes': rid in diabetes,
-                       'hyperlipidemia': rid in hyperlipidemia}
-    return by_rid
+    mhist_df = mhist_df[['RID','smoking','diabetes','hyperlipidemia']]
+    df = mhist_df.groupby('RID').aggregate(any)
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df)
+
 
 def importFAQ(faq_file, registry):
-    faq_df = pd.read_csv(faq_file)
-    faq_df = faq_df[['RID','EXAMDATE','VISCODE','VISCODE2','FAQTOTAL']]
-    # fill in examdates
-    def fillInDate(row, registry):
-        if isnan(row['EXAMDATE']):
-            vcs = [_ for _ in [row['VISCODE'],row['VISCODE2']] if not isnan(_)]
-            found_date = findVisitDate(registry, row['RID'], vcs)
-            if found_date is not None:
-                return found_date
-            else:
-                return np.nan
-        else:
-            return parseDate(row['EXAMDATE'])
-    faq_df['EXAMDATE'] = faq_df.apply(lambda x: fillInDate(x,registry), axis=1)
-    faq_df = faq_df[['RID','EXAMDATE','FAQTOTAL']]
-    faq_df.dropna(inplace=True)
-    by_rid = {}
-    for rid, ridrows in faq_df.groupby('RID'):
-        rows = ridrows[['EXAMDATE','FAQTOTAL']].to_dict(orient='records')
-        sorted_rows = sorted(rows, key=lambda x: x['EXAMDATE'])
-        by_rid[rid] = sorted_rows
-    return by_rid
+    df = pd.read_csv(faq_file)
+    df.set_index('RID',inplace=True)
+    all_columns = ['EXAMDATE','VISCODE','VISCODE2','FAQTOTAL']
+    df = df[all_columns]
+
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df = df[['EXAMDATE','FAQTOTAL']]
+    df.dropna(inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df, sort_by='EXAMDATE')
+
 
 def importNPI(npi_file):
-    npi_df = pd.read_csv(npi_file)
-    npi_df = npi_df[['RID','EXAMDATE','NPITOTAL']]
-    npi_df.dropna(inplace=True)
-    npi_df['EXAMDATE'] = npi_df.EXAMDATE.apply(lambda x: parseDate(x))
-    by_rid = {}
-    for rid, ridrows in npi_df.groupby('RID'):
-        rows = ridrows[['EXAMDATE','NPITOTAL']].to_dict(orient='records')
-        sorted_rows = sorted(rows, key=lambda x: x['EXAMDATE'])
-        by_rid[rid] = sorted_rows
-    return by_rid
+    df = pd.read_csv(npi_file)
+    df = df[['RID','EXAMDATE','NPITOTAL']]
+    df.dropna(inplace=True)
+    df['EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df, sort_by='EXAMDATE')
+
 
 def importDODMRI(mri_file):
     headers, lines = parseCSV(mri_file)
@@ -1842,102 +1766,6 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
             data[rid] = rows.to_dict(orient='records') 
         return data
 
-
-def slope(points):
-    '''
-    Expects list of (x,y) points
-    '''
-    if len(points) >= 2:
-        x = [_[0] for _ in points]
-        y = [_[1] for _ in points]
-        slope, intercept, r, p, stderr = linregress(x,y)
-        return slope
-    return None
-
-def weightedMean(points):
-    '''
-    Expects list of (weight,value) points
-    '''
-    weights = np.array([_[0] for _ in points])
-    values = np.array([_[1] for _ in points])
-    weights = weights / float(sum(weights))
-    return sum(weights*values)
-
-def parseDate(date_str, registry=None):
-    if date_str == '':
-        raise Exception("Blank date string")
-    date_str = date_str.replace('--','1')
-    formats = ['%Y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
-    for f in formats:
-        try:
-            date = datetime.strptime(date_str,f)
-            return date
-        except:
-            pass
-    raise Exception("Cannot parse date: %s" % date_str)
-
-def parseAllDates(date_str_list):
-    parsed = []
-    for d in date_str_list:
-        try:
-            new_date = parseDate(d)
-        except:
-            new_date = np.nan
-        parsed.append(new_date)
-    return parsed
-
-def dumpCSV(file_path, headers, lines):
-    print "DUMPING OUTPUT TO %s" % (file_path)
-    writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
-    writer.writeheader()
-    for l in lines:
-        filtered_line = {}
-        for k in headers:
-            filtered_line[k] = l[k] if k in l else ''
-        writer.writerow(filtered_line)
-
-def rearrangeHeaders(new_headers, to_add, after=None):
-    '''
-    if after is None, then stick in the end of the headers
-    '''
-    for ta in to_add:
-        if ta in new_headers:
-            new_headers.remove(ta)
-    if after is None:
-        new_headers.extend(to_add)
-    else:
-        idx = new_headers.index(after) + 1
-        new_headers = new_headers[:idx] + to_add + new_headers[idx:]
-    return new_headers
-
-def findVisitDate(registry, subj, viscodes):
-    vcs = [_.lower().strip() for _ in viscodes]
-    vcs = set([_ for _ in vcs if _ != ''])
-    subj_registry = registry.get(subj,[])
-    date = None
-    for reg_row in subj_registry:
-        row_visits = [reg_row.get('VISCODE','').lower().strip(), reg_row.get('VISCODE2','').lower().strip()]
-        row_visits = set([_ for _ in row_visits if _ != ''])
-        if len(vcs & row_visits) > 0:
-            date = reg_row['EXAMDATE']
-            break
-    return date
-
-def appendCSV(csv1, csv2):
-    '''
-    appends csv2 rows to csv1 (have to have same headers)
-    '''
-    h1, r1 = parseCSV(csv1)
-    h2, r2 = parseCSV(csv2)
-    all_rows = r1 + r2
-    all_headers = h1
-    dumpCSV(csv1, all_headers, all_rows)
-
-def removeFile(filename):
-    try:
-        os.remove(filename)
-    except OSError:
-        print "File to remove does not exist"
 
 def saveFakeAparcInput(out_file, values, index_lookup):
     sio.savemat(out_file, {'regions': [{'inds': index_lookup[k], 'val': v} for k,v in values.iteritems()]})

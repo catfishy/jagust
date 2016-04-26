@@ -130,7 +130,7 @@ def syncMRIData(old_headers, old_lines, mri_file, dump_to=None):
 
 
 def syncGDData(old_headers, old_lines, gd_file, dump_to=None):
-    gd_by_subj = importGD_DOD(gd_file)
+    gd_by_subj = importGD(gd_file)
     to_add_headers = ['GDtotal']
     new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
     new_lines = []
@@ -231,13 +231,30 @@ def syncAVLTData(old_headers, old_lines, avlt_file, registry_file, dump_to=None)
     new_lines = []
 
     def extraction_fn(subj, subj_row, old_line, patient_pets):
+        sorted_points = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+
         bl_av45, av45_2 = getAV45Dates(old_l, patient_pets=None)
-        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
-        if abs(point['EXAMDATE']-bl_av45).days <= (6*31):
-            tots = point['TOTS']
-        else:
-            tots = ''
-        return {'AVLT_total_6mths_Examdate': tots}
+        closest_1, closest_2, closest_3 = getClosestToScans(sorted_points, bl_av45, av45_2, None, 
+                                                            day_limit=int(365/2), date_key='EXAMDATE')
+        data = {}
+
+        # Closest to AV45 value
+        data['AVLT_total_6mths_Examdate'] = closest_1['TOTS'] if closest_1 else None
+
+        # Long values
+        long_values = extractLongitudinalFields(sorted_points, 'TOTS', 'AVLT.')
+        long_dates = extractLongitudinalFields(sorted_points, 'EXAMDATE', 'AVLT_postAV45.')
+        long_dates_diff = {k:(v-bl_av45).days for k,v in long_dates.iteritems()}
+        long_dates_filtered = {k:(v/365.0) if v >= -90.0 else None for k,v in long_dates_diff.iteritems()}
+        data.update(long_values)
+        data.update(long_dates_filtered)
+
+        # Slope values
+        slope_pts = [(t,v) for t,v in zip(long_dates_filtered,long_values) if t is not None]
+        print slope_pts
+        data['AVLT_slope'] = slope(slope_pts)
+
+        return data
 
     for i, old_l in enumerate(old_lines):
         new_data = updateLine(old_l, avlt_by_subj, extraction_fn, 

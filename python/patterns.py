@@ -1442,8 +1442,7 @@ if __name__ == '__main__':
                                                 'Y':pattern_change_df.T.as_matrix()})
 
     # Load
-    #model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-    model_file = '../dpgmm_alpha15.58_bilateral_spherical_AV45_model_L2.pkl'
+    model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
 
     best_model = cPickle.load(open(model_file, 'rb'))
     alpha = best_model.alpha
