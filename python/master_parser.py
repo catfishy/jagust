@@ -43,30 +43,6 @@ RID_ADDONS = [78,93,108,458,514,691,724,739,821,853,916,1080,1271]
 
 ######### SYNCING INFRASTRUCTURE (MOST FUNCTIONS DEPEND ON THESE) ##################
 
-def getClosestToScans(points, bl_scan, scan_2, scan_3, day_limit=550, date_key='EXAMDATE'):
-    used = set()
-    # match up with av45 scans
-    scan_bl_closest = scan_2_closest = scan_3_closest = None
-    if bl_scan is not None:
-        eligible = [p for p in points if p[date_key] not in used and (abs(bl_scan - p[date_key]).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(bl_scan-x[date_key]))
-        if len(cand) > 0:
-            scan_bl_closest = cand[0]
-            used.add(scan_bl_closest[date_key])
-    if scan_2 is not None:
-        eligible = [p for p in points if p[date_key] not in used and (abs(scan_2 - p[date_key]).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(scan_2-x[date_key]))
-        if len(cand) > 0:
-            scan_2_closest = cand[0]
-            used.add(scan_2_closest[date_key])
-    if scan_3 is not None:
-        eligible = [p for p in points if p[date_key] not in used and (abs(scan_3 - p[date_key]).days <= day_limit)]
-        cand = sorted(eligible, key=lambda x: abs(scan_3-x[date_key]))
-        if len(cand) > 0:
-            scan_3_closest = cand[0]
-            used.add(scan_3_closest[date_key])
-    return scan_bl_closest, scan_2_closest, scan_3_closest
-
 def getAV45Dates(old_l, patient_pets=None):
     if patient_pets is None:
         patient_pets = []
