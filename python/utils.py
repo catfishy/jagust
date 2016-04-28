@@ -81,12 +81,13 @@ REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,
 
 ########## CSV UPDATING INFRASTRUCTURE ##############
 
-def updateDataFrame(old_frame, new_frame, headers=None, after=None):
+def updateDataFrame(old_frame, new_frame, headers=None, after=None, restrict=True):
     '''
     Merges one DF into the other
     1. If header order specified, reorder
     2. Remove any columns by same name in original frame
     3. Merge together (after column, if specified)
+    4. If restrict, only allow indices that existed in old_frame
     '''
     # Reorder new columns
     if isinstance(headers,list):
@@ -103,7 +104,8 @@ def updateDataFrame(old_frame, new_frame, headers=None, after=None):
         merged_columns = old_columns[:after_idx+1] + list(new_frame.columns) + old_columns[after_idx+1:]
     else:
         merged_columns = list(old_frame.columns) + list(new_frame.columns)
-    merged_frame = old_frame.merge(new_frame,left_index=True,right_index=True,how='outer')
+    how = 'outer' if not restrict else 'left'
+    merged_frame = old_frame.merge(new_frame,left_index=True,right_index=True,how=how)
     merged_frame = merged_frame[merged_columns]
     return merged_frame
 
@@ -111,80 +113,71 @@ def parseSubjectGroups(df, extraction_fn):
     '''
     Takes in df indexed by subject
     Groups the subjects, then feeds each group through extraction_fn
-    Which must spit out a Series
-    They get concatenated back into a dataframe
+    Which must spit out a Dataframe (one row)
+    They get concatenated together
 
     extraction_fn(group_key, group_rows):
         return pd.Series
     '''
+    if not df.index.name:
+        df.index.name = 'SID'
     index_name = df.index.name
     reset_df = df.reset_index()
-    parsed_df = pd.concat((extraction_fn(i,_) for i,_ in reset_df.groupby(index_name)),axis=1).T
+    parsed_df = pd.concat((extraction_fn(i,_) for i,_ in reset_df.groupby(index_name)),axis=0)
     return parsed_df
 
-def pivotSubjectGroupValues(group_rows, index_column, val_column, key_prefix):
+def groupLongPivot(group_rows, index_column, val_column, key_prefix):
     df = group_rows[[index_column,val_column]]
     df['key'] = ['%s%s' % (key_prefix,i+1) for i in range(len(group_rows.index))]
     out_df = df.pivot_table(values=val_column, 
                             index=index_column, 
                             columns='key', 
-                            aggfunc=lambda x: x)
+                            aggfunc=lambda x: x.iloc[0])
+
     return out_df
 
+def groupSlope(group_rows, date_key, val_key, cutoff_date=None):
+    subset = group_rows[[date_key, val_key]]
+    subset.sort_values(by=date_key,inplace=True)
+    if cutoff_date is None:
+        bl_row = group_rows.iloc[0]
+        cutoff_date = bl_row[date_key]
+    subset = subset[subset[date_key] >= cutoff_date]
+    subset.dropna(inplace=True)
+    if len(subset.index) >= 2:
+        subset[date_key] = subset[date_key].apply(lambda x: yrDiff(x,cutoff_date))
+        grp_slope = slope(zip(subset[date_key],subset[val_key]))
+    else:
+        grp_slope = np.nan
+    return grp_slope
 
-def convertToCSVDataType(new_data, decimal_places=2):
-    '''
-    Converts datetimes to mm/dd/yy
-    Rounds floats to strings with 2 decimal places
-    Converts Nones to ''
-    '''
-    for k in new_data.keys():
-        if isinstance(new_data[k], datetime):
-            new_data[k] = datetime.strftime(new_data[k], '%m/%d/%y')
-        elif isinstance(new_data[k], float):
-            if decimal_places is None:
-                new_data[k] = str(new_data[k])
-            else:
-                new_data[k] = str(round(new_data[k],decimal_places))
-        elif new_data[k] is None:
-            new_data[k] = ''
-    return new_data
+def groupClosest(group_rows, date_key, val_key, comp_dates, day_limit=365):
+    subset = group_rows[[date_key,val_key]]
+    results = []
+    for i,cd in enumerate(comp_dates):
+        if isnan(cd):
+            results.append(np.nan)
+        else:
+            closest_key = 'closest_%s' % i
+            subset[closest_key] = subset[date_key].apply(lambda x: abs(x-cd).days)
+            closest_row = subset.sort_values(by=closest_key).iloc[0]
+            closest_val = closest_row[val_key] if closest_row[closest_key] <= day_limit else np.nan
+            results.append(closest_val)
+    return results
 
-def updateLine(old_line, new_data, extraction_fn, 
-               pid_key='RID', pet_meta=None, decimal_places=4):
-    try:
-        subj = int(old_line[pid_key])
-    except Exception as e:
-        print "No subject column %s found" % pid_key
-        return {}
-
-    subj_row = new_data.get(subj,None)
-    if subj_row is None:
-        # print "No subj row found for %s" % (subj)
-        return {}
-
-    patient_pets = None
-    if pet_meta is not None:
-        patient_pets = sorted(pet_meta.get(subj,[]))
-
-    new_data = extraction_fn(subj, subj_row, old_line, patient_pets) # patient_pets is passed in as context
-    new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
-    return new_data
-
+def yrDiff(date1,date2):
+    if isnan(date1) or isnan(date2):
+        return np.nan
+    else:
+        return (date1-date2).days/365.0
 
 def isnan(arg):
     try:
-        if np.isnan(arg):
+        if pd.isnull(arg):
             return True
     except Exception as e:
         pass
     return False
-
-def extractLongitudinalFields(datapoints, key, prefix):
-    data = {}
-    for i, point in enumerate(datapoints):
-        data['%s%s' % (prefix,i+1)] = point.get(key)
-    return data
 
 def getClosestToScans(points, bl_scan, scan_2, scan_3, day_limit=550, date_key='EXAMDATE'):
     used = set()
@@ -230,7 +223,7 @@ def weightedMean(points):
     weights = weights / float(sum(weights))
     return sum(weights*values)
 
-def parseDate(date_str, registry=None, ignore_error=False):
+def parseDate(date_str, ignore_error=False):
     if date_str == '' or isnan(date_str):
         if ignore_error:
             return None
@@ -249,80 +242,36 @@ def parseDate(date_str, registry=None, ignore_error=False):
     else:
         raise Exception("Cannot parse date: %s" % date_str)
 
-
 def parseOrFindDate(df, date_key, registry=None):
     if date_key not in df.columns:
         df[date_key] = None
     df_null = df[df[date_key].isnull()]
-    if registry is not None:
+    if registry is not None:    
         df_null.loc[:,date_key] = df_null.apply(lambda x: findVisitDate(registry, x.name, [x.get('VISCODE',''),x.get('VISCODE2','')]), axis=1)
     df_nonnull = df[~df[date_key].isnull()]
     df_nonnull.loc[:,date_key] = df_nonnull.loc[:,date_key].apply(parseDate)
     df = pd.concat((df_nonnull,df_null))
     return df
 
-def dumpCSV(file_path, headers, lines):
-    print "DUMPING OUTPUT TO %s" % (file_path)
-    writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
-    writer.writeheader()
-    for l in lines:
-        filtered_line = {}
-        for k in headers:
-            filtered_line[k] = l[k] if k in l else ''
-        writer.writerow(filtered_line)
-
-def dumpDFtoCSV(df,output_path,decimal_places=2):
-    assert isinstance(decimal_places,int)
-    df.to_csv(output_path,
-              sep=',',
-              na_rep='',
-              float_format='%.' + str(decimal_places) + 'f',
-              index=True,
-              date_format='%m/%d/%y')
-
-
-def rearrangeHeaders(new_headers, to_add, after=None):
-    '''
-    if after is None, then stick in the end of the headers
-    '''
-    for ta in to_add:
-        if ta in new_headers:
-            new_headers.remove(ta)
-    if after is None:
-        new_headers.extend(to_add)
-    else:
-        idx = new_headers.index(after) + 1
-        new_headers = new_headers[:idx] + to_add + new_headers[idx:]
-    return new_headers
-
 def findVisitDate(registry, subj, viscodes):
     vcs = [_.lower().strip() for _ in viscodes]
     vcs = set([_ for _ in vcs if _ != ''])
-    subj_registry = registry.get(subj,[])
     date = None
-    for reg_row in subj_registry:
+    if isinstance(registry, pd.DataFrame):
+        subj_registry = registry.loc[subj]
+        rows = subj_registry.iterrows()
+    elif isinstance(registry, dict):
+        subj_registry = registry.get(subj,[])
+        rows = enumerate(subj_registry)
+    else:
+        raise Exception("Invalid registry data type")
+    for i, reg_row in rows:
         row_visits = [reg_row.get('VISCODE','').lower().strip(), reg_row.get('VISCODE2','').lower().strip()]
         row_visits = set([_ for _ in row_visits if _ != ''])
         if len(vcs & row_visits) > 0:
             date = reg_row['EXAMDATE']
             break
     return date
-
-def appendCSV(csv1, csv2):
-    '''
-    appends csv2 rows to csv1 (have to have same headers)
-    '''
-    h1, r1 = parseCSV(csv1)
-    h2, r2 = parseCSV(csv2)
-    all_rows = r1 + r2
-    all_headers = h1
-    dumpCSV(csv1, all_headers, all_rows)
-
-def removeFile(filename):
-    try:
-        os.remove(filename)
-    except OSError:
-        print "File to remove does not exist"
 
 def convertToSubjDict(df, sort_by=None, extract=None, singular=False):
     by_subj = {}
@@ -340,10 +289,105 @@ def convertToSubjDict(df, sort_by=None, extract=None, singular=False):
             by_subj[group_key] = result
     return by_subj
 
+def dumpDFtoCSV(df,output_path,decimal_places=2):
+    assert isinstance(decimal_places,int)
+    float_format='%.' + str(decimal_places) + 'f'
+    df.to_csv(output_path,
+              sep=',',
+              na_rep='',
+              float_format=float_format,
+              index=True,
+              date_format='%m/%d/%y')
+
+def convertToCSVDataType(new_data, decimal_places=2):
+    '''
+    Converts datetimes to mm/dd/yy
+    Rounds floats to strings with 2 decimal places
+    Converts Nones to ''
+    '''
+    for k in new_data.keys():
+        if isinstance(new_data[k], datetime):
+            new_data[k] = datetime.strftime(new_data[k], '%m/%d/%y')
+        elif isinstance(new_data[k], float):
+            if decimal_places is None:
+                new_data[k] = str(new_data[k])
+            else:
+                new_data[k] = str(round(new_data[k],decimal_places))
+        elif new_data[k] is None:
+            new_data[k] = ''
+    return new_data
+
+def updateLine(old_line, new_data, extraction_fn, 
+               pid_key='RID', pet_meta=None, decimal_places=4):
+    try:
+        subj = int(old_line[pid_key])
+    except Exception as e:
+        print "No subject column %s found" % pid_key
+        return {}
+
+    subj_row = new_data.get(subj,None)
+    if subj_row is None:
+        # print "No subj row found for %s" % (subj)
+        return {}
+
+    patient_pets = None
+    if pet_meta is not None:
+        patient_pets = sorted(pet_meta.get(subj,[]))
+
+    new_data = extraction_fn(subj, subj_row, old_line, patient_pets) # patient_pets is passed in as context
+    new_data = convertToCSVDataType(new_data, decimal_places=decimal_places)
+    return new_data
+
+def extractLongitudinalFields(datapoints, key, prefix):
+    data = {}
+    for i, point in enumerate(datapoints):
+        data['%s%s' % (prefix,i+1)] = point.get(key)
+    return data
+
+def dumpCSV(file_path, headers, lines):
+    print "DUMPING OUTPUT TO %s" % (file_path)
+    writer = csv.DictWriter(open(file_path,'w'), fieldnames=headers)
+    writer.writeheader()
+    for l in lines:
+        filtered_line = {}
+        for k in headers:
+            filtered_line[k] = l[k] if k in l else ''
+        writer.writerow(filtered_line)
+
+def rearrangeHeaders(new_headers, to_add, after=None):
+    '''
+    if after is None, then stick in the end of the headers
+    '''
+    for ta in to_add:
+        if ta in new_headers:
+            new_headers.remove(ta)
+    if after is None:
+        new_headers.extend(to_add)
+    else:
+        idx = new_headers.index(after) + 1
+        new_headers = new_headers[:idx] + to_add + new_headers[idx:]
+    return new_headers
+
+def appendCSV(csv1, csv2):
+    '''
+    appends csv2 rows to csv1 (have to have same headers)
+    '''
+    h1, r1 = parseCSV(csv1)
+    h2, r2 = parseCSV(csv2)
+    all_rows = r1 + r2
+    all_headers = h1
+    dumpCSV(csv1, all_headers, all_rows)
+
 
 ######################################################
 
 ################ SHELL UTILS ###################
+
+def removeFile(filename):
+    try:
+        os.remove(filename)
+    except OSError:
+        print "File to remove does not exist"
 
 def mkdir_p(path):
     try:
@@ -377,6 +421,9 @@ def loadMATFile(input_file):
 ######################################################
 
 ################# STATS/GRAPH UTILS ###################
+
+def asymIndex(left, right):
+    return (left-right)/np.mean([left,right])
 
 def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
     """
@@ -944,6 +991,7 @@ def importRegistry(registry_file, include_all=False, as_df=False):
     df.set_index('RID',inplace=True)
 
     if as_df:
+        df['EXAMDATE'] = pd.to_datetime(df['EXAMDATE'])
         return df
     else:
         return convertToSubjDict(df, sort_by='EXAMDATE')
@@ -956,7 +1004,7 @@ def importDODRegistry(dod_registry_file, as_df=False):
     df.dropna(inplace=True)
     df.set_index('SCRNO',inplace=True)
 
-    df = df[~df['VISCODE'].str.startswith('sc')]
+    #df = df[~df['VISCODE'].str.startswith('sc')]
     df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
 
     if as_df:
@@ -964,7 +1012,7 @@ def importDODRegistry(dod_registry_file, as_df=False):
     else:
         return convertToSubjDict(df, sort_by='EXAMDATE')
 
-def importDODAntidep(backmeds_file, registry_file, as_df=False):
+def importDODAntidep(backmeds_file, registry, as_df=False):
     '''
     FOR DOD BACKMEDS.CSV FILE ONLY
     '''
@@ -991,7 +1039,6 @@ def importDODAntidep(backmeds_file, registry_file, as_df=False):
                 'savella',
                 'levomilnacipran',
                 'fetzima'])
-    registry = importDODRegistry(registry_file)
 
     def findSSRI(med_str):
         med_str = re.sub('[^a-zA-Z]+', ' ', med_str)
@@ -1015,6 +1062,7 @@ def importDODAntidep(backmeds_file, registry_file, as_df=False):
     backmeds_df['WHICH_ANTIDEP'] = backmeds_df['ANTDEPDES']
     backmeds_df.loc[backmeds_df.WHICH_ANTIDEP == '-4','WHICH_ANTIDEP'] = ''
     backmeds_df.loc[:,'SSRI'] = backmeds_df.loc[:,'WHICH_ANTIDEP'].apply(findSSRI)
+    backmeds_df['WHICH_ANTIDEP'] = backmeds_df['WHICH_ANTIDEP'].apply(lambda x: x.replace(',',';'))
 
     # keep relevant columns
     backmeds_df = backmeds_df[['SCRNO','VISCODE','ANTIDEP_USE','WHICH_ANTIDEP','SSRI']]
@@ -1024,24 +1072,25 @@ def importDODAntidep(backmeds_file, registry_file, as_df=False):
     backmeds_df.dropna(subset=['EXAMDATE'],inplace=True)
 
     if as_df:
+        backmeds_df['EXAMDATE'] = pd.to_datetime(backmeds_df['EXAMDATE'])
         return backmeds_df
     else:
         return convertToSubjDict(backmeds_df, sort_by='EXAMDATE')
 
 
-def importCAPS(caps_curr_file, caps_lifetime_file):
+def importCAPS(caps_curr_file, caps_lifetime_file, as_df=False):
     curr_df = pd.read_csv(caps_curr_file)
-    life_df = pd.read_csv(caps_lifetime_file)
-    curr_df.set_index('SCRNO',inplace=True)
-    life_df.set_index('SCRNO',inplace=True)
-    curr_df = curr_df[['CAPSSCORE']]
-    curr_df.columns = ['curr']
-    life_df = life_df[['CAPSSCORE']]
-    life_df.columns = ['life']
-    df = curr_df.merge(life_df,left_index=True, right_index=True,how='outer')
-    df = pd.to_numeric(df, errors='coerce')
-    df.fillna('',inplace=True)
+    curr_df = curr_df[['SCRNO','VISCODE','EXAMDATE','CAPSSCORE']]
+    curr_df.rename(columns={'CAPSSCORE': 'curr', 'EXAMDATE':'EXAMDATE_curr'}, inplace=True)
+    curr_df = curr_df.groupby(['SCRNO','VISCODE']).aggregate(lambda x: x.iloc[0]).reset_index()
 
+    life_df = pd.read_csv(caps_lifetime_file)
+    life_df = life_df[['SCRNO','VISCODE','EXAMDATE','CAPSSCORE']]
+    life_df.rename(columns={'CAPSSCORE': 'life', 'EXAMDATE':'EXAMDATE_life'}, inplace=True)
+    life_df = life_df.groupby(['SCRNO','VISCODE']).aggregate(lambda x: x.iloc[0]).reset_index()
+
+    df = curr_df.merge(life_df,left_on=['SCRNO','VISCODE'],right_on=['SCRNO','VISCODE'],how='outer')
+    df.set_index('SCRNO',inplace=True)
     if as_df:
         return df
     else:
@@ -1145,6 +1194,7 @@ def importADNIDiagnosis(diag_file, registry=None, as_df=False):
     df['diag'] = df['change'].apply(lambda x: conversion_dict[x])
 
     if as_df:
+        df['EXAMDATE'] = pd.to_datetime(df['EXAMDATE'])
         return df
     else:
         return convertToSubjDict(df, sort_by='EXAMDATE')
@@ -1270,7 +1320,7 @@ def importDemog(demog_file, as_df=False):
         df['PTDOB'] = df.apply(lambda x: createDateFromParts(x['PTDOBYY'],x['PTDOBMM']), axis=1)
         df.drop(['PTDOBMM','PTDOBYY'],axis=1,inplace=True)
     elif 'PTDOB' in columns:
-        df['PTDOB'] = df.PTDOB.apply(lambda x: parseDate(x, registry=None, ignore_error=True))
+        df['PTDOB'] = df.PTDOB.apply(lambda x: parseDate(x, ignore_error=True))
 
     df.dropna(subset=['PTDOB'],inplace=True)
     index_name = df.index.name
@@ -1307,15 +1357,7 @@ def importAVLT(avlt_file, registry=None, as_df=False):
     avlt_columns = ['AVTOT%s' % _ for _ in range(1,6)]
     all_columns = [_ for _ in tp_columns+avlt_columns if _ in df]
     df = df[all_columns]
-
-    if 'EXAMDATE' in df:
-        df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
-    else:
-        if registry is not None:
-            df.loc[:,'EXAMDATE'] = df.apply(lambda x: findVisitDate(registry, x.name, [x.get('VISCODE',''),x.get('VISCODE2','')]), axis=1)
-        else:
-            raise Exception("Import AVLT ERROR: No registry or examdate")
-
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
     df = df[(df[avlt_columns] > 0).apply(all,axis=1)]
     df.dropna(inplace=True)
     df['TOTS'] = df[avlt_columns].sum(axis=1)
@@ -1408,7 +1450,7 @@ def importUW(uw_file, registry=None, as_df=False):
     else:
         return convertToSubjDict(df,sort_by='EXAMDATE')
 
-def importGD(gd_file, registry=None):
+def importGD(gd_file, registry=None, as_df=False):
     df = pd.read_csv(gd_file)
     if 'SCRNO' in df:
         df.set_index('SCRNO',inplace=True)
@@ -1416,12 +1458,11 @@ def importGD(gd_file, registry=None):
         df.set_index('RID',inplace=True)
 
     all_columns = ['VISCODE','VISCODE2','GDTOTAL','EXAMDATE']
-    all_columns = [_ for _ in all_columns if df.columns]
+    all_columns = [_ for _ in all_columns if _ in df.columns]
     df = df[all_columns]
 
-    if 'EXAMDATE' in df:
-        df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
-        df.dropna(subset=['EXAMDATE'], inplace=True)
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df.dropna(subset=['EXAMDATE'], inplace=True)
 
     if as_df:
         return df
@@ -1431,20 +1472,26 @@ def importGD(gd_file, registry=None):
 
 def importCSF(csf_files, registry=None, as_df=False):
     dfs = []
+    id_names = set()
     for csffile in csf_files:
         df = pd.read_csv(csffile)
         if 'SCRNO' in df:
             df.set_index('SCRNO',inplace=True)
+            id_names.add('SCRNO')
         else:
             df.set_index('RID',inplace=True)
+            id_names.add('RID')
         df.loc[:,'RUNDATE'] = df.loc[:,'RUNDATE'].apply(parseDate)
         df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
         df.dropna(subset=['EXAMDATE','RUNDATE'],inplace=True)
         dfs.append(df)
 
+    if len(id_names) != 1:
+        raise Exception('Multiple ID columns used in CSF files')
+
+    id_name = list(id_names)[0]
     df_all = pd.concat(dfs)
-    df_all.index.name = 'RID'
-    id_name = df_all.index.name
+    df_all.index.name = id_name
     df_all.reset_index(inplace=True)
 
     idx = df_all['RUNDATE'] == df_all.groupby(by=[id_name,'EXAMDATE'])['RUNDATE'].transform(max)

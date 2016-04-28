@@ -1,382 +1,379 @@
 import re
-from collections import defaultdict
+from collections import defaultdict, Counter
 from datetime import datetime, timedelta
 from scipy import stats, optimize
 import numpy as np
 
 from utils import *
 
+def syncAPOEData(master_df, apoe_file):
+    apoe_df = importAPOE(apoe_file, as_df=True)
 
-def syncAPOEData(old_headers, old_lines, apoe_file, registry_file):
-    apoe_by_subj = importAPOE(apoe_file)
+    headers = ['APOE4BIN']
+    def extraction_fn(scrno, subj_rows):
+        row = subj_rows.iloc[0]
+        data = {'SCRNO': scrno,
+                'APOE4BIN': 1 if (row['APGEN1'] == 4 or row['APGEN2'] == 4) else 0}
+        return pd.DataFrame([data]).set_index('SCRNO')
 
-    to_add_headers = ['APOE4BIN']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
-    new_lines = []
+    parsed_df = parseSubjectGroups(apoe_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        apoe4 = 0
-        if subj_row['apgen1'] == 4 or subj_row['apgen2'] == 4:
-            apoe4 = 1
-        return {'APOE4BIN': apoe4}
+def syncDemogData(master_df, demog_file):
+    demog_df = importDemog(demog_file, as_df=True)
 
-    for old_l in old_lines:
-        new_data = updateLine(old_l, apoe_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-    return (new_headers, new_lines)
-
-def syncDemogData(old_headers, old_lines, demog_file, registry_file):
-    demog_by_subj = importDemog(demog_file)
-    
-    to_add_headers = ['Sex', 'Age', 'Edu']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
-    new_lines = []
-
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        if int(subj_row['gender']) == 1:
+    headers = ['Sex', 'Age', 'Edu']
+    def extraction_fn(scrno, subj_rows):
+        row = subj_rows.iloc[0]
+        if row['PTGENDER'] == 1:
             sex = 'M'
-        elif int(subj_row['gender']) == 2:
+        elif row['PTGENDER'] == 2:
             sex = 'F'
         else:
-            raise Exception("Bad gender %s" % subj_row['gender'])
-        age = float(subj_row['age'])
-        edu = int(subj_row['edu'])
-        return {'Sex': sex,
-                'Age': age,
-                'Edu': edu}
+            raise Exception("Bad Gender: %s" % row['PTGENDER'])
+        data = {'SCRNO': scrno,
+                'Sex': sex,
+                'Age': row['PTAGE'],
+                'Edu': row['PTEDUCAT']}
+        return pd.DataFrame([data]).set_index('SCRNO')
 
-    for old_l in old_lines:
-        new_data = updateLine(old_l, demog_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+    parsed_df = parseSubjectGroups(demog_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after='Notes', restrict=True)
+    return master_df
 
-    return (new_headers, new_lines)
+def syncCAPSData(master_df, caps_curr_file, caps_lifetime_file):
+    caps_df = importCAPS(caps_curr_file, caps_lifetime_file, as_df=True)
 
-def syncCAPSData(old_headers, old_lines, curr_file, lifetime_file):
-    caps_by_subj = importCAPS(curr_file, lifetime_file)
+    headers = ['CAPS_CURRSCORE', 'CAPS_LIFETIME_SCORE']
+    def extraction_fn(scrno, subj_rows):
+        row = subj_rows.iloc[0]
+        data = {'SCRNO': scrno,
+                'CAPS_CURRSCORE': row['curr'],
+                'CAPS_LIFETIME_SCORE': row['life']}
+        return pd.DataFrame([data]).set_index('SCRNO')
 
-    to_add_headers = ['CAPS_CURRSCORE', 'CAPS_LIFETIME_SCORE']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
+    parsed_df = parseSubjectGroups(caps_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        return {'CAPS_CURRSCORE': subj_row['curr'],
-                'CAPS_LIFETIME_SCORE': subj_row['life']}
+def syncWMHData(master_df, wmh_file):
+    wmh_df = importWMH(wmh_file, as_df=True)
+    timepoints = max(Counter(wmh_df.index).values())
 
-    for old_l in old_lines:
-        new_data = updateLine(old_l, caps_by_subj, extraction_fn,
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-    return (new_headers, new_lines)
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['WMH_WHITMATHYP_%s' % i for i in row_indices]
+    headers += ['WMH_percentOfICV_%s' % i for i in row_indices]
+    headers += ['WMH_DATE_%s' % i for i in row_indices]
+    headers += ['WMH_postAV45_%s' % i for i in row_indices]
+    headers += ['WMH_WHITMATHYP_postAV45_SLOPE','WMH_WHITMATHYP_closest_AV45_BL','WMH_WHITMATHYP_closest_AV45_2']
+    headers += ['WMH_percentOfICV_postAV45_SLOPE','WMH_percentOfICV_closest_AV45_BL','WMH_percentOfICV_closest_AV45_2']
 
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        wmh_percent_long = groupLongPivot(subj_rows, 'SCRNO','wmh_percent','WMH_percentOfICV_')
+        wmh_hyp_long = groupLongPivot(subj_rows, 'SCRNO','wmh','WMH_WHITMATHYP_')
+        wmh_date_long = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','WMH_DATE_')
+        wmh_post_av45 = groupLongPivot(subj_rows, 'SCRNO','yrDiff','WMH_postAV45_')
+        data_df = wmh_percent_long.merge(wmh_hyp_long,left_index=True,right_index=True)
+        data_df = data_df.merge(wmh_date_long,left_index=True,right_index=True)
+        data_df = data_df.merge(wmh_post_av45,left_index=True,right_index=True)
+        # get slope
+        data_df.loc[scrno,'WMH_WHITMATHYP_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','wmh',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        data_df.loc[scrno,'WMH_percentOfICV_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','wmh_percent',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        # get closest
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'wmh', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'WMH_WHITMATHYP_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'WMH_WHITMATHYP_closest_AV45_2'] = closest_vals[1]
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'wmh_percent', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'WMH_percentOfICV_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'WMH_percentOfICV_closest_AV45_2'] = closest_vals[1]
+        return data_df
 
-def syncWMHData(old_headers, old_lines, wmh_file):
-    wmh_by_subj = importWMH(wmh_file)
+    parsed_df = parseSubjectGroups(wmh_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-    to_add_headers = ['WMH_WHITMATHYP', 'WMH_percentOfICV']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
+def syncMRIData(master_df, mri_file):
+    mri_df = importDODMRI(mri_file, as_df=True)
 
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0] # take first point
-        return {'WMH_percentOfICV': point['wmh_percent'],
-                'WMH_WHITMATHYP': point['wmh']}
+    headers = ["MRIDATE"]
+    def extraction_fn(scrno, subj_rows):
+        subj_rows.sort_values(by='EXAMDATE', inplace=True)
+        row = subj_rows.iloc[0]
+        data = {'SCRNO': scrno,
+                'MRIDATE': row['EXAMDATE']}
+        return pd.DataFrame([data]).set_index('SCRNO')
 
-    for old_l in old_lines:
-        new_data = updateLine(old_l, wmh_by_subj, extraction_fn,
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-    return (new_headers, new_lines)
-
-
-def syncMRIData(old_headers, old_lines, mri_file):
-    mri_by_subj = importDODMRI(mri_file)
-    to_add_headers = ["MRIDATE"]
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
-
-    def extraction_fn(subj, subj_row, old_line, patients_pets):
-        first_mri = subj_row[0]
-        return {"MRIDATE": first_mri}
-
-    for old_l in old_lines:
-        new_data = updateLine(old_l, mri_by_subj, extraction_fn,
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-    return (new_headers, new_lines)
-
-
-def syncGDData(old_headers, old_lines, gd_file):
-    gd_by_subj = importGD(gd_file)
-    to_add_headers = ['GDtotal']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
-
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        return {'GDtotal': subj_row['gdtotal']}
-
-    for old_l in old_lines:
-        new_data = updateLine(old_l, gd_by_subj, extraction_fn,
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-    return (new_headers, new_lines)
+    parsed_df = parseSubjectGroups(mri_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
 
-def syncAntidepData(old_headers, old_lines, backmeds_file, registry_file):
-    antidep_by_subj = importDODAntidep(backmeds_file, registry_file)
+def syncGDData(master_df, gd_file, registry):
+    gd_df = importGD(gd_file, registry=registry, as_df=True)
+    timepoints = max(Counter(gd_df.index).values())
 
-    to_add_headers = ['ANTIDEP_USE','WHICH_ANTIDEP','SSRI']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['GD_%s' % i for i in row_indices]
+    headers += ['GD_DATE_%s' % i for i in row_indices]
+    headers += ['GD_postAV45_%s' % i for i in row_indices]
+    headers += ['GD_postAV45_SLOPE','GD_closest_AV45_BL','GD_closest_AV45_2']
 
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        bl = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
-        return {'ANTIDEP_USE': 1 if bl['ANTIDEP_USE'] else 0,
-                'WHICH_ANTIDEP': bl['WHICH_ANTIDEP'],
-                'SSRI': 1 if bl['SSRI'] else 0}
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        gd_long = groupLongPivot(subj_rows, 'SCRNO','GDTOTAL','GD_')
+        date_long = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','GD_DATE_')
+        yrdiff_long = groupLongPivot(subj_rows, 'SCRNO','yrDiff','GD_postAV45_')
+        data_df = gd_long.merge(date_long,left_index=True,right_index=True)
+        data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
+        # get slope
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        data_df.loc[scrno,'GD_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','GDTOTAL',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        # get closest
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'GDTOTAL', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'GD_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'GD_closest_AV45_2'] = closest_vals[1]
+        return data_df
 
-    for i, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, antidep_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+    parsed_df = parseSubjectGroups(gd_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-    return (new_headers, new_lines)
+def syncAntidepData(master_df, backmeds_file, registry):
+    antidep_df = importDODAntidep(backmeds_file, registry, as_df=True)
+    headers = ['ANTIDEP_USE','WHICH_ANTIDEP','SSRI']
 
+    def extraction_fn(scrno, subj_rows):
+        subj_rows.sort_values(by='EXAMDATE', inplace=True)
+        bl = subj_rows.iloc[0]
+        new_data = {'SCRNO': scrno,
+                    'ANTIDEP_USE': 1 if bl['ANTIDEP_USE'] else 0,
+                    'WHICH_ANTIDEP': bl['WHICH_ANTIDEP'],
+                    'SSRI': 1 if bl['SSRI'] else 0}
+        return pd.DataFrame([new_data]).set_index('SCRNO')
 
-def syncCSFData(old_headers, old_lines, csf_file, registry_file):
-    registry = importDODRegistry(registry_file)
-    csf_by_subj = importCSF([csf_file], registry)
+    parsed_df = parseSubjectGroups(antidep_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-    to_add_headers = ['CSF_abeta', 'CSF_tau', 'CSF_ptau']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
+def syncCSFData(master_df, csf_file, registry):
+    csf_df = importCSF([csf_file], registry, as_df=True)
 
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
-        return {'CSF_abeta': point['abeta'],
-                'CSF_tau': point['tau'],
-                'CSF_ptau': point['ptau']}
+    headers = ['CSF_abeta', 'CSF_tau', 'CSF_ptau']
+    def extraction_fn(scrno, subj_rows):
+        subj_rows.sort_values(by='EXAMDATE', inplace=True)
+        row = subj_rows.iloc[0]
+        data = {'SCRNO': scrno,
+                'CSF_abeta': row['ABETA'],
+                'CSF_tau': row['TAU'],
+                'CSF_ptau': row['PTAU']}
+        return pd.DataFrame([data]).set_index('SCRNO')
 
-    for i, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, csf_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+    parsed_df = parseSubjectGroups(csf_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-    return (new_headers, new_lines)
+def syncADASData(master_df, adas_file, registry):
+    adas_df = importADASCog(None, adas_file, registry, as_df=True)
+    timepoints = max(Counter(adas_df.index).values())
 
-def syncADASData(old_headers, old_lines, adas_file, registry_file):
-    registry = importDODRegistry(registry_file)
-    adas_by_subj = importADASCog(None, adas_file, registry=registry)
-    
-    to_add_headers = ['ADAS_TOTSCORE']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['ADAS_%s' % i for i in row_indices]
+    headers += ['ADAS_DATE_%s' % i for i in row_indices]
+    headers += ['ADAS_postAV45_%s' % i for i in row_indices]
+    headers += ['ADAS_postAV45_SLOPE','ADAS_closest_AV45_BL','ADAS_closest_AV45_2']
 
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        point = sorted(subj_row, key=lambda x: x['EXAMDATE'])[0]
-        return {'ADAS_TOTSCORE': point['TOTSCORE']}
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        adas_long = groupLongPivot(subj_rows, 'SCRNO','TOTSCORE','ADAS_')
+        adas_date = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','ADAS_DATE_')
+        yrdiff_long = groupLongPivot(subj_rows,'SCRNO','yrDiff','ADAS_postAV45_')
+        data_df = adas_long.merge(adas_date,left_index=True,right_index=True)
+        data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
+        # get slope
+        data_df.loc[scrno,'ADAS_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','TOTSCORE',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        # get closest
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTSCORE', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'ADAS_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'ADAS_closest_AV45_2'] = closest_vals[1]
+        return data_df
 
-    for i, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, adas_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+    parsed_df = parseSubjectGroups(adas_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-    return (new_headers, new_lines)
+def syncAVLTData(master_df, avlt_file, registry):
+    avlt_df = importAVLT(avlt_file, registry=registry, as_df=True)
+    timepoints = max(Counter(avlt_df.index).values())
 
-def syncAVLTData(old_headers, old_lines, avlt_file, registry_file):
-    registry = importDODRegistry(registry_file)
-    avlt_by_subj = importAVLT(avlt_file, registry=registry)
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['AVLT_%s' % i for i in row_indices]
+    headers += ['AVLT_DATE_%s' % i for i in row_indices]
+    headers += ['AVLT_postAV45_%s' % i for i in row_indices]
+    headers += ['AVLT_postAV45_SLOPE', 'AVLT_closest_AV45_BL', 'AVLT_closest_AV45_2']
 
-    to_add_headers = ['AVLT_total_6mths_Examdate']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    new_lines = []
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        avlt_long = groupLongPivot(subj_rows, 'SCRNO','TOTS','AVLT_')
+        avlt_date = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','AVLT_DATE_')
+        yrdiff_long = groupLongPivot(subj_rows, 'SCRNO','yrDiff','AVLT_postAV45_')
+        data_df = avlt_long.merge(avlt_date,left_index=True,right_index=True)
+        data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
+        # get slope
+        data_df.loc[scrno,'AVLT_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','TOTS',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        # get closest
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'AVLT_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'AVLT_closest_AV45_2'] = closest_vals[1]
+        return data_df
 
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        sorted_points = sorted(subj_row, key=lambda x: x['EXAMDATE'])
+    parsed_df = parseSubjectGroups(avlt_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
 
-        bl_av45, av45_2 = getAV45Dates(old_l, patient_pets=None)
-        closest_1, closest_2, closest_3 = getClosestToScans(sorted_points, bl_av45, av45_2, None, 
-                                                            day_limit=int(365/2), date_key='EXAMDATE')
-        data = {}
+def syncADNIMasterData(master_df, av45_master_file):
+    adni_df = importMaster(av45_master_file, as_df=True)
+    adni_subj = list(set(master_df[master_df.index < 6000].index) & set(adni_df.index))
+    adni_df = adni_df.loc[adni_subj,:]
+    if len(adni_df.index) == 0:
+        return master_df
 
-        # Closest to AV45 value
-        data['AVLT_total_6mths_Examdate'] = closest_1['TOTS'] if closest_1 else None
-
-        # Long values
-        long_values = extractLongitudinalFields(sorted_points, 'TOTS', 'AVLT.')
-        long_dates = extractLongitudinalFields(sorted_points, 'EXAMDATE', 'AVLT_postAV45.')
-        long_dates_diff = {k:(v-bl_av45).days for k,v in long_dates.iteritems()}
-        long_dates_filtered = {k:(v/365.0) if v >= -90.0 else None for k,v in long_dates_diff.iteritems()}
-        data.update(long_values)
-        data.update(long_dates_filtered)
-
-        # Slope values
-        slope_pts = [(t,v) for t,v in zip(long_dates_filtered,long_values) if t is not None]
-        print slope_pts
-        data['AVLT_slope'] = slope(slope_pts)
-
-        return data
-
-    for i, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, avlt_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-    return (new_headers, new_lines)
-
-def syncADNIMasterData(old_headers, old_lines, adnimaster_file):
-    master_by_subj = importMaster(adnimaster_file)
-
-    new_headers = old_headers
-    new_lines = []
-
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        '''
-        fill in the following keys:
-
-        Sex -> Gender
-        Age
-        Edu -> Edu.(Yrs)
-        APOE4BIN
-        ADAS_TOTSCORE
-        AVLT_total_6mths_Examdate
-        CAPS_CURRSCORE
-        CAPS_LIFETIME_SCORE
-        WMH_WHITMATHYP
-        WMH_percentOfICV
-        GDtotal
-        MRIDATE
-        CSF_abeta
-        CSF_tau
-        CSF_ptau
-        '''
-        gender = subj_row['Gender']
-        try:
-            if int(subj_row['Gender']) == 1:
-                gender = 'M'
-        except:
-            pass
-        try:
-            if int(subj_row['Gender']) == 2:
-                gender = 'F'
-        except:
-            pass
+    def extraction_fn(scrno, subj_rows):
+        row = subj_rows.iloc[0]
+        gender = row['Gender']
+        if gender == 1:
+            gender = 'M'
+        elif gender == 2:
+            gender = 'F'
+        else:
+            raise Exception("Unknown Gender: %s" % gender)
         new_data = {'Sex': gender,
-                    'Age': subj_row['Age@AV45'],
-                    'Edu': subj_row['Edu.(Yrs)'],
-                    'APOE4BIN': subj_row['APOE4_BIN'],
-                    'ADAS_TOTSCORE': subj_row['ADAS_3MTH_AV45'],
-                    'AVLT_total_6mths_Examdate': subj_row['AVLT_3MTHS_AV45'],
+                    'Age': row['Age@AV45'],
+                    'Edu': row['Edu.(Yrs)'],
+                    'APOE4BIN': row['APOE4_BIN'],
+                    'ADAS_TOTSCORE': row['ADAS_3MTH_AV45'],
+                    'AVLT_total_6mths_Examdate': row['AVLT_3MTHS_AV45'],
                     'CAPS_CURRSCORE': '',
                     'CAPS_LIFETIME_SCORE': '',
-                    'WMH_WHITMATHYP': subj_row['WMH_WHITMATHYP.1'],
-                    'WMH_percentOfICV': subj_row['WMH_percentOfICV.1'],
-                    'GDtotal': subj_row['GD_AV45_6MTHS'],
+                    'WMH_WHITMATHYP': row['WMH_WHITMATHYP.1'],
+                    'WMH_percentOfICV': row['WMH_percentOfICV.1'],
+                    'GDtotal': row['GD_AV45_6MTHS'],
                     'MRIDATE': '',
-                    'CSF_abeta': subj_row['CSF_ABETA.1'],
-                    'CSF_tau': subj_row['CSF_TAU.1'],
-                    'CSF_ptau': subj_row['CSF_PTAU.1']
+                    'CSF_abeta': row['CSF_ABETA.1'],
+                    'CSF_tau': row['CSF_TAU.1'],
+                    'CSF_ptau': row['CSF_PTAU.1'],
+                    'SCRNO': scrno
                     }
-        return new_data
+        return pd.DataFrame([new_data]).set_index('SCRNO')
 
-    for i, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, master_by_subj, extraction_fn, 
-                              pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+    parsed_df = parseSubjectGroups(adni_df, extraction_fn)
+    master_df = master_df.update(parsed_df, overwrite=True)
+    return master_df
 
-    return (new_headers, new_lines)
 
 def syncDiagData(master_df, diag_file):
     diag_df = importADNIDiagnosis(diag_file, as_df=True)
-    timepoints = 3
+    timepoints = max(Counter(diag_df.index).values())
+    
+    # Add comparison date
+    comp_date = datetime(year=2016, month=4, day=1)
+    comp_key = 'Diag_%s' % (comp_date.strftime('%b%Y'),)
+    diag_df['TimeFromCompDate'] = diag_df['EXAMDATE'].apply(lambda x: abs(x-comp_date).days)
 
     # header order 
     headers = ['Diag_%s' % (_+1,) for _ in range(timepoints)]
     headers += ["Diag_Date_%s" % (_+1,) for _ in range(timepoints)]
+    headers += [comp_key]
 
     # extraction fn
     def extraction_fn(scrno, subj_rows):
-        if len(subj_rows.index) > timepoints:
-            raise Exception("Raise # Diag Timepoints to %s" % len(subj_rows.index))
         subj_rows.sort_values(by='EXAMDATE', inplace=True)
         subj_rows['SCRNO'] = scrno
-        diag_long = pivotSubjectGroupValues(subj_rows, 'SCRNO','diag','Diag_')
-        date_long = pivotSubjectGroupValues(subj_rows, 'SCRNO','EXAMDATE','Diag_Date_')
+        diag_long = groupLongPivot(subj_rows, 'SCRNO','diag','Diag_')
+        date_long = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','Diag_Date_')
         merge_df = diag_long.merge(date_long,left_index=True,right_index=True)
-        agg_row = merge_df.reset_index().iloc[0]
-        return agg_row
+        comp_diag = subj_rows.sort_values(by='TimeFromCompDate').iloc[0]['diag']
+        merge_df.loc[scrno,comp_key] = comp_diag
+        return merge_df
 
     parsed_df = parseSubjectGroups(diag_df, extraction_fn)
-    parsed_df.set_index('SCRNO',inplace=True)
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after='Notes')
     return master_df
 
+def syncStudyData(master_df, elig_file):
+    '''
+    GroupNum: 1=C, 2=PTSD, 3=TBI, 4=PTSD+TBI 
+    GroupNum_PTSD:  1=C, 2=PTSD or PTSD+TBI, 3=TBI
+    GroupNum_TBI: 1=C, 2=PTSD, 3=TBI or PTSD+TBI
+    '''
 
-def syncStudyData(old_headers, old_lines, elig_file):
-    elig_by_subj = importDODEligibility(elig_file)
+    elig_df = importDODEligibility(elig_file, as_df=True)
 
-    to_add_headers = ['PTGroup', 'Study', 'GroupNum']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Notes')
-    new_lines = []
-
-    def extraction_fn(subj, subj_row, old_line, patient_pets):
-        cohort = subj_row['cohort']
-        new_data = {'PTGroup': '',
-                    'Study': 1,
-                    'GroupNum': ''}
+    headers = ['PTGroup', 'Study', 'GroupNum', 'GroupNum_TBI', 'GroupNum_PTSD']
+    def extraction_fn(scrno, subj_rows):
+        cohort = subj_rows.iloc[0]['COHORT']
+        new_data = {'SCRNO': scrno,
+                    'Study': 1}
         if cohort == 1:
             new_data['PTGroup'] = 'PTSD'
-            new_data['GroupNum'] = 1
+            new_data['GroupNum'] = 2
+            new_data['GroupNum_PTSD']= 2
+            new_data['GroupNum_TBI'] = 2
         elif cohort == 2:
             new_data['PTGroup'] = 'TBI'
-            new_data['GroupNum'] = 2
+            new_data['GroupNum'] = 3
+            new_data['GroupNum_PTSD']= 3
+            new_data['GroupNum_TBI'] = 3
         elif cohort == 3:
             new_data['PTGroup'] = 'C'
-            new_data['GroupNum'] = 3
+            new_data['GroupNum'] = 1
+            new_data['GroupNum_PTSD']= 1
+            new_data['GroupNum_TBI'] = 1
         elif cohort == 4:
             new_data['PTGroup'] = 'TBI+PTSD'
             new_data['GroupNum'] = 4
-        elif cohort == '':
-            # decide what to do here
-            pass
-        return new_data
-
-    for i, old_l in enumerate(old_lines):
-        new_data = {'PTGroup': '',
-                    'Study': '',
-                    'GroupNum': ''}
-        subj = int(old_l['SCRNO'])
-        if subj < 6000:
-            new_data = {'PTGroup': 'ADNI C',
-                        'Study': 0,
-                        'GroupNum': 5}
+            new_data['GroupNum_PTSD']= 2
+            new_data['GroupNum_TBI'] = 3
         else:
-            new_data = updateLine(old_l, elig_by_subj, extraction_fn, 
-                          pid_key='SCRNO', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+            raise Exception("Unknown cohort: %s" % cohort)
+        return pd.DataFrame([new_data]).set_index('SCRNO')
 
-    return (new_headers, new_lines)
+    parsed_df = parseSubjectGroups(elig_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after='Notes')
+    adni_subj = master_df[master_df.index < 6000].index
+    master_df.loc[adni_subj,'PTGroup'] = 'ADNI C'
+    master_df.loc[adni_subj,'Study'] = 0
+    master_df.loc[adni_subj,'GroupNum'] = 5
+    master_df.loc[adni_subj,'GroupNum_PTSD'] = 5
+    master_df.loc[adni_subj,'GroupNum_TBI'] = 5
+    return master_df
 
 def syncAV1451Data(master_df, av1451_file):
     av1451_df = importAV1451(av1451_file, as_df=True)
+    timepoints = max(Counter(av1451_df.index).values())
 
     # create header order
-    timepoints = 1
     row_indices = range(1,timepoints+1)
     headers = []
     headers += ['AV1451_%s_DATE' % i for i in row_indices]
@@ -395,8 +392,6 @@ def syncAV1451Data(master_df, av1451_file):
     def extraction_fn(scrno, subj_rows):
         new_data = {'SCRNO': scrno}
         subj_rows.sort_values(by='EXAMDATE', inplace=True)
-        if len(subj_rows.index) > timepoints:
-            raise Exception("Raise # AV1451 Timepoints to > %s" % timepoints)
 
         for i, (idx, row) in enumerate(subj_rows.iterrows()):
             row_i = i + 1
@@ -437,19 +432,19 @@ def syncAV1451Data(master_df, av1451_file):
             new_data['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['LEFT_CHOROID_PLEXUS'])/cerebg
             new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/cerebg 
 
-        return pd.Series(new_data)
+        return pd.DataFrame([new_data]).set_index('SCRNO')
 
     parsed_df = parseSubjectGroups(av1451_df, extraction_fn)
-    parsed_df.set_index('SCRNO',inplace=True)
-    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=False)
     return master_df
 
 
 def syncAV45Data(master_df, av45_file, diags_df):
     av45_df = importAV45(av45_file, as_df=True)
+    timepoints = max(Counter(av45_df.index).values())
     adni_controls_df = set(diags_df[diags_df.diag.str.match('N')].index)
     # create header order
-    row_indices = range(1,3)
+    row_indices = range(1,timepoints+1)
     headers = []
     for r in row_indices:
         # Dates
@@ -483,13 +478,12 @@ def syncAV45Data(master_df, av45_file, diags_df):
         headers.append('AV45_%s_ventrical_MR_asymmetry' % r)
     # parse AV45 results
     parsed_df = parseSubjectGroups(av45_df, parseAV45SubjectRows)
-    parsed_df.set_index('SCRNO',inplace=True)
     # filter old subjects
     valid_adni_subj = set(master_df.index) &  adni_controls_df
     old_subj = valid_adni_subj | set(master_df[master_df.index >= 6000].index)
     master_df = master_df.loc[list(old_subj),:]
     # update
-    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=False)
     return master_df
 
 def parseAV45SubjectRows(scrno, subj_rows):
@@ -577,41 +571,23 @@ def parseAV45SubjectRows(scrno, subj_rows):
         data['AV45_%s_temporal_asymmetry_negvalue_means_R<L' % (i+1)] = asymIndex(left_temporal, right_temporal)
         left_summary = np.mean([left_frontal, left_cingulate, left_parietal, left_temporal])
         right_summary = np.mean([right_frontal, right_cingulate, right_parietal, right_temporal])
-        '''
-        data['AV45_%s_asym_summary_absvals_negvalue_means_R<L' % (i+1)] = np.mean([abs(asymIndex(left_frontal, right_frontal)),
-                                                                                   abs(asymIndex(left_cingulate, right_cingulate)),
-                                                                                   abs(asymIndex(left_parietal, right_parietal)),
-                                                                                   abs(asymIndex(left_temporal, right_temporal))])
-        '''
         data['AV45_%s_frontal_MR_asymmetry' % (i+1)] = asymIndex(left_frontal_size, right_frontal_size)
         data['AV45_%s_cingulate_MR_asymmetry' % (i+1)] = asymIndex(left_cingulate_size, right_cingulate_size)
         data['AV45_%s_parietal_MR_asymmetry' % (i+1)] = asymIndex(left_parietal_size, right_parietal_size)
         data['AV45_%s_temporal__MR_asymmetry' % (i+1)] = asymIndex(left_temporal_size, right_temporal_size)
         data['AV45_%s_ventrical_MR_asymmetry' % (i+1)] = asymIndex(left_ventrical_size, right_ventrical_size)
     
-    return pd.Series(data)
+    return pd.DataFrame([data]).set_index('SCRNO')
 
 
-
-def asymIndex(left, right):
-    return (left-right)/np.mean([left,right])
-
-def getAV45Dates(old_l, patient_pets=None):
-    if patient_pets is None:
-        patient_pets = []
-    # Get AV45 Scan dates
-    if old_l.get('AV45_1_EXAMDATE','') != '':
-        bl_av45 = datetime.strptime(old_l['AV45_1_EXAMDATE'], '%m/%d/%y')
-    elif len(patient_pets) >= 1:
-        bl_av45 = patient_pets[0]
-    else:
-        bl_av45 = None
-    if old_l.get('AV45_2_EXAMDATE','') != '':
-        av45_2 = datetime.strptime(old_l['AV45_2_EXAMDATE'], '%m/%d/%y')
-    elif len(patient_pets) >= 2:
-        av45_2 = patient_pets[1]
-    else:
-        av45_2 = None
+def getAV45Dates(scrno, master_df):
+    bl_av45 = av45_2 = np.nan
+    try:
+        row = master_df.loc[scrno]
+        bl_av45 = row.get('AV45_1_EXAMDATE')
+        av45_2 = row.get('AV45_2_EXAMDATE')
+    except Exception as e:
+        pass
     return (bl_av45, av45_2)
 
 
@@ -627,7 +603,7 @@ def runPipeline():
 
     # get diagnoses
     diags_df = extractDiagnosesFromMasterData(importMaster(av45_master_file, as_df=True))
-    registry = importDODRegistry(registry_file)
+    registry = importDODRegistry(registry_file, as_df=True)
 
     print "\nSYNCING AV45\n"
     master_df = syncAV45Data(master_df, av45_file, diags_df) # adds new patients
@@ -635,43 +611,36 @@ def runPipeline():
     master_df = syncAV1451Data(master_df, av1451_file) # adds new patients
     print "\nSYNCING DIAG\n"
     master_df = syncDiagData(master_df, diag_file)
-
-
-    print master_df
-    return
-
-    print "\nSYNCING DIAG\n"
-    new_headers, new_lines = syncDiagData(new_headers, new_lines, diag_file)
     print "\nSYNCING ANTIDEP\n"
-    new_headers, new_lines = syncAntidepData(new_headers, new_lines, backmeds_file, registry_file)
+    master_df = syncAntidepData(master_df, backmeds_file, registry)
     print "\nSYNCING APOE\n"
-    new_headers, new_lines = syncAPOEData(new_headers, new_lines, apoe_file, registry_file)
+    master_df = syncAPOEData(master_df, apoe_file)
     print "\nSYNCING ADAS\n"
-    new_headers, new_lines = syncADASData(new_headers, new_lines, adas_file, registry_file)
+    master_df = syncADASData(master_df, adas_file, registry)
     print "\nSYNCING AVLT\n"
-    new_headers, new_lines = syncAVLTData(new_headers, new_lines, avlt_file, registry_file)
+    master_df = syncAVLTData(master_df, avlt_file, registry)
     print "\nSYNCING DEMOG\n"
-    new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, registry_file)
+    master_df = syncDemogData(master_df, demog_file)
     print "\nSYNCING CAPS\n"
-    new_headers, new_lines = syncCAPSData(new_headers, new_lines, caps_curr_file, caps_lifetime_file)
+    master_df = syncCAPSData(master_df, caps_curr_file, caps_lifetime_file)
     print "\nSYNCING WMH\n"
-    new_headers, new_lines = syncWMHData(new_headers, new_lines, wmh_file)
+    master_df = syncWMHData(master_df, wmh_file)
     print "\nSYNCING GD\n"
-    new_headers, new_lines = syncGDData(new_headers, new_lines, gd_file)
+    master_df = syncGDData(master_df, gd_file, registry)
     print "\nSYNCING MRI\n"
-    new_headers, new_lines = syncMRIData(new_headers, new_lines, mri_file)
+    master_df = syncMRIData(master_df, mri_file)
     print "\nSYNCING STUDY\n"
-    new_headers, new_lines = syncStudyData(new_headers, new_lines, elig_file)
+    master_df = syncStudyData(master_df, elig_file)
     print "\nSYNCING CSF\n"
-    new_headers, new_lines = syncCSFData(new_headers, new_lines, csf_file, registry_file)
+    master_df = syncCSFData(master_df, csf_file, registry)
     print "\nSYNCING ADNI MASTER\n"
-    new_headers, new_lines = syncADNIMasterData(new_headers, new_lines, av45_master_file)
-
+    master_df = syncADNIMasterData(master_df, av45_master_file)
     print "\nDUMPING CSV\n"
-    dumpDFtoCSV(master_df,output_file,decimal_places=2)
+    dumpDFtoCSV(master_df,output_file,decimal_places=3)
 
 if __name__ == '__main__':
     now = datetime.now()
+    pd.options.mode.chained_assignment = None
 
     # IO files
     master_file = "" # not used
