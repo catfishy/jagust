@@ -1335,8 +1335,13 @@ def importDemog(demog_file, as_df=False):
 
 def importMMSE(mmse_file, registry=None, as_df=False):
     df = pd.read_csv(mmse_file)
-    df.set_index('RID',inplace=True)
+    if 'SCRNO' in df.columns:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
+
     columns = ['EXAMDATE','VISCODE','VISCODE2','MMSCORE']
+    columns = [_ for _ in columns if _ in df.columns]
     df = df[columns]
     df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
     df.dropna(subset=['EXAMDATE'],inplace=True)
@@ -1618,11 +1623,56 @@ def importMedicalHistory(mhist_file, as_df=False):
     else:
         return convertToSubjDict(df)
 
+def importASI(asi_file, registry, as_df=False):
+    df = pd.read_csv(asi_file)
+    if 'SCRNO' in df.columns:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
+
+    columns = ['EXAMDATE','VISCODE','VISCODE2','ASI1A','ASI2B']
+    columns = [_ for _ in columns if _ in df.columns]
+    df = df[columns]
+
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df.dropna(subset=['EXAMDATE'], inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df, sort_by='EXAMDATE')
+
+
+def importCDR(cdr_file, registry, as_df=False):
+    df = pd.read_csv(cdr_file)
+    if 'SCRNO' in df.columns:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
+
+    columns = ['EXAMDATE','VISCODE','VISCODE2','CDGLOBAL','CDSOB']
+    columns = [_ for _ in columns if _ in df.columns]
+    df = df[columns]
+
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df = df[['EXAMDATE','CDGLOBAL','CDSOB']]
+    df.dropna(subset=['EXAMDATE'], inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df, sort_by='EXAMDATE')
+
 
 def importFAQ(faq_file, registry, as_df=False):
     df = pd.read_csv(faq_file)
-    df.set_index('RID',inplace=True)
+    if 'SCRNO' in df.columns:
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.set_index('RID',inplace=True)
+
     all_columns = ['EXAMDATE','VISCODE','VISCODE2','FAQTOTAL']
+    all_columns = [_ for _ in all_columns if _ in df.columns]
     df = df[all_columns]
 
     df = parseOrFindDate(df, 'EXAMDATE', registry=registry)

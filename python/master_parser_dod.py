@@ -84,8 +84,8 @@ def syncWMHData(master_df, wmh_file):
         data_df = data_df.merge(wmh_date_long,left_index=True,right_index=True)
         data_df = data_df.merge(wmh_post_av45,left_index=True,right_index=True)
         # get slope
-        data_df.loc[scrno,'WMH_WHITMATHYP_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','wmh',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
-        data_df.loc[scrno,'WMH_percentOfICV_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','wmh_percent',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        data_df.loc[scrno,'WMH_WHITMATHYP_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','wmh',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
+        data_df.loc[scrno,'WMH_percentOfICV_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','wmh_percent',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
         # get closest
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'wmh', [av45_date1, av45_date2], day_limit=365/2)
         data_df.loc[scrno,'WMH_WHITMATHYP_closest_AV45_BL'] = closest_vals[0]
@@ -139,7 +139,7 @@ def syncGDData(master_df, gd_file, registry):
         data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
         # get slope
         av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
-        data_df.loc[scrno,'GD_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','GDTOTAL',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        data_df.loc[scrno,'GD_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','GDTOTAL',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
         # get closest
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'GDTOTAL', [av45_date1, av45_date2], day_limit=365/2)
         data_df.loc[scrno,'GD_closest_AV45_BL'] = closest_vals[0]
@@ -207,7 +207,7 @@ def syncADASData(master_df, adas_file, registry):
         data_df = adas_long.merge(adas_date,left_index=True,right_index=True)
         data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
         # get slope
-        data_df.loc[scrno,'ADAS_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','TOTSCORE',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        data_df.loc[scrno,'ADAS_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','TOTSCORE',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
         # get closest
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTSCORE', [av45_date1, av45_date2], day_limit=365/2)
         data_df.loc[scrno,'ADAS_closest_AV45_BL'] = closest_vals[0]
@@ -215,6 +215,133 @@ def syncADASData(master_df, adas_file, registry):
         return data_df
 
     parsed_df = parseSubjectGroups(adas_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
+
+
+def syncFAQData(master_df, faq_file, registry):
+    faq_df = importFAQ(faq_file, registry=registry, as_df=True)
+    timepoints = max(Counter(faq_df.index).values())
+
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['FAQ_%s' % i for i in row_indices]
+    headers += ['FAQ_DATE_%s' % i for i in row_indices]
+    headers += ['FAQ_postAV45_%s' % i for i in row_indices]
+    headers += ['FAQ_postAV45_SLOPE', 'FAQ_closest_AV45_BL', 'FAQ_closest_AV45_2']
+
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        faq_long = groupLongPivot(subj_rows, 'SCRNO','FAQTOTAL','FAQ_')
+        faq_date = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','FAQ_DATE_')
+        yrdiff_long = groupLongPivot(subj_rows, 'SCRNO','yrDiff','FAQ_postAV45_')
+        data_df = faq_long.merge(faq_date,left_index=True,right_index=True)
+        data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
+        # get slope
+        data_df.loc[scrno,'FAQ_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','FAQTOTAL',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
+        # get closest
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'FAQTOTAL', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'FAQ_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'FAQ_closest_AV45_2'] = closest_vals[1]
+        return data_df
+
+    parsed_df = parseSubjectGroups(faq_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
+
+def syncASIData(master_df, asi_file, registry):
+    asi_df = importASI(asi_file, registry, as_df=True)
+
+    headers = ['ASI_1A','ASI_2B']
+    def extraction_fn(scrno, subj_rows):
+        subj_rows.sort_values(by='EXAMDATE',inplace=True)
+        row = subj_rows.iloc[0]
+        data = {'SCRNO': scrno,
+                'ASI_1A': row['ASI1A'],
+                'ASI_2B': row['ASI2B']}
+        return pd.DataFrame([data]).set_index('SCRNO')
+
+    parsed_df = parseSubjectGroups(asi_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
+
+def syncCDRData(master_df, cdr_file, registry):
+    cdr_df = importCDR(cdr_file, registry=registry, as_df=True)
+    timepoints = max(Counter(cdr_df.index).values())
+
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['CDR_GLOBAL_%s' % i for i in row_indices]
+    headers += ['CDR_SOB_%s' % i for i in row_indices]
+    headers += ['CDR_DATE_%s' % i for i in row_indices]
+    headers += ['CDR_postAV45_%s' % i for i in row_indices]
+    headers += ['CDR_GLOBAL_postAV45_SLOPE', 'CDR_GLOBAL_closest_AV45_BL', 'CDR_GLOBAL_closest_AV45_2']
+    headers += ['CDR_SOB_postAV45_SLOPE', 'CDR_SOB_closest_AV45_BL', 'CDR_SOB_closest_AV45_2']
+
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        cdr_long = groupLongPivot(subj_rows, 'SCRNO','CDGLOBAL','CDR_GLOBAL_')
+        cdr_sum_long = groupLongPivot(subj_rows, 'SCRNO','CDSOB','CDR_SOB_')
+        cdr_date = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','CDR_DATE_')
+        yrdiff_long = groupLongPivot(subj_rows, 'SCRNO','yrDiff','CDR_postAV45_')
+        data_df = cdr_long.merge(cdr_sum_long,left_index=True,right_index=True)
+        data_df = data_df.merge(cdr_date,left_index=True,right_index=True)
+        data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
+        # get slope
+        data_df.loc[scrno,'CDR_GLOBAL_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','CDGLOBAL',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
+        data_df.loc[scrno,'CDR_SOB_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','CDSOB',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
+        # get closest
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'CDGLOBAL', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'CDR_GLOBAL_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'CDR_GLOBAL_closest_AV45_2'] = closest_vals[1]
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'CDSOB', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'CDR_SOB_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'CDR_SOB_closest_AV45_2'] = closest_vals[1]
+        return data_df
+
+    parsed_df = parseSubjectGroups(cdr_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
+
+def syncMMSEData(master_df, mmse_file, registry):
+    mmse_df = importMMSE(mmse_file, registry=registry, as_df=True)
+    timepoints = max(Counter(mmse_df.index).values())
+
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['MMSE_%s' % i for i in row_indices]
+    headers += ['MMSE_DATE_%s' % i for i in row_indices]
+    headers += ['MMSE_postAV45_%s' % i for i in row_indices]
+    headers += ['MMSE_postAV45_SLOPE', 'MMSE_closest_AV45_BL', 'MMSE_closest_AV45_2']
+
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        mmse_long = groupLongPivot(subj_rows, 'SCRNO','MMSCORE','MMSE_')
+        mmse_date = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','MMSE_DATE_')
+        yrdiff_long = groupLongPivot(subj_rows, 'SCRNO','yrDiff','MMSE_postAV45_')
+        data_df = mmse_long.merge(mmse_date,left_index=True,right_index=True)
+        data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
+        # get slope
+        data_df.loc[scrno,'MMSE_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','MMSCORE',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
+        # get closest
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'MMSCORE', [av45_date1, av45_date2], day_limit=365/2)
+        data_df.loc[scrno,'MMSE_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'MMSE_closest_AV45_2'] = closest_vals[1]
+        return data_df
+
+    parsed_df = parseSubjectGroups(mmse_df, extraction_fn)
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
     return master_df
 
@@ -241,7 +368,7 @@ def syncAVLTData(master_df, avlt_file, registry):
         data_df = avlt_long.merge(avlt_date,left_index=True,right_index=True)
         data_df = data_df.merge(yrdiff_long,left_index=True,right_index=True)
         # get slope
-        data_df.loc[scrno,'AVLT_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','TOTS',cutoff_date=av45_date1) if not isnan(av45_date1) else np.nan
+        data_df.loc[scrno,'AVLT_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','TOTS',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
         # get closest
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av45_date1, av45_date2], day_limit=365/2)
         data_df.loc[scrno,'AVLT_closest_AV45_BL'] = closest_vals[0]
@@ -615,6 +742,14 @@ def runPipeline():
     master_df = syncAntidepData(master_df, backmeds_file, registry)
     print "\nSYNCING APOE\n"
     master_df = syncAPOEData(master_df, apoe_file)
+    print "\nSYNCING ASI\n"
+    master_df = syncASIData(master_df, asi_file, registry)
+    print "\nSYNCING CDR\n"
+    master_df = syncCDRData(master_df, cdr_file, registry)
+    print "\nSYNCING FAQ\n"
+    master_df = syncFAQData(master_df, faq_file, registry)
+    print "\nSYNCING MMSE\n"
+    master_df = syncMMSEData(master_df, mmse_file, registry)
     print "\nSYNCING ADAS\n"
     master_df = syncADASData(master_df, adas_file, registry)
     print "\nSYNCING AVLT\n"
@@ -655,10 +790,18 @@ if __name__ == '__main__':
 
     # Registry file
     registry_file = "../docs/DOD/REGISTRY.csv"
+    # ASI file
+    asi_file = "../docs/DOD/ASI.csv"
     # AVLT file
     avlt_file = "../docs/DOD/NEUROBAT.csv"
     # ADAS file
     adas_file = "../docs/DOD/ADAS.csv"
+    # FAQ file
+    faq_file = "../docs/DOD/FAQ.csv"
+    # MMSE file
+    mmse_file = "../docs/DOD/MMSE.csv"
+    # CDR file
+    cdr_file = "../docs/DOD/CDR.csv"
     # Demog file
     demog_file = "../docs/DOD/PTDEMOG.csv"
     # CSF file
