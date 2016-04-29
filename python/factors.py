@@ -1,5 +1,6 @@
 import cPickle
 import pandas as pd
+from sklearn.preprocessing import StandardScaler
 
 from patterns import parseRawDataset, scaleRawInput
 
@@ -62,11 +63,17 @@ valid_groups = list(col_probs[col_probs>0.001].index)
 igmm_prob_df = proba_df_bl[valid_groups]
 igmm_prob_df.columns = ['IGMM_%s' % _ for _ in igmm_prob_df.columns]
 igmm_prob_df.index = igmm_prob_df.index.droplevel(1)
+scaler = StandardScaler().fit(igmm_prob_df)
+igmm_prob_scaled_df = pd.DataFrame(scaler.transform(igmm_prob_df))
+igmm_prob_scaled_df.set_index(igmm_prob_df.index, inplace=True)
+
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
-nsfa_act_df.columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
+nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
+nsfa_load_df.columns = nsfa_act_df.columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
+
 
 # Get master data
 master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])

@@ -13,6 +13,8 @@ library(stats)
 library(gdata)
 library(psych)
 library(reshape2)
+library(piecewiseSEM)
+library(LambertW)
 
 # # Calculate time to positivity threshold
 # df_av45['threshold'] = threshold
@@ -24,6 +26,7 @@ library(reshape2)
 threshold = 1.27
 pattern_prefix = 'NSFA_'
 to_factor = c('RID','diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender','Diag.AV45_long')
+to_standardize = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post','Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','diag_prior','Age.AV45','Gender','Edu..Yrs.')
 av45_columns = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post')
 target = "CORTICAL_SUMMARY_change"
@@ -110,7 +113,15 @@ lm.testvar = function(var.name) {
   like.p = like$`Pr(>F)`[2]
 }
 
+make_norm = function(response) {
+  mod.Lh <- MLE_LambertW(response, distname = "normal", type = "hh")
+  response.trans = get_input(mod.Lh)
+  test_norm(response.trans)
+  response.trans
+}
+
 # LM (Fixed Effects)
+df_av45[,eval(target)] = make_norm(df_av45[,eval(target)])
 like.pvalues = lapply(pattern_columns,lm.testvar)
 valid_patterns = pattern_columns[like.pvalues <= 0.05]
 form.addons = lapply(valid_patterns,lm.addvar)
@@ -140,8 +151,9 @@ fm_onlypattern.anova = Anova(fm_onlypattern,type='III')
 fm_full.anova = Anova(fm_full,type='III')
 
 # LME (Mixed Effects)
+df_long$value = make_norm(df_long$value)
 like.pvalues = lapply(pattern_columns,lme.testvar)
-valid_patterns = pattern_columns[like.pvalues <= 0.05]
+valid_patterns = pattern_columns[like.pvalues <= 0.1]
 form.addons = lapply(valid_patterns,lme.addvar)
 random_str = '+ (1 + time | RID)'
 base_str = "value ~ time + diag_prior + Age.AV45 + Gender + Edu..Yrs."
@@ -161,17 +173,27 @@ fm_nopattern.summary = summary(fm_nopattern)
 fm_onlypattern.summary = summary(fm_onlypattern)
 fm_full.summary = summary(fm_full)
 
-fm_base.summary$AICtab
-fm_nopattern.summary$AICtab
-fm_onlypattern.summary$AICtab
-fm_full.summary$AICtab
+fm_base.fit = sem.model.fits(fm_base)
+fm_nopattern.fit = sem.model.fits(fm_nopattern)
+fm_onlypattern.fit = sem.model.fits(fm_onlypattern)
+fm_full.fit = sem.model.fits(fm_full)
+
+fm_base.fit
+fm_nopattern.fit
+fm_onlypattern.fit
+fm_full.fit
 
 fm_base.anova = Anova(fm_base,type='III')
 fm_nopattern.anova = Anova(fm_nopattern,type='III')
 fm_onlypattern.anova = Anova(fm_onlypattern,type='III')
 fm_full.anova = Anova(fm_full,type='III')
+full_base.anova = anova(fm_full,fm_base)
+onlypattern_base.anova = anova(fm_onlypattern,fm_base)
+nopattern_base.anova = anova(fm_nopattern,fm_base)
 
-
+full_base.anova$`Pr(>Chisq)`[2]
+onlypattern_base.anova$`Pr(>Chisq)`[2]
+nopattern_base.anova$`Pr(>Chisq)`[2]
 
 
 # PRINTING OUTPUTS AND GRAPHING
