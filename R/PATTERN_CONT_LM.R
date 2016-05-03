@@ -15,6 +15,11 @@ library(psych)
 library(reshape2)
 library(piecewiseSEM)
 library(LambertW)
+library(nnet)
+library(DAAG)
+library(relaimpo)
+library(caret)
+library(cvTools)
 
 # # Calculate time to positivity threshold
 # df_av45['threshold'] = threshold
@@ -23,21 +28,26 @@ library(LambertW)
 # df_av45[which(df_av45$to_threshold < 0),'to_threshold'] = 0
 
 # CONSTANTS
-threshold = 1.27
-pattern_prefix = 'NSFA_'
-to_factor = c('RID','diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender','Diag.AV45_long')
+pattern_prefix = 'IGMM_'
+to_factor = c('RID','diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender','Diag.AV45_long','positive_prior','positive_post')
 to_standardize = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post','Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','diag_prior','Age.AV45','Gender','Edu..Yrs.')
-av45_columns = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post')
-target = "CORTICAL_SUMMARY_change"
+av45_columns = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post','positive_prior','positive_post')
 
+#target = "CORTICAL_SUMMARY_change"
+#target = 'UCB_FS_HC.ICV_slope'
+target = 'diag_prior'
+
+#valid_diags = c('N','SMC','EMCI','LMCI','AD')
 #valid_diags = c('N','SMC','EMCI','LMCI')
 valid_diags = c('N','SMC')
+#valid_diags = c('EMCI')
+#valid_diags = c('LMCI')
 
-#time_col_prefix = 'TIMEpostAV45_ADAS'
-#value_col_prefix = 'ADAScog'
-time_col_prefix = 'TIMEpostAV45_AVLT.'
-value_col_prefix = 'AVLT.'
+time_col_prefix = 'TIMEpostAV45_ADAS'
+value_col_prefix = 'ADAScog'
+#time_col_prefix = 'TIMEpostAV45_AVLT.'
+#value_col_prefix = 'AVLT.'
 
 # FUNCTIONS
 isPatternColumn = function(i){
@@ -51,6 +61,14 @@ lm.addvar = function(var.name) {
 
 lme.addvar = function(var.name) {
   paste('+',paste(var.name,'*','time',sep=''))
+}
+
+plot.model = function(model) {
+  plot(model)
+}
+
+fm.relimp = function(model) {
+  calc.relimp(model, type=c('lmg'), rela=TRUE)
 }
 
 to.long = function(df, time_col_prefix, value_col_prefix) {
@@ -90,9 +108,23 @@ for (i in names(df_av45)){
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 df_long = to.long(df_av45, time_col_prefix, value_col_prefix)
 
+
 # One by one pattern variable likelihood testing
+mlm.testvar = function(var.name) {
+  #CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
+  base_str = paste(target,"~","CORTICAL_SUMMARY_prior*APOE4_BIN + positive_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+  add_str = lm.addvar(var.name)
+  form_base = as.formula(base_str)
+  form = as.formula(paste(base_str,add_str))
+  fm = multinom(form,data=df_av45)
+  fm_base = multinom(form_base,data=df_av45)
+  like = anova(fm_base,fm)
+  like.p = like$`Pr(Chi)`[2]
+}
+
 lme.testvar = function(var.name) {
-  base_str = paste('value',"~","CORTICAL_SUMMARY_prior*time + APOE4_BIN*time + diag_prior + Age.AV45 + Gender + Edu..Yrs.")
+  #diag_prior*time + 
+  base_str = paste('value',"~","CORTICAL_SUMMARY_prior*time + APOE4_BIN*time + Age.AV45 + Gender + Edu..Yrs.")
   add_str = lme.addvar(var.name)
   random_str = '+ (1 + time | RID)'
   form_base = as.formula(paste(base_str,random_str))
@@ -102,6 +134,7 @@ lme.testvar = function(var.name) {
   like = anova(fm_base,fm)
   like.p = like$`Pr(>Chisq)`[2]
 }
+
 lm.testvar = function(var.name) {
   base_str = paste(target,"~","CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + diag_prior + Age.AV45 + Gender + Edu..Yrs.")
   add_str = lm.addvar(var.name)
@@ -120,17 +153,51 @@ make_norm = function(response) {
   response.trans
 }
 
+# MLM (multinomial linear regression)
+non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,target)])
+df_av45 = df_av45[non.na,] 
+like.pvalues = lapply(pattern_columns,mlm.testvar)
+valid_patterns = pattern_columns[like.pvalues <= 0.1]
+form.addons = lapply(valid_patterns,lm.addvar)
+base_form = paste(target,"~ Age.AV45 + Gender + Edu..Yrs.")
+#CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
+nopattern_form = paste(target,"~ CORTICAL_SUMMARY_prior*APOE4_BIN + positive_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+onlypattern_form = paste(base_form,paste(form.addons,collapse=' '))
+full_form = paste(nopattern_form,paste(form.addons,collapse=' '))
+
+fm_base = multinom(as.formula(base_form),df_av45)
+fm_nopattern = multinom(as.formula(nopattern_form),df_av45)
+fm_onlypattern = multinom(as.formula(onlypattern_form),df_av45)
+fm_full = multinom(as.formula(full_form),df_av45)
+
+fm_base.summary = summary(fm_base)
+fm_nopattern.summary = summary(fm_nopattern)
+fm_onlypattern.summary = summary(fm_onlypattern)
+fm_full.summary = summary(fm_full)
+
+fm_base.summary$AIC
+fm_nopattern.summary$AIC
+fm_onlypattern.summary$AIC
+fm_full.summary$AIC
+
+fm_base.anova = Anova(fm_base,type='III')
+fm_nopattern.anova = Anova(fm_nopattern,type='III')
+fm_onlypattern.anova = Anova(fm_onlypattern,type='III')
+fm_full.anova = Anova(fm_full,type='III')
+
 # LM (Fixed Effects)
-df_av45[,eval(target)] = make_norm(df_av45[,eval(target)])
+#df_av45[,eval(target)] = make_norm(df_av45[,eval(target)])
+non.na = complete.cases(df_av45[,c(target,demog_columns,av45_columns)])
+df_av45 = df_av45[non.na,] 
 like.pvalues = lapply(pattern_columns,lm.testvar)
-valid_patterns = pattern_columns[like.pvalues <= 0.05]
+valid_patterns = pattern_columns[like.pvalues <= 0.1]
 form.addons = lapply(valid_patterns,lm.addvar)
 base_form = paste(target,"~ diag_prior + Age.AV45 + Gender + Edu..Yrs.")
 nopattern_form = paste(target,"~ diag_prior + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
 onlypattern_form = paste(base_form,paste(form.addons,collapse=' '))
 full_form = paste(nopattern_form,paste(form.addons,collapse=' '))
 
-fm_base = lm(as.formula(base_form),df_av45)
+fm_base = lm(as.formula(base_form),data=df_av45)
 fm_nopattern = lm(as.formula(nopattern_form),df_av45)
 fm_onlypattern = lm(as.formula(onlypattern_form),df_av45)
 fm_full = lm(as.formula(full_form),df_av45)
@@ -150,14 +217,25 @@ fm_nopattern.anova = Anova(fm_nopattern,type='III')
 fm_onlypattern.anova = Anova(fm_onlypattern,type='III')
 fm_full.anova = Anova(fm_full,type='III')
 
+fm_full.cv = cv.lm(data=df_av45,form.lm=fm_full, m=10, printit=FALSE)
+fm_base.cv = cv.lm(data=df_av45,form.lm=fm_base, m=10, printit=FALSE)
+fm_nopattern.cv = cv.lm(data=df_av45,form.lm=fm_nopattern, m=10, printit=FALSE)
+fm_onlypattern.cv = cv.lm(data=df_av45,form.lm=fm_onlypattern, m=10, printit=FALSE)
+
+attributes(fm_full.cv)$ms
+attributes(fm_onlypattern.cv)$ms
+attributes(fm_nopattern.cv)$ms
+attributes(fm_base.cv)$ms
+
 # LME (Mixed Effects)
-df_long$value = make_norm(df_long$value)
+#df_long$value = make_norm(df_long$value)
 like.pvalues = lapply(pattern_columns,lme.testvar)
 valid_patterns = pattern_columns[like.pvalues <= 0.1]
 form.addons = lapply(valid_patterns,lme.addvar)
 random_str = '+ (1 + time | RID)'
-base_str = "value ~ time + diag_prior + Age.AV45 + Gender + Edu..Yrs."
-nopattern_str = "value ~ diag_prior + CORTICAL_SUMMARY_prior*time + APOE4_BIN*time + Age.AV45 + Gender + Edu..Yrs."
+#diag_prior*time + 
+base_str = "value ~ Age.AV45 + Gender + Edu..Yrs."
+nopattern_str = "value ~ CORTICAL_SUMMARY_prior*time + APOE4_BIN*time + Age.AV45 + Gender + Edu..Yrs."
 base_form = paste(base_str,random_str)
 nopattern_form = paste(nopattern_str,random_str)
 onlypattern_form = paste(base_str,paste(form.addons,collapse=' '),random_str)

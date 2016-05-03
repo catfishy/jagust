@@ -2,6 +2,7 @@ import cPickle
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+from utils import importRoussetCSV
 from patterns import parseRawDataset, scaleRawInput
 
 bilateral = True
@@ -10,7 +11,7 @@ norm_type = 'L1'
 tracer = 'AV45'
 master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
 data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-
+by_subj, threshold = importRoussetCSV(data_csv, translate_threshold=1.11)
 
 nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
 nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
@@ -63,9 +64,9 @@ valid_groups = list(col_probs[col_probs>0.001].index)
 igmm_prob_df = proba_df_bl[valid_groups]
 igmm_prob_df.columns = ['IGMM_%s' % _ for _ in igmm_prob_df.columns]
 igmm_prob_df.index = igmm_prob_df.index.droplevel(1)
-scaler = StandardScaler().fit(igmm_prob_df)
-igmm_prob_scaled_df = pd.DataFrame(scaler.transform(igmm_prob_df))
-igmm_prob_scaled_df.set_index(igmm_prob_df.index, inplace=True)
+# scaler = StandardScaler().fit(igmm_prob_df)
+# igmm_prob_scaled_df = pd.DataFrame(scaler.transform(igmm_prob_df))
+# igmm_prob_scaled_df.set_index(igmm_prob_df.index, inplace=True)
 
 
 # Create NSFA patterns df
@@ -85,6 +86,9 @@ columns += [_ for _ in master_df.columns if _.startswith('AVLT.') or _.startswit
 columns += [_ for _ in master_df.columns if _.startswith('WMH_percentOfICV.') or _.startswith('WMH_postAV45.')]
 other_df = master_df[columns]
 
+# Apply threshold
+result_df['positive_prior'] = (result_df['CORTICAL_SUMMARY_prior'] > threshold).astype(int)
+result_df['positive_post'] = (result_df['CORTICAL_SUMMARY_post'] > threshold).astype(int)
 
 # Combine result_df, igmm_prob_df, nsfa_act_df, and other_df
 combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
