@@ -28,7 +28,7 @@ library(cvTools)
 # df_av45[which(df_av45$to_threshold < 0),'to_threshold'] = 0
 
 # CONSTANTS
-pattern_prefix = 'IGMM_'
+pattern_prefix = 'NSFA_'
 to_factor = c('RID','diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender','Diag.AV45_long','positive_prior','positive_post')
 to_standardize = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post','Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','diag_prior','Age.AV45','Gender','Edu..Yrs.')
