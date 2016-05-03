@@ -2,13 +2,27 @@ import cPickle
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
-from utils import importRoussetCSV
+from utils import importRoussetCSV, bilateralTranslations, importFreesurferLookup, saveFakeAparcInput
 from patterns import parseRawDataset, scaleRawInput
+
+
+def savePatternAsAparc(df, lut_file, bilateral, out_template):
+    if bilateral:
+        index_lookup = bilateralTranslations(lut_file)
+    else:
+        lut_table = importFreesurferLookup(lut_file)
+        index_lookup = {v.replace('-','_').upper():[k] for k,v in lut_table.iteritems()}
+    for colname in df.columns:
+        output_name = out_template % colname
+        pattern = dict(df[colname])
+        saveFakeAparcInput(output_name,pattern,index_lookup)
+
 
 bilateral = True
 scale_type = 'original'
 norm_type = 'L1'
 tracer = 'AV45'
+lut_file = "../FreeSurferColorLUT.txt"
 master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
 data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 by_subj, threshold = importRoussetCSV(data_csv, translate_threshold=1.11)
@@ -57,10 +71,13 @@ rchange_df = data['change_df']
 pattern_col_order = list(pattern_prior_df.columns)
 
 model = cPickle.load(open(model_file, 'rb'))
+means = model.means_
 bl_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
 proba_df_bl = pd.DataFrame(model.predict_proba(bl_patterns_only)).set_index(bl_patterns_only.index)
 col_probs = proba_df_bl.sum(axis=0)
 valid_groups = list(col_probs[col_probs>0.001].index)
+igmm_load_df = pd.DataFrame({i:means[i] for i in valid_groups})
+igmm_load_df.index = pattern_col_order
 igmm_prob_df = proba_df_bl[valid_groups]
 igmm_prob_df.columns = ['IGMM_%s' % _ for _ in igmm_prob_df.columns]
 igmm_prob_df.index = igmm_prob_df.index.droplevel(1)
@@ -98,3 +115,9 @@ combined_df.index.name = 'RID'
 
 output_file = '../pattern_dataset.csv'
 combined_df.to_csv(output_file,index=True)
+
+# Save loading patterns
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
+savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
+igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
+savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)
