@@ -431,7 +431,7 @@ def syncDiagData(master_df, diag_file):
     # header order 
     headers = ['Diag_%s' % (_+1,) for _ in range(timepoints)]
     headers += ["Diag_Date_%s" % (_+1,) for _ in range(timepoints)]
-    headers += [comp_key]
+    headers += [comp_key, 'Diag_closest_AV45_BL', 'Diag_closest_AV45_2']
 
     # extraction fn
     def extraction_fn(scrno, subj_rows):
@@ -442,6 +442,11 @@ def syncDiagData(master_df, diag_file):
         merge_df = diag_long.merge(date_long,left_index=True,right_index=True)
         comp_diag = subj_rows.sort_values(by='TimeFromCompDate').iloc[0]['diag']
         merge_df.loc[scrno,comp_key] = comp_diag
+
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av45_date1, av45_date2], day_limit=365/2)
+        merge_df.loc[scrno,'Diag_closest_AV45_BL'] = closest_vals[0]
+        merge_df.loc[scrno,'Diag_closest_AV45_2'] = closest_vals[1]
         return merge_df
 
     parsed_df = parseSubjectGroups(diag_df, extraction_fn)

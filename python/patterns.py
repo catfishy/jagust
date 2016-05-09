@@ -193,13 +193,15 @@ def group_comparisons(df, groups, keys, adjust=True):
     return data
 
 
-def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type='L1', bilateral=True):
+def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, 
+        tracer='AV45', ref_key='WHOLECEREB', norm_type='L1', bilateral=True, dod=False):
     assert norm_type in set(['L1','L2','Linf'])
     assert tracer in set(['AV45','AV1451'])
     assert ref_key in set(['WHOLECEREB'])
 
     df = pd.read_csv(data_csv)
-    df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
+    if df['subject'].dtype != 'int64':
+        df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
     value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
     size_df = pd.pivot_table(df, values='groupsize', index=['subject','timepoint'], columns='name')
     value_df.columns = [_.upper().replace('-','_') for _ in value_df.columns]
@@ -283,26 +285,36 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45'
 
 
     # Import master csv
-    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
-    master_df.columns = master_df.columns.get_level_values(1)
-    master_df.set_index('RID',inplace=True)
-
-    # Get Diagnoses
-    if tracer == 'AV45':
-        diag_keys = {'BL': 'Diag@AV45_long',
-                     'Scan2': 'Diag@AV45_2_long',
-                     'Scan3': 'Diag@AV45_3_long'}
-    elif tracer == 'AV1451':
-        diag_keys = {'BL': 'Diag@AV1451',
-                     'Scan2': 'Diag@AV45_2',
-                     'Scan3': 'Diag@AV45_3'}
+    if dod:
+        master_df = pd.read_csv(master_csv, low_memory=False)
+        master_df.set_index('SCRNO',inplace=True)
+        # Get Diagnoses
+        if tracer == 'AV45':
+            diag_keys = {'BL': 'Diag_closest_AV45_BL',
+                         'Scan2': 'Diag_closest_AV45_2',
+                         'Scan3': ''}
+        else:
+            raise Exception("Diag keys for tracer %s not specified" % tracer)
     else:
-        raise Exception("Diag keys for tracer %s not specified" % tracer)
+        master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+        master_df.columns = master_df.columns.get_level_values(1)
+        master_df.set_index('RID',inplace=True)
+        # Get Diagnoses
+        if tracer == 'AV45':
+            diag_keys = {'BL': 'Diag@AV45_long',
+                         'Scan2': 'Diag@AV45_2_long',
+                         'Scan3': 'Diag@AV45_3_long'}
+        elif tracer == 'AV1451':
+            diag_keys = {'BL': 'Diag@AV1451',
+                         'Scan2': 'Diag@AV45_2',
+                         'Scan3': 'Diag@AV45_3'}
+        else:
+            raise Exception("Diag keys for tracer %s not specified" % tracer)
+
     diags = []
     for subj, tp in pivot_df.index.values:
         diags.append({'subject': subj, 'timepoint': tp, 'diag': master_df.loc[subj,diag_keys[tp]]})
     diags_df = pd.DataFrame(diags).set_index(['subject','timepoint'])
-
 
     # split by timepoint
     pattern_bl_df = pattern_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)

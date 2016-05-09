@@ -1,10 +1,17 @@
+import os, sys
+
 import cPickle
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
+import scipy
 
 from utils import importRoussetCSV, bilateralTranslations, importFreesurferLookup, saveFakeAparcInput
 from patterns import parseRawDataset, scaleRawInput
 
+def savePatternAsMat(pattern_bl_df, output_file):
+    scipy.io.savemat(output_file,{'ID': list(pattern_bl_df.index), 
+                                            'Features': list(pattern_bl_df.columns), 
+                                            'Y':pattern_bl_df.T.as_matrix()})
 
 def savePatternAsAparc(df, lut_file, bilateral, out_template):
     if bilateral:
@@ -17,20 +24,27 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
         pattern = dict(df[colname])
         saveFakeAparcInput(output_name,pattern,index_lookup)
 
+# SETUP
 
-bilateral = True
-scale_type = 'original'
-norm_type = 'L1'
-tracer = 'AV45'
-lut_file = "../FreeSurferColorLUT.txt"
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
-data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-by_subj, threshold = importRoussetCSV(data_csv, translate_threshold=1.11)
+#master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
+#data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+#pattern_mat = '../av45_pattern_bl.mat'
+
+master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
+data_csv = '../datasets/pvc_dod_av45/mostregions_output.csv'
+pattern_mat = '../dod_av45_pattern_bl.mat'
 
 nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
 nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
 model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
 
+dod = True
+bilateral = True
+scale_type = 'original'
+norm_type = 'L1'
+tracer = 'AV45'
+lut_file = "../FreeSurferColorLUT.txt"
+by_subj, threshold = importRoussetCSV(data_csv, translate_threshold=1.11)
 
 lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
              'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','CEREBRAL_WHITE','BRAIN_STEM']
@@ -52,9 +66,7 @@ pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE
 if bilateral: # truncate keys
     pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
 
-
-# Create IGMM patterns df
-data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type=norm_type, bilateral=bilateral)
+data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type=norm_type, bilateral=bilateral, dod=dod)
 pattern_bl_df = data['pattern_bl_df']
 pattern_scan2_df = data['pattern_scan2_df']
 pattern_scan3_df = data['pattern_scan3_df']
@@ -70,6 +82,12 @@ result_df = data['result_df']
 rchange_df = data['change_df']
 pattern_col_order = list(pattern_prior_df.columns)
 
+
+savePatternAsMat(pattern_bl_df, pattern_mat)
+
+sys.exit(1)
+
+# Create IGMM patterns df
 model = cPickle.load(open(model_file, 'rb'))
 means = model.means_
 bl_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
@@ -85,13 +103,11 @@ igmm_prob_df.index = igmm_prob_df.index.droplevel(1)
 # igmm_prob_scaled_df = pd.DataFrame(scaler.transform(igmm_prob_df))
 # igmm_prob_scaled_df.set_index(igmm_prob_df.index, inplace=True)
 
-
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
 nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
 nsfa_load_df.columns = nsfa_act_df.columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
-
 
 # Get master data
 master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
@@ -99,13 +115,22 @@ master_df.columns = master_df.columns.get_level_values(1)
 master_df.set_index('RID', inplace=True)
 columns = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','Diag@AV45_long','UCB_FS_HC/ICV_slope']
 columns += [_ for _ in master_df.columns if _.startswith('ADAScog.') or _.startswith('TIMEpostAV45_ADAS.')]
+columns += ['ADAS_3MTH_AV45','ADASslope_postAV45']
 columns += [_ for _ in master_df.columns if _.startswith('AVLT.') or _.startswith('TIMEpostAV45_AVLT.')]
+columns += ['AVLT_AV45_1_3MTHS','AVLTslope_postAV45']
 columns += [_ for _ in master_df.columns if _.startswith('WMH_percentOfICV.') or _.startswith('WMH_postAV45.')]
+columns += ['WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope']
+columns += [_ for _ in master_df.columns if _.startswith('UW_MEM_') or _.startswith('UW_MEM_postAV45_')]
+columns += [_ for _ in master_df.columns if _.startswith('UW_EF_') or _.startswith('UW_EF_postAV45_')]
 other_df = master_df[columns]
 
+print columns
+
 # Apply threshold
-result_df['positive_prior'] = (result_df['CORTICAL_SUMMARY_prior'] > threshold).astype(int)
-result_df['positive_post'] = (result_df['CORTICAL_SUMMARY_post'] > threshold).astype(int)
+result_df['positive_prior'] = (result_df['CORTICAL_SUMMARY_prior'] >= threshold).astype(int)
+result_df['positive_post'] = (result_df['CORTICAL_SUMMARY_post'] >= threshold).astype(int)
+result_df['ad_prior'] = (result_df['diag_prior'] == 'AD').astype(int)
+result_df['ad_post'] = (result_df['diag_post'] == 'AD').astype(int)
 
 # Combine result_df, igmm_prob_df, nsfa_act_df, and other_df
 combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
@@ -116,8 +141,8 @@ combined_df.index.name = 'RID'
 output_file = '../pattern_dataset.csv'
 combined_df.to_csv(output_file,index=True)
 
-# Save loading patterns
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
-savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
-igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
-savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)
+# # Save loading patterns
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
+# savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
+# savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)

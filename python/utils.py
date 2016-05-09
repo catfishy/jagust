@@ -644,7 +644,10 @@ def importRoussetCSV(rousset_csv, translate_threshold=1.11):
     by_subj = {}
     for subject, subj_rows in df.groupby('subject'):
         tp_results = {}
-        rid = int(subject.split('-')[-1])
+        if isinstance(subject,str):
+            rid = int(subject.split('-')[-1])
+        else:
+            rid = int(subject)
         for timepoint, tp_rows in subj_rows.groupby('timepoint'):
             pvc_df = tp_rows[['name','pvcval','nonpvcval','groupsize']]
             pvc_dict = pvc_df.set_index('name').to_dict(orient='index')
