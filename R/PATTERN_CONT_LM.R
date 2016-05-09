@@ -282,6 +282,65 @@ fm_onlypattern.ccr
 fm_nopattern.ccr
 fm_base.ccr
 
+
+# LM STEP AIC
+
+### TODO: TRY RFE (IN CARET PACKAGE)
+
+df_av45[,eval(target)] = make_norm(df_av45[,eval(target)])
+non.na = complete.cases(df_av45[,c(target,demog_columns,av45_columns)])
+df_av45 = df_av45[non.na,] 
+all.addons = lapply(pattern_columns,lm.addvar)
+base_form = paste(target,"~ diag_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+nopattern_form = paste(target,"~ diag_prior*APOE4_BIN + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+onlypattern_form = paste(base_form,paste(all.addons,collapse=' '))
+
+fm_base = lm(as.formula(base_form),data=df_av45)
+fm_nopattern = lm(as.formula(nopattern_form),df_av45)
+fm_onlypattern = lm(as.formula(onlypattern_form),df_av45)
+
+trControl = trainControl(method = 'LGOCV', number = 10)
+rControl = rfeControl(functions=caretFuncs, method='repeatedcv', number=10, verbose=FALSE)
+
+
+fm_base.lmfit = train(as.formula(base_form), data=df_av45, method='lmStepAIC', trControl=trControl)
+fm_nopattern.lmfit = train(as.formula(nopattern_form), data=df_av45, method='lmStepAIC', trControl=trControl)
+fm_onlypattern.lmfit = train(as.formula(onlypattern_form), data=df_av45, method='lmStepAIC', trControl=trControl)
+fm_base.step = fm_base.lmfit$finalModel
+fm_nopattern.step = fm_nopattern.lmfit$finalModel
+fm_onlypattern.step = fm_onlypattern.lmfit$finalModel
+
+#fm_base.step = stepAIC(fm_base, direction='both')
+#fm_nopattern.step = stepAIC(fm_nopattern, direction='both')
+#fm_onlypattern.step = stepAIC(fm_onlypattern, direction='both')
+
+fm_base.fit = sem.model.fits(fm_base.step)
+fm_nopattern.fit = sem.model.fits(fm_nopattern.step)
+fm_onlypattern.fit = sem.model.fits(fm_onlypattern.step)
+
+fm_base.anova = Anova(fm_base.step,type='III')
+fm_nopattern.anova = Anova(fm_nopattern.step,type='III')
+fm_onlypattern.anova = Anova(fm_onlypattern.step,type='III')
+
+fm_base.fit
+fm_nopattern.fit
+fm_onlypattern.fit
+
+anova(fm_nopattern.step,fm_base.step)
+anova(fm_onlypattern.step,fm_base.step)
+
+par(mfrow=c(2,2))
+plot(fm_base.step)
+title("Base Model", outer=T, line=-2)
+plot(fm_nopattern.step)
+title("No Pattern Model", outer=T, line=-2)
+plot(fm_onlypattern.step)
+title("Only Pattern Model", outer=T, line=-2)
+
+
+#params = expand.grid(alpha=seq(0,1,by=0.1),lambda=2^seq(1,-10, by=-0.3))
+#lmFit = train(as.formula(onlypattern_form), data=df_av45, method="glmnet", trControl=trControl, tuneGrid=params)
+
 # LM (Fixed Effects)
 #df_av45[,eval(target)] = make_norm(df_av45[,eval(target)])
 non.na = complete.cases(df_av45[,c(target,demog_columns,av45_columns)])
@@ -289,15 +348,18 @@ df_av45 = df_av45[non.na,]
 like.pvalues = lapply(pattern_columns,lm.testvar)
 valid_patterns = pattern_columns[like.pvalues <= 0.05]
 form.addons = lapply(valid_patterns,lm.addvar)
+all.addons = lapply(pattern_columns,lm.addvar)
 base_form = paste(target,"~ diag_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
 nopattern_form = paste(target,"~ diag_prior*APOE4_BIN + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
 onlypattern_form = paste(base_form,paste(form.addons,collapse=' '))
 full_form = paste(nopattern_form,paste(form.addons,collapse=' '))
+allpattern_form = paste(base_form,paste(all.addons,collapse=' '))
 
 fm_base = lm(as.formula(base_form),data=df_av45)
 fm_nopattern = lm(as.formula(nopattern_form),df_av45)
 fm_onlypattern = lm(as.formula(onlypattern_form),df_av45)
 fm_full = lm(as.formula(full_form),df_av45)
+fm_all = lm(as.formula(allpattern_form),df_av45)
 
 fm_base.summary = summary(fm_base)
 fm_nopattern.summary = summary(fm_nopattern)
@@ -342,6 +404,7 @@ full_form
 anova(fm_full,fm_base)
 anova(fm_onlypattern,fm_base)
 anova(fm_nopattern,fm_base)
+
 
 
 
