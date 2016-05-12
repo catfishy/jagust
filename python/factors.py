@@ -24,19 +24,35 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
         pattern = dict(df[colname])
         saveFakeAparcInput(output_name,pattern,index_lookup)
 
-# SETUP
-
+# SETUP FILES
 #master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
 #data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 #pattern_mat = '../av45_pattern_bl.mat'
+#dod = False
 
 master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
 data_csv = '../datasets/pvc_dod_av45/mostregions_output.csv'
 pattern_mat = '../dod_av45_pattern_bl.mat'
+dod = True
 
-nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+# PATTERN INPUT FILES
+# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+
+nsfa_activation_csv = '../nsfa/dod_av45_factor_activations.csv'
+nsfa_loading_csv = '../nsfa/dod_av45_factor_loadings.csv'
+model_file = None
+
+# OUTPUT FILES
+# output_file = '../nsfa/pattern_dataset.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
+
+output_file = '../nsfa/dod_pattern_dataset.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
+
 
 dod = True
 bilateral = True
@@ -82,26 +98,8 @@ result_df = data['result_df']
 rchange_df = data['change_df']
 pattern_col_order = list(pattern_prior_df.columns)
 
-
-savePatternAsMat(pattern_bl_df, pattern_mat)
-
-sys.exit(1)
-
-# Create IGMM patterns df
-model = cPickle.load(open(model_file, 'rb'))
-means = model.means_
-bl_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
-proba_df_bl = pd.DataFrame(model.predict_proba(bl_patterns_only)).set_index(bl_patterns_only.index)
-col_probs = proba_df_bl.sum(axis=0)
-valid_groups = list(col_probs[col_probs>0.001].index)
-igmm_load_df = pd.DataFrame({i:means[i] for i in valid_groups})
-igmm_load_df.index = pattern_col_order
-igmm_prob_df = proba_df_bl[valid_groups]
-igmm_prob_df.columns = ['IGMM_%s' % _ for _ in igmm_prob_df.columns]
-igmm_prob_df.index = igmm_prob_df.index.droplevel(1)
-# scaler = StandardScaler().fit(igmm_prob_df)
-# igmm_prob_scaled_df = pd.DataFrame(scaler.transform(igmm_prob_df))
-# igmm_prob_scaled_df.set_index(igmm_prob_df.index, inplace=True)
+# SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
+#savePatternAsMat(pattern_bl_df, pattern_mat)
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
@@ -109,20 +107,48 @@ nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
 nsfa_load_df.columns = nsfa_act_df.columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
 
+# Create IGMM patterns df
+if model_file is not None:
+    model = cPickle.load(open(model_file, 'rb'))
+    means = model.means_
+    bl_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
+    proba_df_bl = pd.DataFrame(model.predict_proba(bl_patterns_only)).set_index(bl_patterns_only.index)
+    col_probs = proba_df_bl.sum(axis=0)
+    valid_groups = list(col_probs[col_probs>0.001].index)
+    igmm_load_df = pd.DataFrame({i:means[i] for i in valid_groups})
+    igmm_load_df.index = pattern_col_order
+    igmm_prob_df = proba_df_bl[valid_groups]
+    igmm_prob_df.columns = ['IGMM_%s' % _ for _ in igmm_prob_df.columns]
+    igmm_prob_df.index = igmm_prob_df.index.droplevel(1)
+else:
+    igmm_prob_df = pd.DataFrame()
+
 # Get master data
-master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
-master_df.columns = master_df.columns.get_level_values(1)
-master_df.set_index('RID', inplace=True)
-columns = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','Diag@AV45_long','UCB_FS_HC/ICV_slope']
-columns += [_ for _ in master_df.columns if _.startswith('ADAScog.') or _.startswith('TIMEpostAV45_ADAS.')]
-columns += ['ADAS_3MTH_AV45','ADASslope_postAV45']
-columns += [_ for _ in master_df.columns if _.startswith('AVLT.') or _.startswith('TIMEpostAV45_AVLT.')]
-columns += ['AVLT_AV45_1_3MTHS','AVLTslope_postAV45']
-columns += [_ for _ in master_df.columns if _.startswith('WMH_percentOfICV.') or _.startswith('WMH_postAV45.')]
-columns += ['WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope']
-columns += [_ for _ in master_df.columns if _.startswith('UW_MEM_') or _.startswith('UW_MEM_postAV45_')]
-columns += [_ for _ in master_df.columns if _.startswith('UW_EF_') or _.startswith('UW_EF_postAV45_')]
-other_df = master_df[columns]
+if dod:
+    master_df = pd.read_csv(master_csv, low_memory=False)
+    master_df.set_index('SCRNO', inplace=True)
+    columns = ['Age','Sex','Edu','APOE4BIN','Diag_closest_AV45_BL',
+               'ANTIDEP_USE','SSRI','PTGroup','GroupNum','GroupNum_TBI','GroupNum_PTSD']
+    columns += [_ for _ in master_df.columns if _.startswith('ADAS')]
+    columns += [_ for _ in master_df.columns if _.startswith('AVLT')]
+    columns += [_ for _ in master_df.columns if _.startswith('GD')]
+    columns += [_ for _ in master_df.columns if _.startswith('CDR_GLOBAL')]
+    columns += [_ for _ in master_df.columns if _.startswith('CDR_SOB')]
+    other_df = master_df[columns]
+else:
+    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+    master_df.columns = master_df.columns.get_level_values(1)
+    master_df.set_index('RID', inplace=True)
+    columns = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','Diag@AV45_long','UCB_FS_HC/ICV_slope']
+    columns += [_ for _ in master_df.columns if _.startswith('ADAScog.') or _.startswith('TIMEpostAV45_ADAS.')]
+    columns += ['ADAS_3MTH_AV45','ADASslope_postAV45']
+    columns += [_ for _ in master_df.columns if _.startswith('AVLT.') or _.startswith('TIMEpostAV45_AVLT.')]
+    columns += ['AVLT_AV45_1_3MTHS','AVLTslope_postAV45']
+    columns += [_ for _ in master_df.columns if _.startswith('WMH_percentOfICV.') or _.startswith('WMH_postAV45.')]
+    columns += ['WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope']
+    columns += [_ for _ in master_df.columns if _.startswith('UW_MEM_') or _.startswith('UW_MEM_postAV45_')]
+    columns += [_ for _ in master_df.columns if _.startswith('UW_EF_') or _.startswith('UW_EF_postAV45_')]
+    other_df = master_df[columns]
 
 print columns
 
@@ -133,16 +159,19 @@ result_df['ad_prior'] = (result_df['diag_prior'] == 'AD').astype(int)
 result_df['ad_post'] = (result_df['diag_post'] == 'AD').astype(int)
 
 # Combine result_df, igmm_prob_df, nsfa_act_df, and other_df
-combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
+if len(igmm_prob_df.index) > 0:
+    combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
+else:
+    combined_df = nsfa_act_df
 combined_df = combined_df.merge(result_df,left_index=True,right_index=True)
 combined_df = combined_df.merge(other_df,left_index=True,right_index=True)
-combined_df.index.name = 'RID'
+if dod:
+    combined_df.index.name = 'SCRNO'
+else:
+    combined_df.index.name = 'RID'
 
-output_file = '../pattern_dataset.csv'
 combined_df.to_csv(output_file,index=True)
 
 # # Save loading patterns
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
-# savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
+savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
 # savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)

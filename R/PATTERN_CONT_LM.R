@@ -23,6 +23,7 @@ library(cvTools)
 library(VGAM)
 library(lmtest)
 library(languageR)
+library(stringr)
 
 # # Calculate time to positivity threshold
 # df_av45['threshold'] = threshold
@@ -38,14 +39,14 @@ demog_columns = c('RID','APOE4_BIN','diag_prior','Age.AV45','Gender','Edu..Yrs.'
 av45_columns = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post','positive_prior','positive_post')
 
 #target = "CORTICAL_SUMMARY_change"
-#target = "UW_EF_slope"
-target = "UW_MEM_slope"
-#target = "ADASslope_postAV45"
-#target = "AVLTslope_postAV45"
-#target = "ADAS_3MTH_AV45"
-#target = "AVLT_AV45_1_3MTHS"
-#target = "UW_MEM_BL_3months"
 #target = "UW_EF_BL_3months"
+#target = "UW_EF_slope"
+target = "ADAS_3MTH_AV45"
+#target = "ADASslope_postAV45"
+#target = "AVLT_AV45_1_3MTHS"
+#target = "AVLTslope_postAV45"
+#target = "UW_MEM_BL_3months"
+#target = "UW_MEM_slope"
 
 #target = 'UCB_FS_HC.ICV_slope'
 #target = 'diag_prior'
@@ -84,6 +85,15 @@ lme.addvar = function(var.name) {
   paste('+',paste(var.name,'*','time',sep=''))
 }
 
+save.printout = function(output_file, obj) {
+  sink(output_file); print(obj, correlation=TRUE); sink(file=NULL)
+}
+
+save.plot = function(output_file, plot_fn) {
+  pdf(file=output_file);plot_fn();dev.off();
+}
+
+
 plot.model = function(model) {
   plot(model)
 }
@@ -121,8 +131,9 @@ to.long = function(df, time_col_prefix, value_col_prefix) {
   df_long[complete.cases(df_long[,names(df_long)]),]
 }
 
+
 # IMPORT
-df_av45 = read.csv('pattern_dataset.csv')
+df_av45 = read.csv('nsfa/pattern_dataset.csv')
 df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 for (i in names(df_av45)){
   if (i %in% to_factor){
@@ -131,6 +142,22 @@ for (i in names(df_av45)){
 }
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 df_long = to.long(df_av45, time_col_prefix, value_col_prefix)
+
+# standardize predictors
+# cross_to_standardize = c(to_standardize,pattern_columns,target)
+# long_to_standardize = c(to_standardize,pattern_columns,'time','value')
+# cross_normalization = preProcess(df_av45[,cross_to_standardize])
+# long_normalization = preProcess(df_long[,long_to_standardize])
+# df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
+# df_long[,long_to_standardize] = predict(long_normalization, df_long[,long_to_standardize])
+
+# make long response normal
+df_long$value = Gaussianize(df_long$value, type='hh', method='MLE', return.u=TRUE)
+
+# make crossx response normal
+non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,target)])
+df_av45 = df_av45[non.na,]
+df_av45[,eval(target)] = Gaussianize(df_av45[,eval(target)], type='hh', method='MLE', return.u=TRUE)
 
 
 # One by one pattern variable likelihood testing
@@ -213,83 +240,110 @@ lm.testvar = function(var.name) {
   like.p = like$`Pr(>F)`[2]
 }
 
-make_norm = function(response) {
-  mod.Lh <- MLE_LambertW(response, distname = "normal", type = "hh")
-  response.trans = get_input(mod.Lh)
-  test_norm(response.trans)
-  response.trans
+run.rfe = function(form, var.response, dataset) {
+  x = as.data.frame(model.matrix(as.formula(form),dataset))[,-1]
+  nzv_cols = nearZeroVar(x)
+  if (length(nzv_cols) > 0) {
+    x = x[, -nzv_cols]
+  }
+  corr_cols = findCorrelation(cor(x),.8)
+  if (length(corr_cols) > 0) {
+    x = x[, -corr_cols]
+  }
+
+  colnames(x) = lapply(colnames(x), make.names)
+  rownames(x) = NULL
+  y = as.numeric(df_av45[,var.response])
+  
+  ctrl = rfeControl(functions = lmFuncs, 
+                    method = "repeatedcv", 
+                    number = 10,
+                    repeats = 5,
+                    rerank = TRUE,
+                    verbose = FALSE)
+  set.seed(1)
+  rfe.output = rfe(x, 
+                   y, 
+                   sizes = c(2:ncol(x)),
+                   rfeControl = ctrl,
+                   metric = 'Rsquared')
+  rfe.output
 }
 
-# MLM (multinomial linear regression)
-non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,target)])
-df_av45 = df_av45[non.na,]
-like.pvalues = lapply(pattern_columns,mlm.testvar)
-#like.pvalues = p.adjust(like.pvalues, method='BH')
-valid_patterns = pattern_columns[like.pvalues <= 0.05]
-form.addons = lapply(valid_patterns,lm.addvar)
-base_form = paste(target,"~ APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
-#CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN
-nopattern_form = paste(target,"~ CORTICAL_SUMMARY_prior*APOE4_BIN + positive_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
-onlypattern_form = paste(base_form,paste(form.addons,collapse=' '))
-full_form = paste(nopattern_form,paste(form.addons,collapse=' '))
-null_form = paste(target,'~ 1')
 
-fm_null = vglm(as.formula(null_form), family=multinomial(refLevel=1), data=df_av45)
-fm_base = vglm(as.formula(base_form), family=multinomial(refLevel=1), data=df_av45)
-fm_nopattern = vglm(as.formula(nopattern_form), family=multinomial(refLevel=1), data=df_av45)
-fm_onlypattern = vglm(as.formula(onlypattern_form), family=multinomial(refLevel=1), data=df_av45)
-fm_full = vglm(as.formula(full_form), family=multinomial(refLevel=1), data=df_av45)
+# LM RFE
+all.addons = lapply(pattern_columns,lm.addvar)
+addons_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
+base_form = paste(target,"~ diag_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+nopattern_form = paste(target,"~ diag_prior*APOE4_BIN + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+onlypattern_form = paste(base_form,paste(all.addons,collapse=' '))
+full_form = paste(nopattern_form,paste(all.addons,collapse=' '))
 
-fm_base.aic = VGAM::AIC(fm_base)
-fm_nopattern.aic = VGAM::AIC(fm_nopattern)
-fm_onlypattern.aic = VGAM::AIC(fm_onlypattern)
-fm_full.aic = VGAM::AIC(fm_full)
+rfe.base = run.rfe(base_form, target, df_av45)
+rfe.nopattern = run.rfe(nopattern_form, target, df_av45)
+#rfe.onlypattern = run.rfe(onlypattern_form, target, df_av45)
+rfe.full = run.rfe(full_form, target, df_av45)
 
-fm_base.deviance = VGAM::deviance(fm_base)
-fm_nopattern.deviance = VGAM::deviance(fm_nopattern)
-fm_onlypattern.deviance = VGAM::deviance(fm_onlypattern)
-fm_full.deviance = VGAM::deviance(fm_full)
+fm_base = rfe.base$fit
+fm_nopattern = rfe.nopattern$fit
+#fm_onlypattern = rfe.onlypattern$fit
+fm_full = rfe.full$fit
 
-fm_null.ll = VGAM::logLik(fm_null)
-fm_base.ll = VGAM::logLik(fm_base)
-fm_nopattern.ll = VGAM::logLik(fm_nopattern)
-fm_onlypattern.ll = VGAM::logLik(fm_onlypattern)
-fm_full.ll = VGAM::logLik(fm_full)
+fm_base.summary = summary(fm_base)
+fm_nopattern.summary = summary(fm_nopattern)
+#fm_onlypattern.summary = summary(fm_onlypattern)
+fm_full.summary = summary(fm_full)
 
-fm_base.summary = VGAM::summary(fm_base)
-fm_nopattern.summary = VGAM::summary(fm_nopattern)
-fm_onlypattern.summary = VGAM::summary(fm_onlypattern)
-fm_full.summary = VGAM::summary(fm_full)
+fm_base.fit = sem.model.fits(fm_base)
+fm_nopattern.fit = sem.model.fits(fm_nopattern)
+#fm_onlypattern.fit = sem.model.fits(fm_onlypattern)
+fm_full.fit = sem.model.fits(fm_full)
 
-fm_full.ccr = mlm.cv(df_av45,as.formula(full_form),target)
-fm_onlypattern.ccr = mlm.cv(df_av45,as.formula(onlypattern_form),target)
-fm_nopattern.ccr = mlm.cv(df_av45,as.formula(nopattern_form),target)
-fm_base.ccr = mlm.cv(df_av45,as.formula(base_form),target)
+fm_base.anova = Anova(fm_base,type='III')
+fm_nopattern.anova = Anova(fm_nopattern,type='III')
+#fm_onlypattern.anova = Anova(fm_onlypattern,type='III')
+fm_full.anova = Anova(fm_full,type='III')
 
 
-fm_base.aic
-fm_nopattern.aic
-fm_onlypattern.aic
-fm_full.aic
+save.printout(paste('R/output/',target,'_fm_base_summary','.txt',sep=''),fm_base.summary)
+save.printout(paste('R/output/',target,'_fm_nopattern_summary','.txt',sep=''),fm_nopattern.summary)
+save.printout(paste('R/output/',target,'_fm_full_summary','.txt',sep=''),fm_full.summary)
+save.printout(paste('R/output/',target,'_fm_base_fit','.txt',sep=''),fm_base.fit)
+save.printout(paste('R/output/',target,'_fm_nopattern_fit','.txt',sep=''),fm_nopattern.fit)
+save.printout(paste('R/output/',target,'_fm_full_fit','.txt',sep=''),fm_full.fit)
+save.printout(paste('R/output/',target,'_fm_base_anova','.txt',sep=''),fm_base.anova)
+save.printout(paste('R/output/',target,'_fm_nopattern_anova','.txt',sep=''),fm_nopattern.anova)
+save.printout(paste('R/output/',target,'_fm_full_anova','.txt',sep=''),fm_full.anova)
+save(rfe.base,file=paste('R/output/',target,'_rfe_base_obj',sep=''))
+save(rfe.nopattern,file=paste('R/output/',target,'_rfe_nopattern_obj',sep=''))
+save(rfe.full,file=paste('R/output/',target,'_rfe_full_obj',sep=''))
 
-as.vector(1 - (fm_base.ll / fm_null.ll))
-as.vector(1 - (fm_nopattern.ll / fm_null.ll))
-as.vector(1 - (fm_onlypattern.ll / fm_null.ll))
-as.vector(1 - (fm_full.ll / fm_null.ll))
+fm_base.plotfn = function() {par(mfrow=c(2,2));plot(fm_base);title("Base Model", outer=T, line=-2);}
+fm_nopattern.plotfn = function() {par(mfrow=c(2,2));plot(fm_nopattern);title("No Pattern Model", outer=T, line=-2);}
+fm_full.plotfn = function() {par(mfrow=c(2,2));plot(fm_full);title("Full Model", outer=T, line=-2);}
+save.plot(paste('R/output/',target,'_fm_base_lmplot.pdf',sep=''), fm_base.plotfn)
+save.plot(paste('R/output/',target,'_fm_nopattern_lmplot.pdf',sep=''), fm_nopattern.plotfn)
+save.plot(paste('R/output/',target,'_fm_full_lmplot.pdf',sep=''), fm_full.plotfn)
 
-fm_full.ccr
-fm_onlypattern.ccr
-fm_nopattern.ccr
-fm_base.ccr
+save.plot(paste('R/output/',target,'_fm_base_avplot.pdf',sep=''), function() {avPlots(fm_base, ask=FALSE)})
+save.plot(paste('R/output/',target,'_fm_nopattern_avplot.pdf',sep=''), function() {avPlots(fm_nopattern, ask=FALSE)})
+save.plot(paste('R/output/',target,'_fm_full_avplot.pdf',sep=''), function() {avPlots(fm_full, ask=FALSE)})
+
+fm_base.summary
+fm_nopattern.summary
+fm_full.summary
+
+fm_base.fit
+fm_nopattern.fit
+fm_full.fit
 
 
-# LM STEP AIC
 
-### TODO: TRY RFE (IN CARET PACKAGE)
 
-df_av45[,eval(target)] = make_norm(df_av45[,eval(target)])
-non.na = complete.cases(df_av45[,c(target,demog_columns,av45_columns)])
-df_av45 = df_av45[non.na,] 
+
+
+
+# LM STEPAIC
 all.addons = lapply(pattern_columns,lm.addvar)
 base_form = paste(target,"~ diag_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
 nopattern_form = paste(target,"~ diag_prior*APOE4_BIN + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
@@ -300,9 +354,6 @@ fm_nopattern = lm(as.formula(nopattern_form),df_av45)
 fm_onlypattern = lm(as.formula(onlypattern_form),df_av45)
 
 trControl = trainControl(method = 'LGOCV', number = 10)
-rControl = rfeControl(functions=caretFuncs, method='repeatedcv', number=10, verbose=FALSE)
-
-
 fm_base.lmfit = train(as.formula(base_form), data=df_av45, method='lmStepAIC', trControl=trControl)
 fm_nopattern.lmfit = train(as.formula(nopattern_form), data=df_av45, method='lmStepAIC', trControl=trControl)
 fm_onlypattern.lmfit = train(as.formula(onlypattern_form), data=df_av45, method='lmStepAIC', trControl=trControl)
@@ -310,9 +361,14 @@ fm_base.step = fm_base.lmfit$finalModel
 fm_nopattern.step = fm_nopattern.lmfit$finalModel
 fm_onlypattern.step = fm_onlypattern.lmfit$finalModel
 
-#fm_base.step = stepAIC(fm_base, direction='both')
-#fm_nopattern.step = stepAIC(fm_nopattern, direction='both')
-#fm_onlypattern.step = stepAIC(fm_onlypattern, direction='both')
+fm_base.step = stepAIC(fm_base, direction='both')
+fm_nopattern.step = stepAIC(fm_nopattern, direction='both')
+fm_onlypattern.step = stepAIC(fm_onlypattern, direction='both')
+
+fm_base.summary = summary(fm_base.step)
+fm_nopattern.summary = summary(fm_nopattern.step)
+fm_onlypattern.summary = summary(fm_onlypattern.step)
+
 
 fm_base.fit = sem.model.fits(fm_base.step)
 fm_nopattern.fit = sem.model.fits(fm_nopattern.step)
@@ -325,9 +381,6 @@ fm_onlypattern.anova = Anova(fm_onlypattern.step,type='III')
 fm_base.fit
 fm_nopattern.fit
 fm_onlypattern.fit
-
-anova(fm_nopattern.step,fm_base.step)
-anova(fm_onlypattern.step,fm_base.step)
 
 par(mfrow=c(2,2))
 plot(fm_base.step)
@@ -342,9 +395,6 @@ title("Only Pattern Model", outer=T, line=-2)
 #lmFit = train(as.formula(onlypattern_form), data=df_av45, method="glmnet", trControl=trControl, tuneGrid=params)
 
 # LM (Fixed Effects)
-#df_av45[,eval(target)] = make_norm(df_av45[,eval(target)])
-non.na = complete.cases(df_av45[,c(target,demog_columns,av45_columns)])
-df_av45 = df_av45[non.na,] 
 like.pvalues = lapply(pattern_columns,lm.testvar)
 valid_patterns = pattern_columns[like.pvalues <= 0.05]
 form.addons = lapply(valid_patterns,lm.addvar)
@@ -406,11 +456,67 @@ anova(fm_onlypattern,fm_base)
 anova(fm_nopattern,fm_base)
 
 
+# MLM (multinomial linear regression)
+like.pvalues = lapply(pattern_columns,mlm.testvar)
+valid_patterns = pattern_columns[like.pvalues <= 0.05]
+form.addons = lapply(valid_patterns,lm.addvar)
+base_form = paste(target,"~ APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+#CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN
+nopattern_form = paste(target,"~ CORTICAL_SUMMARY_prior*APOE4_BIN + positive_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+onlypattern_form = paste(base_form,paste(form.addons,collapse=' '))
+full_form = paste(nopattern_form,paste(form.addons,collapse=' '))
+null_form = paste(target,'~ 1')
 
+fm_null = vglm(as.formula(null_form), family=multinomial(refLevel=1), data=df_av45)
+fm_base = vglm(as.formula(base_form), family=multinomial(refLevel=1), data=df_av45)
+fm_nopattern = vglm(as.formula(nopattern_form), family=multinomial(refLevel=1), data=df_av45)
+fm_onlypattern = vglm(as.formula(onlypattern_form), family=multinomial(refLevel=1), data=df_av45)
+fm_full = vglm(as.formula(full_form), family=multinomial(refLevel=1), data=df_av45)
+
+fm_base.aic = VGAM::AIC(fm_base)
+fm_nopattern.aic = VGAM::AIC(fm_nopattern)
+fm_onlypattern.aic = VGAM::AIC(fm_onlypattern)
+fm_full.aic = VGAM::AIC(fm_full)
+
+fm_base.deviance = VGAM::deviance(fm_base)
+fm_nopattern.deviance = VGAM::deviance(fm_nopattern)
+fm_onlypattern.deviance = VGAM::deviance(fm_onlypattern)
+fm_full.deviance = VGAM::deviance(fm_full)
+
+fm_null.ll = VGAM::logLik(fm_null)
+fm_base.ll = VGAM::logLik(fm_base)
+fm_nopattern.ll = VGAM::logLik(fm_nopattern)
+fm_onlypattern.ll = VGAM::logLik(fm_onlypattern)
+fm_full.ll = VGAM::logLik(fm_full)
+
+fm_base.summary = VGAM::summary(fm_base)
+fm_nopattern.summary = VGAM::summary(fm_nopattern)
+fm_onlypattern.summary = VGAM::summary(fm_onlypattern)
+fm_full.summary = VGAM::summary(fm_full)
+
+fm_full.ccr = mlm.cv(df_av45,as.formula(full_form),target)
+fm_onlypattern.ccr = mlm.cv(df_av45,as.formula(onlypattern_form),target)
+fm_nopattern.ccr = mlm.cv(df_av45,as.formula(nopattern_form),target)
+fm_base.ccr = mlm.cv(df_av45,as.formula(base_form),target)
+
+
+fm_base.aic
+fm_nopattern.aic
+fm_onlypattern.aic
+fm_full.aic
+
+as.vector(1 - (fm_base.ll / fm_null.ll))
+as.vector(1 - (fm_nopattern.ll / fm_null.ll))
+as.vector(1 - (fm_onlypattern.ll / fm_null.ll))
+as.vector(1 - (fm_full.ll / fm_null.ll))
+
+fm_full.ccr
+fm_onlypattern.ccr
+fm_nopattern.ccr
+fm_base.ccr
 
 
 # LME (Mixed Effects)
-#df_long$value = make_norm(df_long$value)
 like.pvalues = lapply(pattern_columns,lme.testvar)
 valid_patterns = pattern_columns[like.pvalues <= 0.05]
 form.addons = lapply(valid_patterns,lme.addvar)

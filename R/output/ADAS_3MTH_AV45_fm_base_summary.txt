@@ -1,0 +1,21 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.83271 -0.62983  0.01535  0.62111  2.52415 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -1.245106   0.860183  -1.447 0.149203    
+Gender2     -0.761198   0.124704  -6.104 4.71e-09 ***
+Age.AV45     0.033230   0.009401   3.535 0.000499 ***
+Edu..Yrs.   -0.056091   0.023681  -2.369 0.018731 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9041 on 217 degrees of freedom
+Multiple R-squared:  0.2175,	Adjusted R-squared:  0.2067 
+F-statistic: 20.11 on 3 and 217 DF,  p-value: 1.542e-11
+
