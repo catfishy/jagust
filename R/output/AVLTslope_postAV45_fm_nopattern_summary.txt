@@ -1,0 +1,25 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.64460 -0.64208 -0.00894  0.70785  2.75973 
+
+Coefficients:
+                             Estimate Std. Error t value Pr(>|t|)  
+(Intercept)                  0.630364   0.981593   0.642   0.5214  
+I.CORTICAL_SUMMARY_prior.2. -0.081083   0.034421  -2.356   0.0194 *
+diag_priorSMC               -0.440475   0.195587  -2.252   0.0253 *
+diag_priorSMC.APOE4_BIN1     0.672758   0.337376   1.994   0.0474 *
+Gender2                      0.167566   0.137517   1.219   0.2244  
+APOE4_BIN1                  -0.214533   0.181761  -1.180   0.2392  
+Age.AV45                    -0.007384   0.011087  -0.666   0.5061  
+Edu..Yrs.                    0.010939   0.025846   0.423   0.6726  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9833 on 214 degrees of freedom
+Multiple R-squared:  0.06792,	Adjusted R-squared:  0.03743 
+F-statistic: 2.228 on 7 and 214 DF,  p-value: 0.03321
+

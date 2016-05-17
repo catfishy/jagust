@@ -1,0 +1,37 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-2.4921 -0.6187  0.0223  0.6499  2.5653 
+
+Coefficients:
+                         Estimate Std. Error t value Pr(>|t|)   
+(Intercept)               0.08881    0.10650   0.834  0.40532   
+APOE4_BIN1.NSFA_3         0.44348    0.17575   2.523  0.01239 * 
+NSFA_17                  -0.24708    0.07496  -3.296  0.00116 **
+APOE4_BIN1.NSFA_25       -0.46848    0.15336  -3.055  0.00256 **
+NSFA_21                  -0.15927    0.08386  -1.899  0.05894 . 
+Gender2                   0.22826    0.14479   1.576  0.11648   
+APOE4_BIN1.NSFA_4        -0.33320    0.16663  -2.000  0.04688 * 
+APOE4_BIN1.NSFA_19        0.28476    0.16002   1.779  0.07667 . 
+diag_priorSMC            -0.40989    0.18576  -2.207  0.02847 * 
+NSFA_23                   0.12000    0.08141   1.474  0.14203   
+APOE4_BIN1.NSFA_1        -0.20098    0.16731  -1.201  0.23109   
+APOE4_BIN1               -0.38165    0.18057  -2.114  0.03578 * 
+NSFA_8                    0.17121    0.08006   2.139  0.03367 * 
+NSFA_3                   -0.13480    0.08909  -1.513  0.13180   
+APOE4_BIN1.NSFA_14        0.18763    0.16719   1.122  0.26311   
+diag_priorSMC.APOE4_BIN1  0.58893    0.33967   1.734  0.08447 . 
+APOE4_BIN1.NSFA_6        -0.26970    0.16165  -1.668  0.09678 . 
+APOE4_BIN1.NSFA_20        0.28000    0.18833   1.487  0.13863   
+APOE4_BIN1.NSFA_2         0.20838    0.19752   1.055  0.29270   
+NSFA_2                   -0.09275    0.09426  -0.984  0.32627   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9456 on 202 degrees of freedom
+Multiple R-squared:  0.1864,	Adjusted R-squared:  0.1099 
+F-statistic: 2.436 on 19 and 202 DF,  p-value: 0.001149
+

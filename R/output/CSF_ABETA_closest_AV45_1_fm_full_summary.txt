@@ -1,0 +1,23 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.44081 -0.45294  0.00804  0.47384  2.28851 
+
+Coefficients:
+                                       Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                            -0.22952    0.08940  -2.567 0.011164 *  
+NSFA_6                                 -0.82133    0.08366  -9.817  < 2e-16 ***
+APOE4_BIN1.NSFA_1                       0.46660    0.13477   3.462 0.000686 ***
+APOE4_BIN1.I.CORTICAL_SUMMARY_prior.2. -0.12213    0.03051  -4.003 9.54e-05 ***
+APOE4_BIN1.NSFA_4                       0.15065    0.12773   1.179 0.239982    
+NSFA_15                                 0.21476    0.07804   2.752 0.006602 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.7457 on 161 degrees of freedom
+Multiple R-squared:  0.5893,	Adjusted R-squared:  0.5766 
+F-statistic: 46.21 on 5 and 161 DF,  p-value: < 2.2e-16
+

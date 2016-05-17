@@ -1,0 +1,27 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.55169 -0.56579 -0.03065  0.57434  2.90821 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)   
+(Intercept)        -0.08072    0.09541  -0.846  0.39849   
+APOE4_BIN1.NSFA_1   0.39668    0.16457   2.410  0.01679 * 
+APOE4_BIN1.NSFA_3  -0.41314    0.13861  -2.981  0.00321 **
+APOE4_BIN1.NSFA_25  0.31416    0.14716   2.135  0.03393 * 
+APOE4_BIN1.NSFA_5   0.41254    0.20769   1.986  0.04829 * 
+NSFA_5             -0.21094    0.08602  -2.452  0.01501 * 
+Gender2             0.18626    0.13728   1.357  0.17627   
+APOE4_BIN1.NSFA_20 -0.22304    0.18157  -1.228  0.22067   
+APOE4_BIN1.NSFA_7   0.10980    0.13429   0.818  0.41449   
+APOE4_BIN1.NSFA_17  0.29490    0.15139   1.948  0.05274 . 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9594 on 212 degrees of freedom
+Multiple R-squared:  0.121,	Adjusted R-squared:  0.08373 
+F-statistic: 3.244 on 9 and 212 DF,  p-value: 0.001032
+

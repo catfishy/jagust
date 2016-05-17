@@ -1,0 +1,11 @@
+Anova Table (Type III tests)
+
+Response: y
+             Sum Sq  Df F value    Pr(>F)    
+(Intercept)   2.206   1  2.6996 0.1018237    
+Gender2      17.013   1 20.8219 8.433e-06 ***
+Age.AV45     15.104   1 18.4858 2.586e-05 ***
+Edu..Yrs.     9.421   1 11.5300 0.0008143 ***
+Residuals   177.300 217                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

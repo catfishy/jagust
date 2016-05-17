@@ -41,12 +41,18 @@ av45_columns = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SU
 #target = "CORTICAL_SUMMARY_change"
 #target = "UW_EF_BL_3months"
 #target = "UW_EF_slope"
-target = "ADAS_3MTH_AV45"
+#target = "ADAS_3MTH_AV45"
 #target = "ADASslope_postAV45"
 #target = "AVLT_AV45_1_3MTHS"
 #target = "AVLTslope_postAV45"
 #target = "UW_MEM_BL_3months"
 #target = "UW_MEM_slope"
+#target = "CSF_ABETA_closest_AV45_1"
+#target = "CSF_ABETA_slope"
+#target = "CSF_TAU_closest_AV45_1"
+#target = "CSF_TAU_slope"
+target = "CSF_PTAU_closest_AV45_1"
+#target = "CSF_PTAU_slope"
 
 #target = 'UCB_FS_HC.ICV_slope'
 #target = 'diag_prior'
@@ -134,6 +140,7 @@ to.long = function(df, time_col_prefix, value_col_prefix) {
 
 # IMPORT
 df_av45 = read.csv('nsfa/pattern_dataset.csv')
+
 df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 for (i in names(df_av45)){
   if (i %in% to_factor){
@@ -274,8 +281,14 @@ run.rfe = function(form, var.response, dataset) {
 # LM RFE
 all.addons = lapply(pattern_columns,lm.addvar)
 addons_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
-base_form = paste(target,"~ diag_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
-nopattern_form = paste(target,"~ diag_prior*APOE4_BIN + CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
+if (sum(df_av45$diag_prior=='SMC') == 0) {
+  diag_str = 'APOE4_BIN +'
+} else {
+  diag_str = 'diag_prior*APOE4_BIN +'
+}
+
+base_form = paste(target,"~",diag_str,"Age.AV45 + Gender + Edu..Yrs.")
+nopattern_form = paste(target,"~",diag_str,"CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
 onlypattern_form = paste(base_form,paste(all.addons,collapse=' '))
 full_form = paste(nopattern_form,paste(all.addons,collapse=' '))
 

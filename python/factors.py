@@ -25,36 +25,31 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
         saveFakeAparcInput(output_name,pattern,index_lookup)
 
 # SETUP FILES
-#master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_07_16.csv'
-#data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-#pattern_mat = '../av45_pattern_bl.mat'
-#dod = False
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_20_16.csv'
+data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+pattern_mat = '../av45_pattern_bl.mat'
+nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+output_file = '../nsfa/pattern_dataset.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
+dod = False
 
-master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
-data_csv = '../datasets/pvc_dod_av45/mostregions_output.csv'
-pattern_mat = '../dod_av45_pattern_bl.mat'
-dod = True
-
-# PATTERN INPUT FILES
-# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-
-nsfa_activation_csv = '../nsfa/dod_av45_factor_activations.csv'
-nsfa_loading_csv = '../nsfa/dod_av45_factor_loadings.csv'
-model_file = None
-
-# OUTPUT FILES
-# output_file = '../nsfa/pattern_dataset.csv'
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
-
-output_file = '../nsfa/dod_pattern_dataset.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
+# master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
+# data_csv = '../datasets/pvc_dod_av45/mostregions_output.csv'
+# pattern_mat = '../dod_av45_pattern_bl.mat'
+# nsfa_activation_csv = '../nsfa/dod_av45_factor_activations.csv'
+# nsfa_loading_csv = '../nsfa/dod_av45_factor_loadings.csv'
+# model_file = None
+# output_file = '../nsfa/dod_pattern_dataset.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
+# dod = True
 
 
-dod = True
+
+
 bilateral = True
 scale_type = 'original'
 norm_type = 'L1'
@@ -148,6 +143,12 @@ else:
     columns += ['WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope']
     columns += [_ for _ in master_df.columns if _.startswith('UW_MEM_') or _.startswith('UW_MEM_postAV45_')]
     columns += [_ for _ in master_df.columns if _.startswith('UW_EF_') or _.startswith('UW_EF_postAV45_')]
+    columns += [_ for _ in master_df.columns if _.startswith('CSF_ABETA.') or _.startswith('CSF_ABETApostAV45.')]
+    columns += ['CSF_ABETA_closest_AV45_1','CSF_ABETA_slope']
+    columns += [_ for _ in master_df.columns if _.startswith('CSF_TAU.') or _.startswith('CSF_TAUpostAV45.')]
+    columns += ['CSF_TAU_closest_AV45_1','CSF_TAU_slope']
+    columns += [_ for _ in master_df.columns if _.startswith('CSF_PTAU.') or _.startswith('CSF_PTAUpostAV45.')]
+    columns += ['CSF_PTAU_closest_AV45_1','CSF_PTAU_slope']
     other_df = master_df[columns]
 
 print columns

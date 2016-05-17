@@ -1,0 +1,13 @@
+Anova Table (Type III tests)
+
+Response: y
+                                       Sum Sq  Df F value    Pr(>F)    
+(Intercept)                             3.665   1  6.5904 0.0111636 *  
+NSFA_6                                 53.600   1 96.3812 < 2.2e-16 ***
+APOE4_BIN1.NSFA_1                       6.666   1 11.9866 0.0006864 ***
+APOE4_BIN1.I.CORTICAL_SUMMARY_prior.2.  8.910   1 16.0209 9.538e-05 ***
+APOE4_BIN1.NSFA_4                       0.774   1  1.3910 0.2399824    
+NSFA_15                                 4.212   1  7.5738 0.0066018 ** 
+Residuals                              89.536 161                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
