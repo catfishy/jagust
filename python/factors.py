@@ -32,6 +32,7 @@ nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
 nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
 model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
 output_file = '../nsfa/pattern_dataset.csv'
+topregions_output_file = '../nsfa/top_regions.csv'
 nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
 igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
 dod = False
@@ -43,6 +44,7 @@ dod = False
 # nsfa_loading_csv = '../nsfa/dod_av45_factor_loadings.csv'
 # model_file = None
 # output_file = '../nsfa/dod_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/dod_top_regions.csv'
 # nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
 # dod = True
@@ -101,6 +103,27 @@ nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
 nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
 nsfa_load_df.columns = nsfa_act_df.columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
+
+# Create top ten region lists for each factor
+toppos_df = pd.DataFrame()
+topneg_df = pd.DataFrame()
+for col in nsfa_load_df.columns:
+    factor_row = nsfa_load_df[col]
+    top_neg = factor_row.sort_values().head(10)
+    top_neg = pd.DataFrame(top_neg[top_neg<0])
+    top_neg.index.name = '%s_REGIONS' % col
+    top_neg.reset_index(inplace=True)
+    topneg_df = topneg_df.merge(top_neg, left_index=True, right_index=True, how='outer')
+    top_pos = factor_row.sort_values(ascending=False).head(10)
+    top_pos = pd.DataFrame(top_pos[top_pos>0])
+    top_pos.index.name = '%s_REGIONS' % col
+    top_pos.reset_index(inplace=True)
+    toppos_df = toppos_df.merge(top_pos, left_index=True, right_index=True, how='outer')
+toppos_df.index = ['POS_%s' % (i+1) for i in toppos_df.index]
+topneg_df.index = ['NEG_%s' % (i+1) for i in topneg_df.index]
+topregions_df = pd.concat((toppos_df,topneg_df))
+topregions_df.to_csv(topregions_output_file)
+
 
 # Create IGMM patterns df
 if model_file is not None:
