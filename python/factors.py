@@ -8,10 +8,10 @@ import scipy
 from utils import importRoussetCSV, bilateralTranslations, importFreesurferLookup, saveFakeAparcInput
 from patterns import parseRawDataset, scaleRawInput
 
-def savePatternAsMat(pattern_bl_df, output_file):
-    scipy.io.savemat(output_file,{'ID': list(pattern_bl_df.index), 
-                                            'Features': list(pattern_bl_df.columns), 
-                                            'Y':pattern_bl_df.T.as_matrix()})
+def savePatternAsMat(pattern_df, output_file):
+    scipy.io.savemat(output_file,{'ID': list(pattern_df.index), 
+                                  'Features': list(pattern_df.columns), 
+                                  'Y':pattern_df.T.as_matrix()})
 
 def savePatternAsAparc(df, lut_file, bilateral, out_template):
     if bilateral:
@@ -25,21 +25,42 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
         saveFakeAparcInput(output_name,pattern,index_lookup)
 
 # SETUP FILES
+
+# FOR ADNI AV45
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_20_16.csv'
+# data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+# pattern_mat = '../av45_pattern_bl.mat'
+# pattern_mat_2 = '../av45_pattern_scan2.mat'
+# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+# nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
+# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+# output_file = '../nsfa/pattern_dataset.csv'
+# topregions_output_file = '../nsfa/top_regions.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
+# dod = False
+
+# FOR ADNI AV1451
 master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_20_16.csv'
-data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-pattern_mat = '../av45_pattern_bl.mat'
-nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-output_file = '../nsfa/pattern_dataset.csv'
-topregions_output_file = '../nsfa/top_regions.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/pattern_loading_%s"
+data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+pattern_mat = '../av1451_pattern_bl.mat'
+pattern_mat_2 = '../av1451_pattern_scan2.mat'
+nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
+nsfa_activation_csv_2 = '../nsfa/av1451_factor_activations_scan2.csv'
+nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
+model_file = None
+output_file = '../nsfa/av1451_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av1451_top_regions.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
 dod = False
 
+# FOR DOD AV45
 # master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
 # data_csv = '../datasets/pvc_dod_av45/mostregions_output.csv'
 # pattern_mat = '../dod_av45_pattern_bl.mat'
+# pattern_mat_2 = '../dod_av45_pattern_bl.mat'
 # nsfa_activation_csv = '../nsfa/dod_av45_factor_activations.csv'
 # nsfa_loading_csv = '../nsfa/dod_av45_factor_loadings.csv'
 # model_file = None
@@ -48,7 +69,6 @@ dod = False
 # nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
 # dod = True
-
 
 
 
@@ -96,13 +116,30 @@ rchange_df = data['change_df']
 pattern_col_order = list(pattern_prior_df.columns)
 
 # SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
-#savePatternAsMat(pattern_bl_df, pattern_mat)
+column_order = pattern_bl_df.columns
+pattern_bl_df = pattern_bl_df[column_order]
+if pattern_bl_df.index.nlevels > 1:
+    pattern_bl_df.index = pattern_bl_df.index.droplevel(1)
+pattern_scan2_df = pattern_scan2_df[column_order]
+if pattern_scan2_df.index.nlevels > 1:
+    pattern_scan2_df.index = pattern_scan2_df.index.droplevel(1)
+
+# savePatternAsMat(pattern_bl_df, pattern_mat)
+# savePatternAsMat(pattern_scan2_df, pattern_mat_2)
+
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
-nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
-nsfa_load_df.columns = nsfa_act_df.columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
+nsfa_act_2_df = pd.read_csv(nsfa_activation_csv_2).T
+nsfa_act_2_df.index = nsfa_act_2_df.index.astype('int64')
+nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
+columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
+scan2_columns = ['SCAN2_NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
+nsfa_load_df.columns = nsfa_act_df.columns =['NSFA_%s' % _ for _ in nsfa_act_df.columns]
+nsfa_act_2_df.columns = scan2_columns
+nsfa_act_df = nsfa_act_df.merge(nsfa_act_2_df, left_index=True, right_index=True, how='outer')
+
 
 # Create top ten region lists for each factor
 toppos_df = pd.DataFrame()
@@ -157,7 +194,8 @@ else:
     master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
     master_df.columns = master_df.columns.get_level_values(1)
     master_df.set_index('RID', inplace=True)
-    columns = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)','Diag@AV45_long','UCB_FS_HC/ICV_slope']
+    columns = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)',
+               'Diag@AV45_long','UCB_FS_HC/ICV_slope','AV45_1_2_Diff']
     columns += [_ for _ in master_df.columns if _.startswith('ADAScog.') or _.startswith('TIMEpostAV45_ADAS.')]
     columns += ['ADAS_3MTH_AV45','ADASslope_postAV45']
     columns += [_ for _ in master_df.columns if _.startswith('AVLT.') or _.startswith('TIMEpostAV45_AVLT.')]
@@ -197,5 +235,5 @@ else:
 combined_df.to_csv(output_file,index=True)
 
 # # Save loading patterns
-savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
+# savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
 # savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)

@@ -1,0 +1,13 @@
+Anova Table (Type III tests)
+
+Response: y
+                             Sum Sq  Df  F value    Pr(>F)    
+(Intercept)                   4.087   1  17.6115 3.229e-05 ***
+I.CORTICAL_SUMMARY_prior.2.  34.202   1 147.3779 < 2.2e-16 ***
+APOE4_BIN1                    3.162   1  13.6251 0.0002488 ***
+Age.AV45                      1.612   1   6.9461 0.0086720 ** 
+diag_priorN.APOE4_BIN1        1.408   1   6.0685 0.0141108 *  
+diag_priorEMCI                2.654   1  11.4378 0.0007785 ***
+Residuals                   111.393 480                       
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

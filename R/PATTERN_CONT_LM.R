@@ -47,22 +47,21 @@ av45_columns = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SU
 #target = "AVLTslope_postAV45"
 #target = "UW_MEM_BL_3months"
 #target = "UW_MEM_slope"
-#target = "CSF_ABETA_closest_AV45_1"
+target = "CSF_ABETA_closest_AV45_1"
 #target = "CSF_ABETA_slope"
 #target = "CSF_TAU_closest_AV45_1"
 #target = "CSF_TAU_slope"
-target = "CSF_PTAU_closest_AV45_1"
+#target = "CSF_PTAU_closest_AV45_1"
 #target = "CSF_PTAU_slope"
 
-#target = 'UCB_FS_HC.ICV_slope'
-#target = 'diag_prior'
-#target = 'ad_prior'
+#output_folder = 'R/output/'
+output_folder = 'R/output_all_diag/'
 
 all_diags = c('N','SMC','EMCI','LMCI','AD')
 
-#valid_diags = c('N','SMC','EMCI','LMCI','AD')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 #valid_diags = c('N','SMC','EMCI','LMCI')
-valid_diags = c('N','SMC')
+#valid_diags = c('N','SMC')
 #valid_diags = c('EMCI')
 #valid_diags = c('LMCI')
 
@@ -140,6 +139,7 @@ to.long = function(df, time_col_prefix, value_col_prefix) {
 
 # IMPORT
 df_av45 = read.csv('nsfa/pattern_dataset.csv')
+pattern_columns = Filter(isPatternColumn,names(df_av45))
 
 df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 for (i in names(df_av45)){
@@ -147,8 +147,23 @@ for (i in names(df_av45)){
     df_av45[,eval(i)] = as.factor(as.character(df_av45[,eval(i)]))
   }
 }
-pattern_columns = Filter(isPatternColumn,names(df_av45))
 df_long = to.long(df_av45, time_col_prefix, value_col_prefix)
+
+# look at histograms
+for (pcol in pattern_columns) {
+  p = ggplot(df_av45, aes_string(pcol, colour = 'positive_prior')) + geom_histogram(binwidth=0.1)
+  print(p)
+}
+
+# look at change
+for (pcol in pattern_columns) {
+  scan2_col = paste('SCAN2_',pcol,sep='')
+  change = (df_av45[,eval(scan2_col)]-df_av45[,eval(pcol)])/(df_av45$AV45_1_2_Diff)
+  plot(df_av45[,eval(pcol)],change,xlab=pcol,ylab=pcol)
+  #plot(df_av45$CORTICAL_SUMMARY_change,change,xlab='CS Prior',ylab=pcol)
+  abline(0,0,col='red')
+}
+
 
 # standardize predictors
 # cross_to_standardize = c(to_standardize,pattern_columns,target)
@@ -235,18 +250,6 @@ lme.cv = function(dataset, form) {
   rmse(holdoutpred,round(responses))
 }
 
-lm.testvar = function(var.name) {
-  # CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + 
-  base_str = paste(target,"~","diag_prior*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
-  add_str = lm.addvar(var.name)
-  form_base = as.formula(base_str)
-  form = as.formula(paste(base_str,add_str))
-  fm = lm(form,data=df_av45)
-  fm_base = lm(form_base,data=df_av45)
-  like = anova(fm_base,fm)
-  like.p = like$`Pr(>F)`[2]
-}
-
 run.rfe = function(form, var.response, dataset) {
   x = as.data.frame(model.matrix(as.formula(form),dataset))[,-1]
   nzv_cols = nearZeroVar(x)
@@ -281,11 +284,12 @@ run.rfe = function(form, var.response, dataset) {
 # LM RFE
 all.addons = lapply(pattern_columns,lm.addvar)
 addons_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
-if (sum(df_av45$diag_prior=='SMC') == 0) {
-  diag_str = 'APOE4_BIN +'
-} else {
-  diag_str = 'diag_prior*APOE4_BIN +'
-}
+# if (sum(df_av45$diag_prior=='SMC') == 0) {
+#   diag_str = 'APOE4_BIN +'
+# } else {
+#   diag_str = 'diag_prior*APOE4_BIN +'
+# }
+diag_str = 'diag_prior*APOE4_BIN +'
 
 base_form = paste(target,"~",diag_str,"Age.AV45 + Gender + Edu..Yrs.")
 nopattern_form = paste(target,"~",diag_str,"CORTICAL_SUMMARY_prior*APOE4_BIN + I(CORTICAL_SUMMARY_prior^2)*APOE4_BIN + Age.AV45 + Gender + Edu..Yrs.")
@@ -318,29 +322,29 @@ fm_nopattern.anova = Anova(fm_nopattern,type='III')
 fm_full.anova = Anova(fm_full,type='III')
 
 
-save.printout(paste('R/output/',target,'_fm_base_summary','.txt',sep=''),fm_base.summary)
-save.printout(paste('R/output/',target,'_fm_nopattern_summary','.txt',sep=''),fm_nopattern.summary)
-save.printout(paste('R/output/',target,'_fm_full_summary','.txt',sep=''),fm_full.summary)
-save.printout(paste('R/output/',target,'_fm_base_fit','.txt',sep=''),fm_base.fit)
-save.printout(paste('R/output/',target,'_fm_nopattern_fit','.txt',sep=''),fm_nopattern.fit)
-save.printout(paste('R/output/',target,'_fm_full_fit','.txt',sep=''),fm_full.fit)
-save.printout(paste('R/output/',target,'_fm_base_anova','.txt',sep=''),fm_base.anova)
-save.printout(paste('R/output/',target,'_fm_nopattern_anova','.txt',sep=''),fm_nopattern.anova)
-save.printout(paste('R/output/',target,'_fm_full_anova','.txt',sep=''),fm_full.anova)
-save(rfe.base,file=paste('R/output/',target,'_rfe_base_obj',sep=''))
-save(rfe.nopattern,file=paste('R/output/',target,'_rfe_nopattern_obj',sep=''))
-save(rfe.full,file=paste('R/output/',target,'_rfe_full_obj',sep=''))
+save.printout(paste(output_folder,target,'_fm_base_summary','.txt',sep=''),fm_base.summary)
+save.printout(paste(output_folder,target,'_fm_nopattern_summary','.txt',sep=''),fm_nopattern.summary)
+save.printout(paste(output_folder,target,'_fm_full_summary','.txt',sep=''),fm_full.summary)
+save.printout(paste(output_folder,target,'_fm_base_fit','.txt',sep=''),fm_base.fit)
+save.printout(paste(output_folder,target,'_fm_nopattern_fit','.txt',sep=''),fm_nopattern.fit)
+save.printout(paste(output_folder,target,'_fm_full_fit','.txt',sep=''),fm_full.fit)
+save.printout(paste(output_folder,target,'_fm_base_anova','.txt',sep=''),fm_base.anova)
+save.printout(paste(output_folder,target,'_fm_nopattern_anova','.txt',sep=''),fm_nopattern.anova)
+save.printout(paste(output_folder,target,'_fm_full_anova','.txt',sep=''),fm_full.anova)
+save(rfe.base,file=paste(output_folder,target,'_rfe_base_obj',sep=''))
+save(rfe.nopattern,file=paste(output_folder,target,'_rfe_nopattern_obj',sep=''))
+save(rfe.full,file=paste(output_folder,target,'_rfe_full_obj',sep=''))
 
 fm_base.plotfn = function() {par(mfrow=c(2,2));plot(fm_base);title("Base Model", outer=T, line=-2);}
 fm_nopattern.plotfn = function() {par(mfrow=c(2,2));plot(fm_nopattern);title("No Pattern Model", outer=T, line=-2);}
 fm_full.plotfn = function() {par(mfrow=c(2,2));plot(fm_full);title("Full Model", outer=T, line=-2);}
-save.plot(paste('R/output/',target,'_fm_base_lmplot.pdf',sep=''), fm_base.plotfn)
-save.plot(paste('R/output/',target,'_fm_nopattern_lmplot.pdf',sep=''), fm_nopattern.plotfn)
-save.plot(paste('R/output/',target,'_fm_full_lmplot.pdf',sep=''), fm_full.plotfn)
+save.plot(paste(output_folder,target,'_fm_base_lmplot.pdf',sep=''), fm_base.plotfn)
+save.plot(paste(output_folder,target,'_fm_nopattern_lmplot.pdf',sep=''), fm_nopattern.plotfn)
+save.plot(paste(output_folder,target,'_fm_full_lmplot.pdf',sep=''), fm_full.plotfn)
 
-save.plot(paste('R/output/',target,'_fm_base_avplot.pdf',sep=''), function() {avPlots(fm_base, ask=FALSE)})
-save.plot(paste('R/output/',target,'_fm_nopattern_avplot.pdf',sep=''), function() {avPlots(fm_nopattern, ask=FALSE)})
-save.plot(paste('R/output/',target,'_fm_full_avplot.pdf',sep=''), function() {avPlots(fm_full, ask=FALSE)})
+save.plot(paste(output_folder,target,'_fm_base_avplot.pdf',sep=''), function() {avPlots(fm_base, ask=FALSE)})
+save.plot(paste(output_folder,target,'_fm_nopattern_avplot.pdf',sep=''), function() {avPlots(fm_nopattern, ask=FALSE)})
+save.plot(paste(output_folder,target,'_fm_full_avplot.pdf',sep=''), function() {avPlots(fm_full, ask=FALSE)})
 
 fm_base.summary
 fm_nopattern.summary
@@ -594,101 +598,4 @@ nopattern_form
 onlypattern_form
 full_form
 
-# PLOTTING
-df_av45_apoepos = df_av45[df_av45$APOE4_BIN == 1,]
-df_av45_apoeneg = df_av45[df_av45$APOE4_BIN == 0,]
 
-qplot(df_av45_apoepos$CORTICAL_SUMMARY_prior, 
-      df_av45_apoepos$CORTICAL_SUMMARY_change, 
-      data=df_av45_apoepos, 
-      colour=df_av45_apoepos$NSFA_16) + 
-  scale_colour_gradient(low="black", high="pink", limits=c(0,2), na.value='black')
-
-qplot(df_av45_apoeneg$CORTICAL_SUMMARY_prior, 
-      df_av45_apoeneg$CORTICAL_SUMMARY_change, 
-      data=df_av45_apoeneg, 
-      colour=df_av45_apoeneg$NSFA_16) + 
-  scale_colour_gradient(low="black", high="pink", limits=c(0,2), na.value='black')
-
-qplot(df_av45$CORTICAL_SUMMARY_prior, 
-      df_av45$UW_EF_BL_3months, 
-      data=df_av45, 
-      colour=df_av45$NSFA_24) + 
-  scale_colour_gradient(low="black", high="pink", limits=c(0,2),na.value='black')
-
-qplot(fitted(fm_onlypattern), resid(fm_onlypattern)) + geom_hline(yintercept=0)
-qplot(df_av45[,target],fitted(fm_onlypattern))
-avPlots(fm_onlypattern, id.n=2, id.cex=0.7)
-
-
-
-# PRINTING OUTPUTS AND GRAPHING
-
-# PRINT MODEL OUTPUTS
-sink('av45_lm_nopattern.txt'); print(fm_av45_nopattern_summary, correlation=TRUE); sink(file=NULL)
-sink('av45_lm_withpattern.txt'); print(fm_av45_summary, correlation=TRUE); sink(file=NULL)
-sink('av45_lm_onlypattern.txt'); print(fm_av45_onlypatterns_summary, correlation=TRUE); sink(file=NULL)
-
-# PRINT MODEL ANOVA
-sink('av45_lm_nopattern_anova.txt'); print(fm_av45_nopattern_anova, correlation=TRUE); sink(file=NULL)
-sink('av45_lm_withpattern_anova.txt'); print(fm_av45_anova, correlation=TRUE); sink(file=NULL)
-sink('av45_lm_onlypattern_anova.txt'); print(fm_av45_onlypatterns_anova, correlation=TRUE); sink(file=NULL)
-sink('av45_mc_anova.txt'); print(fm_modelcomparison_anova, correlation=TRUE); sink(file=NULL)
-
-# plot fits
-toplot = c(0,1,2,3,14,15)
-# plot together
-polfit = function(x) fm_av45_onlycs$coefficients[3]*x^2 + fm_av45_onlycs$coefficients[2]*x + fm_av45_onlycs$coefficients[1]
-colors = rainbow(length(toplot))
-plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'CORTICAL_SUMMARY_slope'], pch=4, cex=1, lwd=0.6, main='Significant Pattern Groups', xlab='Baseline Florbetapir Cortical Summary SUVR', ylab='Cortical Summary SUVR Annualized Change')
-for(i in 1:length(toplot)){
-  g = toplot[i]
-  c = colors[i]
-  x = df_av45[which(df_av45$group==g),'CORTICAL_SUMMARY_prior']
-  y = df_av45[which(df_av45$group==g),'CORTICAL_SUMMARY_slope']
-  points(x,y, bg=c, pch=21, cex=1.1, lwd=1)
-}
-curve(polfit,add=T)
-legend('topright', legend=sapply(toplot, function(x) paste('Group #',x,sep='')), fill=colors)
-
-
-for(g in toplot){
-  jpeg(paste('fit_original_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'CORTICAL_SUMMARY_slope'], col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('Original Data, Group:',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
-  jpeg(paste('fit_withpattern_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45), col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('LM Predicted (with patterns)',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
-  jpeg(paste('fit_nopattern_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_nopattern), col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('LM Predicted (without patterns)',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
-  jpeg(paste('fit_onlypattern_group',g,'.jpeg',sep='')); plot(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_onlypatterns), col=ifelse(df_av45[,'group']==g, "red", "black"), main=paste('LM Predicted (only patterns)',g), xlab='Cortical Summary BL', ylab='Annualized AV45 Slope'); dev.off();
-}
-
-
-# plot fits
-plot(df_av45[,'CORTICAL_SUMMARY_prior'],df_av45[,'AV45_slope'],bg='yellow',pch=21)
-points(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45),bg='red',pch=21)
-points(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_nopattern),bg='blue',pch=21)
-points(df_av45[,'CORTICAL_SUMMARY_prior'],predict(fm_av45_onlypatterns),bg='green',pch=21)
-
-# plot residuals
-plot(1,type-'n')
-points(fm_av45_nopattern$fitted.values, fm_av45_nopattern$residuals,bg='blue',pch=21)
-points(fm_av45$fitted.values, fm_av45$residuals, bg='red', pch=21)
-
-# get coeff names
-rownames = row.names(fm_av45_summary$coefficients)
-for(i in rownames){
-  print(i)
-}
-
-# contrasts
-contrasts_all = read.csv('contrasts_lm.csv')
-test = glht(fm_av45,linfct=data.matrix(contrasts_all))
-test_summary = summary(test)
-contrasts = test_summary$linfct
-coeff = matrix(test_summary$test$coefficients)
-colnames(coeff) = 'estimate'
-pvalue = matrix(test_summary$test$pvalues)
-colnames(pvalue) = 'pvalues'
-stderr = matrix(test_summary$test$sigma)
-colnames(stderr) = 'stderr'
-zvalue = matrix(test_summary$test$tstat)
-colnames(zvalue) = 'zvalue'
-contrasts = cbind(contrasts,coeff,stderr,zvalue,pvalue)
-write.csv(contrasts, file = "av45_lm_contrasts.csv", na = "")
