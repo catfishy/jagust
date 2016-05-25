@@ -124,9 +124,9 @@ pattern_scan2_df = pattern_scan2_df[column_order]
 if pattern_scan2_df.index.nlevels > 1:
     pattern_scan2_df.index = pattern_scan2_df.index.droplevel(1)
 
-# savePatternAsMat(pattern_bl_df, pattern_mat)
-# savePatternAsMat(pattern_scan2_df, pattern_mat_2)
-
+savePatternAsMat(pattern_bl_df, pattern_mat)
+savePatternAsMat(pattern_scan2_df, pattern_mat_2)
+sys.exit(0)
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T

@@ -16,33 +16,24 @@ import itertools
 
 from utils import *
 
-'''
-def syncTemplate(old_headers, old_lines, input_file):
-    data = importTemplate(input_file)
-
-    to_add_headers = []
-    after = None
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=after)
-
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        pass
-
-    new_lines = []
-    for linenum, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, data, extraction_fn, 
-                              pid_key='RID', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-
-    return (new_headers, new_lines)
-'''
 
 
 RID_ADDONS = [78,93,108,458,514,691,724,739,821,853,916,1080,1271]
 
 ######### SYNCING INFRASTRUCTURE (MOST FUNCTIONS DEPEND ON THESE) ##################
 
+def getAV45Dates(rid, master_df):
+    bl_av45 = av45_2 = av45_3 = np.nan
+    try:
+        row = master_df.loc[rid]
+        bl_av45 = row.get('AV45_Date')
+        av45_2 = row.get('AV45_2_Date')
+        av45_3 = row.get('AV45_3_Date')
+    except Exception as e:
+        pass
+    return (bl_av45, av45_2, av45_3)
+
+'''
 def getAV45Dates(old_l, patient_pets=None):
     if patient_pets is None:
         patient_pets = []
@@ -66,7 +57,20 @@ def getAV45Dates(old_l, patient_pets=None):
     else:
         av45_3 = None
     return (bl_av45, av45_2, av45_3)
+'''
 
+def getAV1451Dates(rid, master_df):
+    bl_av1451 = av1451_2 = av1451_3 = np.nan
+    try:
+        row = master_df.loc[rid]
+        bl_av1451 = row.get('AV1451_Date')
+        av1451_2 = row.get('AV1451_2_Date')
+        av1451_3 = row.get('AV1451_3_Date')
+    except Exception as e:
+        pass
+    return (bl_av1451, av1451_2, av1451_3)
+
+'''
 def getAV1451Dates(old_l, patient_pets=None):
     if patient_pets is None:
         patient_pets = []
@@ -98,6 +102,7 @@ def wipeKeys(lines, keys):
         l.update(empty_dict)
         new_lines.append(l)
     return l
+'''
 
 def addCategories(output_file):
     colcats_df = pd.read_csv('column_categories.csv')
@@ -134,21 +139,13 @@ def mergeSlopes(output_file):
         df[new_col].update(df[three_col])
     df.to_csv(output_file, index=False)
 
-def manualAddOns(old_headers, old_lines, rid_list):
-    '''
-    Manually add on subjects who may not have AV45 records
-    '''
-    old_rids = set([int(_['RID']) for _ in old_lines])
-    new_rids = set([int(_) for _ in rid_list])
-    to_add = list(set(new_rids) - set(old_rids))
-
-    print "MANUALLY ADDING: %s" % to_add
+def manualAddOns(master_df, rid_list):
+    to_add = [int(_) for _ in rid_list if int(_) not in master_df.index]
     for rid in to_add:
-        new_subj_row = {k: '' for k in old_headers}
-        new_subj_row['RID'] = str(rid)
-        old_lines.append(new_subj_row)
+        master_df.loc[rid] = None
+    master_df.sort_index(inplace=True)
+    return master_df
 
-    return old_headers, old_lines
 
 ######### END SYNCING INFRASTRUCTURE ###############################################
 
@@ -743,6 +740,42 @@ def syncAVLTData(old_headers, old_lines, neuro_battery_file, registry_file):
 
     return (new_headers, new_lines)
 
+def syncDemogData(master_df, demog_file, pet_meta_file):
+    # get demographics data
+    demog_df = importDemog(demog_file,as_df=True)
+    # merge in pet scan dates
+    av45_meta_df = importPetMETA(pet_meta_file, 'AV45', as_df=True)
+    av45_meta_df.rename(columns={1:'AV45_Date',2:'AV45_2_Date',3:'AV45_3_Date',4:'AV45_4_Date'}, inplace=True)
+    av1451_meta_df = importPetMETA(pet_meta_file, 'AV1451', as_df=True)
+    av1451_meta_df.rename(columns={1:'AV1451_Date',2:'AV1451_2_Date',3:'AV1451_3_Date',4:'AV1451_4_Date'}, inplace=True)
+    demog_df = demog_df.merge(av45_meta_df, left_index=True, right_index=True, how='outer')
+    demog_df = demog_df.merge(av1451_meta_df, left_index=True, right_index=True, how='outer')
+
+    # calculate derivative columns
+    demog_df['Age@AV45'] = demog_df.apply(lambda x: yrDiff(x['AV45_Date'],x['PTDOB']), axis=1)
+    demog_df['Age@AV45_2'] = demog_df.apply(lambda x: yrDiff(x['AV45_2_Date'],x['PTDOB']), axis=1)
+    demog_df['Age@AV45_3'] = demog_df.apply(lambda x: yrDiff(x['AV45_3_Date'],x['PTDOB']), axis=1)
+    demog_df['Age@AV45_4'] = demog_df.apply(lambda x: yrDiff(x['AV45_4_Date'],x['PTDOB']), axis=1)
+    demog_df['Age@AV1451'] = demog_df.apply(lambda x: yrDiff(x['AV1451_Date'],x['PTDOB']), axis=1)
+    demog_df['Age@AV1451_2'] = demog_df.apply(lambda x: yrDiff(x['AV1451_2_Date'],x['PTDOB']), axis=1)
+    demog_df['Age@AV1451_3'] = demog_df.apply(lambda x: yrDiff(x['AV1451_3_Date'],x['PTDOB']), axis=1)
+    demog_df['AV45_1_2_Diff'] = demog_df.apply(lambda x: yrDiff(x['AV45_2_Date'],x['AV45_Date']), axis=1)
+    demog_df['AV45_1_3_Diff'] = demog_df.apply(lambda x: yrDiff(x['AV45_3_Date'],x['AV45_Date']), axis=1)
+    demog_df['AV45_1_4_Diff'] = demog_df.apply(lambda x: yrDiff(x['AV45_4_Date'],x['AV45_Date']), axis=1)
+    demog_df['AV1451_1_2_Diff'] = demog_df.apply(lambda x: yrDiff(x['AV1451_2_Date'],x['AV1451_Date']), axis=1)
+    demog_df['AV1451_1_3_Diff'] = demog_df.apply(lambda x: yrDiff(x['AV1451_3_Date'],x['AV1451_Date']), axis=1)
+
+    headers = ['AV45_Date','AV45_2_Date','AV45_3_Date','AV45_4_Date',
+               'AV1451_Date','AV1451_2_Date','AV1451_3_Date',
+               'PTDOB','Age@AV45','Age@AV45_2','Age@AV45_3','Age@AV45_4',
+               'Age@AV1451','Age@AV1451_2','Age@AV1451_3',
+               'AV45_1_2_Diff','AV45_1_3_Diff','AV45_1_4_Diff',
+               'AV1451_1_2_Diff','AV1451_1_3_Diff']
+    master_df = updateDataFrame(master_df, demog_df, headers=headers, after='APOE4_NUM', restrict=True)
+    return master_df
+
+
+'''
 def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file):
     demogs = importDemog(demog_file)
     pet_meta = importPetMETA(pet_meta_file)
@@ -796,7 +829,7 @@ def syncDemogData(old_headers, old_lines, demog_file, pet_meta_file):
 
 
     return (new_headers, new_lines)
-
+'''
 
 def syncDiagnosisData(old_headers, old_lines, diag_file, registry_file, arm_file):
     registry = importRegistry(registry_file)
@@ -961,53 +994,26 @@ def syncAV1451Data(old_headers, old_lines, av1451_file, pet_meta_file):
 
     return (new_headers, new_lines)
 
-
-def syncAV45Data(old_headers, old_lines, av45_file, registry_file, suffix=None):
+def syncAV45Data(master_df, av45_file, suffix=None):
     '''
     This function does not follow the pattern of the other sync functions because
-    the header/data update is accomplished in a nested function, and it also allows
+    the update is accomplished in a nested function, and it also allows
     for the possibility of introducing new subjects via the dataset being synced in
     '''
-    registry = importRegistry(registry_file)
-    av45_by_subj = importAV45(av45_file, registry=registry)
-    print "SUBJECTS WITH AV45: %s" % len(av45_by_subj)
-    new_headers = None
-    new_lines = []
-    old_subjects = set()
-    clear_av45 = set()
-    for old_l in old_lines:
-        # get subject ID
-        try:
-            subj = int(old_l['RID'])
-        except Exception as e:
-            continue 
-        old_subjects.add(subj)
+    av45_df = importAV45(av45_file, as_df=True)
 
-        updated_headers, new_data = parseAV45Entries(old_headers, av45_by_subj.get(subj,[]), suffix=suffix)
-        if new_headers is None:
-            new_headers = updated_headers
-        new_data = convertToCSVDataType(new_data, decimal_places=5)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+    # parse
+    parsed_df = parseSubjectGroups(av45_df,lambda rid,subj_rows: parseAV45Entries(rid, subj_rows, suffix=suffix)) 
+    headers = parsed_df.columns
 
-    # find new subjects - in av45 file but not in old master csv file
-    print len(set(av45_by_subj.keys()))
-    print len(old_subjects)
-    new_subjects = list(set(av45_by_subj.keys()) - old_subjects)
-    print new_subjects
-    for ns in new_subjects:
-        new_subj_row = {k: '' for k in new_headers}
-        new_subj_row['RID'] = str(ns)
-        updated_headers, new_columns = parseAV45Entries(old_headers, av45_by_subj[ns], suffix=suffix)
-        new_subj_row.update(new_columns)
-        new_lines.append(new_subj_row)
+    # update
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=False)
+    return master_df
 
 
-    return (new_headers, new_lines)
-
-def parseAV45Entries(old_headers, subj_av45, suffix=None):
-    subj_av45 = sorted(subj_av45, key=lambda x: x['EXAMDATE'])
-    exam_times = [_['EXAMDATE'] for _ in subj_av45]
+def parseAV45Entries(rid, subj_rows, suffix=None):
+    subj_rows.sort_values(by='EXAMDATE', inplace=True)
+    exam_times = list(subj_rows['EXAMDATE'])
     exam_timedeltas = [(_-exam_times[0]).days / 365.0 for _ in exam_times]
 
     wm70_composite_keys = ['AV45_WM70/composite', 'AV45_2_WM70/composite', 'AV45_3_WM70/composite']
@@ -1155,10 +1161,10 @@ def parseAV45Entries(old_headers, subj_av45, suffix=None):
                  all_wmratio_keys]
     all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
 
-    data = {k:'' for k in all_av45_keys}
+    data = {k:None for k in all_av45_keys}
     wm70_0 = None
     # fill in values
-    for i, point in enumerate(subj_av45):
+    for i, (idx,point) in enumerate(subj_rows.iterrows()):
         # extract necessary values
         cerebw = float(point['CEREBELLUMWHITEMATTER'])
         wcereb = float(point['WHOLECEREBELLUM'])
@@ -1281,17 +1287,18 @@ def parseAV45Entries(old_headers, subj_av45, suffix=None):
                 data['AV45_Temporal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[0::2]])))
 
     if suffix is not None:
-        # add suffix to headers
-        new_all_av45_keys = []
+        new_keys = []
         for old_key in all_av45_keys:
             new_key = old_key.replace('AV45_','AV45_%s_' % suffix)
-            new_all_av45_keys.append(new_key)
             data[new_key] = data.pop(old_key)
-        new_headers = rearrangeHeaders(old_headers, new_all_av45_keys, after=None)
-    else:
-        new_headers = rearrangeHeaders(old_headers, all_av45_keys, after=None)
+            new_keys.append(new_key)
+        all_av45_keys = new_keys
 
-    return (new_headers, data)
+
+    df = pd.DataFrame([data])[all_av45_keys]
+    df['RID'] = rid
+    df.set_index('RID',inplace=True)
+    return df
 
 def syncFDGData(old_headers, old_lines, fdg_file, registry_file):
     fdg_by_subj = importFDG(fdg_file)
@@ -2102,8 +2109,7 @@ def syncWMHData(old_headers, old_lines, wmh_file, registry_file):
 
     return (new_headers, new_lines)
 
-
-def eliminateColumns(headers, lines):
+def eliminateColumns(master_df):
     to_remove = ['AVLT_3MTHS_AV45',
                  'AVLT_3MTHSAV45_Date',
                  'LastClinicalVisit',
@@ -2157,7 +2163,8 @@ def eliminateColumns(headers, lines):
                  'CSF_ABETA_closest_AV45',
                  'CSF_ABETA_closest_AV45_BIN_192',
                  'CSF_TAU_closest_AV45_BIN_93',
-                 'CSF_PTAU_closest_AV45_BIN_23']
+                 'CSF_PTAU_closest_AV45_BIN_23',
+                 'BD MM-YY']
     to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
     to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
     to_remove += ['TAU.%s' % (i+1) for i in range(7)]
@@ -2167,30 +2174,37 @@ def eliminateColumns(headers, lines):
     to_remove += ['MMSE_DATE%s' % (i+1) for i in range(11)]
     to_remove += ['AVLT_DATE.%s' % (i+1) for i in range(11)]
     to_remove += ['TBMSyn_DATE.%s' % (i+1) for i in range(11)]
-    to_remove += [_ for _ in headers if _.startswith('AV45_')]
+    to_remove += [_ for _ in master_df.columns if _.startswith('AV45_')]
 
-    for tm in to_remove:
-        while tm in headers:
-            headers.remove(tm)
-    new_lines = []
-    for l in lines:
-        for tm in to_remove:
-            l.pop(tm, None)
-        new_lines.append(l)
-    return headers, new_lines
+    # drop columns
+    to_remove = [_ for _ in to_remove if _ in master_df.columns]
+    master_df.drop(to_remove, axis=1, inplace=True)
+    return master_df
 
 
 def runPipeline():
-    # syncing pipeline
-    new_headers, new_lines = parseCSV(master_file, use_second_line=True)
+    master_df = parseCSV(master_file, use_second_line=True, as_df=True)
+    master_df.set_index('RID',inplace=True)
+
+    # get references
+    registry = importRegistry(registry_file, as_df=True)
+
     print "\nELIMINATING COLUMNS\n"
-    new_headers, new_lines = eliminateColumns(new_headers, new_lines)
-    print "\nSYNCING AV45 NONTP\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_nontp_file, registry_file, suffix='NONTP') # adds new patients
-    print "\nSYNCING AV45 TP\n"
-    new_headers, new_lines = syncAV45Data(new_headers, new_lines, av45_tp_file, registry_file, suffix='TP') # adds new patients
+    master_df = eliminateColumns(master_df)
     print "\nMANUALLY ADDING SUBJECTS"
-    new_headers, new_lines = manualAddOns(new_headers, new_lines, RID_ADDONS) 
+    master_df = manualAddOns(master_df, RID_ADDONS)
+    print "\nSYNCING AV45 NONTP\n"
+    master_df = syncAV45Data(master_df, av45_nontp_file, suffix='NONTP')
+    print "\nSYNCING AV45 TP\n"
+    master_df = syncAV45Data(master_df, av45_tp_file, suffix='TP')
+    print "\nSYNCING DEMOG\n"
+    master_df = syncDemogData(master_df, demog_file, pet_meta_file)
+
+
+    dumpDFtoCSV(master_df,output_file,decimal_places=3)
+    sys.exit(1)
+
+
     print "\nSYNCING DEMOG\n"
     new_headers, new_lines = syncDemogData(new_headers, new_lines, demog_file, pet_meta_file) # refreshes AV45 dates
     print "\nSYNCING AV1451 TP\n"
@@ -2239,6 +2253,7 @@ def runPipeline():
 
 if __name__ == '__main__':
     now = datetime.now()
+    pd.options.mode.chained_assignment = None
 
     # IO files
     master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_03_07_16.csv"

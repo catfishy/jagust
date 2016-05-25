@@ -81,17 +81,25 @@ REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,
 
 ########## CSV UPDATING INFRASTRUCTURE ##############
 
-def updateDataFrame(old_frame, new_frame, headers=None, after=None, restrict=True):
+def updateDataFrame(old_frame, new_frame, headers=None, after=None, restrict=True, wipe=True):
     '''
     Merges one DF into the other
     1. If header order specified, reorder
     2. Remove any columns by same name in original frame
     3. Merge together (after column, if specified)
     4. If restrict, only allow indices that existed in old_frame
+    5. If wipe, wipe all values in the old_frame under headers
     '''
     # Reorder new columns
     if isinstance(headers,list):
         new_frame = new_frame[headers]
+    else:
+        headers = list(new_frame.columns)
+    # Wipe old values
+    if wipe:
+        to_wipe = [_ for _ in headers if _ in old_frame]
+        for tw in to_wipe:
+            old_frame[tw] = np.nan
     # Remove duplicate columns
     new_columns = set(new_frame.columns)
     old_columns = [_ for _ in old_frame.columns if _ not in new_columns]
@@ -117,7 +125,7 @@ def parseSubjectGroups(df, extraction_fn):
     They get concatenated together
 
     extraction_fn(group_key, group_rows):
-        return pd.Series
+        return pd.DataFrame
     '''
     if not df.index.name:
         df.index.name = 'SID'
@@ -169,7 +177,7 @@ def yrDiff(date1,date2):
     if isnan(date1) or isnan(date2):
         return np.nan
     else:
-        return (date1-date2).days/365.0
+        return (date1-date2).days/365.25
 
 def isnan(arg):
     try:
@@ -906,15 +914,18 @@ def extractDiagnosesFromMasterData(master_df, as_df=True):
         return convertToSubjDict(df,extract='diag', singular=True)
 
 
-def parseCSV(file_path, delimiter=',', use_second_line=False):
+def parseCSV(file_path, delimiter=',', use_second_line=False, as_df=False):
     if use_second_line:
         data = pd.read_csv(file_path, sep=delimiter, low_memory=False, header=[0,1])
         data.columns = data.columns.get_level_values(1)
     else:
         data = pd.read_csv(file_path, sep=delimiter, low_memory=False)
-    lines = [dict(data.iloc[i].replace(np.nan, '')) for i in range(len(data))]
-    headers = list(data.columns)
-    return (headers, lines)
+    if as_df:
+        return data
+    else:
+        lines = [dict(data.iloc[i].replace(np.nan, '')) for i in range(len(data))]
+        headers = list(data.columns)
+        return (headers, lines)
 
 def createVisitIDLookup(lookupfile):
     headers, lines = parseCSV(lookupfile)
@@ -1316,7 +1327,7 @@ def importDemog(demog_file, as_df=False):
     def createDateFromParts(year, month):
         try:
             return datetime(year=int(year), month=int(month), day=1)
-        except:
+        except Exception as e:
             return np.nan
 
     if 'PTDOBMM' in columns and 'PTDOBYY' in columns:
@@ -1326,9 +1337,10 @@ def importDemog(demog_file, as_df=False):
         df['PTDOB'] = df.PTDOB.apply(lambda x: parseDate(x, ignore_error=True))
 
     df.dropna(subset=['PTDOB'],inplace=True)
+    df['PTDOB'] = pd.to_datetime(df['PTDOB'])
     index_name = df.index.name
     df.reset_index(inplace=True)
-    df = df.groupby(index_name).aggregate(lambda x: x.drop_duplicates())
+    df = df.groupby(index_name).max()
 
     if as_df:
         return df
@@ -1547,7 +1559,7 @@ def importScanMeta(meta_file, with_viscode=False):
             scans[pid] = sorted(list(dedup_rows[date_col]))
     return scans
 
-def importPetMETA(pet_meta_file, tracer='AV45'):
+def importPetMETA(pet_meta_file, tracer='AV45', as_df=False):
     df = pd.read_csv(pet_meta_file)
     seq_str = '%s Coreg, Avg, Std Img and Vox Siz, Uniform Resolution' % tracer
     df.loc[:,'Sequence'] = df.loc[:,'Sequence'].apply(lambda x: x.strip())
@@ -1555,12 +1567,22 @@ def importPetMETA(pet_meta_file, tracer='AV45'):
     df['Subject'] = df.loc[:,'Subject'].apply(lambda x: int(x.split('_')[-1].strip()))
     df['Scan Date'] = df.loc[:,'Scan Date'].apply(parseDate)
 
-    scans = {}
-    for pid, rows in df.groupby('Subject'):
-        dates = sorted(list(set(rows['Scan Date'])))
-        scans[pid] = dates
-    
-    return scans
+    if as_df:
+        df = df[['Subject','Scan Date']]
+        def add_tp(rows):
+            rows.sort_values('Scan Date', inplace=True)
+            rows['TP'] = range(1,len(rows.index)+1)
+            return rows
+        df = df.groupby('Subject').apply(add_tp)
+        df = df.pivot('Subject','TP','Scan Date')
+        tps = [1,2,3,4]
+        for tp in tps:
+            if tp not in df.columns:
+                df[tp] = np.nan
+        return df
+    else:
+        scans = {pid: sorted(list(set(rows['Scan Date']))) for pid, rows in df.groupby('Subject')}
+        return scans
 
 def importARM(arm_file, as_df=False):
     '''
