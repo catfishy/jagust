@@ -92,6 +92,8 @@ def updateDataFrame(old_frame, new_frame, headers=None, after=None, restrict=Tru
     '''
     # Reorder new columns
     if isinstance(headers,list):
+        missing_headers = [_ for _ in headers if _ not in new_frame.columns]
+        new_frame = pd.concat((new_frame, pd.DataFrame(columns=missing_headers)))
         new_frame = new_frame[headers]
     else:
         headers = list(new_frame.columns)
@@ -230,6 +232,56 @@ def weightedMean(points):
     values = np.array([_[1] for _ in points])
     weights = weights / float(sum(weights))
     return sum(weights*values)
+
+def df_slope(df, time_cols, value_cols, take_diff=False, exact=False):
+    '''
+    Calculate slope for each row in the dataframe
+    Given the time columns and the value columns
+    
+    If take_diff, find the year diff between the 
+    time columns before calculating slope
+
+    If exact, return None for a row if it doesn't
+    have values for all timepoints
+
+    Return a Series
+    '''
+    if len(time_cols) != len(value_cols):
+        raise Exception("Time and Value columns not same length")
+    timepoints = len(time_cols)
+
+    def calc_slope(row):
+        times = [row[tc] for tc in time_cols]
+        values = [row[vc] for vc in value_cols]
+        points = [(t,v) for  t,v in zip(times,values) if not isnan(t) and not isnan(v)]
+        if exact and len(points) != timepoints:
+            return None
+        if take_diff:
+            first_time = points[0][0]
+            points = [(yrDiff(t,first_time),v) for t,v in points]
+        return slope(points)
+
+    slopes = df.apply(calc_slope, axis=1)
+    return slopes
+
+def df_mean(df, weight_cols, value_cols):
+    '''
+    Calculate weighted means for each row
+    given the weight cols and value cols
+    '''
+    if len(weight_cols) != len(value_cols):
+        raise Exception("Weight and Value cols not same length")
+
+    def calc_mean(row):
+        weights = [row[wc] for wc in weight_cols]
+        values = [row[vc] for vc in value_cols]
+        if any(map(isnan,weights)) or any(map(isnan,values)):
+            return None
+        return weightedMean(zip(weights,values))
+
+    means = df.apply(calc_mean, axis=1)
+    return means
+
 
 def parseDate(date_str, ignore_error=False):
     if date_str == '' or isnan(date_str):
@@ -642,14 +694,17 @@ def ndcg(relevances, rank=20):
 
 
 
-def importRoussetCSV(rousset_csv, translate_threshold=1.11):
+def importRoussetCSV(rousset_csv, translate_threshold=1.11, as_df=False):
     '''
     If include_threshold, translates to the new PVC threshold
     '''
     df = pd.read_csv(rousset_csv)
 
     slope_points = []
-    by_subj = {}
+    if as_df:
+        by_subj = []
+    else:
+        by_subj = {}
     for subject, subj_rows in df.groupby('subject'):
         tp_results = {}
         if isinstance(subject,str):
@@ -663,7 +718,19 @@ def importRoussetCSV(rousset_csv, translate_threshold=1.11):
             nonpvc_suvr = float(pvc_dict['COMPOSITE']['nonpvcval'])/float(pvc_dict['WHOLECEREB']['nonpvcval'])
             slope_points.append((nonpvc_suvr,pvc_suvr))
             tp_results[timepoint] = pvc_dict
-        by_subj[rid] = tp_results
+        if as_df:
+            for tp, values in tp_results.iteritems():
+                pvc_values = {k:v['pvcval'] for k,v in values.iteritems()}
+                size_values = {'%s_SIZE' % k : v['groupsize'] for k,v in values.iteritems()}
+                pvc_values.update(size_values)
+                pvc_values['RID'] = rid
+                pvc_values['TP'] = tp
+                by_subj.append(pvc_values)
+        else:
+            by_subj[rid] = tp_results
+
+    if as_df:
+        by_subj = pd.DataFrame(by_subj).set_index('RID')
 
     if translate_threshold is not None:
         # determine threshold
@@ -1615,6 +1682,7 @@ def importARM(arm_file, as_df=False):
     all_columns = ['USERDATE','ARM']
     df = df[all_columns]
     df.loc[:,'USERDATE'] = df.loc[:,'USERDATE'].apply(parseDate)
+    df.dropna(subset=['ARM'],inplace=True)
     df['STATUS'] = df.loc[:,'ARM'].apply(lambda x: translation[x])
 
     if as_df:
