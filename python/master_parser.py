@@ -239,147 +239,117 @@ def syncAV45RoussetResults(master_df, av45_rousset_csv):
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=after, restrict=True)
     return master_df
 
+def syncFAQData(master_df, faq_file, registry):
+    faq_df = importFAQ(faq_file, registry, as_df=True)
+    tmpts = max(Counter(faq_df.index).values())
 
-def syncFAQData(old_headers, old_lines, faq_file, registry_file):
-    tmpts = 13
-    registry = importRegistry(registry_file)
-    faq_by_subj = importFAQ(faq_file, registry)
+    headers = ['FAQTOTAL.%s' % (i+1) for i in range(tmpts)]
+    headers += ['FAQTOTAL_timePostAV45.%s' % (i+1) for i in range(tmpts)]
+    headers += ['FAQTOTAL_AV45_6MTHS', 'FAQTOTAL_AV45_DATE',
+                'FAQTOTAL_AV45_2_6MTHS', 'FAQTOTAL_AV45_2_DATE',
+                'FAQTOTAL_AV45_3_6MTHS', 'FAQTOTAL_AV45_3_DATE',
+                'FAQTOTAL_slope']
 
-    to_add_headers = []
-    to_add_headers += ['FAQTOTAL.%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FAQTOTAL_timePostAV45.%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FAQTOTAL_AV45_6MTHS', 'FAQTOTAL_AV45_DATE',
-                       'FAQTOTAL_AV45_2_6MTHS', 'FAQTOTAL_AV45_2_DATE',
-                       'FAQTOTAL_AV45_3_6MTHS', 'FAQTOTAL_AV45_3_DATE',
-                       'FAQTOTAL_slope']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    wipeKeys(old_lines, to_add_headers)
+    def extraction_fn(rid, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
 
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        if len(subj_row) > tmpts:
-            raise Exception("INCREASE NUMBER OF FAQ TIMEPOINTS TO > %s" % (len(subj_row)))
-        new_subj_data = {}
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
+        # get longitudinal measurements
+        subj_rows['RID'] = rid
+        first_date = subj_rows.iloc[0]['EXAMDATE']
+        faq_long = groupLongPivot(subj_rows, 'RID','FAQTOTAL','FAQTOTAL.')
+        date_long = groupLongPivot(subj_rows, 'RID','EXAMDATE','FAQTOTAL_timePostAV45.')
+        date_long = date_long.applymap(lambda x: (x-first_date).days/365.25)
+
+        all_df = pd.concat((faq_long,date_long),axis=1)
+        slope = df_slope(all_df,
+                         date_long.columns,
+                         faq_long.columns,
+                         take_diff=False,
+                         exact=False)
+        all_df['FAQTOTAL_slope'] = slope[rid]
+
+        # closest to AV45 scans
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'FAQTOTAL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        all_df['FAQTOTAL_AV45_6MTHS'] = closest_vals[0]
+        all_df['FAQTOTAL_AV45_DATE'] = closest_dates[0]
+        all_df['FAQTOTAL_AV45_2_6MTHS'] = closest_vals[1]
+        all_df['FAQTOTAL_AV45_2_DATE'] = closest_dates[1]
+        all_df['FAQTOTAL_AV45_3_6MTHS'] = closest_vals[2]
+        all_df['FAQTOTAL_AV45_3_DATE'] = closest_dates[2]
+
+        all_df['FAQTOTAL_AV45_DATE'] = pd.to_datetime(all_df['FAQTOTAL_AV45_DATE'])
+        all_df['FAQTOTAL_AV45_2_DATE'] = pd.to_datetime(all_df['FAQTOTAL_AV45_2_DATE'])
+        all_df['FAQTOTAL_AV45_3_DATE'] = pd.to_datetime(all_df['FAQTOTAL_AV45_3_DATE'])
+
+        return all_df
+
         
-        # get closest to av45s
-        six_months = 31 * 6
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
-        new_subj_data['FAQTOTAL_AV45_6MTHS'] = av45_bl_closest['FAQTOTAL'] if av45_bl_closest else ''
-        new_subj_data['FAQTOTAL_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
-        new_subj_data['FAQTOTAL_AV45_2_6MTHS'] = av45_2_closest['FAQTOTAL'] if av45_2_closest else ''
-        new_subj_data['FAQTOTAL_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
-        new_subj_data['FAQTOTAL_AV45_3_6MTHS'] = av45_3_closest['FAQTOTAL'] if av45_3_closest else ''
-        new_subj_data['FAQTOTAL_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
-        
-        post_av45_points = []
-        for i in range(tmpts):
-            if i < len(subj_row):
-                cur_score = subj_row[i]
-                date = cur_score['EXAMDATE']
-                tot_score = cur_score['FAQTOTAL']
-                if bl_av45 is not None:
-                    timediff = (date - bl_av45).days / 365.0
-                    if timediff > (-90/365.0):
-                        post_av45_points.append((timediff, tot_score))
-                else:
-                    timediff = ''
-                new_subj_data['FAQTOTAL.%s' % (i+1)] = tot_score
-                new_subj_data['FAQTOTAL_timePostAV45.%s' % (i+1)] = timediff
-        # get slope
-        faq_slope = slope(post_av45_points)
-        new_subj_data['FAQTOTAL_slope'] = faq_slope if faq_slope is not None else ''
-        return new_subj_data
+    parsed_df = parseSubjectGroups(faq_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
 
 
-    new_lines = []
-    for linenum, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, faq_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+def syncNPIData(master_df, npi_file):
+    npi_df = importNPI(npi_file,as_df=True)
+    tmpts = max(Counter(npi_df.index).values())
 
-    return (new_headers, new_lines)
+    headers = ['NPITOTAL.%s' % (i+1) for i in range(tmpts)]
+    headers += ['NPITOTAL_timePostAV45.%s' % (i+1) for i in range(tmpts)]
+    headers += ['NPITOTAL_AV45_6MTHS', 'NPITOTAL_AV45_DATE',
+                'NPITOTAL_AV45_2_6MTHS', 'NPITOTAL_AV45_2_DATE',
+                'NPITOTAL_AV45_3_6MTHS', 'NPITOTAL_AV45_3_DATE',
+                'NPITOTAL_slope']
 
-def syncNPIData(old_headers, old_lines, npi_file):
-    tmpts = 6
-    npi_by_subj = importNPI(npi_file)
+    def extraction_fn(rid, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
 
-    to_add_headers = []
-    to_add_headers += ['NPITOTAL.%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['NPITOTAL_timePostAV45.%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['NPITOTAL_AV45_6MTHS', 'NPITOTAL_AV45_DATE',
-                       'NPITOTAL_AV45_2_6MTHS', 'NPITOTAL_AV45_2_DATE',
-                       'NPITOTAL_AV45_3_6MTHS', 'NPITOTAL_AV45_3_DATE',
-                       'NPITOTAL_slope']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    wipeKeys(old_lines, to_add_headers)
+        # get longitudinal measurements
+        subj_rows['RID'] = rid
+        first_date = subj_rows.iloc[0]['EXAMDATE']
+        npi_long = groupLongPivot(subj_rows, 'RID','NPITOTAL','NPITOTAL.')
+        date_long = groupLongPivot(subj_rows, 'RID','EXAMDATE','NPITOTAL_timePostAV45.')
+        date_long = date_long.applymap(lambda x: (x-first_date).days/365.25)
 
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        if len(subj_row) > tmpts:
-            raise Exception("INCREASE NUMBER OF NPI TIMEPOINTS TO > %s" % (len(subj_row)))
+        all_df = pd.concat((npi_long,date_long),axis=1)
+        slope = df_slope(all_df,
+                         date_long.columns,
+                         npi_long.columns,
+                         take_diff=False,
+                         exact=False)
+        all_df['NPITOTAL_slope'] = slope[rid]
 
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        new_subj_data = {}
+        # closest to AV45 scans
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'NPITOTAL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        all_df['NPITOTAL_AV45_6MTHS'] = closest_vals[0]
+        all_df['NPITOTAL_AV45_DATE'] = closest_dates[0]
+        all_df['NPITOTAL_AV45_2_6MTHS'] = closest_vals[1]
+        all_df['NPITOTAL_AV45_2_DATE'] = closest_dates[1]
+        all_df['NPITOTAL_AV45_3_6MTHS'] = closest_vals[2]
+        all_df['NPITOTAL_AV45_3_DATE'] = closest_dates[2]
 
-        # get closest to av45s
-        six_months = 31 * 6
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_row, bl_av45, av45_2, av45_3, day_limit=six_months)
-        new_subj_data['NPITOTAL_AV45_6MTHS'] = av45_bl_closest['NPITOTAL'] if av45_bl_closest else ''
-        new_subj_data['NPITOTAL_AV45_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
-        new_subj_data['NPITOTAL_AV45_2_6MTHS'] = av45_2_closest['NPITOTAL'] if av45_2_closest else ''
-        new_subj_data['NPITOTAL_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
-        new_subj_data['NPITOTAL_AV45_3_6MTHS'] = av45_3_closest['NPITOTAL'] if av45_3_closest else ''
-        new_subj_data['NPITOTAL_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
-        
-        post_av45_points = []
-        for i in range(tmpts):
-            if i < len(subj_row):
-                cur_score = subj_row[i]
-                date = cur_score['EXAMDATE']
-                tot_score = cur_score['NPITOTAL']
-                if bl_av45 is not None:
-                    timediff = (date - bl_av45).days / 365.0
-                    if timediff > (-90/365.0):
-                        post_av45_points.append((timediff, tot_score))
-                else:
-                    timediff = ''
-                new_subj_data['NPITOTAL.%s' % (i+1)] = tot_score
-                new_subj_data['NPITOTAL_timePostAV45.%s' % (i+1)] = timediff
-        # get slope
-        npi_slope = slope(post_av45_points)
-        new_subj_data['NPITOTAL_slope'] = npi_slope if npi_slope is not None else ''
-        return new_subj_data
+        all_df['NPITOTAL_AV45_DATE'] = pd.to_datetime(all_df['NPITOTAL_AV45_DATE'])
+        all_df['NPITOTAL_AV45_2_DATE'] = pd.to_datetime(all_df['NPITOTAL_AV45_2_DATE'])
+        all_df['NPITOTAL_AV45_3_DATE'] = pd.to_datetime(all_df['NPITOTAL_AV45_3_DATE'])
 
-    new_lines = []
-    for linenum, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, npi_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+        return all_df
 
-    return (new_headers, new_lines)
+    parsed_df = parseSubjectGroups(npi_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
 
-def syncMHISTData(old_headers, old_lines, mhist_file):
-    mhist_by_subj = importMedicalHistory(mhist_file)
 
-    to_add_headers = ['SMOKING','DIABETES','HYPERLIPIDEMIA']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after='Handedness')
-    wipeKeys(old_lines, to_add_headers)
+def syncMHISTData(master_df, mhist_file):
+    mhist_df = importMedicalHistory(mhist_file,as_df=True)
 
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        new_subj_data = {'SMOKING': 1 if subj_row['smoking'] else 0,
-                         'DIABETES': 1 if subj_row['diabetes'] else 0,
-                         'HYPERLIPIDEMIA': 1 if subj_row['hyperlipidemia'] else 0}
-        return new_subj_data
+    mhist_df = mhist_df[['smoking','diabetes','hyperlipidemia']].astype(int)
+    mhist_df.columns = [_.upper() for _ in mhist_df.columns]
 
-    new_lines = []
-    for linenum, old_l in enumerate(old_lines):
-        new_data = updateLine(old_l, mhist_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=None)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-    return (new_headers, new_lines)
+    master_df = updateDataFrame(master_df, mhist_df, headers=mhist_df.columns, after='Handedness')
+    return master_df
 
 def syncGDData(old_headers, old_lines, gd_file, registry_file):
     tmpts = 10
@@ -772,11 +742,20 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
     init_diag_df = arm_df[arm_df.groupby(index_name)['USERDATE'].rank(ascending=False) == 1].set_index(index_name)
 
     # get initial visits
-    bl_registry = registry[registry.VISCODE != 'scmri']
-    bl_registry = bl_registry[bl_registry.VISCODE2 != 'scmri']
-    index_name = bl_registry.index.name
-    bl_registry.reset_index(inplace=True)
-    bl_registry = bl_registry.groupby(index_name)['EXAMDATE'].aggregate(min)
+    try:
+        bad_vc2 = registry.loc(axis=0)[:,:,'scmri'].index
+    except:
+        bad_vc2 = []
+    try:
+        bad_vc = registry.loc(axis=0)[:,'scmri',:].index
+    except:
+        bad_vc = []
+    bad_vc2_idx = registry.index.isin(bad_vc2)
+    bad_vc_idx = registry.index.isin(bad_vc)
+    bad_idx = bad_vc2_idx | bad_vc_idx
+    bl_registry = registry[~bad_idx]
+    bl_registry.reset_index(level=0,inplace=True)
+    bl_registry = bl_registry.groupby('RID')['EXAMDATE'].aggregate(min)
 
     # add comparison time diffs
     diag_df['TimeFromCompDate'] = diag_df['EXAMDATE'].apply(lambda x: abs(x-pivot_date).days)
@@ -2241,35 +2220,37 @@ def runPipeline():
     master_df = eliminateColumns(master_df)
     print "\nMANUALLY ADDING SUBJECTS"
     master_df = manualAddOns(master_df, RID_ADDONS)
-    print "\nSYNCING AV45 NONTP\n"
-    master_df = syncAV45Data(master_df, av45_nontp_file, suffix='NONTP')
-    print "\nSYNCING AV45 TP\n"
-    master_df = syncAV45Data(master_df, av45_tp_file, suffix='TP')
+    # print "\nSYNCING AV45 NONTP\n"
+    # master_df = syncAV45Data(master_df, av45_nontp_file, suffix='NONTP')
+    # print "\nSYNCING AV45 TP\n"
+    # master_df = syncAV45Data(master_df, av45_tp_file, suffix='TP')
     print "\nSYNCING DEMOG\n"
     master_df = syncDemogData(master_df, demog_file, pet_meta_file)
-    print "\nSYNCING AV1451 TP\n"
-    master_df = syncAV1451Data(master_df, av1451_tp_file)
-    print "\nSYNCING AV45 ROUSSET PVC\n"
-    master_df = syncAV45RoussetResults(master_df, av45_rousset_csv)
-    print "\nSYNCING AV1451 ROUSSET PVC\n"
-    master_df = syncAV1451RoussetResults(master_df, av1451_rousset_csv)
-    print "\nSYNCING DIAGNOSES\n"
-    master_df = syncDiagnosisData(master_df, diagnosis_file, arm_file, registry)
-
+    # print "\nSYNCING AV1451 TP\n"
+    # master_df = syncAV1451Data(master_df, av1451_tp_file)
+    # print "\nSYNCING AV45 ROUSSET PVC\n"
+    # master_df = syncAV45RoussetResults(master_df, av45_rousset_csv)
+    # print "\nSYNCING AV1451 ROUSSET PVC\n"
+    # master_df = syncAV1451RoussetResults(master_df, av1451_rousset_csv)
+    # print "\nSYNCING DIAGNOSES\n"
+    # master_df = syncDiagnosisData(master_df, diagnosis_file, arm_file, registry)
+    # print "\nSYNCING FAQ\n"
+    # master_df = syncFAQData(master_df, faq_file, registry)
+    # print "\nSYNCING NPI\n"
+    # master_df = syncNPIData(master_df, npi_file)
+    # print "\nSYNCING MHIST\n"
+    # master_df = syncMHISTData(master_df, mhist_file)
+    print "\nSYNCING UW NEURO\n"
+    master_df = syncUWData(master_df, uw_file, registry)
 
     dumpDFtoCSV(master_df,output_file,decimal_places=3)
     sys.exit(1)
 
 
 
-    print "\nSYNCING FAQ\n"
-    new_headers, new_lines = syncFAQData(new_headers, new_lines, faq_file, registry_file)
-    print "\nSYNCING NPI\n"
-    new_headers, new_lines = syncNPIData(new_headers, new_lines, npi_file)
-    print "\nSYNCING MHIST\n"
-    new_headers, new_lines = syncMHISTData(new_headers, new_lines, mhist_file)
-    print "\nSYNCING UW NEURO\n"
-    new_headers, new_lines = syncUWData(new_headers, new_lines, uw_file, registry_file)
+
+
+
     print "\nSYNCING UCSF LONG FreeSurfer\n"
     new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, mprage_file)
     print "\nSYNCING UCSF CROSS FreeSurfer"

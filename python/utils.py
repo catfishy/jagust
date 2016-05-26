@@ -162,15 +162,15 @@ def groupSlope(group_rows, date_key, val_key, cutoff_date=None):
     return grp_slope
 
 def groupClosest(group_rows, date_key, val_key, comp_dates, day_limit=365):
-    subset = group_rows[[date_key,val_key]]
+    df = group_rows.copy()
     results = []
     for i,cd in enumerate(comp_dates):
         if isnan(cd):
             results.append(np.nan)
         else:
             closest_key = 'closest_%s' % i
-            subset[closest_key] = subset[date_key].apply(lambda x: abs(x-cd).days)
-            closest_row = subset.sort_values(by=closest_key).iloc[0]
+            df[closest_key] = df[date_key].apply(lambda x: abs(x-cd).days)
+            closest_row = df.sort_values(by=closest_key).iloc[0]
             closest_val = closest_row[val_key] if closest_row[closest_key] <= day_limit else np.nan
             results.append(closest_val)
     return results
@@ -289,6 +289,8 @@ def parseDate(date_str, ignore_error=False):
             return None
         else:
             raise Exception("Blank date string")
+    if isinstance(date_str,datetime):
+        return date_str
     date_str = date_str.replace('--','1')
     formats = ['%Y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
     for f in formats:
@@ -314,7 +316,7 @@ def parseOrFindDate(df, date_key, registry=None):
     return df
 
 def findVisitDate(registry, subj, viscodes):
-    vcs = [_.lower().strip() for _ in viscodes]
+    vcs = [_.lower().strip() for _ in viscodes if not isnan(_)]
     vcs = set([_ for _ in vcs if _ != ''])
     date = None
     if isinstance(registry, pd.DataFrame):
@@ -325,8 +327,8 @@ def findVisitDate(registry, subj, viscodes):
         rows = enumerate(subj_registry)
     else:
         raise Exception("Invalid registry data type")
-    for i, reg_row in rows:
-        row_visits = [reg_row.get('VISCODE','').lower().strip(), reg_row.get('VISCODE2','').lower().strip()]
+    for (vc,vc2), reg_row in rows:
+        row_visits = [vc.lower().strip(), vc2.lower().strip()]
         row_visits = set([_ for _ in row_visits if _ != ''])
         if len(vcs & row_visits) > 0:
             date = reg_row['EXAMDATE']
@@ -1058,21 +1060,22 @@ def convertVisitName(vc_name):
 
 def importRegistry(registry_file, include_all=False, as_df=False):
     df = pd.read_csv(registry_file,low_memory=False)
-    df = df.loc[:,['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']]
+    df = df[['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']]
     df['VISCODE2'] = df['VISCODE2'].fillna('')
     df['VISCODE'] = df['VISCODE'].fillna('')
     df.loc[:,'VISCODE'] = df.loc[:,'VISCODE'].apply(lambda x: x.lower().strip())
     df.loc[:,'VISCODE2'] = df.loc[:,'VISCODE2'].apply(lambda x: x.lower().strip())
-
+    df['VISCODE'] = df['VISCODE'].apply(lambda x: str(x))
+    df['VISCODE2'] = df['VISCODE2'].apply(lambda x: str(x))
     if not include_all:
         df = df[~df.VISCODE.str.contains('sc')] # filter out screening visits
 
+    df.set_index(['RID','VISCODE','VISCODE2'],inplace=True)
+    df = parseOrFindDate(df, 'EXAMDATE')
     df.dropna(subset=['EXAMDATE'],inplace=True)
-    df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
-    df.set_index('RID',inplace=True)
-
+    
     if as_df:
-        df['EXAMDATE'] = pd.to_datetime(df['EXAMDATE'])
+        df.sortlevel(inplace=True)
         return df
     else:
         return convertToSubjDict(df, sort_by='EXAMDATE')
@@ -1783,6 +1786,8 @@ def importNPI(npi_file, as_df=False):
     df = df[['RID','EXAMDATE','NPITOTAL']]
     df.dropna(inplace=True)
     df['EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
+    df.set_index('RID',inplace=True)
+    
     if as_df:
         return df
     else:
