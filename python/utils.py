@@ -233,6 +233,28 @@ def weightedMean(points):
     weights = weights / float(sum(weights))
     return sum(weights*values)
 
+
+def df_count(df, time_cols, value_cols):
+    '''
+    Count the number of valid timepoints that would
+    go into slope calculations
+
+    Return a Series
+    '''
+    if len(time_cols) != len(value_cols):
+        raise Exception("Time and Value columns not same length")
+    timepoints = len(time_cols)
+
+    def calc_count(row):
+        times = [row[tc] for tc in time_cols]
+        values = [row[vc] for vc in value_cols]
+        points = [(t,v) for  t,v in zip(times,values) if not isnan(t) and not isnan(v)]
+        return len(points)
+
+    counts = df.apply(calc_count, axis=1)
+    return counts
+
+
 def df_slope(df, time_cols, value_cols, take_diff=False, exact=False):
     '''
     Calculate slope for each row in the dataframe
@@ -1787,7 +1809,7 @@ def importNPI(npi_file, as_df=False):
     df.dropna(inplace=True)
     df['EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
     df.set_index('RID',inplace=True)
-    
+
     if as_df:
         return df
     else:
@@ -1945,18 +1967,20 @@ def importAV45(av45_file, as_df=False):
 
 def importFSVolumes(vol_file, as_df=False):
     df = pd.read_csv(vol_file)
-    columns = ['Subject', 'Scan', 'Date', 'MRI', 'EstimatedTotalIntraCranialVol', 'Left-Hippocampus', 'Right-Hippocampus']
-    df = df[columns]
-    df.loc[:,'Date'] = df.loc[:,'Date'].apply(parseDate)
-    df.loc[:,'Subject'] = df.loc[:,'Subject'].apply(lambda x: int(x.split('-')[-1]))
+    df.loc[:,'EXAMDATE'] = df.loc[:,'Date'].apply(parseDate)
+    df.loc[:,'RID'] = df.loc[:,'Subject'].apply(lambda x: int(x.split('-')[-1]))
     df['HCV'] = df['Left-Hippocampus'] + df['Right-Hippocampus']
-    df['HC/ICV'] = df['HCV'] / df['EstimatedTotalIntraCranialVol']
+    df['ICV'] = df['EstimatedTotalIntraCranialVol']
+    df['HC/ICV'] = df['HCV'] / df['ICV']
+
+    df = df[['RID','EXAMDATE','HCV','ICV','HC/ICV']]
     df.dropna(inplace=True)
-    df.set_index('Subject',inplace=True)
+    df.set_index('RID',inplace=True)
+
     if as_df:
         return df
     else:
-        return convertToSubjDict(df,sort_by='Date')
+        return convertToSubjDict(df,sort_by='EXAMDATE')
 
 
 def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False, as_df=False):
@@ -1990,14 +2014,16 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
     df['HCV'] = df[['ST88SV','ST29SV']].sum(axis=1)
     df['IMAGEUID'] = df['IMAGEUID'].apply(lambda x: getMagStrength(mprage_df, x))
     df['version'] = version
-    df.rename(columns={'ST29SV': 'LEFT_HCV', 'ST88SV': 'RIGHT_HCV', 'ST10CV': 'ICV', 'IMAGEUID': 'FLDSTRENG'})
-    df.dropna(subset=['EXAMDATE'],inplace=True)
+    df.rename(columns={'ST29SV': 'LEFT_HCV', 'ST88SV': 'RIGHT_HCV', 'ST10CV': 'ICV', 'IMAGEUID': 'FLDSTRENG'},inplace=True)
+
     df.set_index('RID',inplace=True)
+    df = parseOrFindDate(df, 'EXAMDATE', registry=None)
+    df.dropna(subset=['EXAMDATE'],inplace=True)
 
     if as_df:
-        return filtered
+        return df
     else:
-        return convertToSubjDict(filtered,sort_by='EXAMDATE')
+        return convertToSubjDict(df,sort_by='EXAMDATE')
 
 
 # NOT USED

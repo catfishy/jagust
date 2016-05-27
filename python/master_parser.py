@@ -252,13 +252,14 @@ def syncFAQData(master_df, faq_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
 
         # get longitudinal measurements
         subj_rows['RID'] = rid
-        first_date = subj_rows.iloc[0]['EXAMDATE']
         faq_long = groupLongPivot(subj_rows, 'RID','FAQTOTAL','FAQTOTAL.')
         date_long = groupLongPivot(subj_rows, 'RID','EXAMDATE','FAQTOTAL_timePostAV45.')
-        date_long = date_long.applymap(lambda x: (x-first_date).days/365.25)
+        date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.25 if not isnan(av45_date1) else np.nan)
+        date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
 
         all_df = pd.concat((faq_long,date_long),axis=1)
         slope = df_slope(all_df,
@@ -269,7 +270,6 @@ def syncFAQData(master_df, faq_file, registry):
         all_df['FAQTOTAL_slope'] = slope[rid]
 
         # closest to AV45 scans
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'FAQTOTAL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         all_df['FAQTOTAL_AV45_6MTHS'] = closest_vals[0]
@@ -304,13 +304,14 @@ def syncNPIData(master_df, npi_file):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
 
         # get longitudinal measurements
         subj_rows['RID'] = rid
-        first_date = subj_rows.iloc[0]['EXAMDATE']
         npi_long = groupLongPivot(subj_rows, 'RID','NPITOTAL','NPITOTAL.')
         date_long = groupLongPivot(subj_rows, 'RID','EXAMDATE','NPITOTAL_timePostAV45.')
-        date_long = date_long.applymap(lambda x: (x-first_date).days/365.25)
+        date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.25 if not isnan(av45_date1) else np.nan)
+        date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
 
         all_df = pd.concat((npi_long,date_long),axis=1)
         slope = df_slope(all_df,
@@ -321,7 +322,6 @@ def syncNPIData(master_df, npi_file):
         all_df['NPITOTAL_slope'] = slope[rid]
 
         # closest to AV45 scans
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'NPITOTAL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         all_df['NPITOTAL_AV45_6MTHS'] = closest_vals[0]
@@ -1666,411 +1666,226 @@ def syncCSFData(old_headers, old_lines, csf_files, registry_file):
 
     return (new_headers, new_lines)
 
-def syncUWData(old_headers, old_lines, uw_file, registry_file):
-    tmpts=12
-    registry = importRegistry(registry_file)
-    uw_by_subj = importUW(uw_file, registry=registry)
+def syncUWData(master_df, uw_file, registry):
+    uw_df = importUW(uw_file, registry=registry, as_df=True)
+    tmpts = max(Counter(uw_df.index).values())
 
-    to_add_headers = []
-    to_add_headers += ['UW_MEM_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['UW_MEM_postAV45_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['UW_MEM_postAV45_count', 'UW_MEM_slope', 'UW_MEM_BL_3months']
-    to_add_headers += ['UW_EF_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['UW_EF_postAV45_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['UW_EF_postAV45_count', 'UW_EF_slope', 'UW_EF_BL_3months']
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    wipeKeys(old_lines, to_add_headers)
+    headers = ['UW_MEM_%s' % (i+1) for i in range(tmpts)]
+    headers += ['UW_EF_%s' % (i+1) for i in range(tmpts)]
+    headers += ['UW_postAV45_%s' % (i+1) for i in range(tmpts)]
+    headers += ['UW_MEM_postAV45_count', 'UW_MEM_slope', 'UW_MEM_BL_3months']
+    headers += ['UW_EF_postAV45_count', 'UW_EF_slope', 'UW_EF_BL_3months']  
 
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        subj_uw = sorted(subj_row, key=lambda x: x['EXAMDATE'])
-        if len(subj_uw) > tmpts:
-            raise Exception("INCREASE NUMBER OF UW TIMEPOINTS TO > %s" % (len(subj_uw)))
-        
-        new_data = {}
-        mem_slope_points = []
-        ef_slope_points = []
-        for i in range(tmpts):
-            if i < len(subj_uw):
-                datapoint = subj_uw[i]
-                examdate = datapoint['EXAMDATE']
-                cur_mem = datapoint['ADNI_MEM']
-                cur_ef = datapoint['ADNI_EF']
-                timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
-                if timediff <= -(90.0/365.0):
-                    timediff = ''
-                if not np.isnan(cur_mem):
-                    new_data['UW_MEM_%s' % (i+1)] = cur_mem
-                    new_data['UW_MEM_postAV45_%s' % (i+1)] = timediff
-                    if timediff != '':
-                        mem_slope_points.append((timediff, cur_mem))
-                        if abs(timediff) <= (90.0/365.0) and 'UW_MEM_BL_3months' not in new_data:
-                            new_data['UW_MEM_BL_3months'] = cur_mem
-                if not np.isnan(cur_ef):
-                    new_data['UW_EF_%s' % (i+1)] = cur_ef
-                    new_data['UW_EF_postAV45_%s' % (i+1)] = timediff
-                    if timediff != '':
-                        ef_slope_points.append((timediff, cur_ef))
-                        if abs(timediff) <= (90.0/365.0) and 'UW_EF_BL_3months' not in new_data:
-                            new_data['UW_EF_BL_3months'] = cur_ef
-        # calc slope
-        new_data['UW_MEM_postAV45_count'] = len(mem_slope_points)
-        new_data['UW_MEM_slope'] = slope(mem_slope_points)
-        new_data['UW_EF_postAV45_count'] = len(ef_slope_points)
-        new_data['UW_EF_slope'] = slope(ef_slope_points)
-        return new_data
+    def extraction_fn(rid, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
 
-    new_lines = []
-    for old_l in old_lines:
-        new_data = updateLine(old_l, uw_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=None, decimal_places=5)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+        # get long measurements
+        subj_rows['RID'] = rid
+        mem_long = groupLongPivot(subj_rows, 'RID','ADNI_MEM','UW_MEM_')
+        ef_long = groupLongPivot(subj_rows, 'RID', 'ADNI_EF','UW_EF_')
+        date_long = groupLongPivot(subj_rows, 'RID','EXAMDATE','UW_postAV45_')
+        date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.25 if not isnan(av45_date1) else np.nan)
+        date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
+        all_df = pd.concat((mem_long,ef_long,date_long),axis=1)
 
+        # get slopes
+        mem_slope = df_slope(all_df, date_long.columns, mem_long.columns, take_diff=False, exact=False)
+        ef_slope = df_slope(all_df, date_long.columns, ef_long.columns, take_diff=False, exact=False)
+        all_df['UW_MEM_slope'] = mem_slope[rid]
+        all_df['UW_EF_slope'] = ef_slope[rid]
 
-    return (new_headers, new_lines)
+        # get counts
+        all_df['UW_MEM_postAV45_count'] = df_count(all_df, date_long.columns, mem_long.columns)[rid]
+        all_df['UW_EF_postAV45_count'] = df_count(all_df, date_long.columns, ef_long.columns)[rid]
 
-def syncUCBFreesurferData(old_headers, old_lines, ucb_fs_volumes):
-    tmpts = 3
-    fs_by_subj = importFSVolumes(ucb_fs_volumes)
+        # get closest
+        closest_mem = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_MEM', [av45_date1],day_limit=365/4)
+        closest_ef = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_EF', [av45_date1],day_limit=365/4)
+        all_df['UW_MEM_BL_3months'] = closest_mem[0] 
+        all_df['UW_EF_BL_3months'] = closest_ef[0]
 
-    to_add_headers = []
-    to_add_headers += ['UCB_FS_HC/ICV_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['UCB_FS_postAV45_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['UCB_FS_postAV45_count', 'UCB_FS_postAV45_interval', 
-                       'UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope', 
-                       'UCB_FS_HC/ICV_AV45_1_3MTHS','UCB_FS_HC/ICV_AV45_1_DATE',
-                       'UCB_FS_HC/ICV_AV45_2_3MTHS','UCB_FS_HC/ICV_AV45_2_DATE',
-                       'UCB_FS_HC/ICV_AV45_3_3MTHS','UCB_FS_HC/ICV_AV45_3_DATE',
-                       'UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_1_DATE',
-                       'UCB_FS_HC/ICV_AV1451_2','UCB_FS_HC/ICV_AV1451_2_DATE',
-                       'UCB_FS_HC/ICV_AV1451_3','UCB_FS_HC/ICV_AV1451_3_DATE',]
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    wipeKeys(old_lines, to_add_headers)
+        return all_df
 
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        bl_av1451, av1451_2, av1451_3 = getAV1451Dates(old_l, patient_pets=patient_pets)
-        subj_fs = sorted(subj_row, key=lambda x: x['Date'])
-        if len(subj_fs) > tmpts:
-            raise Exception("INCREASE NUMBER OF UCB FS TIMEPOINTS TO > %s" % (len(subj_fs)))
+    parsed_df = parseSubjectGroups(uw_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
 
-        new_data = {}
-        slope_points = []
-        avg_slope_points = []
-        bl_icv = subj_fs[0]['EstimatedTotalIntraCranialVol']
-        avg_icv = np.mean([float(_['EstimatedTotalIntraCranialVol']) for _ in subj_fs])
+def syncUCBFreesurferData(master_df, ucb_fs_volumes):
+    fs_df = importFSVolumes(ucb_fs_volumes, as_df=True)
+    tmpts = max(Counter(fs_df.index).values())
 
-        # get closest to av45s
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_fs, bl_av45, av45_2, av45_3, day_limit=31*3, date_key='Date')
-        new_data['UCB_FS_HC/ICV_AV45_1_3MTHS'] = av45_bl_closest['HCV']/bl_icv if av45_bl_closest else ''
-        new_data['UCB_FS_HC/ICV_AV45_1_DATE'] = av45_bl_closest['Date'] if av45_bl_closest else ''
-        new_data['UCB_FS_HC/ICV_AV45_2_3MTHS'] = av45_2_closest['HCV']/bl_icv if av45_2_closest else ''
-        new_data['UCB_FS_HC/ICV_AV45_2_DATE'] = av45_2_closest['Date'] if av45_2_closest else ''
-        new_data['UCB_FS_HC/ICV_AV45_3_3MTHS'] = av45_3_closest['HCV']/bl_icv if av45_3_closest else ''
-        new_data['UCB_FS_HC/ICV_AV45_3_DATE'] = av45_3_closest['Date'] if av45_3_closest else ''
+    headers = ['UCB_FS_HC/ICV_%s' % (i+1) for i in range(tmpts)]
+    headers += ['UCB_FS_postAV45_%s' % (i+1) for i in range(tmpts)]
+    headers += ['UCB_FS_postAV45_count', 'UCB_FS_postAV45_interval', 
+                'UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope', 
+                'UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV45_1_DATE',
+                'UCB_FS_HC/ICV_AV45_2','UCB_FS_HC/ICV_AV45_2_DATE',
+                'UCB_FS_HC/ICV_AV45_3','UCB_FS_HC/ICV_AV45_3_DATE',
+                'UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_1_DATE',
+                'UCB_FS_HC/ICV_AV1451_2','UCB_FS_HC/ICV_AV1451_2_DATE',
+                'UCB_FS_HC/ICV_AV1451_3','UCB_FS_HC/ICV_AV1451_3_DATE']
 
-        # Get closest to AV1451 scans
-        av1451_bl_closest, av1451_2_closest, av1451_3_closest = getClosestToScans(subj_fs, bl_av1451, av1451_2, av1451_3, date_key='Date')
-        new_data['UCB_FS_HC/ICV_AV1451_1'] = av1451_bl_closest['HCV']/bl_icv if av1451_bl_closest else ''
-        new_data['UCB_FS_HC/ICV_AV1451_1_DATE'] = av1451_bl_closest['Date'] if av1451_bl_closest else ''
-        new_data['UCB_FS_HC/ICV_AV1451_2'] = av1451_2_closest['HCV']/bl_icv if av1451_2_closest else ''
-        new_data['UCB_FS_HC/ICV_AV1451_2_DATE'] = av1451_2_closest['Date'] if av1451_2_closest else ''
-        new_data['UCB_FS_HC/ICV_AV1451_3'] = av1451_3_closest['HCV']/bl_icv if av1451_3_closest else ''
-        new_data['UCB_FS_HC/ICV_AV1451_3_DATE'] = av1451_3_closest['Date'] if av1451_3_closest else ''
+    def extraction_fn(rid, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
-        for i in range(len(subj_fs)):
-            datapoint = subj_fs[i]
-            examdate = datapoint['Date']
-            hc_icv = datapoint['HCV']/bl_icv
-            hc_icv_avg = datapoint['HCV']/avg_icv
-            new_data['UCB_FS_HC/ICV_%s' % (i+1)] = hc_icv
-            timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
-            if timediff != '' and timediff > -(90.0/365.0):
-                slope_points.append((timediff, hc_icv))
-                avg_slope_points.append((timediff,hc_icv_avg))
-                new_data['UCB_FS_postAV45_%s' % (i+1)] = timediff
-            
-        # calc slope
-        new_data['UCB_FS_postAV45_count'] = len(slope_points)
-        new_data['UCB_FS_HC/ICV_slope'] = slope(slope_points)
-        new_data['UCB_FS_HC/ICVavg_slope'] = slope(avg_slope_points)
-        if len(slope_points) > 0:
-            new_data['UCB_FS_postAV45_interval'] = max([_[0] for _ in slope_points])
-        else:
-            new_data['UCB_FS_postAV45_interval'] = 0
-        return new_data
+        # Calculate HC/ICV
+        bl_icv = subj_rows.iloc[0]['ICV']
+        avg_icv = np.mean(subj_rows['ICV'])
+        subj_rows['HC/ICV_BL'] = subj_rows['HCV'] / bl_icv
+        subj_rows['HC/ICV_AVG'] = subj_rows['HCV'] / avg_icv
 
-    new_lines = []
-    for old_l in old_lines:
-        new_data = updateLine(old_l, fs_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=None, decimal_places=5)
-        old_l.update(new_data)
-        new_lines.append(old_l)
+        # Get long measurements
+        subj_rows['RID'] = rid
+        hcicv_bl_long = groupLongPivot(subj_rows, 'RID','HC/ICV_BL','UCB_FS_HC/ICV_')
+        hcicv_avg_long = groupLongPivot(subj_rows, 'RID','HC/ICV_AVG','UCB_FS_HC/ICV_')
+        date_long = groupLongPivot(subj_rows, 'RID','EXAMDATE','UCB_FS_postAV45_')
+        date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.25 if not isnan(av45_date1) else np.nan)
+        date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
+        all_df = pd.concat((hcicv_bl_long,date_long),axis=1)
+
+        # Get closest av45 measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        all_df['UCB_FS_HC/ICV_AV45_1'] = closest_vals[0]
+        all_df['UCB_FS_HC/ICV_AV45_1_DATE'] = closest_dates[0]
+        all_df['UCB_FS_HC/ICV_AV45_2'] = closest_vals[1]
+        all_df['UCB_FS_HC/ICV_AV45_2_DATE'] = closest_dates[1]
+        all_df['UCB_FS_HC/ICV_AV45_3'] = closest_vals[2]
+        all_df['UCB_FS_HC/ICV_AV45_3_DATE'] = closest_dates[2]
+        all_df['UCB_FS_HC/ICV_AV45_1_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV45_1_DATE'])
+        all_df['UCB_FS_HC/ICV_AV45_2_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV45_2_DATE'])
+        all_df['UCB_FS_HC/ICV_AV45_3_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV45_3_DATE'])
+
+        # Get closest AV1451 measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        all_df['UCB_FS_HC/ICV_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_HC/ICV_AV1451_1_DATE'] = closest_dates[0]
+        all_df['UCB_FS_HC/ICV_AV1451_2'] = closest_vals[1]
+        all_df['UCB_FS_HC/ICV_AV1451_2_DATE'] = closest_dates[1]
+        all_df['UCB_FS_HC/ICV_AV1451_3'] = closest_vals[2]
+        all_df['UCB_FS_HC/ICV_AV1451_3_DATE'] = closest_dates[2]
+        all_df['UCB_FS_HC/ICV_AV1451_1_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV1451_1_DATE'])
+        all_df['UCB_FS_HC/ICV_AV1451_2_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV1451_2_DATE'])
+        all_df['UCB_FS_HC/ICV_AV1451_3_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV1451_3_DATE'])
+
+        # Get slopes
+        hcicv_bl_slope = df_slope(all_df, date_long.columns, hcicv_bl_long.columns, take_diff=False, exact=False)
+        hcicv_avg_slope = df_slope(all_df, date_long.columns, hcicv_avg_long.columns, take_diff=False, exact=False)
+        all_df['UCB_FS_HC/ICV_slope'] = hcicv_bl_slope[rid]
+        all_df['UCB_FS_HC/ICVavg_slope'] = hcicv_avg_slope[rid]
+
+        # Get counts + interval
+        all_df['UCB_FS_postAV45_count'] = df_count(all_df,date_long.columns,hcicv_bl_long.columns)[rid]
+        last_date = subj_rows.iloc[-1]['EXAMDATE']
+        all_df['UCB_FS_postAV45_interval'] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
+
+        return all_df
+
+    parsed_df = parseSubjectGroups(fs_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
 
 
-    return (new_headers, new_lines)
+def syncUCSFFreesurferData(master_df, ucsf_files, mprage_file, prefix):
+    fs_df_list = [importUCSFFreesurfer(filename, mprage_file, version=fsversion, include_failed=False, as_df=True) for fsversion,filename in ucsf_files]
+    fs_df = pd.concat(fs_df_list,axis=0)
+    fs_df = fs_df[['EXAMDATE','FLDSTRENG','version','ICV','HCV']]
 
-def syncUCSFFreesurferCrossData(old_headers, old_lines, ucsf_files, mprage_file):
-    tmpts = 12
+    # average same day scans if matching in field strength + fs version
+    # then, of same day results, take first row
+    fs_df = fs_df.reset_index().groupby(['RID','FLDSTRENG','version','EXAMDATE']).aggregate(np.mean).reset_index()
+    fs_df = fs_df.groupby(['RID','EXAMDATE']).first().reset_index()
+    fs_df.set_index('RID',inplace=True)
+    tmpts = max(Counter(fs_df.index).values())
 
-    fs_by_subj_list = [importUCSFFreesurfer(filename, mprage_file, version=fsversion, include_failed=False) for fsversion,filename in ucsf_files]
-    fs_by_subj = {}
-    for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
-        if k not in fs_by_subj:
-            fs_by_subj[k] = v
-        else:
-            fs_by_subj[k] = fs_by_subj[k] + v
+    headers = ['%s_HC/ICV_%s' % (prefix,i+1) for i in range(tmpts)]
+    headers += ['%s_postAV45_%s' % (prefix,i+1) for i in range(tmpts)]
+    headers += ['%s_postAV45_count' % prefix, '%s_postAV45_interval' % prefix, 
+                '%s_HC/ICV_slope' % prefix, '%s_HC/ICVavg_slope' % prefix,
+                '%s_HC/ICV_AV45_1' % prefix,'%s_HC/ICV_AV45_1_DATE' % prefix,
+                '%s_HC/ICV_AV45_2' % prefix,'%s_HC/ICV_AV45_2_DATE' % prefix,
+                '%s_HC/ICV_AV45_3' % prefix,'%s_HC/ICV_AV45_3_DATE' % prefix,
+                '%s_HC/ICV_AV1451_1' % prefix,'%s_HC/ICV_AV1451_1_DATE' % prefix,
+                '%s_HC/ICV_AV1451_2' % prefix,'%s_HC/ICV_AV1451_2_DATE' % prefix,
+                '%s_HC/ICV_AV1451_3' % prefix,'%s_HC/ICV_AV1451_3_DATE' % prefix,]
+    headers += ['%s_MRI_STRENGTH_%s' % (prefix,i+1) for i in range(tmpts)]
+    headers += ['%s_FSVERSION_%s' % (prefix,i+1) for i in range(tmpts)]
 
-    to_add_headers = []
-    to_add_headers += ['FSX_HC/ICV_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSX_postAV45_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSX_postAV45_count', 'FSX_postAV45_interval', 
-                       'FSX_HC/ICV_slope', 'FSX_HC/ICVavg_slope',
-                       'FSX_HC/ICV_AV45_1_3MTHS','FSX_HC/ICV_AV45_1_DATE',
-                       'FSX_HC/ICV_AV45_2_3MTHS','FSX_HC/ICV_AV45_2_DATE',
-                       'FSX_HC/ICV_AV45_3_3MTHS','FSX_HC/ICV_AV45_3_DATE',
-                       'FSX_HC/ICV_AV1451_1','FSX_HC/ICV_AV1451_1_DATE',
-                       'FSX_HC/ICV_AV1451_2','FSX_HC/ICV_AV1451_2_DATE',
-                       'FSX_HC/ICV_AV1451_3','FSX_HC/ICV_AV1451_3_DATE',]
-    to_add_headers += ['FSX_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSX_FSVERSION_%s' % (i+1) for i in range(tmpts)]
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    wipeKeys(old_lines, to_add_headers)
+    def extraction_fn(rid, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        '''
-        If RID<2000, use only 1.5T scans
-        If RID>2000, use only 3T scans
-        '''
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        bl_av1451, av1451_2, av1451_3 = getAV1451Dates(old_l, patient_pets=patient_pets)
+        # Filter: only use 1.5T scans if no 3T scans
+        scans_15 = subj_rows[subj_rows.FLDSTRENG == 1.5]
+        scans_3 = subj_rows[subj_rows.FLDSTRENG == 3.0]
+        subj_rows = scans_15 if len(scans_3.index) == 0 else scans_3
+        if len(subj_rows) == 0:
+            return pd.DataFrame()
 
-        # FILTER: Only use 1.5T scans if 3T scans aren't present
-        onefive_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
-        three_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
-        if len(three_scans) == 0:
-            subj_row = onefive_scans
-        else:
-            subj_row = three_scans
-        if len(subj_row) == 0:
-            print "%s had all potential scans eliminated by field strength: %s" % (subj,[_['FLDSTRENG'] for _ in subj_row])
-            return {}
+        # Calculate HC/ICV
+        bl_icv = subj_rows.iloc[0]['ICV']
+        avg_icv = np.mean(subj_rows['ICV'])
+        subj_rows['HC/ICV_BL'] = subj_rows['HCV'] / bl_icv
+        subj_rows['HC/ICV_AVG'] = subj_rows['HCV'] / avg_icv
 
-        # take care of scans on the same date
-        by_date = defaultdict(list)
-        for scan in subj_row:
-            by_date[scan['EXAMDATE']].append(scan)
-        subj_fs = []
-        for scandate in sorted(by_date.keys()):
-            scans_on_date = by_date[scandate]
-            if len(scans_on_date) == 1:
-                subj_fs.append(scans_on_date[0])
-            else:
-                # average if possible, else take first one
-                if len(set([_['FLDSTRENG'] for _ in scans_on_date])) == 1 and len(set([_['version'] for _ in scans_on_date])) == 1:
-                    avg_row = {}
-                    avg_row['EXAMDATE'] = scandate
-                    avg_row['ICV'] = np.mean([float(_['ICV']) for _ in scans_on_date])
-                    avg_row['HCV'] = np.mean([float(_['HCV']) for _ in scans_on_date])
-                    avg_row['FLDSTRENG'] = scans_on_date[0]['FLDSTRENG']
-                    avg_row['version'] = scans_on_date[0]['version']
-                else:
-                    avg_row = scans_on_date[0]
-                subj_fs.append(avg_row)
+        # Get long measurements
+        subj_rows['RID'] = rid
+        hcicv_bl_long = groupLongPivot(subj_rows, 'RID','HC/ICV_BL','%s_HC/ICV_' % prefix)
+        hcicv_avg_long = groupLongPivot(subj_rows, 'RID','HC/ICV_AVG','%s_HC/ICV_' % prefix)
+        strength_long = groupLongPivot(subj_rows, 'RID','FLDSTRENG','%s_MRI_STRENGTH_' % prefix)
+        version_long = groupLongPivot(subj_rows, 'RID','version','%s_FSVERSION_' % prefix)
+        date_long = groupLongPivot(subj_rows, 'RID','EXAMDATE','%s_postAV45_' % prefix)
+        date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.25 if not isnan(av45_date1) else np.nan)
+        date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
+        all_df = pd.concat((hcicv_bl_long,date_long,strength_long,version_long),axis=1)
 
-        if len(subj_fs) > tmpts:
-            raise Exception("INCREASE NUMBER OF FSX TIMEPOINTS TO %s" % (len(subj_fs)))
+        # Get closest av45 measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        all_df['%s_HC/ICV_AV45_1' % prefix] = closest_vals[0]
+        all_df['%s_HC/ICV_AV45_1_DATE' % prefix] = closest_dates[0]
+        all_df['%s_HC/ICV_AV45_2' % prefix] = closest_vals[1]
+        all_df['%s_HC/ICV_AV45_2_DATE' % prefix] = closest_dates[1]
+        all_df['%s_HC/ICV_AV45_3' % prefix] = closest_vals[2]
+        all_df['%s_HC/ICV_AV45_3_DATE' % prefix] = closest_dates[2]
+        all_df['%s_HC/ICV_AV45_1_DATE' % prefix] = pd.to_datetime(all_df['%s_HC/ICV_AV45_1_DATE' % prefix])
+        all_df['%s_HC/ICV_AV45_2_DATE' % prefix] = pd.to_datetime(all_df['%s_HC/ICV_AV45_2_DATE' % prefix])
+        all_df['%s_HC/ICV_AV45_3_DATE' % prefix] = pd.to_datetime(all_df['%s_HC/ICV_AV45_3_DATE' % prefix])
 
-        new_data = {}
-        slope_points = []
-        avg_slope_points = []
-        bl_icv = subj_fs[0]['ICV']
-        avg_icv = np.mean([float(_['ICV']) for _ in subj_fs])
+        # Get closest AV1451 measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        all_df['%s_HC/ICV_AV1451_1' % prefix] = closest_vals[0]
+        all_df['%s_HC/ICV_AV1451_1_DATE' % prefix] = closest_dates[0]
+        all_df['%s_HC/ICV_AV1451_2' % prefix] = closest_vals[1]
+        all_df['%s_HC/ICV_AV1451_2_DATE' % prefix] = closest_dates[1]
+        all_df['%s_HC/ICV_AV1451_3' % prefix] = closest_vals[2]
+        all_df['%s_HC/ICV_AV1451_3_DATE' % prefix] = closest_dates[2]
+        all_df['%s_HC/ICV_AV1451_1_DATE' % prefix] = pd.to_datetime(all_df['%s_HC/ICV_AV1451_1_DATE' % prefix])
+        all_df['%s_HC/ICV_AV1451_2_DATE' % prefix] = pd.to_datetime(all_df['%s_HC/ICV_AV1451_2_DATE' % prefix])
+        all_df['%s_HC/ICV_AV1451_3_DATE' % prefix] = pd.to_datetime(all_df['%s_HC/ICV_AV1451_3_DATE' % prefix])
 
-        # get closest to av45s
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_fs, bl_av45, av45_2, av45_3,day_limit=31*3)
-        new_data['FSX_HC/ICV_AV45_1_3MTHS'] = av45_bl_closest['HCV']/bl_icv if av45_bl_closest else ''
-        new_data['FSX_HC/ICV_AV45_1_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
-        new_data['FSX_HC/ICV_AV45_2_3MTHS'] = av45_2_closest['HCV']/bl_icv if av45_2_closest else ''
-        new_data['FSX_HC/ICV_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
-        new_data['FSX_HC/ICV_AV45_3_3MTHS'] = av45_3_closest['HCV']/bl_icv if av45_3_closest else ''
-        new_data['FSX_HC/ICV_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
+        # Get slopes
+        hcicv_bl_slope = df_slope(all_df, date_long.columns, hcicv_bl_long.columns, take_diff=False, exact=False)
+        hcicv_avg_slope = df_slope(all_df, date_long.columns, hcicv_avg_long.columns, take_diff=False, exact=False)
+        all_df['%s_HC/ICV_slope' % prefix] = hcicv_bl_slope[rid]
+        all_df['%s_HC/ICVavg_slope' % prefix] = hcicv_avg_slope[rid]
 
-        # Get closest to AV1451 scans
-        av1451_bl_closest, av1451_2_closest, av1451_3_closest = getClosestToScans(subj_fs, bl_av1451, av1451_2, av1451_3)
-        new_data['FSX_HC/ICV_AV1451_1'] = av1451_bl_closest['HCV']/bl_icv if av1451_bl_closest else ''
-        new_data['FSX_HC/ICV_AV1451_1_DATE'] = av1451_bl_closest['EXAMDATE'] if av1451_bl_closest else ''
-        new_data['FSX_HC/ICV_AV1451_2'] = av1451_2_closest['HCV']/bl_icv if av1451_2_closest else ''
-        new_data['FSX_HC/ICV_AV1451_2_DATE'] = av1451_2_closest['EXAMDATE'] if av1451_2_closest else ''
-        new_data['FSX_HC/ICV_AV1451_3'] = av1451_3_closest['HCV']/bl_icv if av1451_3_closest else ''
-        new_data['FSX_HC/ICV_AV1451_3_DATE'] = av1451_3_closest['EXAMDATE'] if av1451_3_closest else ''
+        # Get counts + interval
+        all_df['%s_postAV45_count' % prefix] = df_count(all_df,date_long.columns,hcicv_bl_long.columns)[rid]
+        last_date = subj_rows.iloc[-1]['EXAMDATE']
+        all_df['%s_postAV45_interval' % prefix] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
 
-        for i in range(len(subj_fs)):
-            datapoint = subj_fs[i]
-            examdate = datapoint['EXAMDATE']
-            hc_icv = datapoint['HCV']/bl_icv
-            hc_icv_avg = datapoint['HCV']/avg_icv
-            timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
-            if timediff <= -90.0/365.0:
-                timediff = ''
-            if timediff != '':
-                slope_points.append((timediff, hc_icv))
-                avg_slope_points.append((timediff,hc_icv_avg))
-            new_data['FSX_HC/ICV_%s' % (i+1)] = hc_icv
-            new_data['FSX_postAV45_%s' % (i+1)] = timediff
-            new_data['FSX_FSVERSION_%s' % (i+1)] = datapoint['version']
-            new_data['FSX_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
-    
-        # calc slope
-        new_data['FSX_postAV45_count'] = len(slope_points)
-        new_data['FSX_HC/ICV_slope'] = slope(slope_points)
-        new_data['FSX_HC/ICVavg_slope'] = slope(avg_slope_points)
-        if len(slope_points) > 0:
-            new_data['FSX_postAV45_interval'] = max([_[0] for _ in slope_points])
-        else:
-            new_data['FSX_postAV45_interval'] = 0
-        
-        return new_data
+        return all_df
 
-    new_lines = []
-    for old_l in old_lines:
-        new_data = updateLine(old_l, fs_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=None, decimal_places=5)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-
-    return (new_headers, new_lines)
-
-
-def syncUCSFFreesurferLongData(old_headers, old_lines, ucsf_files, mprage_file):
-    tmpts = 12
-
-    fs_by_subj_list = [importUCSFFreesurfer(filename, mprage_file, version=fsversion, include_failed=False) for fsversion,filename in ucsf_files]
-    fs_by_subj = {}
-    for k,v in itertools.chain(*[_.iteritems() for _ in fs_by_subj_list]):
-        if k not in fs_by_subj:
-            fs_by_subj[k] = v
-        else:
-            fs_by_subj[k] = fs_by_subj[k] + v
-
-    to_add_headers = []
-    to_add_headers += ['FSL_HC/ICV_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSL_postAV45_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSL_postAV45_count', 'FSL_postAV45_interval', 
-                       'FSL_HC/ICV_slope', 'FSL_HC/ICVavg_slope',
-                       'FSL_HC/ICV_AV45_1_3MTHS','FSL_HC/ICV_AV45_1_DATE',
-                       'FSL_HC/ICV_AV45_2_3MTHS','FSL_HC/ICV_AV45_2_DATE',
-                       'FSL_HC/ICV_AV45_3_3MTHS','FSL_HC/ICV_AV45_3_DATE',
-                       'FSL_HC/ICV_AV1451_1','FSL_HC/ICV_AV1451_1_DATE',
-                       'FSL_HC/ICV_AV1451_2','FSL_HC/ICV_AV1451_2_DATE',
-                       'FSL_HC/ICV_AV1451_3','FSL_HC/ICV_AV1451_3_DATE',]
-    to_add_headers += ['FSL_MRI_STRENGTH_%s' % (i+1) for i in range(tmpts)]
-    to_add_headers += ['FSL_FSVERSION_%s' % (i+1) for i in range(tmpts)]
-    new_headers = rearrangeHeaders(old_headers, to_add_headers, after=None)
-    wipeKeys(old_lines, to_add_headers)
-
-    def extraction_fn(subj, subj_row, old_l, patient_pets):
-        bl_av45, av45_2, av45_3 = getAV45Dates(old_l, patient_pets=patient_pets)
-        bl_av1451, av1451_2, av1451_3 = getAV1451Dates(old_l, patient_pets=patient_pets)
-        mristrengths = [_['FLDSTRENG'] for _ in subj_row]
-        
-        # FILTER: Only use 1.5T scans if 3T scans aren't present
-        onefive_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 1.5]
-        three_scans = [_ for _ in subj_row if float(_['FLDSTRENG']) == 3.0]
-        if len(three_scans) == 0:
-            subj_row = onefive_scans
-        else:
-            subj_row = three_scans
-        if len(subj_row) == 0:
-            print "%s had all potential scans eliminated by field strength: %s" % (subj,[_['FLDSTRENG'] for _ in subj_row])
-            return {}
-
-        # take care of scans on the same date
-        by_date = defaultdict(list)
-        for scan in subj_row:
-            by_date[scan['EXAMDATE']].append(scan)
-        subj_fs = []
-        for scandate in sorted(by_date.keys()):
-            scans_on_date = by_date[scandate]
-            if len(scans_on_date) == 1:
-                subj_fs.append(scans_on_date[0])
-            else:
-                if len(set([_['FLDSTRENG'] for _ in scans_on_date])) == 1 and len(set([_['version'] for _ in scans_on_date])) == 1:
-                    # average
-                    avg_row = {}
-                    avg_row['EXAMDATE'] = scandate
-                    avg_row['ICV'] = np.mean([float(_['ICV']) for _ in scans_on_date])
-                    avg_row['HCV'] = np.mean([float(_['HCV']) for _ in scans_on_date])
-                    avg_row['FLDSTRENG'] = scans_on_date[0]['FLDSTRENG']
-                    avg_row['version'] = scans_on_date[0]['version']
-                else:
-                    avg_row = scans_on_date[0]
-                subj_fs.append(avg_row)
-
-        if len(subj_fs) > tmpts:
-            raise Exception("INCREASE NUMBER OF FSL TIMEPOINTS TO > %s" % (len(subj_fs)))
-
-        new_data = {}
-        slope_points = []
-        avg_slope_points = []
-        bl_icv = subj_fs[0]['ICV']
-        avg_icv = np.mean([float(_['ICV']) for _ in subj_fs])
-
-        # get closest to av45s
-        av45_bl_closest, av45_2_closest, av45_3_closest = getClosestToScans(subj_fs, bl_av45, av45_2, av45_3,day_limit=31*3)
-        new_data['FSL_HC/ICV_AV45_1_3MTHS'] = av45_bl_closest['HCV']/bl_icv if av45_bl_closest else ''
-        new_data['FSL_HC/ICV_AV45_1_DATE'] = av45_bl_closest['EXAMDATE'] if av45_bl_closest else ''
-        new_data['FSL_HC/ICV_AV45_2_3MTHS'] = av45_2_closest['HCV']/bl_icv if av45_2_closest else ''
-        new_data['FSL_HC/ICV_AV45_2_DATE'] = av45_2_closest['EXAMDATE'] if av45_2_closest else ''
-        new_data['FSL_HC/ICV_AV45_3_3MTHS'] = av45_3_closest['HCV']/bl_icv if av45_3_closest else ''
-        new_data['FSL_HC/ICV_AV45_3_DATE'] = av45_3_closest['EXAMDATE'] if av45_3_closest else ''
-
-        # Get closest to AV1451 scans
-        av1451_bl_closest, av1451_2_closest, av1451_3_closest = getClosestToScans(subj_fs, bl_av1451, av1451_2, av1451_3)
-        new_data['FSL_HC/ICV_AV1451_1'] = av1451_bl_closest['HCV']/bl_icv if av1451_bl_closest else ''
-        new_data['FSL_HC/ICV_AV1451_1_DATE'] = av1451_bl_closest['EXAMDATE'] if av1451_bl_closest else ''
-        new_data['FSL_HC/ICV_AV1451_2'] = av1451_2_closest['HCV']/bl_icv if av1451_2_closest else ''
-        new_data['FSL_HC/ICV_AV1451_2_DATE'] = av1451_2_closest['EXAMDATE'] if av1451_2_closest else ''
-        new_data['FSL_HC/ICV_AV1451_3'] = av1451_3_closest['HCV']/bl_icv if av1451_3_closest else ''
-        new_data['FSL_HC/ICV_AV1451_3_DATE'] = av1451_3_closest['EXAMDATE'] if av1451_3_closest else ''
-
-        for i in range(len(subj_fs)):
-            datapoint = subj_fs[i]
-            examdate = datapoint['EXAMDATE']
-            hc_icv = datapoint['HCV']/bl_icv
-            hc_icv_avg = datapoint['HCV']/avg_icv
-            timediff = ((examdate-bl_av45).days / 365.0) if bl_av45 else ''
-            if timediff <= -(90.0/365.0):
-                timediff = ''
-            if timediff != '':
-                avg_slope_points.append((timediff, hc_icv_avg))
-                slope_points.append((timediff, hc_icv))
-            new_data['FSL_HC/ICV_%s' % (i+1)] = datapoint['HCV']/bl_icv
-            new_data['FSL_postAV45_%s' % (i+1)] = timediff
-            new_data['FSL_FSVERSION_%s' % (i+1)] = datapoint['version']
-            new_data['FSL_MRI_STRENGTH_%s' % (i+1)] = datapoint['FLDSTRENG']
-        # Calculate slope
-        new_data['FSL_postAV45_count'] = len(slope_points)
-        new_data['FSL_HC/ICV_slope'] = slope(slope_points)
-        new_data['FSL_HC/ICVavg_slope'] = slope(avg_slope_points)
-        if len(slope_points) > 0:
-            new_data['FSL_postAV45_interval'] = max([_[0] for _ in slope_points])
-        else:
-            new_data['FSL_postAV45_interval'] = 0
-
-        return new_data
-
-    new_lines = []
-    for old_l in old_lines:
-        new_data = updateLine(old_l, fs_by_subj, extraction_fn, 
-                              pid_key='RID', pet_meta=None, decimal_places=5)
-        old_l.update(new_data)
-        new_lines.append(old_l)
-
-
-    return (new_headers, new_lines)
+    parsed_df = parseSubjectGroups(fs_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
 
 
 def syncWMHData(old_headers, old_lines, wmh_file, registry_file):
@@ -2143,10 +1958,7 @@ def eliminateColumns(master_df):
                  'DIFF_LastClinicalVisit_AV45',
                  'ClinicalVisitClosestto_AV45',
                  'ClinicalVisitClosestto_AV45_2',
-                 'MMSEclosest_1', 
-                 'MMSEclosest_AV45',
                  'datediff_MMSE_AV45', 
-                 'MMSE_3mths_AV45',
                  'PostAV45Followup',
                  'abeta_closest_AV45',
                  'abeta_bin192',
@@ -2192,16 +2004,11 @@ def eliminateColumns(master_df):
                  'CSF_TAU_closest_AV45_BIN_93',
                  'CSF_PTAU_closest_AV45_BIN_23',
                  'BD MM-YY']
-    to_remove += ['WHITMATHYP.%s' % (i+1) for i in range(5)]
-    to_remove += ['ABETA.%s' % (i+1) for i in range(7)]
-    to_remove += ['TAU.%s' % (i+1) for i in range(7)]
-    to_remove += ['PTAU.%s' % (i+1) for i in range(7)]
-    to_remove += ['EXAM_tau.%s' % (i+1) for i in range(7)]
-    to_remove += ['ADAScog_DATE%s' % (i+1) for i in range(11)]
-    to_remove += ['MMSE_DATE%s' % (i+1) for i in range(11)]
-    to_remove += ['AVLT_DATE.%s' % (i+1) for i in range(11)]
-    to_remove += ['TBMSyn_DATE.%s' % (i+1) for i in range(11)]
-    to_remove += [_ for _ in master_df.columns if _.startswith('AV45_')]
+    to_remove_prefixes = ['WHITMATHYP.','ABETA.','TAU.','PTAU.',
+                          'EXAM_tau.','ADAScog_DATE','MMSE','AVLT_DATE.',
+                          'TBMSyn_DATE.','AV45_','UW_','FSL_','FSX_','UCB_FS']
+    for prefix in to_remove_prefixes:
+        to_remove += [_ for _ in master_df.columns if _.startswith(prefix)]
 
     # drop columns
     to_remove = [_ for _ in to_remove if _ in master_df.columns]
@@ -2240,25 +2047,21 @@ def runPipeline():
     # master_df = syncNPIData(master_df, npi_file)
     # print "\nSYNCING MHIST\n"
     # master_df = syncMHISTData(master_df, mhist_file)
-    print "\nSYNCING UW NEURO\n"
-    master_df = syncUWData(master_df, uw_file, registry)
+    # print "\nSYNCING UW NEURO\n"
+    # master_df = syncUWData(master_df, uw_file, registry)
+    # print "\nSYNCING UCSF LONG FreeSurfer\n"
+    # master_df = syncUCSFFreesurferData(master_df, ucsf_long_files, mprage_file, 'FSL')
+    # print "\nSYNCING UCSF CROSS FreeSurfer"
+    # master_df = syncUCSFFreesurferData(master_df, ucsf_cross_files, mprage_file, 'FSX')
+    # print "\nSYNCING UCB Freesurfer\n"
+    # master_df = syncUCBFreesurferData(master_df, ucb_fs_volumes)
+    print "\nSYNCING FDG\n"
+    new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file)
 
     dumpDFtoCSV(master_df,output_file,decimal_places=3)
     sys.exit(1)
 
 
-
-
-
-
-    print "\nSYNCING UCSF LONG FreeSurfer\n"
-    new_headers, new_lines = syncUCSFFreesurferLongData(new_headers, new_lines, ucsf_long_files, mprage_file)
-    print "\nSYNCING UCSF CROSS FreeSurfer"
-    new_headers, new_lines = syncUCSFFreesurferCrossData(new_headers, new_lines, ucsf_cross_files, mprage_file)
-    print "\nSYNCING UCB Freesurfer\n"
-    new_headers, new_lines = syncUCBFreesurferData(new_headers, new_lines, ucb_fs_volumes)
-    print "\nSYNCING FDG\n"
-    new_headers, new_lines = syncFDGData(new_headers, new_lines, fdg_file, registry_file)
     print "\nSYNCING TBMSYN\n"
     new_headers, new_lines = syncTBMSynData(new_headers, new_lines, tbm_file, registry_file)
     print "\nSYNCING MMSE\n"
