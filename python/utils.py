@@ -342,8 +342,11 @@ def findVisitDate(registry, subj, viscodes):
     vcs = set([_ for _ in vcs if _ != ''])
     date = None
     if isinstance(registry, pd.DataFrame):
-        subj_registry = registry.loc[subj]
-        rows = subj_registry.iterrows()
+        if subj in registry.index:
+            subj_registry = registry.loc[subj]
+            rows = subj_registry.iterrows()
+        else:
+            return date
     elif isinstance(registry, dict):
         subj_registry = registry.get(subj,[])
         rows = enumerate(subj_registry)
@@ -1333,12 +1336,14 @@ def importAPOE(apoe_file, as_df=False):
         return convertToSubjDict(df)
     return apoe_by_subj
 
-def importFDG(fdg_file, as_df=False):
+def importFDG(fdg_file, registry, as_df=False):
     df = pd.read_csv(fdg_file)
     df.set_index('RID',inplace=True)
     columns = ['VISCODE','VISCODE2','EXAMDATE','ROINAME','MEAN']
     df = df[columns]
     df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df.dropna(subset=['EXAMDATE'],inplace=True)
+
     if as_df:
         return df
     else:
@@ -1459,7 +1464,7 @@ def importMMSE(mmse_file, registry=None, as_df=False):
 
 
 def importAVLT(avlt_file, registry=None, as_df=False):
-    df = pd.read_csv(avlt_file)
+    df = pd.read_csv(avlt_file,low_memory=False)
     if 'SCRNO' in df.columns:
         df.set_index('SCRNO',inplace=True)
     else:
@@ -1487,7 +1492,7 @@ def importADASCog(adni1_file, adnigo2_file, registry, as_df=False):
         df1 = df1[all_columns]
         df1['VISCODE2'] = None
         df1['VISCODE'] = df1['VISCODE'].apply(lambda x: x.lower().strip())
-        df1['TOTSCORE'] = df['TOTAL11']
+        df1['TOTSCORE'] = df1['TOTAL11']
         
     else:
         df1 = pd.DataFrame()
@@ -1500,11 +1505,11 @@ def importADASCog(adni1_file, adnigo2_file, registry, as_df=False):
         all_columns = ['VISCODE','VISCODE2','TOTSCORE']
         all_columns = [_ for _ in all_columns if _ in df2.columns]
         df2 = df2[all_columns]
-        df2 = parseOrFindDate(df2, 'EXAMDATE', registry=registry)
     else:
         df2 = pd.DataFrame()
 
     df = pd.concat((df1,df2))
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
     df.dropna(subset=['EXAMDATE','TOTSCORE'], inplace=True)
 
     if as_df:
