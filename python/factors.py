@@ -5,13 +5,54 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import scipy
 
-from utils import importRoussetCSV, bilateralTranslations, importFreesurferLookup, saveFakeAparcInput
+from utils import *
 from patterns import parseRawDataset, scaleRawInput
 
 def savePatternAsMat(pattern_df, output_file):
     scipy.io.savemat(output_file,{'ID': list(pattern_df.index),
                                   'Features': list(pattern_df.columns),
                                   'Y':pattern_df.T.as_matrix()})
+
+
+def compareToBraakStages(loading_df):
+    lut_file = '../FreeSurferColorLUT.txt'
+    lut = importFreesurferLookup(lut_file)
+    pattern_regions = list(loading_df.index)
+    # create braak encodings
+    braak_stages = [BRAAK1,BRAAK2,BRAAK3,BRAAK4,BRAAK5,BRAAK6]
+    braak_encodings = {}
+    for i, stage in enumerate(braak_stages):
+        regions = set([lut[_].upper().replace('-','_').replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in stage])
+        stage_name = 'BRAAK%s' % (i+1)
+        encoding = np.array([1 if _ in regions else 0 for _ in pattern_regions])
+        braak_encodings[stage_name] = encoding
+    # create factor loading encodings
+    factor_encodings = {}
+    for factor in loading_df.columns:
+        encoding = np.array([loading_df.loc[_,factor] for _ in pattern_regions])
+        factor_encodings[factor] = encoding
+    # compare
+    results = []
+    for factor, f_encoding in factor_encodings.iteritems():
+        # split
+        pos_factor = np.array([max(_,0.0) for _ in f_encoding])
+        neg_factor = np.array([abs(min(_,0.0)) for _ in f_encoding])
+        pos_sims = {'FACTOR': '%s_POS' % factor}
+        neg_sims = {'FACTOR': '%s_NEG' % factor}
+        sims = {'FACTOR': factor}
+        # normalize
+        for braak, b_encoding in braak_encodings.iteritems():
+            # cross entropy
+            pos_cross = sum(pos_factor*b_encoding)
+            neg_cross = sum(neg_factor*b_encoding)
+            cross = pos_cross - neg_cross
+            pos_sims[braak] = pos_cross
+            neg_sims[braak] = neg_cross
+            sims[braak] = cross
+        #results += [pos_sims, neg_sims]
+        results.append(sims)
+    df = pd.DataFrame(results).set_index('FACTOR')
+    return df
 
 def savePatternAsAparc(df, lut_file, bilateral, out_template):
     if bilateral:
@@ -27,7 +68,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_20_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_01_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -37,24 +78,27 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
 # output_file = '../nsfa/pattern_dataset.csv'
 # topregions_output_file = '../nsfa/top_regions.csv'
+# braakcomp_output_file = '../nsfa/braak_comparisons.csv'
 # nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
 # dod = False
 
 # FOR ADNI AV1451
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_04_20_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_01_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 pattern_mat = '../av1451_pattern_bl.mat'
-pattern_mat_2 = '../av1451_pattern_scan2.mat'
+pattern_mat_2 = None
 nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
-nsfa_activation_csv_2 = '../nsfa/av1451_factor_activations_scan2.csv'
+nsfa_activation_csv_2 = None
 nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
 model_file = None
 output_file = '../nsfa/av1451_pattern_dataset.csv'
 topregions_output_file = '../nsfa/av1451_top_regions.csv'
+braakcomp_output_file = '../nsfa/av1451_braak_comparisons.csv'
 nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
 igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
 dod = False
+
 
 # FOR DOD AV45
 # master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
@@ -66,13 +110,12 @@ dod = False
 # model_file = None
 # output_file = '../nsfa/dod_pattern_dataset.csv'
 # topregions_output_file = '../nsfa/dod_top_regions.csv'
+# braakcomp_output_file = '../nsfa/dod_braak_comparisons.csv'
 # nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
 # dod = True
 
-
-x = True
-bilateral = x
+bilateral = True
 scale_type = 'original'
 norm_type = 'L1'
 tracer = 'AV45'
@@ -99,7 +142,7 @@ pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE
 if bilateral: # truncate keys
     pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
 
-data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer='AV45', ref_key='WHOLECEREB', norm_type=norm_type, bilateral=bilateral, dod=dod)
+data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer=tracer, ref_key='WHOLECEREB', norm_type=norm_type, bilateral=bilateral, dod=dod)
 pattern_bl_df = data['pattern_bl_df']
 pattern_scan2_df = data['pattern_scan2_df']
 pattern_scan3_df = data['pattern_scan3_df']
@@ -124,22 +167,26 @@ pattern_scan2_df = pattern_scan2_df[column_order]
 if pattern_scan2_df.index.nlevels > 1:
     pattern_scan2_df.index = pattern_scan2_df.index.droplevel(1)
 
-savePatternAsMat(pattern_bl_df, pattern_mat)
-savePatternAsMat(pattern_scan2_df, pattern_mat_2)
-sys.exit(0)
+# savePatternAsMat(pattern_bl_df, pattern_mat)
+# savePatternAsMat(pattern_scan2_df, pattern_mat_2)
+# sys.exit(0)
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
-nsfa_act_2_df = pd.read_csv(nsfa_activation_csv_2).T
-nsfa_act_2_df.index = nsfa_act_2_df.index.astype('int64')
 nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
 columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
-scan2_columns = ['SCAN2_NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
-nsfa_load_df.columns = nsfa_act_df.columns =['NSFA_%s' % _ for _ in nsfa_act_df.columns]
-nsfa_act_2_df.columns = scan2_columns
-nsfa_act_df = nsfa_act_df.merge(nsfa_act_2_df, left_index=True, right_index=True, how='outer')
+nsfa_load_df.columns = nsfa_act_df.columns = columns
+if nsfa_activation_csv_2 is not None:
+    nsfa_act_2_df = pd.read_csv(nsfa_activation_csv_2).T
+    nsfa_act_2_df.index = nsfa_act_2_df.index.astype('int64')
+    scan2_columns = ['SCAN2_NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
+    nsfa_act_2_df.columns = scan2_columns
+    nsfa_act_df = nsfa_act_df.merge(nsfa_act_2_df, left_index=True, right_index=True, how='outer')
 
+# Compare to braak STAGES
+braak_comp_df = compareToBraakStages(nsfa_load_df)
+braak_comp_df.to_csv(braakcomp_output_file)
 
 # Create top ten region lists for each factor
 toppos_df = pd.DataFrame()
@@ -194,22 +241,42 @@ else:
     master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
     master_df.columns = master_df.columns.get_level_values(1)
     master_df.set_index('RID', inplace=True)
-    columns = ['Age@AV45','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)',
-               'Diag@AV45_long','UCB_FS_HC/ICV_slope','AV45_1_2_Diff']
-    columns += [_ for _ in master_df.columns if _.startswith('ADAScog.') or _.startswith('TIMEpostAV45_ADAS.')]
-    columns += ['ADAS_3MTH_AV45','ADASslope_postAV45']
-    columns += [_ for _ in master_df.columns if _.startswith('AVLT.') or _.startswith('TIMEpostAV45_AVLT.')]
-    columns += ['AVLT_AV45_1_3MTHS','AVLTslope_postAV45']
-    columns += [_ for _ in master_df.columns if _.startswith('WMH_percentOfICV.') or _.startswith('WMH_postAV45.')]
-    columns += ['WMH_percentOfICV_AV45_6MTHS','WMH_percentOfICV_slope']
-    columns += [_ for _ in master_df.columns if _.startswith('UW_MEM_') or _.startswith('UW_MEM_postAV45_')]
-    columns += [_ for _ in master_df.columns if _.startswith('UW_EF_') or _.startswith('UW_EF_postAV45_')]
-    columns += [_ for _ in master_df.columns if _.startswith('CSF_ABETA.') or _.startswith('CSF_ABETApostAV45.')]
-    columns += ['CSF_ABETA_closest_AV45_1','CSF_ABETA_slope']
-    columns += [_ for _ in master_df.columns if _.startswith('CSF_TAU.') or _.startswith('CSF_TAUpostAV45.')]
-    columns += ['CSF_TAU_closest_AV45_1','CSF_TAU_slope']
-    columns += [_ for _ in master_df.columns if _.startswith('CSF_PTAU.') or _.startswith('CSF_PTAUpostAV45.')]
-    columns += ['CSF_PTAU_closest_AV45_1','CSF_PTAU_slope']
+    columns = ['Age@AV45','Age@AV1451','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)',
+               'Diag@AV45','Diag@AV1451','AV45_1_2_Diff',
+               'AV45_NONTP_wcereb_BIN1.11',
+               'AV45_NONTP_2_wcereb_BIN1.11',
+               'AV45_NONTP_3_wcereb_BIN1.11']
+    columns += ['UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_slope']
+    columns += ['ADAS_AV45_1','ADAS_AV1451_1','ADASslope_postAV45']
+    columns += ['AVLT_AV45_1','AVLT_AV1451_1','AVLT_slope_postAV45']
+    columns += ['WMH_percentOfICV_AV45_1','WMH_percentOfICV_slope']
+    columns += ['UW_MEM_AV45_1','UW_MEM_AV1451_1','UW_MEM_slope']
+    columns += ['UW_EF_AV45_1','UW_EF_AV1451_1','UW_EF_slope']
+    columns += ['CSF_ABETA_closest_AV45_1','CSF_ABETA_closest_AV45_1_BIN_192',
+                'CSF_ABETA_closest_AV1451_1','CSF_ABETA_closest_AV1451_1_BIN_192',
+                'CSF_ABETA_slope']
+    columns += ['CSF_TAU_closest_AV45_1','CSF_TAU_closest_AV45_1_BIN_93',
+                'CSF_TAU_closest_AV1451_1','CSF_TAU_closest_AV1451_1_BIN_93',
+                'CSF_TAU_slope']
+    columns += ['CSF_PTAU_closest_AV45_1','CSF_PTAU_closest_AV45_1_BIN_23',
+                'CSF_PTAU_closest_AV1451_1','CSF_PTAU_closest_AV1451_1_BIN_23',
+                'CSF_PTAU_slope']
+    columns += ['GD_AV45_1','GD_slope']
+    columns += ['CDR_GLOBAL_AV45_1',
+               'CDR_MEMORY_AV45_1',
+               'CDR_ORIENT_AV45_1',
+               'CDR_JUDGE_AV45_1',
+               'CDR_COMMUN_AV45_1',
+               'CDR_HOME_AV45_1',
+               'CDR_CARE_AV45_1',
+               'CDR_GLOBAL_AV1451_1',
+               'CDR_MEMORY_AV1451_1',
+               'CDR_ORIENT_AV1451_1',
+               'CDR_JUDGE_AV1451_1',
+               'CDR_COMMUN_AV1451_1',
+               'CDR_HOME_AV1451_1',
+               'CDR_CARE_AV1451_1']
+
     other_df = master_df[columns]
 
 print columns

@@ -139,9 +139,9 @@ def parseSubjectGroups(df, extraction_fn):
 def groupLongPivot(group_rows, index_column, val_column, key_prefix):
     df = group_rows[[index_column,val_column]]
     df['key'] = ['%s%s' % (key_prefix,i+1) for i in range(len(group_rows.index))]
-    out_df = df.pivot_table(values=val_column, 
-                            index=index_column, 
-                            columns='key', 
+    out_df = df.pivot_table(values=val_column,
+                            index=index_column,
+                            columns='key',
                             aggfunc=lambda x: x.iloc[0])
 
     return out_df
@@ -259,8 +259,8 @@ def df_slope(df, time_cols, value_cols, take_diff=False, exact=False):
     '''
     Calculate slope for each row in the dataframe
     Given the time columns and the value columns
-    
-    If take_diff, find the year diff between the 
+
+    If take_diff, find the year diff between the
     time columns before calculating slope
 
     If exact, return None for a row if it doesn't
@@ -330,7 +330,7 @@ def parseOrFindDate(df, date_key, registry=None):
     if date_key not in df.columns:
         df[date_key] = None
     df_null = df[df[date_key].isnull()]
-    if registry is not None:    
+    if registry is not None:
         df_null.loc[:,date_key] = df_null.apply(lambda x: findVisitDate(registry, x.name, [x.get('VISCODE',''),x.get('VISCODE2','')]), axis=1)
     df_nonnull = df[~df[date_key].isnull()]
     df_nonnull.loc[:,date_key] = df_nonnull.loc[:,date_key].apply(parseDate)
@@ -404,7 +404,7 @@ def convertToCSVDataType(new_data, decimal_places=2):
             new_data[k] = ''
     return new_data
 
-def updateLine(old_line, new_data, extraction_fn, 
+def updateLine(old_line, new_data, extraction_fn,
                pid_key='RID', pet_meta=None, decimal_places=4):
     try:
         subj = int(old_line[pid_key])
@@ -563,7 +563,7 @@ def gap(data, nrefs=20, ks=range(10,70), use_pca=True):
             centers = model.cluster_centers_
             refdisps[j] = sum([euclidean(rands[m,:,j],centers[labels[m],:]) for m in range(shape[0])])
         print "fit random"
-        
+
         gaps[i] = np.mean(np.log(refdisps))-np.log(disp)
         sds[i] = np.sqrt(1.0 + 1.0/nrefs) * np.std(np.log(refdisps))
         print gaps[i]
@@ -589,7 +589,7 @@ def fitLine(df, xkey, ykey, order=0):
     curdf = curdf.sort(columns=xkey)
     x = curdf[xkey].tolist()
     y = curdf[ykey].tolist()
-    
+
     # use gaussian filter
     gf = gaussian_filter1d(y, sigma=50, order=order, mode='reflect')
     gauss_x, gauss_y = (x, gf)
@@ -688,7 +688,7 @@ def mapk(actual, predicted, k=10):
     Parameters
     ----------
     actual : list
-             A list of lists of elements that are to be predicted 
+             A list of lists of elements that are to be predicted
              (order doesn't matter in the lists)
     predicted : list
                 A list of lists of predicted elements
@@ -702,18 +702,18 @@ def mapk(actual, predicted, k=10):
     """
     return np.mean([apk(a,p,k) for a,p in zip(actual, predicted)])
 
-def dcg(relevances, rank=20): 
-    relevances = np.asarray(relevances)[:rank] 
-    n_relevances = len(relevances) 
-    if n_relevances == 0: 
-        return 0. 
-    discounts = np.log2(np.arange(n_relevances) + 2) 
-    return np.sum(relevances / discounts) 
+def dcg(relevances, rank=20):
+    relevances = np.asarray(relevances)[:rank]
+    n_relevances = len(relevances)
+    if n_relevances == 0:
+        return 0.
+    discounts = np.log2(np.arange(n_relevances) + 2)
+    return np.sum(relevances / discounts)
 
-def ndcg(relevances, rank=20): 
-    best_dcg = dcg(sorted(relevances, reverse=True), rank) 
-    if best_dcg == 0: 
-        return 0. 
+def ndcg(relevances, rank=20):
+    best_dcg = dcg(sorted(relevances, reverse=True), rank)
+    if best_dcg == 0:
+        return 0.
     return dcg(relevances, rank) / best_dcg
 
 
@@ -872,7 +872,7 @@ def bilateralTranslations(lut_file):
     # add lobe names and keys
     bilateral_dict = dict(bilateral_dict)
     bilateral_dict.update(LOBES)
-    
+
     return bilateral_dict
 
 def parseRawRousset_inner(data, translations=None):
@@ -916,7 +916,7 @@ def parseRawRousset_inner(data, translations=None):
         regionsizes = [(sz,pv) for i,sz,pv in zip(indices, sizes, pvcvals) if len(set(i) & set(keys)) > 0]
         val_lookup[name] = weightedMean(regionsizes)
         index_lookup[name] = keys
-    
+
 
     return val_lookup, index_lookup
 
@@ -1098,7 +1098,7 @@ def importRegistry(registry_file, include_all=False, as_df=False):
     df.set_index(['RID','VISCODE','VISCODE2'],inplace=True)
     df = parseOrFindDate(df, 'EXAMDATE')
     df.dropna(subset=['EXAMDATE'],inplace=True)
-    
+
     if as_df:
         df.sortlevel(inplace=True)
         return df
@@ -1207,32 +1207,32 @@ def importCAPS(caps_curr_file, caps_lifetime_file, as_df=False):
 
 def deriveDiagCode(diag_row):
     '''
-        DXCHANGE: (ADNI2 DIAG CHANGE): 
-            1=Stable: NL to NL; 
-            2=Stable: MCI to MCI; 
-            3=Stable: Dementia to Dementia; 
-            4=Conversion: NL to MCI; 
-            5=Conversion: MCI to Dementia; 
-            6=Conversion: NL to Dementia; 
-            7=Reversion: MCI to NL; 
-            8=Reversion: Dementia to MCI; 
+        DXCHANGE: (ADNI2 DIAG CHANGE):
+            1=Stable: NL to NL;
+            2=Stable: MCI to MCI;
+            3=Stable: Dementia to Dementia;
+            4=Conversion: NL to MCI;
+            5=Conversion: MCI to Dementia;
+            6=Conversion: NL to Dementia;
+            7=Reversion: MCI to NL;
+            8=Reversion: Dementia to MCI;
             9=Reversion: Dementia to NL
-        
-        DXCURREN: (CURRENT DIAGNOSIS): 
+
+        DXCURREN: (CURRENT DIAGNOSIS):
             1=NL;
             2=MCI;
             3=AD
-        DXCONV: 
-            1=Yes - Conversion; 
-            2=Yes - Reversion; 
+        DXCONV:
+            1=Yes - Conversion;
+            2=Yes - Reversion;
             0=No
-        DXCONTYP: 
-            1=Normal Control to MCI; 
-            2=Normal Control to AD; 
+        DXCONTYP:
+            1=Normal Control to MCI;
+            2=Normal Control to AD;
             3=MCI to AD
-        DXREV: 
-            1=MCI to Normal Control; 
-            2=AD to MCI; 
+        DXREV:
+            1=MCI to Normal Control;
+            2=AD to MCI;
             3=AD to Normal Control
     '''
     diag_row = diag_row.fillna('')
@@ -1354,7 +1354,7 @@ def importFDG(fdg_file, registry, as_df=False):
 def importExtractedFDG(fdg_file, registry, as_df=False):
     headers, lines = parseCSV(fdg_file, delimiter='\t')
     fdg_rows = []
-    
+
     for line in lines:
         subj = line['PTID']
         subj_id = int(subj.split('_')[-1])
@@ -1493,7 +1493,7 @@ def importADASCog(adni1_file, adnigo2_file, registry, as_df=False):
         df1['VISCODE2'] = None
         df1['VISCODE'] = df1['VISCODE'].apply(lambda x: x.lower().strip())
         df1['TOTSCORE'] = df1['TOTAL11']
-        
+
     else:
         df1 = pd.DataFrame()
     if adnigo2_file and os.path.isfile(adnigo2_file):
@@ -1556,7 +1556,7 @@ def importWMH(wmh_file, as_df=False):
 def importUW(uw_file, registry=None, as_df=False):
     df = pd.read_csv(uw_file, low_memory=False)
     df.set_index('RID',inplace=True)
-    all_columns = ['VISCODE','EXAMDATE','ADNI_MEM','ADNI_EF']
+    all_columns = ['VISCODE2','EXAMDATE','ADNI_MEM','ADNI_EF']
     df = df[all_columns]
 
     df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
@@ -1692,7 +1692,7 @@ def importARM(arm_file, as_df=False):
         7=NL - (ADNI1 3T+1.5T)
         8=LMCI - (ADNI1 3T+1.5T)
         9=AD - (ADNI1 3T+1.5T)
-        10=EMCI; 
+        10=EMCI;
         11=SMC - (Significant Memory Concern)
     '''
     translation = {1: 'N',
@@ -1773,12 +1773,13 @@ def importCDR(cdr_file, registry, as_df=False):
     else:
         df.set_index('RID',inplace=True)
 
-    columns = ['EXAMDATE','VISCODE','VISCODE2','CDGLOBAL','CDSOB']
+    columns = ['EXAMDATE','VISCODE','VISCODE2']
+    columns += ['CDSOB','CDMEMORY','CDORIENT','CDJUDGE',
+                'CDCOMMUN','CDHOME','CDCARE','CDGLOBAL']
     columns = [_ for _ in columns if _ in df.columns]
     df = df[columns]
 
     df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
-    df = df[['EXAMDATE','CDGLOBAL','CDSOB']]
     df.dropna(subset=['EXAMDATE'], inplace=True)
 
     if as_df:
@@ -1864,12 +1865,12 @@ def importMRI(mri_file, magstrength_filter=None, filter_mprage=True):
         seq = seq.replace('mp rage', 'mprage')
         seq = seq.replace('mp-rage', 'mprage')
         seq = seq.replace('mp- rage', 'mprage')
-        
-        
+
+
         if filter_mprage and not ('mpr' in seq or 'spgr' in seq or 'n3m' in seq):
             bad_sequences.add(seq)
             continue
-        
+
         if 'ScanDate' in line:
             new_date = line['ScanDate']
         elif 'SCANDATE' in line:
@@ -2005,7 +2006,7 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
         df = df[df['OVERALLQC'].isin(['Pass','Partial'])]
         df = df[df['TEMPQC'].str.match('Pass')]
 
-    # filter by image type 
+    # filter by image type
     if 'IMAGETYPE' in df.columns:
         df = df[df['IMAGETYPE']=='Non-Accelerated T1']
 
@@ -2058,4 +2059,3 @@ def calculateCSVDifference(file1, file2, index='RID'):
         diff_distr[k] = (np.mean(values), np.std(values), np.max(values), np.min(values))
     return diff_distr
 '''
-

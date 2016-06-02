@@ -29,7 +29,10 @@ source('R/LM_FUNCS.R')
 
 # CONSTANTS
 pattern_prefix = 'NSFA_'
-to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post','diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender','Diag.AV45_long','positive_prior','positive_post')
+to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post',
+              'diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender',
+              'Diag.AV45_long','positive_prior','positive_post',
+              'AV45_NONTP_wcereb_BIN1.11')
 to_standardize = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post','Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','diag_prior','Age.AV45','Gender','Edu..Yrs.')
 av45_columns = c('CORTICAL_SUMMARY_change','CORTICAL_SUMMARY_prior','CORTICAL_SUMMARY_post','positive_prior','positive_post')
@@ -52,14 +55,16 @@ target = "CSF_ABETA_closest_AV45_1"
 
 #output_folder = 'R/output/'
 output_folder = 'R/output_all_diag/'
+output_folder = 'R/output_neg_emci/'
 
+positive_value=0
 all_diags = c('N','SMC','EMCI','LMCI','AD')
-
-valid_diags = c('N','SMC','EMCI','LMCI','AD')
+#valid_diags = c('N','SMC','EMCI','LMCI','AD')
 #valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('N','SMC')
-#valid_diags = c('EMCI')
+valid_diags = c('EMCI')
 #valid_diags = c('LMCI')
+
 
 #time_col_prefix = 'TIMEpostAV45_ADAS'
 #value_col_prefix = 'ADAScog'
@@ -70,12 +75,12 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 time_col_prefix = 'UW_EF_postAV45_'
 value_col_prefix = 'UW_EF_'
 
-
-
 # IMPORT
 df_av45 = read.csv('nsfa/pattern_dataset.csv')
+
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 
+df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
 df_av45 = df_av45[which(df_av45$diag_prior %in% valid_diags),]
 for (i in names(df_av45)){
   if (i %in% to_factor){

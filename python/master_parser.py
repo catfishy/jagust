@@ -294,6 +294,69 @@ def syncMHISTData(master_df, mhist_file):
     master_df = updateDataFrame(master_df, mhist_df, headers=mhist_df.columns, after='Handedness')
     return master_df
 
+def syncCDRData(master_df, cdr_file, registry):
+    cdr_df = importCDR(cdr_file, registry, as_df=True)
+    tmpts = max(Counter(cdr_df.index).values())
+
+    headers = ['CDR_GLOBAL_AV45_1','CDR_GLOBAL_AV45_2','CDR_GLOBAL_AV45_3',
+               'CDR_MEMORY_AV45_1','CDR_MEMORY_AV45_2','CDR_MEMORY_AV45_3',
+               'CDR_ORIENT_AV45_1','CDR_ORIENT_AV45_2','CDR_ORIENT_AV45_3',
+               'CDR_JUDGE_AV45_1','CDR_JUDGE_AV45_2','CDR_JUDGE_AV45_3',
+               'CDR_COMMUN_AV45_1','CDR_COMMUN_AV45_2','CDR_COMMUN_AV45_3',
+               'CDR_HOME_AV45_1','CDR_HOME_AV45_2','CDR_HOME_AV45_3',
+               'CDR_CARE_AV45_1','CDR_CARE_AV45_2','CDR_CARE_AV45_3',
+               'CDR_GLOBAL_AV1451_1','CDR_GLOBAL_AV1451_2','CDR_GLOBAL_AV1451_3',
+               'CDR_MEMORY_AV1451_1','CDR_MEMORY_AV1451_2','CDR_MEMORY_AV1451_3',
+               'CDR_ORIENT_AV1451_1','CDR_ORIENT_AV1451_2','CDR_ORIENT_AV1451_3',
+               'CDR_JUDGE_AV1451_1','CDR_JUDGE_AV1451_2','CDR_JUDGE_AV1451_3',
+               'CDR_COMMUN_AV1451_1','CDR_COMMUN_AV1451_2','CDR_COMMUN_AV1451_3',
+               'CDR_HOME_AV1451_1','CDR_HOME_AV1451_2','CDR_HOME_AV1451_3',
+               'CDR_CARE_AV1451_1','CDR_CARE_AV1451_2','CDR_CARE_AV1451_3']
+
+    def extraction_fn(rid, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
+        data = {'RID': rid}
+
+        # get closest av45
+        cdglobal = groupClosest(subj_rows, 'EXAMDATE', 'CDGLOBAL', [av45_date1,av45_date2,av45_date3],day_limit=365)
+        cdcare = groupClosest(subj_rows, 'EXAMDATE', 'CDCARE', [av45_date1,av45_date2,av45_date3],day_limit=365)
+        cdhome = groupClosest(subj_rows, 'EXAMDATE', 'CDHOME', [av45_date1,av45_date2,av45_date3],day_limit=365)
+        cdcommun = groupClosest(subj_rows, 'EXAMDATE', 'CDCOMMUN', [av45_date1,av45_date2,av45_date3],day_limit=365)
+        cdjudge = groupClosest(subj_rows, 'EXAMDATE', 'CDJUDGE', [av45_date1,av45_date2,av45_date3],day_limit=365)
+        cdorient = groupClosest(subj_rows, 'EXAMDATE', 'CDORIENT', [av45_date1,av45_date2,av45_date3],day_limit=365)
+        cdmemory = groupClosest(subj_rows, 'EXAMDATE', 'CDMEMORY', [av45_date1,av45_date2,av45_date3],day_limit=365)
+        data['CDR_GLOBAL_AV45_1'],data['CDR_GLOBAL_AV45_2'],data['CDR_GLOBAL_AV45_3'] = tuple(cdglobal)
+        data['CDR_CARE_AV45_1'],data['CDR_CARE_AV45_2'],data['CDR_CARE_AV45_3'] = tuple(cdcare)
+        data['CDR_HOME_AV45_1'],data['CDR_HOME_AV45_2'],data['CDR_HOME_AV45_3'] = tuple(cdhome)
+        data['CDR_COMMUN_AV45_1'],data['CDR_COMMUN_AV45_2'],data['CDR_COMMUN_AV45_3'] = tuple(cdcommun)
+        data['CDR_JUDGE_AV45_1'],data['CDR_JUDGE_AV45_2'],data['CDR_JUDGE_AV45_3'] = tuple(cdjudge)
+        data['CDR_ORIENT_AV45_1'],data['CDR_ORIENT_AV45_2'],data['CDR_ORIENT_AV45_3'] = tuple(cdorient)
+        data['CDR_MEMORY_AV45_1'],data['CDR_MEMORY_AV45_2'],data['CDR_MEMORY_AV45_3'] = tuple(cdmemory)
+
+        # get closest av1451
+        cdglobal = groupClosest(subj_rows, 'EXAMDATE', 'CDGLOBAL', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        cdcare = groupClosest(subj_rows, 'EXAMDATE', 'CDCARE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        cdhome = groupClosest(subj_rows, 'EXAMDATE', 'CDHOME', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        cdcommun = groupClosest(subj_rows, 'EXAMDATE', 'CDCOMMUN', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        cdjudge = groupClosest(subj_rows, 'EXAMDATE', 'CDJUDGE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        cdorient = groupClosest(subj_rows, 'EXAMDATE', 'CDORIENT', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        cdmemory = groupClosest(subj_rows, 'EXAMDATE', 'CDMEMORY', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        data['CDR_GLOBAL_AV45_1'],data['CDR_GLOBAL_AV45_2'],data['CDR_GLOBAL_AV45_3'] = tuple(cdglobal)
+        data['CDR_CARE_AV45_1'],data['CDR_CARE_AV45_2'],data['CDR_CARE_AV45_3'] = tuple(cdcare)
+        data['CDR_HOME_AV45_1'],data['CDR_HOME_AV45_2'],data['CDR_HOME_AV45_3'] = tuple(cdhome)
+        data['CDR_COMMUN_AV45_1'],data['CDR_COMMUN_AV45_2'],data['CDR_COMMUN_AV45_3'] = tuple(cdcommun)
+        data['CDR_JUDGE_AV45_1'],data['CDR_JUDGE_AV45_2'],data['CDR_JUDGE_AV45_3'] = tuple(cdjudge)
+        data['CDR_ORIENT_AV45_1'],data['CDR_ORIENT_AV45_2'],data['CDR_ORIENT_AV45_3'] = tuple(cdorient)
+        data['CDR_MEMORY_AV45_1'],data['CDR_MEMORY_AV45_2'],data['CDR_MEMORY_AV45_3'] = tuple(cdmemory)
+
+        return pd.DataFrame([data]).set_index('RID')
+
+    parsed_df = parseSubjectGroups(cdr_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
+
 def syncGDData(master_df, gd_file, registry):
     gd_df = importGD(gd_file, registry=registry, as_df=True)
     tmpts = max(Counter(gd_df.index).values())
@@ -303,6 +366,9 @@ def syncGDData(master_df, gd_file, registry):
     headers += ['GD_AV45_1', 'GD_AV45_1_DATE',
                 'GD_AV45_2', 'GD_AV45_2_DATE',
                 'GD_AV45_3', 'GD_AV45_3_DATE',
+                'GD_AV1451_1', 'GD_AV1451_1_DATE',
+                'GD_AV1451_2', 'GD_AV1451_2_DATE',
+                'GD_AV1451_3', 'GD_AV1451_3_DATE',
                 'GD_slope']
 
     def extraction_fn(rid, subj_rows):
@@ -333,6 +399,20 @@ def syncGDData(master_df, gd_file, registry):
         all_df['GD_AV45_1_DATE'] = pd.to_datetime(all_df['GD_AV45_1_DATE'])
         all_df['GD_AV45_2_DATE'] = pd.to_datetime(all_df['GD_AV45_2_DATE'])
         all_df['GD_AV45_3_DATE'] = pd.to_datetime(all_df['GD_AV45_3_DATE'])
+
+        # Get closest av1451 measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'GDTOTAL', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        all_df['GD_AV1451_1'] = closest_vals[0]
+        all_df['GD_AV1451_1_DATE'] = closest_dates[0]
+        all_df['GD_AV1451_2'] = closest_vals[1]
+        all_df['GD_AV1451_2_DATE'] = closest_dates[1]
+        all_df['GD_AV1451_3'] = closest_vals[2]
+        all_df['GD_AV1451_3_DATE'] = closest_dates[2]
+        all_df['GD_AV1451_1_DATE'] = pd.to_datetime(all_df['GD_AV1451_1_DATE'])
+        all_df['GD_AV1451_2_DATE'] = pd.to_datetime(all_df['GD_AV1451_2_DATE'])
+        all_df['GD_AV1451_3_DATE'] = pd.to_datetime(all_df['GD_AV1451_3_DATE'])
+
 
         return all_df
 
@@ -387,8 +467,8 @@ def syncADASCogData(master_df, adni1_adas_file, adnigo2_adas_file, registry):
         all_df['ADAS_AV45_3_DATE'] = pd.to_datetime(all_df['ADAS_AV45_3_DATE'])
 
         # Get closest av1451 measurements
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTSCORE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
-        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTSCORE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
         all_df['ADAS_AV1451_1'] = closest_vals[0]
         all_df['ADAS_AV1451_1_DATE'] = closest_dates[0]
         all_df['ADAS_AV1451_2'] = closest_vals[1]
@@ -491,15 +571,20 @@ def syncAVLTData(master_df, neuro_battery_file, registry):
         # Get closest av45 measurements
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
-        all_df['AVLT_AV45_1'] = closest_vals[0]
-        all_df['AVLT_AV45_1_DATE'] = closest_dates[0]
-        all_df['AVLT_AV45_2'] = closest_vals[1]
-        all_df['AVLT_AV45_2_DATE'] = closest_dates[1]
-        all_df['AVLT_AV45_3'] = closest_vals[2]
-        all_df['AVLT_AV45_3_DATE'] = closest_dates[2]
+        all_df['AVLT_AV45_1'], all_df['AVLT_AV45_2'], all_df['AVLT_AV45_3'] = tuple(closest_vals)
+        all_df['AVLT_AV45_1_DATE'], all_df['AVLT_AV45_2_DATE'], all_df['AVLT_AV45_3_DATE'] = tuple(closest_dates)
         all_df['AVLT_AV45_1_DATE'] = pd.to_datetime(all_df['AVLT_AV45_1_DATE'])
         all_df['AVLT_AV45_2_DATE'] = pd.to_datetime(all_df['AVLT_AV45_2_DATE'])
         all_df['AVLT_AV45_3_DATE'] = pd.to_datetime(all_df['AVLT_AV45_3_DATE'])
+
+        # Get closest av1451 measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        all_df['AVLT_AV1451_1'], all_df['AVLT_AV1451_2'], all_df['AVLT_AV1451_3'] = tuple(closest_vals)
+        all_df['AVLT_AV1451_1_DATE'], all_df['AVLT_AV1451_2_DATE'], all_df['AVLT_AV1451_3_DATE'] = tuple(closest_dates)
+        all_df['AVLT_AV1451_1_DATE'] = pd.to_datetime(all_df['AVLT_AV1451_1_DATE'])
+        all_df['AVLT_AV1451_2_DATE'] = pd.to_datetime(all_df['AVLT_AV1451_2_DATE'])
+        all_df['AVLT_AV1451_3_DATE'] = pd.to_datetime(all_df['AVLT_AV1451_3_DATE'])
 
         return all_df
 
@@ -552,7 +637,7 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
     pivot_date_closest_date_key = 'DX_Feb16_closestdate'
     headers = ['MCItoADConv','MCItoADConvDate',
                'AV45_MCItoAD_ConvTime','Baseline_MCItoAD_ConvTime',
-               'Diag@AV45_long','Diag@AV45_2_long','Diag@AV45_3_long',
+               'Diag@AV45','Diag@AV45_2','Diag@AV45_3',
                'Diag@AV1451','Diag@AV1451_2','Diag@AV1451_3',
                'FollowupTimetoDX','Baseline','Init_Diagnosis',
                pivot_date_closest_diag_key,pivot_date_closest_date_key]
@@ -599,15 +684,15 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
         # closest to AV45 scans
         av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
-        data['Diag@AV45_long'] = closest_vals[0]
-        data['Diag@AV45_2_long'] = closest_vals[1]
-        data['Diag@AV45_3_long'] = closest_vals[2]
+        data['Diag@AV45'] = closest_vals[0]
+        data['Diag@AV45_2'] = closest_vals[1]
+        data['Diag@AV45_3'] = closest_vals[2]
         # closest to AV1451 scans
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
-        data['Diag@AV1451_long'] = closest_vals[0]
-        data['Diag@AV1451_2_long'] = closest_vals[1]
-        data['Diag@AV1451_3_long'] = closest_vals[2]
+        data['Diag@AV1451'] = closest_vals[0]
+        data['Diag@AV1451_2'] = closest_vals[1]
+        data['Diag@AV1451_3'] = closest_vals[2]
         # closest to pivot date
         closest_row = subj_rows.sort_values('TimeFromCompDate').iloc[0]
         data[pivot_date_closest_diag_key] = closest_row['diag']
@@ -1154,25 +1239,25 @@ def syncCSFData(master_df, csf_files, registry):
         closest_abeta_bin = groupClosest(subj_rows, 'EXAMDATE', 'ABETA_BIN', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         closest_tau = groupClosest(subj_rows, 'EXAMDATE', 'TAU', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         closest_tau_bin = groupClosest(subj_rows, 'EXAMDATE', 'TAU_BIN', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        all_df['CSF_PTAU_closest_AV45_1'], all_df['CSF_PTAU_closest_AV45_2'], all_df['CSF_PTAU_closest_AV45_3'] = tuple(closest_ptau)
+        all_df['CSF_PTAU_closest_AV45_1_BIN_23'], all_df['CSF_PTAU_closest_AV45_2_BIN_23'], all_df['CSF_PTAU_closest_AV45_3_BIN_23'] = tuple(closest_ptau_bin)
+        all_df['CSF_ABETA_closest_AV45_1'], all_df['CSF_ABETA_closest_AV45_2'], all_df['CSF_ABETA_closest_AV45_3'] = tuple(closest_abeta)
+        all_df['CSF_ABETA_closest_AV45_1_BIN_192'], all_df['CSF_ABETA_closest_AV45_2_BIN_192'], all_df['CSF_ABETA_closest_AV45_3_BIN_192'] = tuple(closest_abeta_bin)
+        all_df['CSF_TAU_closest_AV45_1'], all_df['CSF_TAU_closest_AV45_2'], all_df['CSF_TAU_closest_AV45_3'] = tuple(closest_tau)
+        all_df['CSF_TAU_closest_AV45_1_BIN_93'], all_df['CSF_TAU_closest_AV45_2_BIN_93'], all_df['CSF_TAU_closest_AV45_3_BIN_93'] = tuple(closest_tau_bin)
 
-        all_df['CSF_PTAU_closest_AV45_1'] = closest_ptau[0]
-        all_df['CSF_PTAU_closest_AV45_2'] = closest_ptau[1]
-        all_df['CSF_PTAU_closest_AV45_3'] = closest_ptau[2]
-        all_df['CSF_PTAU_closest_AV45_1_BIN_23'] = closest_ptau_bin[0]
-        all_df['CSF_PTAU_closest_AV45_2_BIN_23'] = closest_ptau_bin[1]
-        all_df['CSF_PTAU_closest_AV45_3_BIN_23'] = closest_ptau_bin[2]
-        all_df['CSF_ABETA_closest_AV45_1'] = closest_abeta[0]
-        all_df['CSF_ABETA_closest_AV45_2'] = closest_abeta[1]
-        all_df['CSF_ABETA_closest_AV45_3'] = closest_abeta[2]
-        all_df['CSF_ABETA_closest_AV45_1_BIN_192'] = closest_abeta_bin[0]
-        all_df['CSF_ABETA_closest_AV45_2_BIN_192'] = closest_abeta_bin[1]
-        all_df['CSF_ABETA_closest_AV45_3_BIN_192'] = closest_abeta_bin[2]
-        all_df['CSF_TAU_closest_AV45_1'] = closest_tau[0]
-        all_df['CSF_TAU_closest_AV45_2'] = closest_tau[1]
-        all_df['CSF_TAU_closest_AV45_3'] = closest_tau[2]
-        all_df['CSF_TAU_closest_AV45_1_BIN_93'] = closest_tau_bin[0]
-        all_df['CSF_TAU_closest_AV45_2_BIN_93'] = closest_tau_bin[1]
-        all_df['CSF_TAU_closest_AV45_3_BIN_93'] = closest_tau_bin[2]
+        closest_ptau = groupClosest(subj_rows, 'EXAMDATE', 'PTAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_ptau_bin = groupClosest(subj_rows, 'EXAMDATE', 'PTAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_abeta = groupClosest(subj_rows, 'EXAMDATE', 'ABETA', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_abeta_bin = groupClosest(subj_rows, 'EXAMDATE', 'ABETA_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_tau = groupClosest(subj_rows, 'EXAMDATE', 'TAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_tau_bin = groupClosest(subj_rows, 'EXAMDATE', 'TAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        all_df['CSF_PTAU_closest_AV1451_1'], all_df['CSF_PTAU_closest_AV1451_2'], all_df['CSF_PTAU_closest_AV1451_3'] = tuple(closest_ptau)
+        all_df['CSF_PTAU_closest_AV1451_1_BIN_23'], all_df['CSF_PTAU_closest_AV1451_2_BIN_23'], all_df['CSF_PTAU_closest_AV1451_3_BIN_23'] = tuple(closest_ptau_bin)
+        all_df['CSF_ABETA_closest_AV1451_1'], all_df['CSF_ABETA_closest_AV1451_2'], all_df['CSF_ABETA_closest_AV1451_3'] = tuple(closest_abeta)
+        all_df['CSF_ABETA_closest_AV1451_1_BIN_192'], all_df['CSF_ABETA_closest_AV1451_2_BIN_192'], all_df['CSF_ABETA_closest_AV1451_3_BIN_192'] = tuple(closest_abeta_bin)
+        all_df['CSF_TAU_closest_AV1451_1'], all_df['CSF_TAU_closest_AV1451_2'], all_df['CSF_TAU_closest_AV1451_3'] = tuple(closest_tau)
+        all_df['CSF_TAU_closest_AV1451_1_BIN_93'], all_df['CSF_TAU_closest_AV1451_2_BIN_93'], all_df['CSF_TAU_closest_AV1451_3_BIN_93'] = tuple(closest_tau_bin)
 
         # get slopes
         ptau_slope = df_slope(all_df, date_long.columns, ptau_long.columns, take_diff=False, exact=False)
@@ -1196,12 +1281,17 @@ def syncUWData(master_df, uw_file, registry):
     headers = ['UW_MEM_%s' % (i+1) for i in range(tmpts)]
     headers += ['UW_EF_%s' % (i+1) for i in range(tmpts)]
     headers += ['UW_postAV45_%s' % (i+1) for i in range(tmpts)]
-    headers += ['UW_MEM_postAV45_count', 'UW_MEM_slope', 'UW_MEM_BL_3months']
-    headers += ['UW_EF_postAV45_count', 'UW_EF_slope', 'UW_EF_BL_3months']
+    headers += ['UW_MEM_postAV45_count', 'UW_MEM_slope',
+                'UW_MEM_AV45_1','UW_MEM_AV45_2','UW_MEM_AV45_3',
+                'UW_MEM_AV1451_1','UW_MEM_AV1451_2','UW_MEM_AV1451_3']
+    headers += ['UW_EF_postAV45_count', 'UW_EF_slope',
+                'UW_EF_AV45_1','UW_EF_AV45_2','UW_EF_AV45_3',
+                'UW_EF_AV1451_1','UW_EF_AV1451_2','UW_EF_AV1451_3']
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
         av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # get long measurements
         subj_rows['RID'] = rid
@@ -1222,11 +1312,25 @@ def syncUWData(master_df, uw_file, registry):
         all_df['UW_MEM_postAV45_count'] = df_count(all_df, date_long.columns, mem_long.columns)[rid]
         all_df['UW_EF_postAV45_count'] = df_count(all_df, date_long.columns, ef_long.columns)[rid]
 
-        # get closest
-        closest_mem = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_MEM', [av45_date1],day_limit=365/4)
-        closest_ef = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_EF', [av45_date1],day_limit=365/4)
-        all_df['UW_MEM_BL_3months'] = closest_mem[0]
-        all_df['UW_EF_BL_3months'] = closest_ef[0]
+        # get closest to av45
+        closest_mem = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_MEM', [av45_date1, av45_date2, av45_date3],day_limit=365/2)
+        closest_ef = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_EF', [av45_date1, av45_date2, av45_date3],day_limit=365/2)
+        all_df['UW_MEM_AV45_1'] = closest_mem[0]
+        all_df['UW_MEM_AV45_2'] = closest_mem[1]
+        all_df['UW_MEM_AV45_3'] = closest_mem[2]
+        all_df['UW_EF_AV45_1'] = closest_ef[0]
+        all_df['UW_EF_AV45_2'] = closest_ef[1]
+        all_df['UW_EF_AV45_3'] = closest_ef[2]
+
+        # get closest to av1451
+        closest_mem = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_MEM', [av1451_date1, av1451_date2, av1451_date3],day_limit=365)
+        closest_ef = groupClosest(subj_rows, 'EXAMDATE', 'ADNI_EF', [av1451_date1, av1451_date2, av1451_date3],day_limit=365)
+        all_df['UW_MEM_AV1451_1'] = closest_mem[0]
+        all_df['UW_MEM_AV1451_2'] = closest_mem[1]
+        all_df['UW_MEM_AV1451_3'] = closest_mem[2]
+        all_df['UW_EF_AV1451_1'] = closest_ef[0]
+        all_df['UW_EF_AV1451_2'] = closest_ef[1]
+        all_df['UW_EF_AV1451_3'] = closest_ef[2]
 
         return all_df
 
@@ -1534,6 +1638,8 @@ def runPipeline():
     master_df = syncAV45Data(master_df, av45_tp_file, suffix='TP')
     print "\nSYNCING DEMOG\n"
     master_df = syncDemogData(master_df, demog_file, pet_meta_file)
+    print "\nSYNCING CDR\n"
+    master_df = syncCDRData(master_df, cdr_file, registry)
     print "\nSYNCING AV1451 TP\n"
     master_df = syncAV1451Data(master_df, av1451_tp_file)
     print "\nSYNCING AV45 ROUSSET PVC\n"
@@ -1615,14 +1721,15 @@ if __name__ == '__main__':
     adnigo2_adas_file = '../docs/ADNI/ADAS_ADNIGO2.csv'
     neuro_battery_file = '../docs/ADNI/NEUROBAT.csv'
     gd_file = '../docs/ADNI/GDSCALE.csv'
-    uw_file = '../docs/ADNI/UWNPSYCHSUM_01_12_16.csv'
+    uw_file = '../docs/ADNI/UWNPSYCHSUM_04_22_16.csv'
+    cdr_file = '../docs/ADNI/CDR.csv'
 
     # MR files
     tbm_file = '../docs/ADNI/MAYOADIRL_MRI_TBMSYN_12_08_15.csv'
     ucsf_long_files = [('4.4','../docs/ADNI/UCSFFSL_02_01_16.csv'),
-                       ('5.1','../docs/ADNI/UCSFFSL51Y1_02_24_16.csv')]
+                       ('5.1','../docs/ADNI/UCSFFSL51Y1_05_04_16.csv')]
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
-                        ('5.1','../docs/ADNI/UCSFFSX51_11_02_15_V2.csv'),
+                        ('5.1','../docs/ADNI/UCSFFSX51_05_04_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
     ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_04-05-2016.csv'
 
