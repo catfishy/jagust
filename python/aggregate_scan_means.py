@@ -84,6 +84,8 @@ DOD_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRA
                   'LEFT_PUTAMEN_SIZE','RIGHT_PUTAMEN_SIZE','LEFT_CAUDATE_SIZE','RIGHT_CAUDATE_SIZE','LEFT_PALLIDUM_SIZE','RIGHT_PALLIDUM_SIZE',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
+DEP_FIELDNAMES = DOD_FIELDNAMES
+DEP_FIELDNAMES_EXTRA = DOD_FIELDNAMES_EXTRA
 TAU_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
 TAU_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
                         'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
@@ -173,7 +175,7 @@ def additionalAV45Calculations(df, lut_table, keys=None):
     df.loc[:,'TEMPORAL_SIZE'] = temporal_sizes
     df.loc[:,'COMPOSITE_SIZE'] = frontal_sizes + parietal_sizes + cingulate_sizes + temporal_sizes
     df.loc[:,'COMPOSITE'] = pd.DataFrame([frontal_means,parietal_means,cingulate_means,temporal_means]).mean()
-    
+
     # calculate cereb white
     means, sizes = DFWeightedMean(df, cerebw)
     df.loc[:,'CEREBELLUMWHITEMATTER_SIZE'] = sizes
@@ -363,7 +365,7 @@ def mergeRegularWithAllRegions(regular_output, allregions_output, output_file, d
         all_df.drop('update_stamp', axis=1, inplace=True)
         all_df.insert(len(all_df.columns), 'update_stamp',stamps)
     all_df.to_csv(output_file) # , float_format='%.8f'
-    
+
 def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     '''
     Assumes preprocess outputs include all freesurfer regions (no pre-aggregation)
@@ -420,30 +422,38 @@ if __name__ == "__main__":
 
     registry_file = "../docs/ADNI/REGISTRY.csv"
     dod_registry_file = "../docs/DOD/REGISTRY.csv"
+    dep_registry_file = "../docs/DEP/REGISTRY.csv"
+
     meta_pet = "../docs/ADNI/AV45META.csv"
     meta_tau = '../docs/ADNI/TAUMETA.csv'
+
     dod_meta_pet = "../docs/DOD/AV45META.csv"
     dod_meta_tau = "../docs/DOD/TAUMETA.csv"
 
+    dep_meta_pet = "../docs/DEP/AV45META.csv"
+    dep_meta_tau = "../docs/DEP/TAUMETA.csv"
+
     # # registry imports
-    # adni_registry = importRegistry(registry_file) 
+    # adni_registry = importRegistry(registry_file)
     # dod_registry = importDODRegistry(dod_registry_file)
-    
+
     # # pet date imports
     # adni_av45_pet_dates = importScanMeta(meta_pet, with_viscode=True)
     # adni_tau_pet_dates = importScanMeta(meta_tau, with_viscode=True)
     # dod_av45_pet_dates = importScanMeta(dod_meta_pet, with_viscode=True)
     # dod_tau_pet_dates = importScanMeta(dod_meta_tau, with_viscode=True)
-    
+
     #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '04_04_16'
+    timestamp = '06_01_16'
 
     # preprocess output folders
     preprocess_folder = '../docs/preprocess_output/%s/' % timestamp
     adni_av45_preprocess_folder = '%sAV45' % preprocess_folder
     dod_av45_preprocess_folder = '%sAV45_DOD' % preprocess_folder
+    dep_av45_preprocess_folder = '%sAV45_DEP' % preprocess_folder
     adni_tau_preprocess_folder = '%sTAU' % preprocess_folder
     dod_tau_preprocess_folder = '%sTAU_DOD' % preprocess_folder
+    dep_tau_preprocess_folder = '%sTAU_DEP' % preprocess_folder
 
     # create output folder
     output_folder = '../output/%s' % timestamp
@@ -461,7 +471,6 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
     CreateLONIVersions(df, ADNI_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
 
     # ADNI AV45 TP
@@ -473,7 +482,6 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
 
     # ADNI TAU TP
     regular_filename = 'UCBERKELEYAV1451_%s_regular_tp.csv' % (timestamp)
@@ -487,7 +495,6 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output)
     CreateLONIVersions(df, TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
 
     # DOD AV45 NONTP
@@ -502,7 +509,6 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=DOD_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
     CreateLONIVersions(df, DOD_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
 
     # DOD TAU TP
@@ -517,42 +523,18 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=True)
     CreateLONIVersions(df, DOD_TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
 
-    ###############
-    ### OLD CODE ##
-    ###############
-
-    # # for adni dod (add in adni controls)
-    # output = '../output/AV45_DOD_LONI_10.22.15_extra_withcontrols.csv'
-    # temp_output = '../output/temp.csv'
-    # preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
-    # adni_preprocess_folder = '../docs/AV45_preprocess_output_09_25_15'
-    # registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
-    # registry_adni = importRegistry("../docs/ADNI/REGISTRY.csv")
-    # meta_pet = None
-    # meta_pet_adni = None
-    # agg_type = 'dod_extra'
-    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    # bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni = findPreprocessOutputFiles(adni_preprocess_folder, nontp=True)
-    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-    #                              meta_pet, registry, agg_type)
-    # aggregatePreprocessingOutput(temp_output, bl_means_adni, v2_means_adni, v3_means_adni, bl_sizes_adni, v2_sizes_adni, v3_sizes_adni, 
-    #                              meta_pet_adni, registry_adni, agg_type)
-    # print 'appending'
-    # appendCSV(output, temp_output)
-    # print 'removing'
-    # removeFile(temp_output)
-
-    # # # for adni dod (don't add in adni controls, for uploading)
-    # output = '../output/AV45_DOD_LONI_10.22.15_extra.csv'
-    # preprocess_folder =  '../docs/AV45_DOD_preprocess_output_10_22_15'
-    # registry = importDODRegistry("../docs/DOD/DOD_REGISTRY.csv")
-    # meta_pet = None
-    # meta_pet_adni = None
-    # agg_type = 'dod'
-    # bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(preprocess_folder)
-    # aggregatePreprocessingOutput(output, bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, 
-    #                              meta_pet, registry, agg_type)
-
+    # DEP AV45 TP
+    regular_filename = 'UCBERKELEYAV1451_DEP_%s_regular_tp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV1451_DEP_%s_allregions_tp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV1451_DEP_%s_merged_tp.csv' % (timestamp)
+    regular_output = os.path.join(output_folder, regular_filename)
+    allregions_output = os.path.join(output_folder, allregions_filename)
+    merged_output = os.path.join(output_folder, merged_filename)
+    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dep_av45_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dep_meta_pet, dod=True)
+    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    full_df = additionalAV45Calculations(df, lut_table, keys=DEP_FIELDNAMES_EXTRA)
+    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    CreateLONIVersions(df, DEP_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
