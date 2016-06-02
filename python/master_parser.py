@@ -1709,11 +1709,11 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/04_05_16/UCBERKELEYAV45_04_05_16_regular_tp.csv"
-    av45_nontp_file = "../output/04_05_16/UCBERKELEYAV45_04_05_16_regular_nontp.csv"
-    av1451_tp_file = "../output/04_05_16/UCBERKELEYAV1451_04_05_16_regular_tp.csv"
+    av45_tp_file = "../output/06_01_16/UCBERKELEYAV45_06_01_16_regular_tp.csv"
+    av45_nontp_file = "../output/06_01_16/UCBERKELEYAV45_06_01_16_regular_nontp.csv"
+    av1451_tp_file = "../output/06_01_16/UCBERKELEYAV1451_06_01_16_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
-    av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauregions_output.csv"
+    av1451_rousset_csv = "../datasets/pvc_adni_av1451/mostregions_output.csv"
 
     # Cog files
     mmse_file = "../docs/ADNI/MMSE.csv"

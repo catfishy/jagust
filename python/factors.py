@@ -68,7 +68,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_01_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -84,7 +84,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # dod = False
 
 # FOR ADNI AV1451
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_01_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 pattern_mat = '../av1451_pattern_bl.mat'
 pattern_mat_2 = None
@@ -175,13 +175,19 @@ if pattern_scan2_df.index.nlevels > 1:
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
 nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
+# only keep factors with nonzero loadings
 columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
 nsfa_load_df.columns = nsfa_act_df.columns = columns
+nsfa_load_df = nsfa_load_df.loc[:,nsfa_load_df.sum() != 0]
+nsfa_act_df = nsfa_act_df[nsfa_load_df.columns]
+# add on second timepoints if available
 if nsfa_activation_csv_2 is not None:
     nsfa_act_2_df = pd.read_csv(nsfa_activation_csv_2).T
     nsfa_act_2_df.index = nsfa_act_2_df.index.astype('int64')
-    scan2_columns = ['SCAN2_NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
-    nsfa_act_2_df.columns = scan2_columns
+    columns = ['NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
+    nsfa_act_2_df.columns = columns
+    nsfa_act_2 = nsfa_act_2[nsfa_act_df.columns]
+    nsfa_act_2.columns = ['SCAN2_%s' % _ for _ in nsfa_act_2.columns]
     nsfa_act_df = nsfa_act_df.merge(nsfa_act_2_df, left_index=True, right_index=True, how='outer')
 
 # Compare to braak STAGES
@@ -276,7 +282,9 @@ else:
                'CDR_COMMUN_AV1451_1',
                'CDR_HOME_AV1451_1',
                'CDR_CARE_AV1451_1']
-
+    columns += ['AV1451_PVC_Braak12_CerebGray_BL',
+                'AV1451_PVC_Braak34_CerebGray_BL',
+                'AV1451_PVC_Braak56_CerebGray_BL']
     other_df = master_df[columns]
 
 print columns

@@ -1,0 +1,22 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.78084 -0.15283  0.05776  0.18737  0.62570 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.76899    0.05310  14.482  < 2e-16 ***
+NSFA_2      -0.66938    0.08928  -7.498 5.27e-09 ***
+NSFA_1       0.57425    0.09910   5.794 1.09e-06 ***
+NSFA_6       0.37403    0.09421   3.970 0.000309 ***
+NSFA_3       0.51312    0.11250   4.561 5.18e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.3477 on 38 degrees of freedom
+Multiple R-squared:  0.6534,	Adjusted R-squared:  0.6169 
+F-statistic: 17.91 on 4 and 38 DF,  p-value: 2.426e-08
+

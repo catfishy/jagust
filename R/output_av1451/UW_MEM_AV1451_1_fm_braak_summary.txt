@@ -1,0 +1,23 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1.64956 -0.44756  0.08935  0.38406  1.78880 
+
+Coefficients:
+                                Estimate Std. Error t value Pr(>|t|)    
+(Intercept)                      2.30870    2.15997   1.069 0.292249    
+AV1451_PVC_Braak12_CerebGray_BL -2.14200    0.56245  -3.808 0.000525 ***
+Edu..Yrs.                        0.10717    0.04851   2.209 0.033616 *  
+Age.AV1451                      -0.04278    0.01911  -2.239 0.031455 *  
+AV1451_PVC_Braak56_CerebGray_BL  1.44580    0.82043   1.762 0.086516 .  
+Diag.AV1451N                     0.53806    0.29915   1.799 0.080472 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.8324 on 36 degrees of freedom
+Multiple R-squared:  0.5403,	Adjusted R-squared:  0.4764 
+F-statistic: 8.462 on 5 and 36 DF,  p-value: 2.267e-05
+

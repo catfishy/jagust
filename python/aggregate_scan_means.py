@@ -84,8 +84,8 @@ DOD_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRA
                   'LEFT_PUTAMEN_SIZE','RIGHT_PUTAMEN_SIZE','LEFT_CAUDATE_SIZE','RIGHT_CAUDATE_SIZE','LEFT_PALLIDUM_SIZE','RIGHT_PALLIDUM_SIZE',
                   'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                   'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
-DEP_FIELDNAMES = DOD_FIELDNAMES
-DEP_FIELDNAMES_EXTRA = DOD_FIELDNAMES_EXTRA
+DEP_FIELDNAMES = ADNI_FIELDNAMES
+DEP_FIELDNAMES_EXTRA = ADNI_FIELDNAMES_EXTRA
 TAU_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
 TAU_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
                         'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
@@ -274,49 +274,64 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     v3_means_df['EXAMDATE'] = ''
 
     # fill in exam dates + visit codes
-    visits = importScanMeta(meta_file, with_viscode=True)
     try:
-        for i in bl_means_df.index:
-            rid = bl_means_df.ix[i,'RID']
-            subj_visits = visits[rid]
-            date = sorted(subj_visits.keys())[0]
-            vc = subj_visits[date]['VISCODE']
-            bl_means_df.ix[i,'EXAMDATE'] = date
-            bl_means_df.ix[i,'VISCODE'] = vc
-            if not dod:
-                vc2 = subj_visits[date]['VISCODE2']
-                bl_means_df.ix[i,'VISCODE2'] = vc2
+        visits = importScanMeta(meta_file, with_viscode=True)
     except Exception as e:
-        print "BL PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
-        raise e
-    try:
-        for i in v2_means_df.index:
-            rid = v2_means_df.ix[i,'RID']
-            subj_visits = visits[rid]
-            date = sorted(subj_visits.keys())[1]
-            vc = subj_visits[date]['VISCODE']
-            v2_means_df.ix[i,'EXAMDATE'] = date
-            v2_means_df.ix[i,'VISCODE'] = vc
-            if not dod:
-                vc2 = subj_visits[date]['VISCODE2']
-                v2_means_df.ix[i,'VISCODE2'] = vc2
-    except Exception as e:
-        print "Scan2 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
-        raise e
-    try:
-        for i in v3_means_df.index:
-            rid = v3_means_df.ix[i,'RID']
-            subj_visits = visits[rid]
-            date = sorted(subj_visits.keys())[2]
-            vc = subj_visits[date]['VISCODE']
-            v3_means_df.ix[i,'EXAMDATE'] = date
-            v3_means_df.ix[i,'VISCODE'] = vc
-            if not dod:
-                vc2 = subj_visits[date]['VISCODE2']
-                v3_means_df.ix[i,'VISCODE2'] = vc2
-    except Exception as e:
-        print "Scan3 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
-        raise e
+        visits = None
+
+    if visits is None:
+        bl_means_df['VISCODE'] = np.nan
+        bl_means_df['VISCODE2'] = np.nan
+        bl_means_df['EXAMDATE'] = np.nan
+        v2_means_df['VISCODE'] = np.nan
+        v2_means_df['VISCODE2'] = np.nan
+        v2_means_df['EXAMDATE'] = np.nan
+        v3_means_df['VISCODE'] = np.nan
+        v3_means_df['VISCODE2'] = np.nan
+        v3_means_df['EXAMDATE'] = np.nan
+    else:
+        try:
+            for i in bl_means_df.index:
+                rid = bl_means_df.ix[i,'RID']
+                subj_visits = visits[rid]
+                date = sorted(subj_visits.keys())[0]
+                vc = subj_visits[date]['VISCODE']
+                bl_means_df.ix[i,'EXAMDATE'] = date
+                bl_means_df.ix[i,'VISCODE'] = vc
+                if not dod:
+                    vc2 = subj_visits[date]['VISCODE2']
+                    bl_means_df.ix[i,'VISCODE2'] = vc2
+        except Exception as e:
+            print "BL PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
+            raise e
+        try:
+            for i in v2_means_df.index:
+                rid = v2_means_df.ix[i,'RID']
+                subj_visits = visits[rid]
+                date = sorted(subj_visits.keys())[1]
+                vc = subj_visits[date]['VISCODE']
+                v2_means_df.ix[i,'EXAMDATE'] = date
+                v2_means_df.ix[i,'VISCODE'] = vc
+                if not dod:
+                    vc2 = subj_visits[date]['VISCODE2']
+                    v2_means_df.ix[i,'VISCODE2'] = vc2
+        except Exception as e:
+            print "Scan2 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
+            raise e
+        try:
+            for i in v3_means_df.index:
+                rid = v3_means_df.ix[i,'RID']
+                subj_visits = visits[rid]
+                date = sorted(subj_visits.keys())[2]
+                vc = subj_visits[date]['VISCODE']
+                v3_means_df.ix[i,'EXAMDATE'] = date
+                v3_means_df.ix[i,'VISCODE'] = vc
+                if not dod:
+                    vc2 = subj_visits[date]['VISCODE2']
+                    v3_means_df.ix[i,'VISCODE2'] = vc2
+        except Exception as e:
+            print "Scan3 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
+            raise e
 
     # merge sizes
     bl_means_df = bl_means_df.merge(bl_sizes_df, on='RID', suffixes=['','_SIZE'])
@@ -327,7 +342,8 @@ def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3
     all_rows = pd.concat((bl_means_df, v2_means_df, v3_means_df), axis=0)
     all_rows.reset_index(inplace=True, drop=True)
     all_rows.sort_values(by=['RID','EXAMDATE'], inplace=True)
-    all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%Y-%m-%d'))
+    if visits is not None:
+        all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%Y-%m-%d'))
 
     # Order columns
     key_columns = ['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']
@@ -533,8 +549,8 @@ if __name__ == "__main__":
     allregions_output = os.path.join(output_folder, allregions_filename)
     merged_output = os.path.join(output_folder, merged_filename)
     bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dep_av45_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dep_meta_pet, dod=True)
+    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dep_meta_pet, dod=False)
     df.to_csv(allregions_output,index=False,float_format='%.4f')
     full_df = additionalAV45Calculations(df, lut_table, keys=DEP_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f')
-    CreateLONIVersions(df, DEP_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
+    CreateLONIVersions(df, DEP_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=False)

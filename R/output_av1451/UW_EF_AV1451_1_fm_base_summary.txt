@@ -1,0 +1,27 @@
+
+Call:
+lm(formula = y ~ ., data = tmp)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.10346 -0.50056 -0.09957  0.68785  2.04712 
+
+Coefficients:
+                           Estimate Std. Error t value Pr(>|t|)  
+(Intercept)                -0.34220    2.53687  -0.135   0.8935  
+Diag.AV1451N                1.13825    0.59888   1.901   0.0664 .
+Edu..Yrs.                   0.07848    0.06276   1.250   0.2202  
+Gender2                     0.37597    0.36578   1.028   0.3117  
+Age.AV1451                 -0.02190    0.02763  -0.793   0.4338  
+Diag.AV1451EMCI             0.59108    0.71694   0.824   0.4158  
+Diag.AV1451LMCI             0.36870    0.65982   0.559   0.5802  
+Diag.AV1451LMCI.APOE4_BIN1  0.32642    0.82187   0.397   0.6939  
+Diag.AV1451EMCI.APOE4_BIN1 -0.18409    0.93772  -0.196   0.8456  
+APOE4_BIN1                 -0.06739    0.48899  -0.138   0.8912  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 1.045 on 32 degrees of freedom
+Multiple R-squared:  0.283,	Adjusted R-squared:  0.0814 
+F-statistic: 1.404 on 9 and 32 DF,  p-value: 0.2278
+

@@ -1,0 +1,17 @@
+Anova Table (Type III tests)
+
+Response: y
+                                Sum Sq Df F value    Pr(>F)    
+(Intercept)                     0.0110  1  0.0823 0.7760225    
+Diag.AV1451LMCI.APOE4_BIN1      2.4923  1 18.6911 0.0001332 ***
+APOE4_BIN1                      1.9108  1 14.3306 0.0006157 ***
+Diag.AV1451N.APOE4_BIN1         1.5546  1 11.6592 0.0017095 ** 
+Diag.AV1451EMCI.APOE4_BIN1      0.9889  1  7.4164 0.0102488 *  
+AV1451_PVC_Braak12_CerebGray_BL 0.7662  1  5.7462 0.0223444 *  
+Diag.AV1451N                    0.2230  1  1.6721 0.2049610    
+Edu..Yrs.                       0.1991  1  1.4935 0.2303354    
+Age.AV1451                      0.1212  1  0.9092 0.3472560    
+Diag.AV1451LMCI                 0.0097  1  0.0728 0.7890387    
+Residuals                       4.4002 33                      
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
