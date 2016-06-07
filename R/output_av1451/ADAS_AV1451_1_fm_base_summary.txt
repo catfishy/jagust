@@ -23,4 +23,4 @@ Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’
 Residual standard error: 0.3856 on 34 degrees of freedom
 Multiple R-squared:  0.6185,	Adjusted R-squared:  0.5287 
 F-statistic:  6.89 on 8 and 34 DF,  p-value: 2.299e-05
-
+/usr/local/jagust/R/output_av1451/ADAS_AV1451_1_fm_base_summary.txt

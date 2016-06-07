@@ -38,9 +38,9 @@ demog_columns = c('RID','APOE4_BIN','Diag.AV1451','Age.AV1451','Gender','Edu..Yr
 
 
 #target = "UW_EF_AV1451_1"
-#target = "UW_MEM_AV1451_1"
+target = "UW_MEM_AV1451_1"
 #target = "ADAS_AV1451_1"
-target = "AVLT_AV1451_1"
+#target = "AVLT_AV1451_1"
 
 output_folder = 'R/output_av1451/'
 
@@ -62,66 +62,58 @@ for (i in names(df_av1451)){
 }
 
 # look at histograms
-for (pcol in pattern_columns) {
-  p = ggplot(df_av1451, aes_string(pcol)) + geom_histogram(binwidth=0.1)
-  print(p)
-}
+# for (pcol in pattern_columns) {
+#   p = ggplot(df_av1451, aes_string(pcol)) + geom_histogram(binwidth=0.1)
+#   print(p)
+# }
 
 # make crossx response normal
 non.na = complete.cases(df_av1451[,c(demog_columns,target)])
 df_av1451 = df_av1451[non.na,]
 df_av1451[,eval(target)] = Gaussianize(df_av1451[,eval(target)], type='hh', method='MLE', return.u=TRUE)
 
-
-run.rfe = function(form, var.response, dataset) {
-  x = as.data.frame(model.matrix(as.formula(form),dataset))[,-1]
-  nzv_cols = nearZeroVar(x)
-  if (length(nzv_cols) > 0) {
-    x = x[, -nzv_cols]
-  }
-  corr_cols = findCorrelation(cor(x),.9)
-  if (length(corr_cols) > 0) {
-    x = x[, -corr_cols]
-  }
-
-  colnames(x) = lapply(colnames(x), make.names)
-  rownames(x) = NULL
-  y = as.numeric(df_av1451[,var.response])
+run.lasso = function(form, datatset) {
+  set.seed(825)
+  fitControl = trainControl(method = "cv",
+                             number = 10)
+  lambdaGrid = expand.grid(lambda = 10^seq(10, -2, length=100))
+  model = train(as.formula(form), data = dataset,
+                 method='ridge',
+                 trControl = fitControl,
+                 tuneGrid = lambdaGrid,
+                 preProcess=c('center', 'scale')
+  )
+  #coefs = predict.enet(model$finalModel, type='coefficients', s=lasso$bestTune$fraction, mode='fraction')
+  #coefs = predict(model$finalModel, type='coef', mode='norm')$coefficients[19,]
   
-  ctrl = rfeControl(functions = lmFuncs, 
-                    method = "repeatedcv", 
-                    number = 10,
-                    repeats = 5,
-                    rerank = TRUE,
-                    verbose = FALSE)
-  set.seed(1337)
-  rfe.output = rfe(x, 
-                   y, 
-                   sizes = c(2:ncol(x)),
-                   rfeControl = ctrl,
-                   metric = 'Rsquared')
-  rfe.output
 }
 
 
 # LM RFE
 all.addons = lapply(pattern_columns,lm.addvar)
 addons_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
-
-diag_str = 'Diag.AV1451*APOE4_BIN +'
-#diag_str = ''
+#diag_str = 'Diag.AV1451*APOE4_BIN +'
+diag_str = 'Diag.AV1451 +'
 
 base_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN")
 braak_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN + AV1451_PVC_Braak12_CerebGray_BL + AV1451_PVC_Braak34_CerebGray_BL + AV1451_PVC_Braak56_CerebGray_BL")
-pattern_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN +",paste(pattern_columns,collapse=' + '))
+onlypattern_form = paste(target,"~",paste(pattern_columns,collapse=' + '))
+pattern_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN + ",paste(pattern_columns,collapse=' + '))
 
-rfe.base = run.rfe(base_form, target, df_av1451)
-rfe.braak = run.rfe(braak_form, target, df_av1451)
-rfe.pattern = run.rfe(pattern_form, target, df_av1451)
+rfe.onlypattern = run.rfe(onlypattern_form, target, df_av1451, 2)
+optvars = rfe.onlypattern$optVariables
 
-fm_base = rfe.base$fit
-fm_braak = rfe.braak$fit
-fm_pattern = rfe.pattern$fit
+pattern_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN +",paste(optvars,collapse=' + '))
+fm_base = lm(as.formula(base_form),data=df_av1451)
+fm_braak = lm(as.formula(braak_form),data=df_av1451)
+fm_pattern = lm(as.formula(pattern_form),data=df_av1451)
+
+# rfe.base = run.rfe(base_form, target, df_av1451, 2)
+# rfe.braak = run.rfe(braak_form, target, df_av1451, 2)
+# rfe.pattern = run.rfe(pattern_form, target, df_av1451, 2)
+# fm_base = rfe.base$fit
+# fm_braak = rfe.braak$fit
+# fm_pattern = rfe.pattern$fit
 
 fm_base.summary = summary(fm_base)
 fm_braak.summary = summary(fm_braak)
@@ -166,3 +158,4 @@ fm_braak.summary
 fm_base.fit
 fm_pattern.fit
 fm_braak.fit
+

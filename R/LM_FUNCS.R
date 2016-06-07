@@ -79,3 +79,35 @@ to.long = function(df, time_col_prefix, value_col_prefix) {
   df_long[complete.cases(df_long[,names(df_long)]),]
 }
 
+# Training models
+
+run.rfe = function(form, var.response, dataset, min_size) {
+  x = as.data.frame(model.matrix(as.formula(form),dataset))[,-1]
+  nzv_cols = nearZeroVar(x)
+  if (length(nzv_cols) > 0) {
+    x = x[, -nzv_cols]
+  }
+  corr_cols = findCorrelation(cor(x),.9)
+  if (length(corr_cols) > 0) {
+    x = x[, -corr_cols]
+  }
+  
+  colnames(x) = lapply(colnames(x), make.names)
+  rownames(x) = NULL
+  y = as.numeric(dataset[,var.response])
+  
+  ctrl = rfeControl(functions = lmFuncs, 
+                    method = "repeatedcv", 
+                    number = 10,
+                    repeats = 5,
+                    rerank = TRUE,
+                    verbose = FALSE)
+  set.seed(1337)
+  rfe.output = rfe(x, 
+                   y, 
+                   sizes = c(min_size:ncol(x)),
+                   rfeControl = ctrl,
+                   metric = 'Rsquared')
+  rfe.output
+}
+

@@ -13,6 +13,53 @@ def savePatternAsMat(pattern_df, output_file):
                                   'Features': list(pattern_df.columns),
                                   'Y':pattern_df.T.as_matrix()})
 
+def calculateNaiveRatios(loading_df, pattern_df):
+    ratios_df = pd.DataFrame()
+    for factor in loading_df.columns:
+        coeff = loading_df[factor]
+        ratios = (pattern_df*coeff).sum(axis=1)
+        ratios_df[factor] = ratios
+    ratios_df.columns = ['NAIVE_%s' % _ for _ in ratios_df.columns]
+    return ratios_df
+
+def compareToLobes(loading_df):
+    lut_file = '../FreeSurferColorLUT.txt'
+    lut = importFreesurferLookup(lut_file)
+    pattern_regions = list(loading_df.index)
+    # create lobe encodings
+    lobe_encodings = {}
+    for lobe_name, lobe_idx in LOBES.iteritems():
+        regions = set([lut[_].upper().replace('-','_').replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in lobe_idx])
+        encoding = np.array([1 if _ in regions else 0 for _ in pattern_regions])
+        lobe_encodings[lobe_name] = encoding
+    # create factor loading encodings
+    factor_encodings = {}
+    for factor in loading_df.columns:
+        encoding = np.array([loading_df.loc[_,factor] for _ in pattern_regions])
+        factor_encodings[factor] = encoding
+    # compare
+    results = []
+    for factor, f_encoding in factor_encodings.iteritems():
+        # split
+        pos_factor = np.array([max(_,0.0) for _ in f_encoding])
+        neg_factor = np.array([abs(min(_,0.0)) for _ in f_encoding])
+        pos_sims = {'FACTOR': '%s_POS' % factor}
+        neg_sims = {'FACTOR': '%s_NEG' % factor}
+        sims = {'FACTOR': factor}
+        # normalize
+        for lobe_name, encoding in lobe_encodings.iteritems():
+            # cross entropy
+            pos_cross = sum(pos_factor*encoding)
+            neg_cross = sum(neg_factor*encoding)
+            cross = pos_cross - neg_cross
+            pos_sims[lobe_name] = pos_cross
+            neg_sims[lobe_name] = neg_cross
+            sims[lobe_name] = cross
+        #results += [pos_sims, neg_sims]
+        results.append(sims)
+    df = pd.DataFrame(results).set_index('FACTOR')
+    return df
+
 
 def compareToBraakStages(loading_df):
     lut_file = '../FreeSurferColorLUT.txt'
@@ -75,10 +122,11 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
 # nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
 # nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-# output_file = '../nsfa/pattern_dataset.csv'
-# topregions_output_file = '../nsfa/top_regions.csv'
-# braakcomp_output_file = '../nsfa/braak_comparisons.csv'
+# # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+# output_file = '../nsfa/av45_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av45_top_regions.csv'
+# comp_output_file = '../nsfa/av45_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av45_communality.csv'
 # nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
 # dod = False
@@ -94,7 +142,8 @@ nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
 model_file = None
 output_file = '../nsfa/av1451_pattern_dataset.csv'
 topregions_output_file = '../nsfa/av1451_top_regions.csv'
-braakcomp_output_file = '../nsfa/av1451_braak_comparisons.csv'
+comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
+comm_output_file = '../nsfa/av1451_communality.csv'
 nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
 igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
 dod = False
@@ -110,7 +159,8 @@ dod = False
 # model_file = None
 # output_file = '../nsfa/dod_pattern_dataset.csv'
 # topregions_output_file = '../nsfa/dod_top_regions.csv'
-# braakcomp_output_file = '../nsfa/dod_braak_comparisons.csv'
+# comp_output_file = '../nsfa/dod_braak_comparisons.csv'
+# comm_output_file = '../nsfa/dod_communality.csv'
 # nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
 # dod = True
@@ -186,13 +236,27 @@ if nsfa_activation_csv_2 is not None:
     nsfa_act_2_df.index = nsfa_act_2_df.index.astype('int64')
     columns = ['NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
     nsfa_act_2_df.columns = columns
-    nsfa_act_2 = nsfa_act_2[nsfa_act_df.columns]
-    nsfa_act_2.columns = ['SCAN2_%s' % _ for _ in nsfa_act_2.columns]
+    nsfa_act_2_df = nsfa_act_2_df[nsfa_act_df.columns]
+    nsfa_act_2_df.columns = ['SCAN2_%s' % _ for _ in nsfa_act_2_df.columns]
     nsfa_act_df = nsfa_act_df.merge(nsfa_act_2_df, left_index=True, right_index=True, how='outer')
+
+# get naive ratios
+ratios_df = calculateNaiveRatios(nsfa_load_df, pattern_bl_df)
+
+# Look at variance explained + communality
+num_vars = nsfa_load_df.shape[1]
+ss = np.square(nsfa_load_df).sum(axis=0)/num_vars
+comm = np.square(nsfa_load_df).sum(axis=1)
+comm.sort_values(ascending=False,inplace=True)
+comm.to_csv(comm_output_file)
 
 # Compare to braak STAGES
 braak_comp_df = compareToBraakStages(nsfa_load_df)
-braak_comp_df.to_csv(braakcomp_output_file)
+lobe_comp_df = compareToLobes(nsfa_load_df)
+comp_df = braak_comp_df.merge(lobe_comp_df,left_index=True,right_index=True)
+comp_df['varperc'] = ss
+comp_df.sort_values('varperc', ascending=False, inplace=True)
+comp_df.to_csv(comp_output_file)
 
 # Create top ten region lists for each factor
 toppos_df = pd.DataFrame()
@@ -295,13 +359,14 @@ result_df['positive_post'] = (result_df['CORTICAL_SUMMARY_post'] >= threshold).a
 result_df['ad_prior'] = (result_df['diag_prior'] == 'AD').astype(int)
 result_df['ad_post'] = (result_df['diag_post'] == 'AD').astype(int)
 
-# Combine result_df, igmm_prob_df, nsfa_act_df, and other_df
+# Combine result_df, igmm_prob_df, nsfa_act_df, ratios_df, and other_df
 if len(igmm_prob_df.index) > 0:
     combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
 else:
     combined_df = nsfa_act_df
 combined_df = combined_df.merge(result_df,left_index=True,right_index=True)
 combined_df = combined_df.merge(other_df,left_index=True,right_index=True)
+combined_df = combined_df.merge(ratios_df,left_index=True,right_index=True)
 if dod:
     combined_df.index.name = 'SCRNO'
 else:
