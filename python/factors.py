@@ -13,11 +13,11 @@ def savePatternAsMat(pattern_df, output_file):
                                   'Features': list(pattern_df.columns),
                                   'Y':pattern_df.T.as_matrix()})
 
-def calculateNaiveRatios(loading_df, pattern_df):
+def calculateNaiveRatios(loading_df, suvr_df):
     ratios_df = pd.DataFrame()
     for factor in loading_df.columns:
         coeff = loading_df[factor]
-        ratios = (pattern_df*coeff).sum(axis=1)
+        ratios = (suvr_df*coeff).sum(axis=1)
         ratios_df[factor] = ratios
     ratios_df.columns = ['NAIVE_%s' % _ for _ in ratios_df.columns]
     return ratios_df
@@ -115,38 +115,38 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
-# data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-# pattern_mat = '../av45_pattern_bl.mat'
-# pattern_mat_2 = '../av45_pattern_scan2.mat'
-# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-# nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
-# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-# # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-# output_file = '../nsfa/av45_pattern_dataset.csv'
-# topregions_output_file = '../nsfa/av45_top_regions.csv'
-# comp_output_file = '../nsfa/av45_roi_comparisons.csv'
-# comm_output_file = '../nsfa/av45_communality.csv'
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
-# dod = False
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
+data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+pattern_mat = '../av45_pattern_bl.mat'
+pattern_mat_2 = '../av45_pattern_scan2.mat'
+nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
+nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+output_file = '../nsfa/av45_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av45_top_regions.csv'
+comp_output_file = '../nsfa/av45_roi_comparisons.csv'
+comm_output_file = '../nsfa/av45_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
+dod = False
 
 # FOR ADNI AV1451
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
-data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
-pattern_mat = '../av1451_pattern_bl.mat'
-pattern_mat_2 = None
-nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
-nsfa_activation_csv_2 = None
-nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
-model_file = None
-output_file = '../nsfa/av1451_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av1451_top_regions.csv'
-comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
-comm_output_file = '../nsfa/av1451_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
-dod = False
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
+# data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+# pattern_mat = '../av1451_pattern_bl.mat'
+# pattern_mat_2 = None
+# nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
+# nsfa_activation_csv_2 = None
+# nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
+# model_file = None
+# output_file = '../nsfa/av1451_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451_top_regions.csv'
+# comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
+# dod = False
 
 
 # FOR DOD AV45
@@ -241,7 +241,8 @@ if nsfa_activation_csv_2 is not None:
     nsfa_act_df = nsfa_act_df.merge(nsfa_act_2_df, left_index=True, right_index=True, how='outer')
 
 # get naive ratios
-ratios_df = calculateNaiveRatios(nsfa_load_df, pattern_bl_df)
+uptake_prior_df.index = uptake_prior_df.index.droplevel(1)
+ratios_df = calculateNaiveRatios(nsfa_load_df, uptake_prior_df)
 
 # Look at variance explained + communality
 num_vars = nsfa_load_df.shape[1]

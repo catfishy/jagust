@@ -722,6 +722,13 @@ def syncAV1451Data(master_df, av1451_file):
     headers = ['AV1451_Braak12_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak34_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak56_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak1_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak2_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak3_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak4_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak5_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak6_CerebGray_%s' % tp for tp in valid_timepoints]
+
 
     after = [_ for _ in master_df.columns if _.startswith('AV45_') and 'PVC' not in _][-1]
 
@@ -755,6 +762,13 @@ def syncAV1451Data(master_df, av1451_file):
             data['AV1451_Braak12_CerebGray_%s' % tp] = braak12
             data['AV1451_Braak34_CerebGray_%s' % tp] = braak34
             data['AV1451_Braak56_CerebGray_%s' % tp] = braak56
+            data['AV1451_Braak1_CerebGray_%s' % tp] = row['BRAAK1'] / cerebg
+            data['AV1451_Braak2_CerebGray_%s' % tp] = row['BRAAK2'] / cerebg
+            data['AV1451_Braak3_CerebGray_%s' % tp] = row['BRAAK3'] / cerebg
+            data['AV1451_Braak4_CerebGray_%s' % tp] = row['BRAAK4'] / cerebg
+            data['AV1451_Braak5_CerebGray_%s' % tp] = row['BRAAK5'] / cerebg
+            data['AV1451_Braak6_CerebGray_%s' % tp] = row['BRAAK6'] / cerebg
+
         return pd.DataFrame([data]).set_index('RID')
 
     parsed_df = parseSubjectGroups(av1451_df, extraction_fn)
