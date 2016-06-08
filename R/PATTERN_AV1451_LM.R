@@ -35,16 +35,16 @@ to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post',
               'AV45_NONTP_wcereb_BIN1.11','AV45_NONTP_2_wcereb_BIN1.11',
               'AV45_NONTP_3_wcereb_BIN1.11')
 demog_columns = c('RID','APOE4_BIN','Diag.AV1451','Age.AV1451','Gender','Edu..Yrs.')
-
+diag_columns = c('diag_prior','diag_post','Diag.AV45','Diag.AV1451')
 
 #target = "UW_EF_AV1451_1"
-target = "UW_MEM_AV1451_1"
+#target = "UW_MEM_AV1451_1"
 #target = "ADAS_AV1451_1"
-#target = "AVLT_AV1451_1"
+target = "AVLT_AV1451_1"
 
 output_folder = 'R/output_av1451/'
 
-valid_diags = c('N','SMC','EMCI','LMCI','AD')
+valid_diags = c('N','EMCI','LMCI','AD')
 #valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('N','SMC')
 #valid_diags = c('EMCI')
@@ -53,13 +53,16 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 # IMPORT
 df_av1451 = read.csv('nsfa/av1451_pattern_dataset.csv')
 pattern_columns = Filter(isPatternColumn,names(df_av1451))
-
+naive_columns = Filter(isNaiveColumn,names(df_av1451))
 df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 for (i in names(df_av1451)){
   if (i %in% to_factor){
     df_av1451[,eval(i)] = as.factor(as.character(df_av1451[,eval(i)]))
   }
 }
+
+non.na = complete.cases(df_av1451[,c(demog_columns,target)])
+df_av1451 = df_av1451[non.na,]
 
 # look at histograms
 # for (pcol in pattern_columns) {
@@ -68,37 +71,65 @@ for (i in names(df_av1451)){
 # }
 
 # make crossx response normal
-non.na = complete.cases(df_av1451[,c(demog_columns,target)])
-df_av1451 = df_av1451[non.na,]
-df_av1451[,eval(target)] = Gaussianize(df_av1451[,eval(target)], type='hh', method='MLE', return.u=TRUE)
-
-run.lasso = function(form, datatset) {
-  set.seed(825)
-  fitControl = trainControl(method = "cv",
-                             number = 10)
-  lambdaGrid = expand.grid(lambda = 10^seq(10, -2, length=100))
-  model = train(as.formula(form), data = dataset,
-                 method='ridge',
-                 trControl = fitControl,
-                 tuneGrid = lambdaGrid,
-                 preProcess=c('center', 'scale')
-  )
-  #coefs = predict.enet(model$finalModel, type='coefficients', s=lasso$bestTune$fraction, mode='fraction')
-  #coefs = predict(model$finalModel, type='coef', mode='norm')$coefficients[19,]
-  
-}
+#df_av1451[,eval(target)] = Gaussianize(df_av1451[,eval(target)], type='hh', method='MLE', return.u=TRUE)
 
 
-# LM RFE
+# Formula setup
 all.addons = lapply(pattern_columns,lm.addvar)
-addons_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
-#diag_str = 'Diag.AV1451*APOE4_BIN +'
-diag_str = 'Diag.AV1451 +'
+naive.addons = lapply(naive_columns,lm.addvar)
+addons_str = paste(all.addons,collapse=' ')
+naive_str = paste(naive.addons,collapse=' ')
+diag_str = 'Diag.AV1451*APOE4_BIN +'
+#diag_str = 'Diag.AV1451 +'
 
-base_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN")
-braak_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN + AV1451_PVC_Braak12_CerebGray_BL + AV1451_PVC_Braak34_CerebGray_BL + AV1451_PVC_Braak56_CerebGray_BL")
-onlypattern_form = paste(target,"~",paste(pattern_columns,collapse=' + '))
-pattern_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN + ",paste(pattern_columns,collapse=' + '))
+base_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs.")
+braak_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + AV1451_PVC_Braak12_CerebGray_BL*APOE4_BIN + AV1451_PVC_Braak34_CerebGray_BL*APOE4_BIN + AV1451_PVC_Braak56_CerebGray_BL*APOE4_BIN")
+onlypattern_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
+pattern_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs.",addons_str)
+full_form = paste(braak_form,addons_str)
+naive_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs.",naive_str)
+
+
+# Penalized LM
+
+braak.lasso.model = run.lasso(braak_form,df_av1451,'RMSE')
+braak.lasso.metric = subset(braak.lasso.model$results, fraction == braak.lasso.model$bestTune$fraction)
+braak.lasso.coef = predict.enet(braak.lasso.model$finalModel, type='coefficients',s=braak.lasso.model$bestTune$fraction, mode='fraction')
+
+pattern.lasso.model = run.lasso(pattern_form,df_av1451,'RMSE')
+pattern.lasso.metric = subset(pattern.lasso.model$results, fraction == pattern.lasso.model$bestTune$fraction)
+pattern.lasso.coef = predict.enet(pattern.lasso.model$finalModel, type='coefficients',s=pattern.lasso.model$bestTune$fraction, mode='fraction')
+
+naive.lasso.model = run.lasso(naive_form,df_av1451,'RMSE')
+naive.lasso.metric = subset(naive.lasso.model$results, fraction == naive.lasso.model$bestTune$fraction)
+naive.lasso.coef = predict.enet(naive.lasso.model$finalModel, type='coefficients',s=naive.lasso.model$bestTune$fraction, mode='fraction')
+
+full.lasso.model = run.lasso(full_form,df_av1451,'RMSE')
+full.lasso.metric = subset(full.lasso.model$results, fraction == full.lasso.model$bestTune$fraction)
+full.lasso.coef = predict.enet(full.lasso.model$finalModel, type='coefficients',s=full.lasso.model$bestTune$fraction, mode='fraction')
+
+
+
+braak.glmnet.model = run.glmnet(braak_form,df_av1451,'RMSE')
+braak.glmnet.metric = subset(braak.glmnet.model$results, alpha == braak.glmnet.model$bestTune$alpha & lambda == braak.glmnet.model$bestTune$lambda)
+braak.glmnet.coef = predict.glmnet(braak.glmnet.model$finalModel,type='coefficients',s=braak.glmnet.model$bestTune$lambda)
+
+naive.glmnet.model = run.glmnet(naive_form,df_av1451,'RMSE')
+naive.glmnet.metric = subset(naive.glmnet.model$results, alpha == naive.glmnet.model$bestTune$alpha & lambda == naive.glmnet.model$bestTune$lambda)
+naive.glmnet.coef = predict.glmnet(naive.glmnet.model$finalModel,type='coefficients',s=naive.glmnet.model$bestTune$lambda)
+
+pattern.glmnet.model = run.glmnet(pattern_form,df_av1451,'RMSE')
+pattern.glmnet.metric = subset(pattern.glmnet.model$results, alpha == pattern.glmnet.model$bestTune$alpha & lambda == pattern.glmnet.model$bestTune$lambda)
+pattern.glmnet.coef = predict.glmnet(pattern.glmnet.model$finalModel,type='coefficients',s=pattern.glmnet.model$bestTune$lambda)
+
+full.glmnet.model = run.glmnet(full_form,df_av1451,'RMSE')
+full.glmnet.metric = subset(full.glmnet.model$results, alpha == full.glmnet.model$bestTune$alpha & lambda == full.glmnet.model$bestTune$lambda)
+full.glmnet.coef = predict.glmnet(full.glmnet.model$finalModel,type='coefficients',s=full.glmnet.model$bestTune$lambda)
+
+
+
+# RFE
+
 
 rfe.onlypattern = run.rfe(onlypattern_form, target, df_av1451, 2)
 optvars = rfe.onlypattern$optVariables
