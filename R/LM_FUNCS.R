@@ -30,9 +30,24 @@ isNaiveColumn = function(i){
 }
 isPatternColumn = Vectorize(isPatternColumn)
 
+isScan2Column = function(i){
+  if (startsWith(i,'SCAN2_NSFA')) return(TRUE) else return(FALSE)
+}
+isScan2Column = Vectorize(isScan2Column)
+
+isScan3Column = function(i){
+  if (startsWith(i,'SCAN3_NSFA')) return(TRUE) else return(FALSE)
+}
+isScan3Column = Vectorize(isScan3Column)
+
 lm.addvar = function(var.name) {
   paste('+',paste(var.name,'*','APOE4_BIN',sep=''))
 }
+
+lm.createformula = function(target, form_str) {
+  paste(target,'~',form_str)
+}
+
 
 lme.addvar = function(var.name) {
   paste('+',paste(var.name,'*','time',sep=''))
@@ -156,8 +171,8 @@ lme.cv = function(dataset, form) {
 
 run.glmnet = function(form, dataset, metric) {
   set.seed(825)
-  fitControl = trainControl(method = "repeatedcv",
-                            number = 10,
+  fitControl = trainControl(method = "boot632",
+                            number = 25,
                             repeats = 2)
   grid = expand.grid(.alpha = seq(0,1,length=50),
                      .lambda = 10^seq(1.5,-5,length=100))
@@ -177,10 +192,10 @@ run.glmnet = function(form, dataset, metric) {
 
 run.lasso = function(form, dataset, metric) {
   set.seed(825)
-  fitControl = trainControl(method = "repeatedcv",
-                            number = 10,
+  fitControl = trainControl(method = "boot632",
+                            number = 25,
                             repeats = 5)
-  grid = expand.grid(.fraction = seq(0,1,length=100))
+  grid = expand.grid(.fraction = seq(0,1,length=1000))
   model = train(as.formula(form),
                 data = dataset,
                 method='lasso',

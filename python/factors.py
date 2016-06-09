@@ -115,14 +115,17 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_07_16.csv'
 data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 pattern_mat = '../av45_pattern_bl.mat'
 pattern_mat_2 = '../av45_pattern_scan2.mat'
+pattern_mat_3 = '../av45_pattern_scan3.mat'
 nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
 nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
+nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
 nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
 # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+model_file = None
 output_file = '../nsfa/av45_pattern_dataset.csv'
 topregions_output_file = '../nsfa/av45_top_regions.csv'
 comp_output_file = '../nsfa/av45_roi_comparisons.csv'
@@ -132,12 +135,14 @@ igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s
 dod = False
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_02_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_07_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
+# pattern_mat_3 = None
 # nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
 # nsfa_activation_csv_2 = None
+# nsfa_activation_csv_3 = None
 # nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
 # model_file = None
 # output_file = '../nsfa/av1451_pattern_dataset.csv'
@@ -216,10 +221,14 @@ if pattern_bl_df.index.nlevels > 1:
 pattern_scan2_df = pattern_scan2_df[column_order]
 if pattern_scan2_df.index.nlevels > 1:
     pattern_scan2_df.index = pattern_scan2_df.index.droplevel(1)
+pattern_scan3_df = pattern_scan3_df[column_order]
+if pattern_scan3_df.index.nlevels > 1:
+    pattern_scan3_df.index = pattern_scan3_df.index.droplevel(1)
 
 # savePatternAsMat(pattern_bl_df, pattern_mat)
 # savePatternAsMat(pattern_scan2_df, pattern_mat_2)
-# sys.exit(0)
+# savePatternAsMat(pattern_scan3_df, pattern_mat_3)
+# sys.exit(1)
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
@@ -230,19 +239,28 @@ columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
 nsfa_load_df.columns = nsfa_act_df.columns = columns
 nsfa_load_df = nsfa_load_df.loc[:,nsfa_load_df.sum() != 0]
 nsfa_act_df = nsfa_act_df[nsfa_load_df.columns]
-# add on second timepoints if available
+bl_columns = nsfa_act_df.columns
+# add on subsequent timepoints if available
 if nsfa_activation_csv_2 is not None:
     nsfa_act_2_df = pd.read_csv(nsfa_activation_csv_2).T
     nsfa_act_2_df.index = nsfa_act_2_df.index.astype('int64')
-    columns = ['NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
-    nsfa_act_2_df.columns = columns
-    nsfa_act_2_df = nsfa_act_2_df[nsfa_act_df.columns]
+    nsfa_act_2_df.columns = ['NSFA_%s' % _ for _ in nsfa_act_2_df.columns]
+    nsfa_act_2_df = nsfa_act_2_df[bl_columns]
     nsfa_act_2_df.columns = ['SCAN2_%s' % _ for _ in nsfa_act_2_df.columns]
     nsfa_act_df = nsfa_act_df.merge(nsfa_act_2_df, left_index=True, right_index=True, how='outer')
+if nsfa_activation_csv_3 is not None:
+    nsfa_act_3_df = pd.read_csv(nsfa_activation_csv_3).T
+    nsfa_act_3_df.index = nsfa_act_3_df.index.astype('int64')
+    columns = ['NSFA_%s' % _ for _ in nsfa_act_3_df.columns]
+    nsfa_act_3_df.columns = columns
+    nsfa_act_3_df = nsfa_act_3_df[bl_columns]
+    nsfa_act_3_df.columns = ['SCAN3_%s' % _ for _ in nsfa_act_3_df.columns]
+    nsfa_act_df = nsfa_act_df.merge(nsfa_act_3_df, left_index=True, right_index=True, how='outer')
+
 
 # get naive ratios
 uptake_prior_df.index = uptake_prior_df.index.droplevel(1)
-ratios_df = calculateNaiveRatios(nsfa_load_df, uptake_prior_df)
+ratios_df = calculateNaiveRatios(nsfa_load_df, pattern_bl_df)
 
 # Look at variance explained + communality
 num_vars = nsfa_load_df.shape[1]
@@ -313,7 +331,7 @@ else:
     master_df.columns = master_df.columns.get_level_values(1)
     master_df.set_index('RID', inplace=True)
     columns = ['Age@AV45','Age@AV1451','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)',
-               'Diag@AV45','Diag@AV1451','AV45_1_2_Diff',
+               'Diag@AV45','Diag@AV1451','AV45_1_2_Diff','AV45_1_3_Diff',
                'AV45_NONTP_wcereb_BIN1.11',
                'AV45_NONTP_2_wcereb_BIN1.11',
                'AV45_NONTP_3_wcereb_BIN1.11']
@@ -347,9 +365,15 @@ else:
                'CDR_COMMUN_AV1451_1',
                'CDR_HOME_AV1451_1',
                'CDR_CARE_AV1451_1']
-    columns += ['AV1451_PVC_Braak12_CerebGray_BL',
-                'AV1451_PVC_Braak34_CerebGray_BL',
-                'AV1451_PVC_Braak56_CerebGray_BL']
+    columns += ['AV1451_Braak12_CerebGray_BL',
+                'AV1451_Braak34_CerebGray_BL',
+                'AV1451_Braak56_CerebGray_BL',
+                'AV1451_Braak1_CerebGray_BL',
+                'AV1451_Braak2_CerebGray_BL',
+                'AV1451_Braak3_CerebGray_BL',
+                'AV1451_Braak4_CerebGray_BL',
+                'AV1451_Braak5_CerebGray_BL',
+                'AV1451_Braak6_CerebGray_BL']
     other_df = master_df[columns]
 
 print columns
