@@ -79,6 +79,7 @@ for (i in 1:NROW(pattern_formula)) {
   formula = as.formula(paste(pattern_formula[i]))
   cur.lm = lm(formula,df_av45)
   cur.lm.summary = summary(cur.lm)
+  cur.lm.coef = cur.lm.summary$coefficients
   fstat = cur.lm.summary$fstatistic
   cur.lm.pvalue = pf(fstat[1],fstat[2],fstat[3],lower.tail=F)
   pvalues[pattern_str] = cur.lm.pvalue

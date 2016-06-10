@@ -32,7 +32,7 @@ source('R/LM_FUNCS.R')
 pattern_prefix = 'NSFA_'
 to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post',
               'diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender',
-              'Diag.AV45_long','positive_prior','positive_post',
+              'Diag.AV45','Diag.AV1451','positive_prior','positive_post',
               'AV45_NONTP_wcereb_BIN1.11')
 to_standardize = c('CORTICAL_SUMMARY_prior','Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','Diag.AV45','Age.AV45','Gender','Edu..Yrs.')
@@ -43,9 +43,9 @@ av45_columns = c('CORTICAL_SUMMARY_prior')
 #target = "UW_EF_slope"
 #target = "ADAS_AV45_1"
 #target = "ADASslope_postAV45"
-#target = "AVLT_AV45_1"
+target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
-target = "UW_MEM_AV45_1"
+#target = "UW_MEM_AV45_1"
 #target = "UW_MEM_slope"
 #target = "CSF_ABETA_closest_AV45_1"
 #target = "CSF_TAU_closest_AV45_1"
@@ -55,11 +55,10 @@ target = "UW_MEM_AV45_1"
 output_folder = 'R/output_all_diag/'
 output_folder = 'R/output_neg_emci/'
 
-
-all_diags = c('N','SMC','EMCI','LMCI','AD')
+positive_value=1
 #valid_diags = c('N','SMC','EMCI','LMCI','AD')
-#valid_diags = c('N','SMC','EMCI','LMCI')
-valid_diags = c('N')
+valid_diags = c('N','EMCI','LMCI','AD')
+#valid_diags = c('N')
 #valid_diags = c('EMCI')
 #valid_diags = c('LMCI')
 
@@ -75,21 +74,23 @@ value_col_prefix = 'UW_EF_'
 
 # IMPORT
 df_av45 = read.csv('nsfa/av45_pattern_dataset.csv')
-df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
 non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,target)])
 df_av45 = df_av45[non.na,]
+
+# filter by diag or postivity
+df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
+df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
+
+# make factors
 for (i in names(df_av45)){
   if (i %in% to_factor){
     df_av45[,eval(i)] = as.factor(as.character(df_av45[,eval(i)]))
   }
 }
 pattern_columns = Filter(isPatternColumn,names(df_av45))
-#pattern_columns = c('NSFA_6','NSFA_8','NSFA_0','NSFA_7','NSFA_3')
 naive_columns = Filter(isNaiveColumn,names(df_av45))
 
-# # filter by positivity
-# positive_value=0
-# df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
+
 
 
 # # look at histograms
@@ -119,13 +120,13 @@ df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_
 all.addons = paste('+',paste(pattern_columns,collapse=' + '))
 naive.addons = paste('+',paste(naive_columns,collapse=' + '))
 addons_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
+
 diag_counts = table(df_av45$Diag.AV45)
 if (length((diag_counts[diag_counts>0])) > 1) {
-  diag_str = 'Diag.AV45*APOE4_BIN + '
+  diag_str = 'Diag.AV45 + '
 } else {
   diag_str = ''
 }
-
 
 base_form = paste(target,"~",diag_str,"Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN")
 nopattern_form = paste(target,"~",diag_str,"CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2) + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN")
@@ -133,23 +134,38 @@ onlypattern_form = paste(base_form,paste(all.addons,collapse=' '))
 full_form = paste(nopattern_form,paste(all.addons,collapse=' '))
 naive_form = paste(base_form,paste(naive.addons,collapse=' '))
 
+# LARS lasso
+nopattern_x = getxy(nopattern_form,df_av45)
+y = as.numeric(df_av45[,target])
+nopattern.lars.model = lars(nopattern_x,y,type='lasso')
+nopattern.lars.test = covTest(nopattern.lars.model,nopattern_x,y)$results
+nopattern.lars.sigcoef.idx = nopattern.lars.test[nopattern.lars.test[,'P-value'] < 0.1,'Predictor_Number']
+nopattern.lars.coef = coef(nopattern.lars.model, s=which.min(summary(nopattern.lars.model)$Cp), mode='step')
+nopattern.lars.sigcoef = nopattern.lars.coef[nopattern.lars.sigcoef.idx]
+
+onlypattern_x = getxy(onlypattern_form,df_av45)
+y = as.numeric(df_av45[,target])
+onlypattern.lars.model = lars(onlypattern_x,y,type='lasso')
+onlypattern.lars.test = covTest(onlypattern.lars.model,onlypattern_x,y)$results
+onlypattern.lars.sigcoef.idx = onlypattern.lars.test[onlypattern.lars.test[,'P-value'] < 0.1,'Predictor_Number']
+onlypattern.lars.coef = coef(onlypattern.lars.model, s=which.min(summary(onlypattern.lars.model)$Cp), mode='step')
+onlypattern.lars.sigcoef = onlypattern.lars.coef[onlypattern.lars.sigcoef.idx]
+
 # LASSO Penalized regression
-nopattern.lasso.model = run.lasso(nopattern_form,df_av45,'RMSE')
+nopattern.lasso.model = run.lasso(nopattern_form,df_av45,'Rsquared')
 nopattern.lasso.metric = subset(nopattern.lasso.model$results, fraction == nopattern.lasso.model$bestTune$fraction)
 nopattern.lasso.coef = predict.enet(nopattern.lasso.model$finalModel, type='coefficients',s=nopattern.lasso.model$bestTune$fraction, mode='fraction')$coefficients
-nopattern.lasso.coef = nopattern.lasso.coef[nopattern.lasso.coef > 0]
+nopattern.lasso.coef = nopattern.lasso.coef[nopattern.lasso.coef != 0]
 
-onlypattern.lasso.model = run.lasso(onlypattern_form,df_av45,'RMSE')
+onlypattern.lasso.model = run.lasso(onlypattern_form,df_av45,'Rsquared')
 onlypattern.lasso.metric = subset(onlypattern.lasso.model$results, fraction == onlypattern.lasso.model$bestTune$fraction)
 onlypattern.lasso.coef = predict.enet(onlypattern.lasso.model$finalModel, type='coefficients',s=onlypattern.lasso.model$bestTune$fraction, mode='fraction')$coefficients
-onlypattern.lasso.coef = onlypattern.lasso.coef[onlypattern.lasso.coef > 0]
+onlypattern.lasso.coef = onlypattern.lasso.coef[onlypattern.lasso.coef != 0]
 
 naive.lasso.model = run.lasso(naive_form,df_av45,'RMSE')
 naive.lasso.metric = subset(naive.lasso.model$results, fraction == naive.lasso.model$bestTune$fraction)
 naive.lasso.coef = predict.enet(naive.lasso.model$finalModel, type='coefficients',s=naive.lasso.model$bestTune$fraction, mode='fraction')$coefficients
-naive.lasso.coef = naive.lasso.coef[naive.lasso.coef > 0]
-
-
+naive.lasso.coef = naive.lasso.coef[naive.lasso.coef != 0]
 
 # GLMNET Penalized Regression
 nopattern.glmnet.model = run.glmnet(nopattern_form,df_av45,'RMSE')
@@ -165,19 +181,6 @@ naive.glmnet.metric = subset(naive.glmnet.model$results, alpha == naive.glmnet.m
 naive.glmnet.coef = predict.glmnet(naive.glmnet.model$finalModel,type='coefficients',s=naive.glmnet.model$bestTune$lambda)
 
 
-# LARS lasso
-nopattern_x = getxy(nopattern_form,df_av45)
-y = as.numeric(df_av45[,target])
-nopattern.lasso.model = lars(nopattern_x,y,type='lasso')
-nopattern.lasso.coef = predict.lars(nopattern.lasso.model,type='coefficients')
-nopattern.lasso.test = covTest(nopattern.lasso.model,nopattern_x,y)
-coef(nopattern.lasso.model, s=which.min(summary(nopattern.lasso.model)$Cp))
-
-onlypattern_x = getxy(onlypattern_form,df_av45)
-y = as.numeric(df_av45[,target])
-onlypattern.lasso.model = lars(onlypattern_x,y,type='lasso')
-onlypattern.lasso.test = covTest(onlypattern.lasso.model,onlypattern_x,y)
-coef(onlypattern.lasso.model, s=which.min(summary(onlypattern.lasso.model)$Cp))
 
 
 # LM RFE
