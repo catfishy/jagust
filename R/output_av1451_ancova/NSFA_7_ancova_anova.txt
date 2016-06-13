@@ -2,10 +2,10 @@ Anova Table (Type III tests)
 
 Response: NSFA_7
             Sum Sq Df F value Pr(>F)
-(Intercept)  0.422  1  0.3874 0.5376
-APOE4_BIN    0.368  1  0.3380 0.5646
-Gender       0.233  1  0.2140 0.6464
-Age.AV1451   0.419  1  0.3850 0.5389
-Edu..Yrs.    1.462  1  1.3429 0.2541
-Diag.AV1451  4.606  5  0.8463 0.5262
-Residuals   39.187 36               
+(Intercept)  0.275  1  0.2471 0.6218
+APOE4_BIN    0.792  1  0.7112 0.4041
+Gender       0.658  1  0.5906 0.4467
+Age.AV1451   0.012  1  0.0106 0.9185
+Edu..Yrs.    0.168  1  0.1509 0.6997
+Diag.AV1451  2.626  4  0.5896 0.6721
+Residuals   44.547 40               

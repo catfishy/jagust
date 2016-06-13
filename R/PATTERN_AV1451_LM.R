@@ -36,7 +36,7 @@ to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post',
               'AV45_NONTP_3_wcereb_BIN1.11')
 to_standardize = c('Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','Diag.AV1451','Age.AV1451','Gender','Edu..Yrs.')
-diag_columns = c('diag_prior','diag_post','Diag.AV45','Diag.AV1451')
+diag_columns = c('Diag.AV45','Diag.AV1451')
 braak_columns = c('AV1451_Braak1_CerebGray_BL',
                   'AV1451_Braak2_CerebGray_BL',
                   'AV1451_Braak3_CerebGray_BL',
@@ -46,13 +46,13 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
 
 
 #target = "UW_EF_AV1451_1"
-target = "UW_MEM_AV1451_1"
+#target = "UW_MEM_AV1451_1"
 #target = "ADAS_AV1451_1"
-#target = "AVLT_AV1451_1"
+target = "AVLT_AV1451_1"
 
 output_folder = 'R/output_av1451/'
 
-valid_diags = c('N','SMC','EMCI','LMCI','AD')
+valid_diags = c('N','EMCI','LMCI','AD')
 #valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('N','SMC')
 #valid_diags = c('EMCI')
@@ -101,8 +101,8 @@ naive_str = paste(naive.addons,collapse=' ')
 braak_str = paste(braak.addons,collapse=' ')
 
 #diag_str = 'Diag.AV1451*APOE4_BIN +'
-#diag_str = 'Diag.AV1451 +'
-diag_str = ''
+diag_str = 'Diag.AV1451 +'
+#diag_str = ''
 
 
 
@@ -114,17 +114,17 @@ full_form = paste(target,"~",diag_str,"APOE4_BIN + Age.AV1451 + Gender + Edu..Yr
 # onlypattern_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
 
 # Penalized LM
-braak.lasso.model = run.lasso(braak_form,df_av1451,'Rsquared')
+braak.lasso.model = run.lasso(braak_form,df_av1451,'RMSE')
 braak.lasso.metric = subset(braak.lasso.model$results, fraction == braak.lasso.model$bestTune$fraction)
 braak.lasso.coef = predict.enet(braak.lasso.model$finalModel, type='coefficients',s=braak.lasso.model$bestTune$fraction, mode='fraction')$coefficients
 braak.lasso.coef = braak.lasso.coef[braak.lasso.coef != 0]
 
-pattern.lasso.model = run.lasso(pattern_form,df_av1451,'Rsquared')
+pattern.lasso.model = run.lasso(pattern_form,df_av1451,'RMSE')
 pattern.lasso.metric = subset(pattern.lasso.model$results, fraction == pattern.lasso.model$bestTune$fraction)
 pattern.lasso.coef = predict.enet(pattern.lasso.model$finalModel, type='coefficients',s=pattern.lasso.model$bestTune$fraction, mode='fraction')$coefficients
 pattern.lasso.coef = pattern.lasso.coef[pattern.lasso.coef != 0]
 
-naive.lasso.model = run.lasso(naive_form,df_av1451,'Rsquared')
+naive.lasso.model = run.lasso(naive_form,df_av1451,'RMSE')
 naive.lasso.metric = subset(naive.lasso.model$results, fraction == naive.lasso.model$bestTune$fraction)
 naive.lasso.coef = predict.enet(naive.lasso.model$finalModel, type='coefficients',s=naive.lasso.model$bestTune$fraction, mode='fraction')$coefficients
 naive.lasso.coef = naive.lasso.coef[naive.lasso.coef != 0]
@@ -139,16 +139,18 @@ braak_x = getxy(braak_form,df_av1451)
 y = as.numeric(df_av1451[,target])
 braak.lars.model = lars(braak_x,y,type='lasso')
 braak.lars.test = covTest(braak.lars.model,braak_x,y)$results
-braak.lars.sigcoef.idx = braak.lars.test[braak.lars.test[,'P-value'] < 0.1,'Predictor_Number']
+braak.lars.sigcoef.idx = braak.lars.test[braak.lars.test[,'P-value'] < 0.2 & !is.na(braak.lars.test[,'P-value']),'Predictor_Number']
 braak.lars.coef = coef(braak.lars.model, s=which.min(summary(braak.lars.model)$Cp), mode='step')
+braak.lars.r2 = braak.lars.model$R2[which.min(summary(braak.lars.model)$Cp)]
 braak.lars.sigcoef = braak.lars.coef[braak.lars.sigcoef.idx]
 
 pattern_x = getxy(pattern_form,df_av1451)
 y = as.numeric(df_av1451[,target])
 pattern.lars.model = lars(pattern_x,y,type='lasso')
 pattern.lars.test = covTest(pattern.lars.model,pattern_x,y)$results
-pattern.lars.sigcoef.idx = pattern.lars.test[pattern.lars.test[,'P-value'] < 0.1,'Predictor_Number']
+pattern.lars.sigcoef.idx = pattern.lars.test[pattern.lars.test[,'P-value'] < 0.2 & !is.na(pattern.lars.test[,'P-value']),'Predictor_Number']
 pattern.lars.coef = coef(pattern.lars.model, s=which.min(summary(pattern.lars.model)$Cp), mode='step')
+pattern.lars.r2 = pattern.lars.model$R2[which.min(summary(pattern.lars.model)$Cp)]
 pattern.lars.sigcoef = pattern.lars.coef[pattern.lars.sigcoef.idx]
 
 

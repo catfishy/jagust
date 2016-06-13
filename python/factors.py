@@ -115,43 +115,68 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_09_16.csv'
-data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-pattern_mat = '../av45_pattern_bl.mat'
-pattern_mat_2 = '../av45_pattern_scan2.mat'
-pattern_mat_3 = '../av45_pattern_scan3.mat'
-nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
-nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
-nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-model_file = None
-output_file = '../nsfa/av45_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av45_top_regions.csv'
-comp_output_file = '../nsfa/av45_roi_comparisons.csv'
-comm_output_file = '../nsfa/av45_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
-dod = False
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
+# data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+# pattern_mat = '../av45_pattern_bl.mat'
+# pattern_mat_2 = '../av45_pattern_scan2.mat'
+# pattern_mat_3 = '../av45_pattern_scan3.mat'
+# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+# nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
+# nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
+# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
+# # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+# model_file = None
+# output_file = '../nsfa/av45_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av45_top_regions.csv'
+# comp_output_file = '../nsfa/av45_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av45_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
+# dod = False
+# bilateral = True
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_09_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
+data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+pattern_mat = '../av1451_pattern_bl.mat'
+pattern_mat_2 = None
+pattern_mat_3 = None
+nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
+nsfa_activation_csv_2 = None
+nsfa_activation_csv_3 = None
+nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av1451_lambdag.csv'
+model_file = None
+output_file = '../nsfa/av1451_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av1451_top_regions.csv'
+comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
+comm_output_file = '../nsfa/av1451_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
+dod = False
+bilateral = False
+
+# FOR ADNI AV1451 UNILATERAL
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
-# pattern_mat = '../av1451_pattern_bl.mat'
+# pattern_mat = '../av1451uni_pattern_bl.mat'
 # pattern_mat_2 = None
 # pattern_mat_3 = None
-# nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
+# nsfa_activation_csv = '../nsfa/av1451uni_factor_activations.csv'
 # nsfa_activation_csv_2 = None
 # nsfa_activation_csv_3 = None
-# nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
+# nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
 # model_file = None
-# output_file = '../nsfa/av1451_pattern_dataset.csv'
-# topregions_output_file = '../nsfa/av1451_top_regions.csv'
-# comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
-# comm_output_file = '../nsfa/av1451_communality.csv'
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
+# output_file = '../nsfa/av1451uni_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
+# comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451uni_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451uni_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
 # dod = False
+# bilateral = False
 
 
 # FOR DOD AV45
@@ -169,8 +194,8 @@ dod = False
 # nsfa_output_template = "../output/fake_aparc_inputs/nsfa/dod_factor_loading_%s"
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
 # dod = True
+# bilateral = True
 
-bilateral = True
 scale_type = 'original'
 norm_type = 'L1'
 tracer = 'AV45'
@@ -230,16 +255,21 @@ if pattern_scan3_df.index.nlevels > 1:
 # savePatternAsMat(pattern_scan3_df, pattern_mat_3)
 # sys.exit(1)
 
+
+
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
 nsfa_act_df.index = nsfa_act_df.index.astype('int64')
 nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
+nsfa_lambdag = map(float,list(pd.read_csv(nsfa_lambdag_csv).columns))
 # only keep factors with nonzero loadings
 columns = ['NSFA_%s' % _ for _ in nsfa_act_df.columns]
+nsfa_lambdag_df = pd.DataFrame([nsfa_lambdag],columns=columns).iloc[0]
 nsfa_load_df.columns = nsfa_act_df.columns = columns
 nsfa_load_df = nsfa_load_df.loc[:,nsfa_load_df.sum() != 0]
 nsfa_act_df = nsfa_act_df[nsfa_load_df.columns]
 bl_columns = nsfa_act_df.columns
+nsfa_lambdag_df = nsfa_lambdag_df[bl_columns]
 # add on subsequent timepoints if available
 if nsfa_activation_csv_2 is not None:
     nsfa_act_2_df = pd.read_csv(nsfa_activation_csv_2).T
@@ -264,8 +294,9 @@ ratios_df = calculateNaiveRatios(nsfa_load_df, pattern_bl_df)
 
 # Look at variance explained + communality
 num_vars = nsfa_load_df.shape[1]
-ss = np.square(nsfa_load_df).sum(axis=0)/num_vars
-comm = np.square(nsfa_load_df).sum(axis=1)
+nsfa_standard_load_df = nsfa_load_df/np.sqrt(nsfa_lambdag_df)
+ss = np.square(nsfa_standard_load_df).sum(axis=0)/num_vars
+comm = np.square(nsfa_standard_load_df).sum(axis=1)
 comm.sort_values(ascending=False,inplace=True)
 comm.to_csv(comm_output_file)
 
@@ -399,6 +430,6 @@ else:
 
 combined_df.to_csv(output_file,index=True)
 
-# # Save loading patterns
+# Save loading patterns
 # savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
 # savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)

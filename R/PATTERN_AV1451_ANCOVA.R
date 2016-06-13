@@ -45,14 +45,14 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
 
 output_folder = 'R/output_av1451_ancova/'
 
-valid_diags = c('N','EMCI','LMCI')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 
 
 # IMPORT
 df_av1451 = read.csv('nsfa/av1451_pattern_dataset.csv')
-df_av1451 = df_av1451[which(df_av1451$Diag.AV45 %in% valid_diags),]
-non.na = complete.cases(df_av1451[,c(demog_columns,av45_columns)])
+non.na = complete.cases(df_av1451[,c(demog_columns,braak_columns)])
 df_av1451 = df_av1451[non.na,]
+df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 for (i in names(df_av1451)){
   if (i %in% to_factor){
     df_av1451[,eval(i)] = as.factor(as.character(df_av1451[,eval(i)]))
