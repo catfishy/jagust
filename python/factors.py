@@ -22,14 +22,17 @@ def calculateNaiveRatios(loading_df, suvr_df):
     ratios_df.columns = ['NAIVE_%s' % _ for _ in ratios_df.columns]
     return ratios_df
 
-def compareToLobes(loading_df):
+def compareToLobes(loading_df, bilateral):
     lut_file = '../FreeSurferColorLUT.txt'
     lut = importFreesurferLookup(lut_file)
     pattern_regions = list(loading_df.index)
     # create lobe encodings
     lobe_encodings = {}
     for lobe_name, lobe_idx in LOBES.iteritems():
-        regions = set([lut[_].upper().replace('-','_').replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in lobe_idx])
+        if bilateral:
+            regions = set([lut[_].upper().replace('-','_').replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in lobe_idx])
+        else:
+            regions = set([lut[_].upper().replace('-','_') for _ in lobe_idx])
         encoding = np.array([1 if _ in regions else 0 for _ in pattern_regions])
         lobe_encodings[lobe_name] = encoding
     # create factor loading encodings
@@ -61,7 +64,7 @@ def compareToLobes(loading_df):
     return df
 
 
-def compareToBraakStages(loading_df):
+def compareToBraakStages(loading_df, bilateral):
     lut_file = '../FreeSurferColorLUT.txt'
     lut = importFreesurferLookup(lut_file)
     pattern_regions = list(loading_df.index)
@@ -69,7 +72,10 @@ def compareToBraakStages(loading_df):
     braak_stages = [BRAAK1,BRAAK2,BRAAK3,BRAAK4,BRAAK5,BRAAK6]
     braak_encodings = {}
     for i, stage in enumerate(braak_stages):
-        regions = set([lut[_].upper().replace('-','_').replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in stage])
+        if bilateral:
+            regions = set([lut[_].upper().replace('-','_').replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in stage])
+        else:
+            regions = set([lut[_].upper().replace('-','_') for _ in stage])
         stage_name = 'BRAAK%s' % (i+1)
         encoding = np.array([1 if _ in regions else 0 for _ in pattern_regions])
         braak_encodings[stage_name] = encoding
@@ -137,46 +143,46 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # bilateral = True
 
 # FOR ADNI AV1451
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
-data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
-pattern_mat = '../av1451_pattern_bl.mat'
-pattern_mat_2 = None
-pattern_mat_3 = None
-nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
-nsfa_activation_csv_2 = None
-nsfa_activation_csv_3 = None
-nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
-nsfa_lambdag_csv = '../nsfa/av1451_lambdag.csv'
-model_file = None
-output_file = '../nsfa/av1451_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av1451_top_regions.csv'
-comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
-comm_output_file = '../nsfa/av1451_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
-dod = False
-bilateral = False
-
-# FOR ADNI AV1451 UNILATERAL
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
-# pattern_mat = '../av1451uni_pattern_bl.mat'
+# pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
 # pattern_mat_3 = None
-# nsfa_activation_csv = '../nsfa/av1451uni_factor_activations.csv'
+# nsfa_activation_csv = '../nsfa/av1451_factor_activations.csv'
 # nsfa_activation_csv_2 = None
 # nsfa_activation_csv_3 = None
-# nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
-# nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
+# nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av1451_lambdag.csv'
 # model_file = None
-# output_file = '../nsfa/av1451uni_pattern_dataset.csv'
-# topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
-# comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
-# comm_output_file = '../nsfa/av1451uni_communality.csv'
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451uni_factor_loading_%s"
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
+# output_file = '../nsfa/av1451_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451_top_regions.csv'
+# comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
 # dod = False
-# bilateral = False
+# bilateral = True
+
+# FOR ADNI AV1451 UNILATERAL
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
+data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+pattern_mat = '../av1451uni_pattern_bl.mat'
+pattern_mat_2 = None
+pattern_mat_3 = None
+nsfa_activation_csv = '../nsfa/av1451uni_factor_activations.csv'
+nsfa_activation_csv_2 = None
+nsfa_activation_csv_3 = None
+nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
+model_file = None
+output_file = '../nsfa/av1451uni_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
+comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
+comm_output_file = '../nsfa/av1451uni_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451uni_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
+dod = False
+bilateral = False
 
 
 # FOR DOD AV45
@@ -301,8 +307,8 @@ comm.sort_values(ascending=False,inplace=True)
 comm.to_csv(comm_output_file)
 
 # Compare to braak STAGES
-braak_comp_df = compareToBraakStages(nsfa_load_df)
-lobe_comp_df = compareToLobes(nsfa_load_df)
+braak_comp_df = compareToBraakStages(nsfa_load_df, bilateral)
+lobe_comp_df = compareToLobes(nsfa_load_df, bilateral)
 comp_df = braak_comp_df.merge(lobe_comp_df,left_index=True,right_index=True)
 comp_df['varperc'] = ss
 comp_df.sort_values('varperc', ascending=False, inplace=True)
