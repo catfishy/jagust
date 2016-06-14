@@ -41,8 +41,8 @@ av45_columns = c('CORTICAL_SUMMARY_prior')
 #target = "CORTICAL_SUMMARY_change"
 #target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
-#target = "ADAS_AV45_1"
-target = "ADASslope_postAV45"
+target = "ADAS_AV45_1"
+#target = "ADASslope_postAV45"
 #target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
 #target = "UW_MEM_AV45_1"
@@ -131,16 +131,19 @@ if (length((diag_counts[diag_counts>0])) > 1) {
 base_form = paste(target,"~",diag_str,"Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN")
 nopattern_form = paste(target,"~",diag_str,"CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2) + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN")
 onlypattern_form = paste(base_form,paste(all.addons,collapse=' '))
+pattern_form = paste(target,'~',paste(pattern_columns,collapse=' + '))
 full_form = paste(nopattern_form,paste(all.addons,collapse=' '))
 naive_form = paste(base_form,paste(naive.addons,collapse=' '))
 
 # LARS lasso
+
 nopattern_x = getxy(nopattern_form,df_av45)
 y = as.numeric(df_av45[,target])
 nopattern.lars.model = lars(nopattern_x,y,type='lasso')
 nopattern.lars.test = covTest(nopattern.lars.model,nopattern_x,y)$results
 nopattern.lars.sigcoef.idx = nopattern.lars.test[nopattern.lars.test[,'P-value'] < 0.2 & !is.na(nopattern.lars.test[,'P-value']),'Predictor_Number']
 nopattern.lars.coef = coef(nopattern.lars.model, s=which.min(summary(nopattern.lars.model)$Cp), mode='step')
+nopattern.lars.r2 = nopattern.lars.model$R2[which.min(summary(nopattern.lars.model)$Cp)]
 nopattern.lars.sigcoef = nopattern.lars.coef[nopattern.lars.sigcoef.idx]
 
 onlypattern_x = getxy(onlypattern_form,df_av45)
@@ -149,6 +152,7 @@ onlypattern.lars.model = lars(onlypattern_x,y,type='lasso')
 onlypattern.lars.test = covTest(onlypattern.lars.model,onlypattern_x,y)$results
 onlypattern.lars.sigcoef.idx = onlypattern.lars.test[onlypattern.lars.test[,'P-value'] < 0.2 & !is.na(onlypattern.lars.test[,'P-value']),'Predictor_Number']
 onlypattern.lars.coef = coef(onlypattern.lars.model, s=which.min(summary(onlypattern.lars.model)$Cp), mode='step')
+onlypattern.lars.r2 = onlypattern.lars.model$R2[which.min(summary(onlypattern.lars.model)$Cp)]
 onlypattern.lars.sigcoef = onlypattern.lars.coef[onlypattern.lars.sigcoef.idx]
 
 # LASSO Penalized regression

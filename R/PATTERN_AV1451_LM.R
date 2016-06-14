@@ -24,6 +24,7 @@ library(VGAM)
 library(lmtest)
 library(languageR)
 library(stringr)
+library(Jmisc)
 
 source('R/LM_FUNCS.R')
 
@@ -46,13 +47,13 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
 
 
 #target = "UW_EF_AV1451_1"
-#target = "UW_MEM_AV1451_1"
+target = "UW_MEM_AV1451_1"
 #target = "ADAS_AV1451_1"
-target = "AVLT_AV1451_1"
+#target = "AVLT_AV1451_1"
 
 output_folder = 'R/output_av1451/'
 
-valid_diags = c('N','EMCI','LMCI','AD')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 #valid_diags = c('N','SMC','EMCI','LMCI')
 #valid_diags = c('N','SMC')
 #valid_diags = c('EMCI')
@@ -64,17 +65,20 @@ pattern_columns = Filter(isPatternColumn,names(df_av1451))
 naive_columns = Filter(isNaiveColumn,names(df_av1451))
 non.na = complete.cases(df_av1451[,c(demog_columns,braak_columns,target)])
 df_av1451 = df_av1451[non.na,]
-df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 for (i in names(df_av1451)){
   if (i %in% to_factor){
     df_av1451[,eval(i)] = as.factor(as.character(df_av1451[,eval(i)]))
   }
 }
 
+# Filter by diag
+# df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
+
 # standardize predictors
 cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
 cross_normalization = preProcess(df_av1451[,cross_to_standardize])
 df_av1451[,cross_to_standardize] = predict(cross_normalization, df_av1451[,cross_to_standardize])
+#df_av1451[,target] = scale(df_av1451[,target], center=TRUE, scale=FALSE)
 
 # # look at histograms
 # for (pcol in pattern_columns) {
@@ -84,10 +88,6 @@ df_av1451[,cross_to_standardize] = predict(cross_normalization, df_av1451[,cross
 
 # make crossx response normal
 #df_av1451[,eval(target)] = Gaussianize(df_av1451[,eval(target)], type='hh', method='MLE', return.u=TRUE)
-
-#pattern_columns = c("NSFA_1","NSFA_2","NSFA_6","NSFA_7")
-
-
 
 # Formula setup
 # all.addons = lapply(pattern_columns,lm.addvar)
@@ -100,9 +100,9 @@ patterns_str = paste(all.addons,collapse=' ')
 naive_str = paste(naive.addons,collapse=' ')
 braak_str = paste(braak.addons,collapse=' ')
 
-#diag_str = 'Diag.AV1451*APOE4_BIN +'
-diag_str = 'Diag.AV1451 +'
-#diag_str = ''
+# diag_str = 'Diag.AV1451*APOE4_BIN +'
+# diag_str = 'Diag.AV1451 +'
+diag_str = ''
 
 
 
@@ -112,6 +112,29 @@ pattern_form = paste(target,"~",diag_str,"APOE4_BIN + Age.AV1451 + Gender + Edu.
 naive_form = paste(target,"~",diag_str,"APOE4_BIN + Age.AV1451 + Gender + Edu..Yrs.",naive_str)
 full_form = paste(target,"~",diag_str,"APOE4_BIN + Age.AV1451 + Gender + Edu..Yrs.",patterns_str,braak_str)
 # onlypattern_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
+
+# LARS lasso
+braak_x = getxy(braak_form,df_av1451)
+y = as.numeric(df_av1451[,target])
+braak.lars.model = lars(braak_x,y,type='lasso')
+braak.lars.test = covTest(braak.lars.model,braak_x,y)$results
+braak.lars.sigcoef.idx = braak.lars.test[braak.lars.test[,'P-value'] < 0.1 & !is.na(braak.lars.test[,'P-value']),'Predictor_Number']
+braak.lars.coef = coef(braak.lars.model, s=which.min(summary(braak.lars.model)$Cp), mode='step')
+braak.lars.r2 = braak.lars.model$R2[which.min(summary(braak.lars.model)$Cp)]
+braak.lars.sigcoef = braak.lars.coef[braak.lars.sigcoef.idx]
+braak.lars.nonzerocoef = braak.lars.coef[braak.lars.coef != 0]
+
+pattern_x = getxy(pattern_form,df_av1451)
+y = as.numeric(df_av1451[,target])
+pattern.lars.model = lars(pattern_x,y,type='lasso')
+pattern.lars.test = covTest(pattern.lars.model,pattern_x,y)$results
+pattern.lars.sigcoef.idx = pattern.lars.test[pattern.lars.test[,'P-value'] < 0.1 & !is.na(pattern.lars.test[,'P-value']),'Predictor_Number']
+pattern.lars.coef = coef(pattern.lars.model, s=which.min(summary(pattern.lars.model)$Cp), mode='step')
+pattern.lars.r2 = pattern.lars.model$R2[which.min(summary(pattern.lars.model)$Cp)]
+pattern.lars.sigcoef = pattern.lars.coef[pattern.lars.sigcoef.idx]
+pattern.lars.nonzerocoef = pattern.lars.coef[pattern.lars.coef != 0]
+
+
 
 # Penalized LM
 braak.lasso.model = run.lasso(braak_form,df_av1451,'RMSE')
@@ -134,24 +157,6 @@ full.lasso.metric = subset(full.lasso.model$results, fraction == full.lasso.mode
 full.lasso.coef = predict.enet(full.lasso.model$finalModel, type='coefficients',s=full.lasso.model$bestTune$fraction, mode='fraction')$coefficients
 full.lasso.coef = full.lasso.coef[full.lasso.coef != 0]
 
-# LARS lasso
-braak_x = getxy(braak_form,df_av1451)
-y = as.numeric(df_av1451[,target])
-braak.lars.model = lars(braak_x,y,type='lasso')
-braak.lars.test = covTest(braak.lars.model,braak_x,y)$results
-braak.lars.sigcoef.idx = braak.lars.test[braak.lars.test[,'P-value'] < 0.2 & !is.na(braak.lars.test[,'P-value']),'Predictor_Number']
-braak.lars.coef = coef(braak.lars.model, s=which.min(summary(braak.lars.model)$Cp), mode='step')
-braak.lars.r2 = braak.lars.model$R2[which.min(summary(braak.lars.model)$Cp)]
-braak.lars.sigcoef = braak.lars.coef[braak.lars.sigcoef.idx]
-
-pattern_x = getxy(pattern_form,df_av1451)
-y = as.numeric(df_av1451[,target])
-pattern.lars.model = lars(pattern_x,y,type='lasso')
-pattern.lars.test = covTest(pattern.lars.model,pattern_x,y)$results
-pattern.lars.sigcoef.idx = pattern.lars.test[pattern.lars.test[,'P-value'] < 0.2 & !is.na(pattern.lars.test[,'P-value']),'Predictor_Number']
-pattern.lars.coef = coef(pattern.lars.model, s=which.min(summary(pattern.lars.model)$Cp), mode='step')
-pattern.lars.r2 = pattern.lars.model$R2[which.min(summary(pattern.lars.model)$Cp)]
-pattern.lars.sigcoef = pattern.lars.coef[pattern.lars.sigcoef.idx]
 
 
 
@@ -186,12 +191,12 @@ fm_base = lm(as.formula(base_form),data=df_av1451)
 fm_braak = lm(as.formula(braak_form),data=df_av1451)
 fm_pattern = lm(as.formula(pattern_form),data=df_av1451)
 
-# rfe.base = run.rfe(base_form, target, df_av1451, 2)
-# rfe.braak = run.rfe(braak_form, target, df_av1451, 2)
-# rfe.pattern = run.rfe(pattern_form, target, df_av1451, 2)
-# fm_base = rfe.base$fit
-# fm_braak = rfe.braak$fit
-# fm_pattern = rfe.pattern$fit
+rfe.base = run.rfe(base_form, target, df_av1451, 2)
+rfe.braak = run.rfe(braak_form, target, df_av1451, 2)
+rfe.pattern = run.rfe(pattern_form, target, df_av1451, 2)
+fm_base = rfe.base$fit
+fm_braak = rfe.braak$fit
+fm_pattern = rfe.pattern$fit
 
 fm_base.summary = summary(fm_base)
 fm_braak.summary = summary(fm_braak)

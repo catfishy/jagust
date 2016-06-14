@@ -1,13 +1,13 @@
 Anova Table (Type III tests)
 
 Response: AV1451_Braak2_CerebGray_BL
-            Sum Sq Df F value Pr(>F)  
-(Intercept)  0.001  1  0.0008 0.9780  
-APOE4_BIN    1.687  1  1.7247 0.1966  
-Gender       3.679  1  3.7622 0.0595 .
-Age.AV1451   0.065  1  0.0669 0.7973  
-Edu..Yrs.    0.113  1  0.1158 0.7354  
-Diag.AV1451  4.180  4  1.0686 0.3847  
-Residuals   39.116 40                 
+            Sum Sq Df F value  Pr(>F)  
+(Intercept)  0.021  1  0.0215 0.88421  
+APOE4_BIN    1.673  1  1.7379 0.19509  
+Gender       3.641  1  3.7829 0.05902 .
+Age.AV1451   0.012  1  0.0128 0.91064  
+Edu..Yrs.    0.066  1  0.0682 0.79536  
+Diag.AV1451  3.449  3  1.1946 0.32444  
+Residuals   37.534 39                  
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
