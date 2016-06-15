@@ -45,7 +45,7 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
 
 output_folder = 'R/output_av1451_ancova/'
 
-valid_diags = c('N','SMC','EMCI','LMCI','AD')
+valid_diags = c('N','EMCI','LMCI','AD')
 
 
 # IMPORT

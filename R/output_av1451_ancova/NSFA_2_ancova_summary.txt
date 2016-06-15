@@ -4,23 +4,22 @@ lm(formula = formula, data = df_av1451)
 
 Residuals:
     Min      1Q  Median      3Q     Max 
--2.9398 -0.3082  0.0636  0.4819  3.5315 
+-2.8809 -0.3383  0.1178  0.4754  3.4569 
 
 Coefficients:
                 Estimate Std. Error t value Pr(>|t|)  
-(Intercept)     -4.18134    2.10447  -1.987   0.0538 .
-APOE4_BIN1       0.04751    0.32451   0.146   0.8843  
-Gender2          0.05404    0.31419   0.172   0.8643  
-Age.AV1451       0.04505    0.02415   1.865   0.0695 .
-Edu..Yrs.        0.06488    0.17344   0.374   0.7103  
-Diag.AV1451EMCI  0.98184    0.79533   1.235   0.2242  
-Diag.AV1451LMCI  0.61569    0.72348   0.851   0.3998  
-Diag.AV1451N     0.77808    0.70837   1.098   0.2786  
-Diag.AV1451SMC   0.29838    1.05880   0.282   0.7795  
+(Intercept)     -4.13608    2.13113  -1.941   0.0595 .
+APOE4_BIN1       0.04727    0.32220   0.147   0.8841  
+Gender2          0.05389    0.31203   0.173   0.8638  
+Age.AV1451       0.04463    0.02457   1.817   0.0770 .
+Edu..Yrs.        0.06559    0.17387   0.377   0.7080  
+Diag.AV1451EMCI  0.96322    0.78947   1.220   0.2298  
+Diag.AV1451LMCI  0.60291    0.71813   0.840   0.4063  
+Diag.AV1451N     0.76394    0.70325   1.086   0.2840  
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 1.038 on 40 degrees of freedom
-Multiple R-squared:  0.1021,	Adjusted R-squared:  -0.07751 
-F-statistic: 0.5684 on 8 and 40 DF,  p-value: 0.7973
+Residual standard error: 1.03 on 39 degrees of freedom
+Multiple R-squared:    0.1,	Adjusted R-squared:  -0.06154 
+F-statistic: 0.619 on 7 and 39 DF,  p-value: 0.7369
 
