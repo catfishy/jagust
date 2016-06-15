@@ -496,7 +496,10 @@ def syncMMSEData(master_df, mmse_file, registry):
                 'MMSEslope_postAV45',
                 'MMSE_AV45_1','MMSE_AV45_1_DATE',
                 'MMSE_AV45_2','MMSE_AV45_2_DATE',
-                'MMSE_AV45_3','MMSE_AV45_3_DATE']
+                'MMSE_AV45_3','MMSE_AV45_3_DATE',
+                'MMSE_AV1451_1','MMSE_AV1451_1_DATE',
+                'MMSE_AV1451_2','MMSE_AV1451_2_DATE',
+                'MMSE_AV1451_3','MMSE_AV1451_3_DATE']
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -528,6 +531,19 @@ def syncMMSEData(master_df, mmse_file, registry):
         all_df['MMSE_AV45_1_DATE'] = pd.to_datetime(all_df['MMSE_AV45_1_DATE'])
         all_df['MMSE_AV45_2_DATE'] = pd.to_datetime(all_df['MMSE_AV45_2_DATE'])
         all_df['MMSE_AV45_3_DATE'] = pd.to_datetime(all_df['MMSE_AV45_3_DATE'])
+
+        # Get closest av1451 measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'MMSCORE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        all_df['MMSE_AV1451_1'] = closest_vals[0]
+        all_df['MMSE_AV1451_1_DATE'] = closest_dates[0]
+        all_df['MMSE_AV1451_2'] = closest_vals[1]
+        all_df['MMSE_AV1451_2_DATE'] = closest_dates[1]
+        all_df['MMSE_AV1451_3'] = closest_vals[2]
+        all_df['MMSE_AV1451_3_DATE'] = closest_dates[2]
+        all_df['MMSE_AV1451_1_DATE'] = pd.to_datetime(all_df['MMSE_AV1451_1_DATE'])
+        all_df['MMSE_AV1451_2_DATE'] = pd.to_datetime(all_df['MMSE_AV1451_2_DATE'])
+        all_df['MMSE_AV1451_3_DATE'] = pd.to_datetime(all_df['MMSE_AV1451_3_DATE'])
 
         return all_df
 

@@ -1,0 +1,26 @@
+
+Call:
+lm(formula = formula, data = df_av45)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.6261 -0.6297 -0.0711  0.5320  3.5185 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)   -0.20299    0.08952  -2.268   0.0236 *  
+APOE4_BIN1     0.09161    0.06503   1.409   0.1592    
+Gender2        0.14615    0.06381   2.290   0.0222 *  
+Age.AV45       0.13644    0.03220   4.237 2.46e-05 ***
+Edu..Yrs.     -0.01431    0.03167  -0.452   0.6515    
+Diag.AV45EMCI  0.15666    0.09557   1.639   0.1015    
+Diag.AV45LMCI  0.12042    0.10021   1.202   0.2298    
+Diag.AV45N     0.07603    0.09394   0.809   0.4185    
+Diag.AV45SMC   0.30513    0.99652   0.306   0.7595    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9925 on 1045 degrees of freedom
+Multiple R-squared:  0.02246,	Adjusted R-squared:  0.01497 
+F-statistic: 3.001 on 8 and 1045 DF,  p-value: 0.002474
+

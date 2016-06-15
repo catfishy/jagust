@@ -52,6 +52,11 @@ for (i in names(df_av45)){
     df_av45[,eval(i)] = as.factor(as.character(df_av45[,eval(i)]))
   }
 }
+
+pattern_columns = Filter(function(i) {startsWith(i,'NSFA_')}, names(df_av45))
+scan2_columns = Filter(function(i) {startsWith(i,'SCAN2_NSFA_')}, names(df_av45))
+scan3_columns = Filter(function(i) {startsWith(i,'SCAN3_NSFA_')}, names(df_av45))
+
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 scan2_columns = Filter(isScan2Column,names(df_av45))
 scan3_columns = Filter(isScan3Column,names(df_av45))
@@ -60,22 +65,23 @@ scan3_columns = Filter(isScan3Column,names(df_av45))
 demog_normalization = preProcess(df_av45[,to_standardize])
 pattern_normalization = preProcess(df_av45[,pattern_columns])
 df_av45[,to_standardize] = predict(demog_normalization, df_av45[,to_standardize])
+df_av45[,pattern_columns] = predict(pattern_normalization, df_av45[,pattern_columns])
 # standardize scan 2
 scan2_subset = df_av45[,scan2_columns]
 names(scan2_subset) = gsub("SCAN2_", "", names(scan2_subset))
 scan2_subset = predict(pattern_normalization, scan2_subset)
-names(scan2_subset) = gsub("NSFA_", "SCAN2_NSFA_", names(scan2_subset))
+names(scan2_subset) = gsub("SCORE_", "SCORE_SCAN2_", names(scan2_subset))
 df_av45[,scan2_columns] = scan2_subset
 # standardize scan 3
 scan3_subset = df_av45[,scan3_columns]
 names(scan3_subset) = gsub("SCAN3_", "", names(scan3_subset))
 scan3_subset = predict(pattern_normalization, scan3_subset)
-names(scan3_subset) = gsub("NSFA_", "SCAN3_NSFA_", names(scan3_subset))
+names(scan3_subset) = gsub("SCORE_", "SCORE_SCAN3_", names(scan3_subset))
 df_av45[,scan3_columns] = scan3_subset
 
 for (pcol in pattern_columns) {
-  scan2_col = paste('SCAN2_',pcol,sep='')
-  scan3_col = paste('SCAN3_',pcol,sep='')
+  scan2_col = gsub('SCORE','SCORE_SCAN2',pcol)
+  scan3_col = gsub('SCORE','SCORE_SCAN3',pcol)
   scan2_change = (df_av45[,eval(scan2_col)]-df_av45[,eval(pcol)])/(df_av45$AV45_1_2_Diff)
   scan3_change = (df_av45[,eval(scan3_col)]-df_av45[,eval(pcol)])/(df_av45$AV45_1_3_Diff)
   all_change = scan3_change
@@ -90,7 +96,7 @@ for (pcol in pattern_columns) {
   scan3_change_col = paste('SCAN3_CHANGE_',pcol,sep='')
   all_change_col = paste('ALL_CHANGE_',pcol,sep='')
   p = ggplot(df_av45, aes_string(x=pcol, y=all_change_col)) +
-        geom_point(shape=1) +
+        geom_point(aes_string(x=pcol, colour ='Diag.AV45'), shape=1) +
         geom_smooth()
   print(p)
   #plot(df_av45[,eval(pcol)],scan2_change,main=pcol,xlab='Baseline Factor',ylab='Annualized Change')
@@ -98,5 +104,7 @@ for (pcol in pattern_columns) {
 }
 
 
-ggplot(df_av45, aes(x=CORTICAL_SUMMARY_prior,y=CORTICAL_SUMMARY_change)) + geom_point(shape=1) + geom_smooth()
+ggplot(df_av45, aes_string(x='CORTICAL_SUMMARY_prior',y='CORTICAL_SUMMARY_change')) + 
+  geom_point(aes_string(x='CORTICAL_SUMMARY_prior', colour ='Diag.AV45'), shape=1) + 
+  geom_smooth()
 

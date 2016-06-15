@@ -45,10 +45,11 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
                   'AV1451_Braak6_CerebGray_BL')
 
 
-#target = "UW_EF_AV1451_1"
-#target = "UW_MEM_AV1451_1"
-#target = "ADAS_AV1451_1"
-target = "AVLT_AV1451_1"
+# target = "UW_EF_AV1451_1"
+# target = "UW_MEM_AV1451_1"
+# target = "ADAS_AV1451_1"
+# target = "AVLT_AV1451_1"
+target = 'MMSE_AV1451_1'
 
 output_folder = 'R/output_av1451/'
 
@@ -101,8 +102,8 @@ naive_str = paste(naive.addons,collapse=' ')
 braak_str = paste(braak.addons,collapse=' ')
 
 #diag_str = 'Diag.AV1451*APOE4_BIN +'
-diag_str = 'Diag.AV1451 +'
-#diag_str = ''
+#diag_str = 'Diag.AV1451 +'
+diag_str = ''
 
 
 
@@ -132,8 +133,18 @@ pattern.lars.sigcoef.idx = pattern.lars.test[pattern.lars.test[,'P-value'] < 0.2
 pattern.lars.cp = min(summary(pattern.lars.model)$Cp)
 pattern.lars.coef = coef(pattern.lars.model, s=which.min(summary(pattern.lars.model)$Cp), mode='step')
 pattern.lars.r2 = pattern.lars.model$R2[which.min(summary(pattern.lars.model)$Cp)]
+n = attr(summary(pattern.lars.model)$Cp,'n')
+p = NROW(pattern.lars.coef[pattern.lars.coef != 0])
+pattern.lars.r2adj = r2adj(pattern.lars.r2,n,p)
 pattern.lars.sigcoef = pattern.lars.coef[pattern.lars.sigcoef.idx]
+# RMSE(predict(model_lars, x_test, s = best)$fit, test$Petal.Width)
+# cor(test[,"Petal.Width"], predict(model_lars, x_test, s = best)$fit)
+# ans$adj.r.squared <- 1 - (1 - ans$r.squared) * ((n - df.int)/rdf)
 
+pattern_form_pen = "MMSE_AV1451_1 ~ APOE4_BIN + Gender + Edu..Yrs. + NSFA_0 + NSFA_1 + NSFA_2 + NSFA_3 + NSFA_5 + NSFA_6 + NSFA_7 + NSFA_8 + NSFA_9 + NSFA_10 + NSFA_11 + NSFA_13 + NSFA_14 + NSFA_16 + NSFA_18 + NSFA_19 + NSFA_22 + NSFA_23 + NSFA_24"
+null_form = paste(target,'~',1)
+test_form = "MMSE_AV1451_1 ~ APOE4_BIN + Gender + Edu..Yrs."
+likelihood.test(null_form,pattern_form_pen,df_av1451)
 
 # Penalized LM
 braak.lasso.model = run.lasso(braak_form,df_av1451,'Rsquared')

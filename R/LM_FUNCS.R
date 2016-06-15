@@ -26,7 +26,7 @@ isPatternColumn = function(i){
 isPatternColumn = Vectorize(isPatternColumn)
 
 isNaiveColumn = function(i){
-  if (startsWith(i,'NAIVE_NSFA')) return(TRUE) else return(FALSE)
+  if (startsWith(i,'SCORE_NSFA')) return(TRUE) else return(FALSE)
 }
 isPatternColumn = Vectorize(isPatternColumn)
 
@@ -39,6 +39,16 @@ isScan3Column = function(i){
   if (startsWith(i,'SCAN3_NSFA')) return(TRUE) else return(FALSE)
 }
 isScan3Column = Vectorize(isScan3Column)
+
+r2adj = function(r2, n, p) {
+  1 - (1 - r2) * ((n - 1)/(n - p - 1))
+}
+
+likelihood.test = function(null_form, test_form, data) {
+  liketest = anova(lm(null_form,data),lm(test_form,data))
+  liketest$`Pr(>F)`[2]
+}
+
 
 lm.addvar = function(var.name) {
   paste('+',paste(var.name,'*','APOE4_BIN',sep=''))

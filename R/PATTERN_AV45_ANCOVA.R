@@ -40,7 +40,7 @@ av45_columns = c('CORTICAL_SUMMARY_prior')
 
 output_folder = 'R/output_av45_ancova/'
 
-valid_diags = c('N','EMCI','LMCI')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 
 
 # IMPORT

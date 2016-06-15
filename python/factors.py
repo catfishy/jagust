@@ -13,14 +13,22 @@ def savePatternAsMat(pattern_df, output_file):
                                   'Features': list(pattern_df.columns),
                                   'Y':pattern_df.T.as_matrix()})
 
-def calculateNaiveRatios(loading_df, suvr_df):
-    ratios_df = pd.DataFrame()
+
+def calculateFactorScores(loading_df, pattern_df, scaler=None):
+    # standardize pattern
+    if scaler is None:
+        scaler = StandardScaler().fit(pattern_df)
+    standard_df = pd.DataFrame(scaler.transform(pattern_df))
+    standard_df.set_index(pattern_df.index, inplace=True)
+    standard_df.columns = pattern_df.columns
+    # calculate scores
+    scores_df = pd.DataFrame()
     for factor in loading_df.columns:
         coeff = loading_df[factor]
-        ratios = (suvr_df*coeff).sum(axis=1)
-        ratios_df[factor] = ratios
-    ratios_df.columns = ['NAIVE_%s' % _ for _ in ratios_df.columns]
-    return ratios_df
+        scores = (standard_df*coeff).sum(axis=1)
+        scores_df[factor] = scores
+    scores_df.columns = ['SCORE_%s' % _ for _ in scores_df.columns]
+    return scores_df, scaler
 
 def compareToLobes(loading_df, bilateral):
     lut_file = '../FreeSurferColorLUT.txt'
@@ -121,7 +129,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_14_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -143,7 +151,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # bilateral = True
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_14_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -164,7 +172,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # bilateral = True
 
 # FOR ADNI AV1451 UNILATERAL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_10_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_14_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 pattern_mat = '../av1451uni_pattern_bl.mat'
 pattern_mat_2 = None
@@ -296,11 +304,20 @@ if nsfa_activation_csv_3 is not None:
 
 # get naive ratios
 uptake_prior_df.index = uptake_prior_df.index.droplevel(1)
-ratios_df = calculateNaiveRatios(nsfa_load_df, pattern_bl_df)
+scores_df, scaler = calculateFactorScores(nsfa_load_df, pattern_bl_df, scaler=None)
+if not pattern_scan2_df.empty:
+    scores_scan2_df, scaler = calculateFactorScores(nsfa_load_df, pattern_scan2_df, scaler=scaler)
+    scores_scan2_df.columns = [_.replace('SCORE','SCORE_SCAN2') for _ in scores_scan2_df.columns]
+    scores_df = scores_df.merge(scores_scan2_df, left_index=True, right_index=True, how='outer')
+if not pattern_scan3_df.empty:
+    scores_scan3_df, scaler = calculateFactorScores(nsfa_load_df, pattern_scan3_df, scaler=scaler)
+    scores_scan3_df.columns = [_.replace('SCORE','SCORE_SCAN3') for _ in scores_scan3_df.columns]
+    scores_df = scores_df.merge(scores_scan3_df, left_index=True, right_index=True, how='outer')
 
 # Look at variance explained + communality
 num_vars = nsfa_load_df.shape[1]
-nsfa_standard_load_df = nsfa_load_df/np.sqrt(nsfa_lambdag_df)
+#nsfa_standard_load_df = nsfa_load_df/np.sqrt(nsfa_lambdag_df)
+nsfa_standard_load_df = nsfa_load_df
 ss = np.square(nsfa_standard_load_df).sum(axis=0)/num_vars
 comm = np.square(nsfa_standard_load_df).sum(axis=1)
 comm.sort_values(ascending=False,inplace=True)
@@ -375,6 +392,7 @@ else:
     columns += ['UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_slope']
     columns += ['ADAS_AV45_1','ADAS_AV1451_1','ADASslope_postAV45']
     columns += ['AVLT_AV45_1','AVLT_AV1451_1','AVLT_slope_postAV45']
+    columns += ['MMSEslope_postAV45','MMSE_AV45_1','MMSE_AV1451_1']
     columns += ['WMH_percentOfICV_AV45_1','WMH_percentOfICV_slope']
     columns += ['UW_MEM_AV45_1','UW_MEM_AV1451_1','UW_MEM_slope']
     columns += ['UW_EF_AV45_1','UW_EF_AV1451_1','UW_EF_slope']
@@ -421,14 +439,14 @@ result_df['positive_post'] = (result_df['CORTICAL_SUMMARY_post'] >= threshold).a
 result_df['ad_prior'] = (result_df['diag_prior'] == 'AD').astype(int)
 result_df['ad_post'] = (result_df['diag_post'] == 'AD').astype(int)
 
-# Combine result_df, igmm_prob_df, nsfa_act_df, ratios_df, and other_df
+# Combine result_df, igmm_prob_df, nsfa_act_df, scores_df, and other_df
 if len(igmm_prob_df.index) > 0:
     combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
 else:
     combined_df = nsfa_act_df
 combined_df = combined_df.merge(result_df,left_index=True,right_index=True)
 combined_df = combined_df.merge(other_df,left_index=True,right_index=True)
-combined_df = combined_df.merge(ratios_df,left_index=True,right_index=True)
+combined_df = combined_df.merge(scores_df,left_index=True,right_index=True)
 if dod:
     combined_df.index.name = 'SCRNO'
 else:
