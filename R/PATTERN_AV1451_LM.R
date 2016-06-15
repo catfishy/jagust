@@ -72,7 +72,7 @@ for (i in names(df_av1451)){
 }
 
 # Filter by diag
-# df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
+df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 
 # standardize predictors
 cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)

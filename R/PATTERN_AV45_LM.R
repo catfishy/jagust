@@ -41,7 +41,7 @@ av45_columns = c('CORTICAL_SUMMARY_prior')
 #target = "CORTICAL_SUMMARY_change"
 #target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
-target = "ADAS_AV45_1"
+#target = "ADAS_AV45_1"
 #target = "ADASslope_postAV45"
 #target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
@@ -50,14 +50,14 @@ target = "ADAS_AV45_1"
 #target = "CSF_ABETA_closest_AV45_1"
 #target = "CSF_TAU_closest_AV45_1"
 #target = "CSF_PTAU_closest_AV45_1"
+target = 'MMSE_AV45_1'
 
 #output_folder = 'R/output/'
 output_folder = 'R/output_all_diag/'
 output_folder = 'R/output_neg_emci/'
 
 positive_value=1
-#valid_diags = c('N','SMC','EMCI','LMCI','AD')
-valid_diags = c('N','EMCI','LMCI','AD')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 #valid_diags = c('N')
 #valid_diags = c('EMCI')
 #valid_diags = c('LMCI')
