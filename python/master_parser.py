@@ -744,7 +744,11 @@ def syncAV1451Data(master_df, av1451_file):
     headers += ['AV1451_Braak4_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak5_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak6_CerebGray_%s' % tp for tp in valid_timepoints]
-
+    headers += ['AV1451_Braak2_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak3_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak4_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak5_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak6_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
 
     after = [_ for _ in master_df.columns if _.startswith('AV45_') and 'PVC' not in _][-1]
 
@@ -774,8 +778,15 @@ def syncAV1451Data(master_df, av1451_file):
             braak12 = weightedMean([braak1,braak2]) / cerebg
             braak34 = weightedMean([braak3,braak4]) / cerebg
             braak56 = weightedMean([braak5,braak6]) / cerebg
+            braak2_cum = weightedMean([braak1,braak2]) / cerebg
+            braak3_cum = weightedMean([braak1,braak2,braak3]) / cerebg
+            braak4_cum = weightedMean([braak1,braak2,braak3,braak4]) / cerebg
+            braak5_cum = weightedMean([braak1,braak2,braak3,braak4,braak5]) / cerebg
+            braak6_cum = weightedMean([braak1,braak2,braak3,braak4,braak5,braak6]) / cerebg
 
             data['AV1451_Braak12_CerebGray_%s' % tp] = braak12
+            data['AV1451_Braak34_CerebGray_%s' % tp] = braak34
+            data['AV1451_Braak56_CerebGray_%s' % tp] = braak56
             data['AV1451_Braak34_CerebGray_%s' % tp] = braak34
             data['AV1451_Braak56_CerebGray_%s' % tp] = braak56
             data['AV1451_Braak1_CerebGray_%s' % tp] = row['BRAAK1'] / cerebg
@@ -784,6 +795,11 @@ def syncAV1451Data(master_df, av1451_file):
             data['AV1451_Braak4_CerebGray_%s' % tp] = row['BRAAK4'] / cerebg
             data['AV1451_Braak5_CerebGray_%s' % tp] = row['BRAAK5'] / cerebg
             data['AV1451_Braak6_CerebGray_%s' % tp] = row['BRAAK6'] / cerebg
+            data['AV1451_Braak2_CerebGray_Cum_%s' % tp] = braak2_cum
+            data['AV1451_Braak3_CerebGray_Cum_%s' % tp] = braak3_cum
+            data['AV1451_Braak4_CerebGray_Cum_%s' % tp] = braak4_cum
+            data['AV1451_Braak5_CerebGray_Cum_%s' % tp] = braak5_cum
+            data['AV1451_Braak6_CerebGray_Cum_%s' % tp] = braak6_cum
 
         return pd.DataFrame([data]).set_index('RID')
 

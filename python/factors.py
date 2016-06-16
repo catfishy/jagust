@@ -119,12 +119,20 @@ def compareToLobes(loading_df, bilateral):
     return df
 
 
-def compareToBraakStages(loading_df, bilateral):
+def compareToBraakStages(loading_df, bilateral, cum=False):
     lut_file = '../FreeSurferColorLUT.txt'
     lut = importFreesurferLookup(lut_file)
     pattern_regions = list(loading_df.index)
     # create braak encodings
-    braak_stages = [BRAAK1,BRAAK2,BRAAK3,BRAAK4,BRAAK5,BRAAK6]
+    if cum:
+        braak_stages = [BRAAK1,
+                        BRAAK1+BRAAK2,
+                        BRAAK1+BRAAK2+BRAAK3,
+                        BRAAK1+BRAAK2+BRAAK3+BRAAK4,
+                        BRAAK1+BRAAK2+BRAAK3+BRAAK4+BRAAK5,
+                        BRAAK1+BRAAK2+BRAAK3+BRAAK4+BRAAK5+BRAAK6]
+    else:
+        braak_stages = [BRAAK1,BRAAK2,BRAAK3,BRAAK4,BRAAK5,BRAAK6]
     braak_encodings = {}
     for i, stage in enumerate(braak_stages):
         if bilateral:
@@ -176,29 +184,29 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_14_16.csv'
-# data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-# pattern_mat = '../av45_pattern_bl.mat'
-# pattern_mat_2 = '../av45_pattern_scan2.mat'
-# pattern_mat_3 = '../av45_pattern_scan3.mat'
-# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-# nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
-# nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
-# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-# nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
-# # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-# model_file = None
-# output_file = '../nsfa/av45_pattern_dataset.csv'
-# topregions_output_file = '../nsfa/av45_top_regions.csv'
-# comp_output_file = '../nsfa/av45_roi_comparisons.csv'
-# comm_output_file = '../nsfa/av45_communality.csv'
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
-# dod = False
-# bilateral = True
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_16_16.csv'
+data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+pattern_mat = '../av45_pattern_bl.mat'
+pattern_mat_2 = '../av45_pattern_scan2.mat'
+pattern_mat_3 = '../av45_pattern_scan3.mat'
+nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
+nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
+nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
+# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+model_file = None
+output_file = '../nsfa/av45_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av45_top_regions.csv'
+comp_output_file = '../nsfa/av45_roi_comparisons.csv'
+comm_output_file = '../nsfa/av45_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
+dod = False
+bilateral = True
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_14_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_16_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -219,25 +227,25 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # bilateral = True
 
 # FOR ADNI AV1451 UNILATERAL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_14_16.csv'
-data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
-pattern_mat = '../av1451uni_pattern_bl.mat'
-pattern_mat_2 = None
-pattern_mat_3 = None
-nsfa_activation_csv = '../nsfa/av1451uni_factor_activations.csv'
-nsfa_activation_csv_2 = None
-nsfa_activation_csv_3 = None
-nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
-nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
-model_file = None
-output_file = '../nsfa/av1451uni_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
-comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
-comm_output_file = '../nsfa/av1451uni_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451uni_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
-dod = False
-bilateral = False
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_16_16.csv'
+# data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+# pattern_mat = '../av1451uni_pattern_bl.mat'
+# pattern_mat_2 = None
+# pattern_mat_3 = None
+# nsfa_activation_csv = '../nsfa/av1451uni_factor_activations.csv'
+# nsfa_activation_csv_2 = None
+# nsfa_activation_csv_3 = None
+# nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
+# model_file = None
+# output_file = '../nsfa/av1451uni_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
+# comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451uni_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451uni_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
+# dod = False
+# bilateral = False
 
 
 # FOR DOD AV45
@@ -371,10 +379,13 @@ comm.sort_values(ascending=False,inplace=True)
 comm.to_csv(comm_output_file)
 
 # Compare to braak STAGES
-braak_comp_df = compareToBraakStages(nsfa_load_df, bilateral)
+braak_comp_df = compareToBraakStages(nsfa_load_df, bilateral, cum=False)
+braak_comp_cum_df = compareToBraakStages(nsfa_load_df, bilateral, cum=True)
+braak_comp_cum_df.columns = ['%s_CUM' % _ for _ in braak_comp_cum_df.columns]
 lobe_comp_df = compareToLobes(nsfa_load_df, bilateral)
 asym_df = calculateAsymmetry(nsfa_load_df)
 comp_df = braak_comp_df.merge(lobe_comp_df,left_index=True,right_index=True)
+comp_df = comp_df.merge(braak_comp_cum_df,left_index=True,right_index=True)
 comp_df = comp_df.merge(asym_df,left_index=True,right_index=True)
 comp_df['varperc'] = ss
 comp_df.sort_values('varperc', ascending=False, inplace=True)
@@ -481,7 +492,12 @@ else:
                 'AV1451_Braak3_CerebGray_BL',
                 'AV1451_Braak4_CerebGray_BL',
                 'AV1451_Braak5_CerebGray_BL',
-                'AV1451_Braak6_CerebGray_BL']
+                'AV1451_Braak6_CerebGray_BL',
+                'AV1451_Braak2_CerebGray_Cum_BL',
+                'AV1451_Braak3_CerebGray_Cum_BL',
+                'AV1451_Braak4_CerebGray_Cum_BL',
+                'AV1451_Braak5_CerebGray_Cum_BL',
+                'AV1451_Braak6_CerebGray_Cum_BL']
     other_df = master_df[columns]
 
 print columns
