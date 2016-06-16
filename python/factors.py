@@ -13,6 +13,52 @@ def savePatternAsMat(pattern_df, output_file):
                                   'Features': list(pattern_df.columns),
                                   'Y':pattern_df.T.as_matrix()})
 
+def calculateAsymmetry(loading_df):
+    lut_file = '../FreeSurferColorLUT.txt'
+    lut = importFreesurferLookup(lut_file)
+    pattern_regions = list(loading_df.index)
+    # create lobe encodings
+    lobe_encodings = {}
+    for lobe_name, lobe_idx in LOBES.iteritems():
+        regions = list(set([lut[_].upper().replace('-','_') for _ in lobe_idx]))
+        left_regions = [_ for _ in regions if 'LH' in _ or 'LEFT' in _]
+        right_regions = [_ for _ in regions if 'RH' in _ or 'RIGHT' in _]
+        left_encoding = np.array([1 if _ in left_regions else 0 for _ in pattern_regions])
+        right_encoding = np.array([1 if _ in right_regions else 0 for _ in pattern_regions])
+        lobe_encodings[lobe_name] = {'left': left_encoding, 'right': right_encoding}
+    # create factor loading encodings
+    factor_encodings = {}
+    for factor in loading_df.columns:
+        encoding = np.array([loading_df.loc[_,factor] for _ in pattern_regions])
+        factor_encodings[factor] = encoding
+    # compare
+    results = []
+    for factor, f_encoding in factor_encodings.iteritems():
+        asyms = {'FACTOR': factor}
+        # normalize
+        for lobe_name, encodings in lobe_encodings.iteritems():
+            left_encoding = encodings['left']
+            right_encoding = encodings['right']
+            pos_factor = np.array([max(_,0.0) for _ in f_encoding])
+            neg_factor = np.array([abs(min(_,0.0)) for _ in f_encoding])
+            left_pos_load = sum(pos_factor*left_encoding)
+            right_pos_load = sum(pos_factor*right_encoding)
+            left_neg_load = sum(neg_factor*left_encoding)
+            right_neg_load = sum(neg_factor*right_encoding)
+            if (left_pos_load + right_pos_load) == 0:
+                pos_asym = 0.0
+            else:
+                pos_asym = (left_pos_load - right_pos_load) / (left_pos_load + right_pos_load)
+            if (left_neg_load + right_neg_load) == 0:
+                neg_asym = 0.0
+            else:
+                neg_asym = (left_neg_load - right_neg_load) / (left_neg_load + right_neg_load)
+            asyms['%s_POS_ASYM' % lobe_name] = pos_asym
+            asyms['%s_NEG_ASYM' % lobe_name] = neg_asym
+        results.append(asyms)
+    df = pd.DataFrame(results).set_index('FACTOR')
+    return df
+
 
 def calculateFactorScores(loading_df, pattern_df, scaler=None):
     # standardize pattern
@@ -36,6 +82,7 @@ def compareToLobes(loading_df, bilateral):
     pattern_regions = list(loading_df.index)
     # create lobe encodings
     lobe_encodings = {}
+    print LOBES
     for lobe_name, lobe_idx in LOBES.iteritems():
         if bilateral:
             regions = set([lut[_].upper().replace('-','_').replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in lobe_idx])
@@ -326,7 +373,9 @@ comm.to_csv(comm_output_file)
 # Compare to braak STAGES
 braak_comp_df = compareToBraakStages(nsfa_load_df, bilateral)
 lobe_comp_df = compareToLobes(nsfa_load_df, bilateral)
+asym_df = calculateAsymmetry(nsfa_load_df)
 comp_df = braak_comp_df.merge(lobe_comp_df,left_index=True,right_index=True)
+comp_df = comp_df.merge(asym_df,left_index=True,right_index=True)
 comp_df['varperc'] = ss
 comp_df.sort_values('varperc', ascending=False, inplace=True)
 comp_df.to_csv(comp_output_file)

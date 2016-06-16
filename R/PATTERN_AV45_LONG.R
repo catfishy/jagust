@@ -70,18 +70,18 @@ df_av45[,pattern_columns] = predict(pattern_normalization, df_av45[,pattern_colu
 scan2_subset = df_av45[,scan2_columns]
 names(scan2_subset) = gsub("SCAN2_", "", names(scan2_subset))
 scan2_subset = predict(pattern_normalization, scan2_subset)
-names(scan2_subset) = gsub("SCORE_", "SCORE_SCAN2_", names(scan2_subset))
+names(scan2_subset) = gsub("NSFA_", "SCAN2_NSFA_", names(scan2_subset))
 df_av45[,scan2_columns] = scan2_subset
 # standardize scan 3
 scan3_subset = df_av45[,scan3_columns]
 names(scan3_subset) = gsub("SCAN3_", "", names(scan3_subset))
 scan3_subset = predict(pattern_normalization, scan3_subset)
-names(scan3_subset) = gsub("SCORE_", "SCORE_SCAN3_", names(scan3_subset))
+names(scan3_subset) = gsub("NSFA_", "SCAN3_NSFA", names(scan3_subset))
 df_av45[,scan3_columns] = scan3_subset
 
 for (pcol in pattern_columns) {
-  scan2_col = gsub('SCORE','SCORE_SCAN2',pcol)
-  scan3_col = gsub('SCORE','SCORE_SCAN3',pcol)
+  scan2_col = gsub('NSFA_','SCAN2_NSFA_',pcol)
+  scan3_col = gsub('NSFA_','SCAN3_NSFA_',pcol)
   scan2_change = (df_av45[,eval(scan2_col)]-df_av45[,eval(pcol)])/(df_av45$AV45_1_2_Diff)
   scan3_change = (df_av45[,eval(scan3_col)]-df_av45[,eval(pcol)])/(df_av45$AV45_1_3_Diff)
   all_change = scan3_change
