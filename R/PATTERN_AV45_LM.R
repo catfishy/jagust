@@ -41,16 +41,16 @@ av45_columns = c('CORTICAL_SUMMARY_prior')
 #target = "CORTICAL_SUMMARY_change"
 #target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
-#target = "ADAS_AV45_1"
+# target = "ADAS_AV45_1"
 #target = "ADASslope_postAV45"
-#target = "AVLT_AV45_1"
+target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
 #target = "UW_MEM_AV45_1"
 #target = "UW_MEM_slope"
 #target = "CSF_ABETA_closest_AV45_1"
 #target = "CSF_TAU_closest_AV45_1"
 #target = "CSF_PTAU_closest_AV45_1"
-target = 'MMSE_AV45_1'
+# target = 'MMSE_AV45_1'
 
 #output_folder = 'R/output/'
 output_folder = 'R/output_all_diag/'
@@ -79,7 +79,7 @@ df_av45 = df_av45[non.na,]
 
 # filter by diag or postivity
 df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
-df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
+# df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
 
 # make factors
 for (i in names(df_av45)){
@@ -87,23 +87,18 @@ for (i in names(df_av45)){
     df_av45[,eval(i)] = as.factor(as.character(df_av45[,eval(i)]))
   }
 }
+df_av45$Diag.AV45 = factor(df_av45$Diag.AV45, levels=valid_diags)
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 naive_columns = Filter(isNaiveColumn,names(df_av45))
 
 
+# # standardize predictors
+# cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,target)
+# cross_normalization = preProcess(df_av45[,cross_to_standardize])
+# df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
 
 
-# # look at histograms
-# for (pcol in pattern_columns) {
-#   p = ggplot(df_av45, aes_string(pcol, colour = 'positive_prior')) + geom_histogram(binwidth=0.1)
-#   print(p)
-# }
 
-
-# standardize predictors
-cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,target)
-cross_normalization = preProcess(df_av45[,cross_to_standardize])
-df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
 # long_to_standardize = c(to_standardize,pattern_columns,'time','value')
 # long_normalization = preProcess(df_long[,long_to_standardize])
 # df_long[,long_to_standardize] = predict(long_normalization, df_long[,long_to_standardize])
@@ -122,18 +117,22 @@ naive.addons = paste('+',paste(naive_columns,collapse=' + '))
 addons_form = str_replace(paste(target,"~",paste(all.addons,collapse=' ')),"\\+ ","")
 
 diag_counts = table(df_av45$Diag.AV45)
-if (length((diag_counts[diag_counts>0])) > 1) {
-  diag_str = 'Diag.AV45 + '
-} else {
-  diag_str = ''
-}
+# if (length((diag_counts[diag_counts>0])) > 1) {
+#   diag_str = 'Diag.AV45 + '
+# } else {
+#   diag_str = ''
+# }
+diag_str = ''
 
 base_form = paste(target,"~",diag_str,"Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN")
-nopattern_form = paste(target,"~",diag_str,"CORTICAL_SUMMARY_prior + I(CORTICAL_SUMMARY_prior^2) + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN")
+nopattern_form = paste(target,"~",diag_str,"CORTICAL_SUMMARY_prior + Age.AV45 + Gender + Edu..Yrs. + APOE4_BIN")
+# I(CORTICAL_SUMMARY_prior^2) + 
 onlypattern_form = paste(base_form,paste(all.addons,collapse=' '))
 pattern_form = paste(target,'~',paste(pattern_columns,collapse=' + '))
 full_form = paste(nopattern_form,paste(all.addons,collapse=' '))
 naive_form = paste(base_form,paste(naive.addons,collapse=' '))
+
+
 
 # LARS lasso
 
@@ -141,19 +140,143 @@ nopattern_x = getxy(nopattern_form,df_av45)
 y = as.numeric(df_av45[,target])
 nopattern.lars.model = lars(nopattern_x,y,type='lasso')
 nopattern.lars.test = covTest(nopattern.lars.model,nopattern_x,y)$results
-nopattern.lars.sigcoef.idx = nopattern.lars.test[nopattern.lars.test[,'P-value'] < 0.2 & !is.na(nopattern.lars.test[,'P-value']),'Predictor_Number']
+nopattern.lars.test = data.frame(nopattern.lars.test[complete.cases(nopattern.lars.test),])
 nopattern.lars.coef = coef(nopattern.lars.model, s=which.min(summary(nopattern.lars.model)$Cp), mode='step')
+nopattern.lars.test$name = names(nopattern.lars.coef[nopattern.lars.test[,'Predictor_Number']])
+nopattern.lars.test$coef = nopattern.lars.coef[nopattern.lars.test[,'Predictor_Number']]
+nopattern.lars.sig = nopattern.lars.test[nopattern.lars.test$P.value <= 0.1,]
+nopattern.lars.cp = min(summary(nopattern.lars.model)$Cp)
 nopattern.lars.r2 = nopattern.lars.model$R2[which.min(summary(nopattern.lars.model)$Cp)]
-nopattern.lars.sigcoef = nopattern.lars.coef[nopattern.lars.sigcoef.idx]
+n = attr(summary(nopattern.lars.model)$Cp,'n')
+p = NROW(nopattern.lars.coef[nopattern.lars.coef != 0])
+nopattern.lars.r2adj = r2adj(nopattern.lars.r2,n,p)
+nopattern.lars.nonzero = nopattern.lars.test[nopattern.lars.test$coef != 0,'name']
+paste(nopattern.lars.nonzero,collapse=' + ')
 
 onlypattern_x = getxy(onlypattern_form,df_av45)
 y = as.numeric(df_av45[,target])
 onlypattern.lars.model = lars(onlypattern_x,y,type='lasso')
 onlypattern.lars.test = covTest(onlypattern.lars.model,onlypattern_x,y)$results
-onlypattern.lars.sigcoef.idx = onlypattern.lars.test[onlypattern.lars.test[,'P-value'] < 0.2 & !is.na(onlypattern.lars.test[,'P-value']),'Predictor_Number']
+onlypattern.lars.test = data.frame(onlypattern.lars.test[complete.cases(onlypattern.lars.test),])
 onlypattern.lars.coef = coef(onlypattern.lars.model, s=which.min(summary(onlypattern.lars.model)$Cp), mode='step')
+onlypattern.lars.test$name = names(onlypattern.lars.coef[onlypattern.lars.test[,'Predictor_Number']])
+onlypattern.lars.test$coef = onlypattern.lars.coef[onlypattern.lars.test[,'Predictor_Number']]
+onlypattern.lars.sig = onlypattern.lars.test[onlypattern.lars.test$P.value <= 0.1,]
+onlypattern.lars.cp = min(summary(onlypattern.lars.model)$Cp)
 onlypattern.lars.r2 = onlypattern.lars.model$R2[which.min(summary(onlypattern.lars.model)$Cp)]
-onlypattern.lars.sigcoef = onlypattern.lars.coef[onlypattern.lars.sigcoef.idx]
+n = attr(summary(onlypattern.lars.model)$Cp,'n')
+p = NROW(onlypattern.lars.coef[onlypattern.lars.coef != 0])
+onlypattern.lars.r2adj = r2adj(onlypattern.lars.r2,n,p)
+onlypattern.lars.nonzero = onlypattern.lars.test[onlypattern.lars.test$coef != 0,'name']
+paste(onlypattern.lars.nonzero,collapse=' + ')
+
+# ADAS likelihood test
+adas_base_form = paste("ADAS_AV45_1",'~ 1')
+adas_braak_form = paste("ADAS_AV45_1",'~',"CORTICAL_SUMMARY_prior + Gender + Edu..Yrs. + APOE4_BIN + Age.AV45")
+adas_pattern_form = paste("ADAS_AV45_1",'~',"NSFA_6 + NSFA_14 + NSFA_0 + NSFA_1 + NSFA_21 + NSFA_5 + NSFA_20 + NSFA_24 + Gender + NSFA_4 + NSFA_25 + Edu..Yrs. + NSFA_19 + NSFA_22 + NSFA_9 + NSFA_26 + NSFA_7 + NSFA_17 + NSFA_13 + NSFA_3 + NSFA_28 + NSFA_10 + APOE4_BIN + NSFA_11 + NSFA_15")
+adas_base_lm = lm(as.formula(adas_base_form),df_av45)
+adas_braak_lm = lm(as.formula(adas_braak_form),df_av45)
+adas_pattern_lm = lm(as.formula(adas_pattern_form),df_av45)
+adas_braak_anova = anova(adas_base_lm, adas_braak_lm)
+adas_pattern_anova = anova(adas_base_lm, adas_pattern_lm)
+
+# AVLT likelihood test
+avlt_base_form = paste("AVLT_AV45_1",'~ 1')
+avlt_braak_form = paste("AVLT_AV45_1",'~',"CORTICAL_SUMMARY_prior + Gender + Age.AV45 + Edu..Yrs. + APOE4_BIN")
+avlt_pattern_form = paste("AVLT_AV45_1",'~',"NSFA_6 + Gender + Age.AV45 + NSFA_0 + NSFA_14 + Edu..Yrs. + NSFA_1 + NSFA_20 + NSFA_21 + APOE4_BIN + NSFA_4 + NSFA_23 + NSFA_25 + NSFA_11 + NSFA_22 + NSFA_5 + NSFA_26 + NSFA_28 + NSFA_3 + NSFA_9 + NSFA_24 + NSFA_15 + NSFA_10 + NSFA_8 + NSFA_12")
+avlt_base_lm = lm(as.formula(avlt_base_form),df_av45)
+avlt_braak_lm = lm(as.formula(avlt_braak_form),df_av45)
+avlt_pattern_lm = lm(as.formula(avlt_pattern_form),df_av45)
+avlt_braak_anova = anova(avlt_base_lm, avlt_braak_lm)
+avlt_pattern_anova = anova(avlt_base_lm, avlt_pattern_lm)
+
+# AVLT plots
+p1 = ggplot(df_av45, aes_string(x='NSFA_6', y='AVLT_AV45_1')) +
+  geom_point(aes_string(color='Diag.AV45')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_6 Factor Score vs. AVLT') +
+  xlab('NSFA_6 Factor Score') +
+  ylab('AVLT')
+print(p1)
+
+p2 = ggplot(df_av45, aes_string(x='NSFA_14', y='AVLT_AV45_1')) +
+  geom_point(aes_string(color='Diag.AV45')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_14 Factor Score vs. AVLT') +
+  xlab('NSFA_14 Factor Score') +
+  ylab('AVLT')
+print(p2)
+
+p3 = ggplot(df_av45, aes_string(x='CORTICAL_SUMMARY_prior', y='AVLT_AV45_1')) +
+  geom_point(aes_string(color='Diag.AV45')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('Summary SUVR vs. AVLT') +
+  xlab('Summary SUVR (whole cereb. ref)') +
+  ylab('AVLT')
+print(p3)
+
+# Adas plots
+p1 = ggplot(df_av45, aes_string(x='NSFA_6', y='ADAS_AV45_1')) +
+  geom_point(aes_string(color='Diag.AV45')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_6 Factor Score vs. ADAS-Cog') +
+  xlab('NSFA_6 Factor Score') +
+  ylab('ADAS-Cog')
+print(p1)
+
+p2 = ggplot(df_av45, aes_string(x='NSFA_14', y='ADAS_AV45_1')) +
+  geom_point(aes_string(color='Diag.AV45')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_14 Factor Score vs. ADAS-Cog') +
+  xlab('NSFA_14 Factor Score') +
+  ylab('ADAS-Cog')
+print(p2)
+
+p3 = ggplot(df_av45, aes_string(x='CORTICAL_SUMMARY_prior', y='ADAS_AV45_1')) +
+  geom_point(aes_string(color='Diag.AV45')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('Summary SUVR vs. ADAS-Cog') +
+  xlab('Summary SUVR (whole cereb. ref)') +
+  ylab('ADAS-Cog')
+print(p3)
+
+
 
 # LASSO Penalized regression
 nopattern.lasso.model = run.lasso(nopattern_form,df_av45,'Rsquared')

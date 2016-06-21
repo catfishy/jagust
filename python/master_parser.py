@@ -749,6 +749,8 @@ def syncAV1451Data(master_df, av1451_file):
     headers += ['AV1451_Braak4_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak5_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak6_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_WM_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_WM_CerebGray_%s' % tp for tp in valid_timepoints]
 
     after = [_ for _ in master_df.columns if _.startswith('AV45_') and 'PVC' not in _][-1]
 
@@ -764,6 +766,14 @@ def syncAV1451Data(master_df, av1451_file):
                 tp = 'Scan3'
             else:
                 raise Exception("Raise # of AV1451 timepoints")
+
+            # look at white matter
+            wm1 = (row['LEFT_CEREBELLUM_WHITE_MATTER_SIZE'],row['LEFT_CEREBELLUM_WHITE_MATTER'])
+            wm2 = (row['RIGHT_CEREBELLUM_WHITE_MATTER_SIZE'],row['RIGHT_CEREBELLUM_WHITE_MATTER'])
+            wm3 = (row['LEFT_CEREBRAL_WHITE_MATTER_SIZE'],row['LEFT_CEREBRAL_WHITE_MATTER'])
+            wm4 = (row['RIGHT_CEREBRAL_WHITE_MATTER_SIZE'],row['RIGHT_CEREBRAL_WHITE_MATTER'])
+            wm5 = (row['BRAIN_STEM_SIZE'],row['BRAIN_STEM'])
+            wm = weightedMean([wm1, wm2, wm3, wm4, wm5])
 
             cerebg_left = (row['LEFT_CEREBELLUM_CORTEX_SIZE'],row['LEFT_CEREBELLUM_CORTEX'])
             cerebg_right = (row['RIGHT_CEREBELLUM_CORTEX_SIZE'],row['RIGHT_CEREBELLUM_CORTEX'])
@@ -800,6 +810,8 @@ def syncAV1451Data(master_df, av1451_file):
             data['AV1451_Braak4_CerebGray_Cum_%s' % tp] = braak4_cum
             data['AV1451_Braak5_CerebGray_Cum_%s' % tp] = braak5_cum
             data['AV1451_Braak6_CerebGray_Cum_%s' % tp] = braak6_cum
+            data['AV1451_WM_%s' % tp] = wm
+            data['AV1451_WM_CerebGray_%s' % tp] = wm / cerebg
 
         return pd.DataFrame([data]).set_index('RID')
 

@@ -1,0 +1,17 @@
+
+Call:
+lm(formula = formula, data = df_av1451)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-2.2495 -0.3716 -0.0385  0.3244  4.9762 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept) -0.03224    0.18442  -0.175    0.862
+APOE4_BIN1   0.08914    0.30664   0.291    0.773
+
+Residual standard error: 1.01 on 45 degrees of freedom
+Multiple R-squared:  0.001874,	Adjusted R-squared:  -0.02031 
+F-statistic: 0.0845 on 1 and 45 DF,  p-value: 0.7726
+

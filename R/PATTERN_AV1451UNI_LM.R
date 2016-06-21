@@ -43,18 +43,21 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
                   'AV1451_Braak4_CerebGray_BL',
                   'AV1451_Braak5_CerebGray_BL',
                   'AV1451_Braak6_CerebGray_BL')
+# braak_columns = c('AV1451_Braak12_CerebGray_BL',
+#                   'AV1451_Braak34_CerebGray_BL',
+#                   'AV1451_Braak56_CerebGray_BL')
 
 
 # target = "UW_EF_AV1451_1"
 # target = "UW_MEM_AV1451_1"
 # target = "ADAS_AV1451_1"
-# target = "AVLT_AV1451_1"
-target = 'MMSE_AV1451_1'
+target = "AVLT_AV1451_1"
+# target = 'MMSE_AV1451_1'
 
 output_folder = 'R/output_av1451/'
 
-valid_diags = c('N','EMCI','LMCI','AD')
-#valid_diags = c('N','SMC','EMCI','LMCI')
+# valid_diags = c('N','EMCI','LMCI','AD')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 #valid_diags = c('N','SMC')
 #valid_diags = c('EMCI')
 #valid_diags = c('LMCI')
@@ -71,22 +74,12 @@ for (i in names(df_av1451)){
     df_av1451[,eval(i)] = as.factor(as.character(df_av1451[,eval(i)]))
   }
 }
+df_av1451$Diag.AV1451 = factor(df_av1451$Diag.AV1451, levels=valid_diags)
 
 # standardize predictors
-cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
-cross_normalization = preProcess(df_av1451[,cross_to_standardize])
-df_av1451[,cross_to_standardize] = predict(cross_normalization, df_av1451[,cross_to_standardize])
-
-# # look at histograms
-# for (pcol in pattern_columns) {
-#   p = ggplot(df_av1451, aes_string(pcol)) + geom_histogram(binwidth=0.1)
-#   print(p)
-# }
-
-# make crossx response normal
-#df_av1451[,eval(target)] = Gaussianize(df_av1451[,eval(target)], type='hh', method='MLE', return.u=TRUE)
-
-#pattern_columns = c("NSFA_1","NSFA_2","NSFA_6","NSFA_7")
+# cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
+# cross_normalization = preProcess(df_av1451[,cross_to_standardize])
+# df_av1451[,cross_to_standardize] = predict(cross_normalization, df_av1451[,cross_to_standardize])
 
 
 
@@ -119,32 +112,152 @@ braak_x = getxy(braak_form,df_av1451)
 y = as.numeric(df_av1451[,target])
 braak.lars.model = lars(braak_x,y,type='lasso')
 braak.lars.test = covTest(braak.lars.model,braak_x,y)$results
-braak.lars.sigcoef.idx = braak.lars.test[braak.lars.test[,'P-value'] < 0.2 & !is.na(braak.lars.test[,'P-value']),'Predictor_Number']
-braak.lars.cp = min(summary(braak.lars.model)$Cp)
+braak.lars.test = data.frame(braak.lars.test[complete.cases(braak.lars.test),])
 braak.lars.coef = coef(braak.lars.model, s=which.min(summary(braak.lars.model)$Cp), mode='step')
+braak.lars.test$name = names(braak.lars.coef[braak.lars.test[,'Predictor_Number']])
+braak.lars.test$coef = braak.lars.coef[braak.lars.test[,'Predictor_Number']]
+braak.lars.sig = braak.lars.test[braak.lars.test$P.value <= 0.1,]
+braak.lars.cp = min(summary(braak.lars.model)$Cp)
 braak.lars.r2 = braak.lars.model$R2[which.min(summary(braak.lars.model)$Cp)]
-braak.lars.sigcoef = braak.lars.coef[braak.lars.sigcoef.idx]
+n = attr(summary(braak.lars.model)$Cp,'n')
+p = NROW(braak.lars.coef[braak.lars.coef != 0])
+braak.lars.r2adj = r2adj(braak.lars.r2,n,p)
+braak.lars.nonzero = braak.lars.test[braak.lars.test$coef != 0,'name']
+paste(braak.lars.nonzero,collapse=' + ')
 
 pattern_x = getxy(pattern_form,df_av1451)
 y = as.numeric(df_av1451[,target])
 pattern.lars.model = lars(pattern_x,y,type='lasso')
 pattern.lars.test = covTest(pattern.lars.model,pattern_x,y)$results
-pattern.lars.sigcoef.idx = pattern.lars.test[pattern.lars.test[,'P-value'] < 0.2 & !is.na(pattern.lars.test[,'P-value']),'Predictor_Number']
-pattern.lars.cp = min(summary(pattern.lars.model)$Cp)
+pattern.lars.test = data.frame(pattern.lars.test[complete.cases(pattern.lars.test),])
 pattern.lars.coef = coef(pattern.lars.model, s=which.min(summary(pattern.lars.model)$Cp), mode='step')
+pattern.lars.test$name = names(pattern.lars.coef[pattern.lars.test[,'Predictor_Number']])
+pattern.lars.test$coef = pattern.lars.coef[pattern.lars.test[,'Predictor_Number']]
+pattern.lars.sig = pattern.lars.test[pattern.lars.test$P.value <= 0.1,]
+pattern.lars.cp = min(summary(pattern.lars.model)$Cp)
 pattern.lars.r2 = pattern.lars.model$R2[which.min(summary(pattern.lars.model)$Cp)]
 n = attr(summary(pattern.lars.model)$Cp,'n')
 p = NROW(pattern.lars.coef[pattern.lars.coef != 0])
 pattern.lars.r2adj = r2adj(pattern.lars.r2,n,p)
-pattern.lars.sigcoef = pattern.lars.coef[pattern.lars.sigcoef.idx]
+pattern.lars.nonzero = pattern.lars.test[pattern.lars.test$coef != 0,'name']
+paste(pattern.lars.nonzero,collapse=' + ')
+
+# ADAS likelihood test
+adas_base_form = paste("ADAS_AV1451_1",'~ 1')
+adas_braak_form = paste("ADAS_AV1451_1",'~',"AV1451_Braak1_CerebGray_BL + Age.AV1451")
+adas_pattern_form = paste("ADAS_AV1451_1",'~',"NSFA_2 + NSFA_0 + NSFA_7 + NSFA_3 + NSFA_8 + NSFA_9 + NSFA_10 + NSFA_21 + Edu..Yrs. + NSFA_20 + NSFA_1 + NSFA_11")
+adas_base_lm = lm(as.formula(adas_base_form),df_av1451)
+adas_braak_lm = lm(as.formula(adas_braak_form),df_av1451)
+adas_pattern_lm = lm(as.formula(adas_pattern_form),df_av1451)
+adas_braak_anova = anova(adas_base_lm, adas_braak_lm)
+adas_pattern_anova = anova(adas_base_lm, adas_pattern_lm)
+
+# AVLT likelihood test
+avlt_base_form = paste("AVLT_AV1451_1",'~ 1')
+avlt_braak_form = paste("AVLT_AV1451_1",'~',"Age.AV1451 + AV1451_Braak1_CerebGray_BL + Edu..Yrs. + Gender + AV1451_Braak5_CerebGray_BL")
+avlt_pattern_form = paste("AVLT_AV1451_1",'~',"NSFA_2 + Age.AV1451 + NSFA_0 + Edu..Yrs. + NSFA_17 + NSFA_1 + Gender + NSFA_6 + NSFA_9 + NSFA_21 + NSFA_12 + NSFA_24 + NSFA_15 + NSFA_14 + NSFA_3 + NSFA_20 + NSFA_18 + NSFA_13 + NSFA_4 + NSFA_7 + APOE4_BIN + NSFA_16 + NSFA_11 + NSFA_23 + NSFA_19 + NSFA_8 + NSFA_5")
+avlt_base_lm = lm(as.formula(avlt_base_form),df_av1451)
+avlt_braak_lm = lm(as.formula(avlt_braak_form),df_av1451)
+avlt_pattern_lm = lm(as.formula(avlt_pattern_form),df_av1451)
+avlt_braak_anova = anova(avlt_base_lm, avlt_braak_lm)
+avlt_pattern_anova = anova(avlt_base_lm, avlt_pattern_lm)
+
+
+# AVLT plots
+p1 = ggplot(df_av1451, aes_string(x='NSFA_2', y='AVLT_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_2 Factor Score vs. AVLT') +
+  xlab('NSFA_2 Factor Score') +
+  ylab('AVLT')
+print(p1)
+
+p2 = ggplot(df_av1451, aes_string(x='AV1451_Braak1_CerebGray_BL', y='AVLT_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('Braak I SUVR vs. AVLT') +
+  xlab('Braak I SUVR (cereb. gray. ref.)') +
+  ylab('AVLT')
+print(p2)
+
+p3 = ggplot(df_av1451, aes_string(x='AV1451_Braak5_CerebGray_BL', y='AVLT_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('Braak V SUVR vs. AVLT') +
+  xlab('Braak V SUVR (cereb. gray. ref.)') +
+  ylab('AVLT')
+print(p3)
+
+
+# Adas plots
+p1 = ggplot(df_av1451, aes_string(x='NSFA_2', y='ADAS_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_2 Factor Score vs. ADAS-Cog') +
+  xlab('NSFA_2 Factor Score') +
+  ylab('ADAS-Cog')
+print(p1)
+
+p2 = ggplot(df_av1451, aes_string(x='AV1451_Braak1_CerebGray_BL', y='ADAS_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('Braak I SUVR vs. ADAS-Cog') +
+  xlab('Braak I SUVR (cereb. gray. ref.)') +
+  ylab('ADAS-Cog')
+print(p2)
+
+p3 = ggplot(df_av1451, aes_string(x='AV1451_Braak5_CerebGray_BL', y='ADAS_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('Braak V SUVR vs. ADAS-Cog') +
+  xlab('Braak V SUVR (cereb. gray. ref.)') +
+  ylab('ADAS-Cog')
+print(p3)
+
+
+
+
+
+
 # RMSE(predict(model_lars, x_test, s = best)$fit, test$Petal.Width)
 # cor(test[,"Petal.Width"], predict(model_lars, x_test, s = best)$fit)
-# ans$adj.r.squared <- 1 - (1 - ans$r.squared) * ((n - df.int)/rdf)
 
-pattern_form_pen = "MMSE_AV1451_1 ~ APOE4_BIN + Gender + Edu..Yrs. + NSFA_0 + NSFA_1 + NSFA_2 + NSFA_3 + NSFA_5 + NSFA_6 + NSFA_7 + NSFA_8 + NSFA_9 + NSFA_10 + NSFA_11 + NSFA_13 + NSFA_14 + NSFA_16 + NSFA_18 + NSFA_19 + NSFA_22 + NSFA_23 + NSFA_24"
-null_form = paste(target,'~',1)
-test_form = "MMSE_AV1451_1 ~ APOE4_BIN + Gender + Edu..Yrs."
-likelihood.test(null_form,pattern_form_pen,df_av1451)
 
 # Penalized LM
 braak.lasso.model = run.lasso(braak_form,df_av1451,'Rsquared')

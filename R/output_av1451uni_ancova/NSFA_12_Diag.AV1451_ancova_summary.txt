@@ -1,0 +1,19 @@
+
+Call:
+lm(formula = formula, data = df_av1451)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-2.1946 -0.6479 -0.2456  0.5315  2.2054 
+
+Coefficients:
+                Estimate Std. Error t value Pr(>|t|)
+(Intercept)      0.07632    0.59090   0.129    0.898
+Diag.AV1451EMCI -0.19083    0.67372  -0.283    0.778
+Diag.AV1451LMCI  0.13229    0.65113   0.203    0.840
+Diag.AV1451N    -0.17654    0.63366  -0.279    0.782
+
+Residual standard error: 1.023 on 43 degrees of freedom
+Multiple R-squared:  0.02084,	Adjusted R-squared:  -0.04747 
+F-statistic: 0.3051 on 3 and 43 DF,  p-value: 0.8215
+

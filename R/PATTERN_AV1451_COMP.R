@@ -36,6 +36,9 @@ to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post',
               'AV45_NONTP_wcereb_BIN1.11')
 to_standardize = c('Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','Diag.AV1451','Age.AV1451','Gender','Edu..Yrs.')
+bigbraak_columns = c("AV1451_Braak12_CerebGray_BL",
+                     "AV1451_Braak34_CerebGray_BL",
+                     "AV1451_Braak56_CerebGray_BL")
 braak_columns = c('AV1451_Braak1_CerebGray_BL',
                   'AV1451_Braak2_CerebGray_BL',
                   'AV1451_Braak3_CerebGray_BL',
@@ -63,25 +66,46 @@ for (i in names(df_av1451)){
 }
 pattern_columns = Filter(function(i) {startsWith(i,'NSFA_')}, names(df_av1451))
 
-# find correlation with braak stages
+braak_cors = data.frame()
 for (pcol in pattern_columns) {
-  for (bcol in braak_columns) {
+  for (bcol in bigbraak_columns) {
     r2 = summary(lm(paste(pcol,'~',bcol),df_av1451))$adj.r.squared
-    if (r2 > 0.1) {
-      print(paste(pcol,bcol,r2))
-    }
-    
+    new_row = data.frame(braak=bcol, pattern=pcol, R2=r2) 
+    braak_cors = rbind(braak_cors,new_row)
   }
+}
+best_patterns = unique(braak_cors[order(-braak_cors$R2),'pattern'][1:4])
+
+# plot R2 by braak stage for patterns
+for (pcol in best_patterns) {
+  data = df_av1451[,c(pcol,bigbraak_columns)]
+  r2_data = braak_cors[braak_cors$pattern == pcol,]
+  data.long = melt(data,id.vars=pcol, measure.vars=bigbraak_columns)
+  for (bcol in bigbraak_columns) {
+    cur_r2 = r2_data[r2_data$braak == bcol,'R2']
+    data.long[data.long$variable == bcol,'R2'] = paste('R^2 == ',round(cur_r2,3))
+  }
+  data.long$variable = sapply(data.long$variable,function (x) {gsub('AV1451_','',x)})
+  data.long$variable = sapply(data.long$variable,function (x) {gsub('_CerebGray_BL','',x)})
+  p = ggplot(data.long, aes_string(x=pcol,y='value')) +
+    geom_point() + 
+    geom_smooth(method='lm') + 
+    facet_grid(. ~ variable) + 
+    geom_label(aes(x=1.1, y=1.5, label=R2), 
+              colour="black", 
+              size=8,
+              parse=TRUE) + 
+    theme(plot.title=element_text(size=20),
+          axis.title.x=element_text(size=18),
+          axis.title.y=element_text(size=18),
+          axis.text.y=element_text(face='bold', size=14), 
+          axis.text.x=element_text(face='bold', size=14)) +
+    xlab(paste(pcol,'Factor Score')) +
+    ylab('Braak SUVR (cereb. gray ref.)')
+  print(p)
 }
 
-for (pcol in pattern_columns) {
-  for (bcol in braak_cum_columns) {
-    r2 = summary(lm(paste(pcol,'~',bcol),df_av1451))$adj.r.squared
-    if (r2 > 0.1) {
-      print(paste(pcol,bcol,r2))
-    }
-  }
-}
+
 
 pcol = 'NSFA_1'
 bcol = 'AV1451_Braak3_CerebGray_BL'

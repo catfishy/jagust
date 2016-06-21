@@ -1,0 +1,7 @@
+Anova Table (Type III tests)
+
+Response: NSFA_23
+                          Sum Sq   Df F value Pr(>F)
+(Intercept)                 0.02    1  0.0230 0.8794
+AV45_NONTP_wcereb_BIN1.11   0.12    1  0.1551 0.6938
+Residuals                 837.44 1051               

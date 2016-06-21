@@ -1,0 +1,9 @@
+Anova Table (Type III tests)
+
+Response: AV45_NONTP_wcereb
+             Sum Sq   Df    F value  Pr(>F)    
+(Intercept) 1528.34    1 29641.5970 < 2e-16 ***
+Age.AV45       0.32    1     6.1726 0.01313 *  
+Residuals     54.19 1051                       
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

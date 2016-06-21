@@ -1,0 +1,7 @@
+Anova Table (Type III tests)
+
+Response: NSFA_24
+            Sum Sq Df F value Pr(>F)
+(Intercept)  0.001  1  0.0006 0.9808
+APOE4_BIN    0.002  1  0.0016 0.9681
+Residuals   45.998 45               

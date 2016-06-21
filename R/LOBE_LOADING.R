@@ -3,8 +3,17 @@ library(ggrepel)
 library(reshape2)
 
 df_rois = read.csv('nsfa/av1451uni_roi_comparisons.csv')
-# df_rois = read.csv('nsfa/av45_roi_comparisons.csv')
+df_scores = read.csv('nsfa/av1451uni_pattern_dataset.csv')
+df_loadings = read.csv('nsfa/av1451uni_factor_loadings.csv')
 
+# df_rois = read.csv('nsfa/av1451_roi_comparisons.csv')
+# df_scores = read.csv('nsfa/av1451_pattern_dataset.csv')
+# df_loadings = read.csv('nsfa/av1451_factor_loadings.csv')
+
+# df_rois = read.csv('nsfa/av45_roi_comparisons.csv')
+# df_scores = read.csv('nsfa/av45_pattern_dataset.csv')
+
+pattern_columns = Filter(function(i) {startsWith(i,'NSFA_')}, names(df_scores))
 
 region_order = c('FRONTAL','PARIETAL','SENSORY','TEMPORAL','MEDIAL_TEMPORAL','OCCIPITAL',
                  'MEDIAL_OCCIPITAL','CINGULATE','BASALGANGLIA',
@@ -21,9 +30,11 @@ pos_asym_order = c('FRONTAL_POS_ASYM','PARIETAL_POS_ASYM','SENSORY_POS_ASYM','TE
                'CEREBRAL_WHITE_POS_ASYM','CEREBELLUM_GRAY_POS_ASYM','CEREBELLUM_WHITE_POS_ASYM')
 
 df_rois$ASYM_ABS = rowSums(abs(df_rois[, c(neg_asym_order,pos_asym_order)]))
+patterns_by_score = sort(colSums(abs(df_scores[,pattern_columns])), decreasing=TRUE)
 
 best_asym = df_rois[order(-df_rois$ASYM_ABS),][1:5,"FACTOR"]
 best_factors = df_rois[order(-df_rois$varperc),][1:5,"FACTOR"]
+best_factor_scores = names(patterns_by_score)[1:5]
 
 factor_levels = df_rois[order(-df_rois$varperc),'FACTOR']
 df_rois$FACTOR = factor(df_rois$FACTOR, levels = factor_levels)
@@ -95,7 +106,7 @@ p = ggplot(df_rois.braakcum,aes_string(x='variable',y='value', color='FACTOR')) 
 print(p)
 
 # print asym
-for (i in best_asym) {
+for (i in best_factors) {
   print(i)
   cur_neg = melt(df_rois[df_rois$FACTOR == i, neg_asym_order])
   cur_neg$variable = lapply(cur_neg$variable,function(i) {gsub('_NEG_ASYM','',i)})
@@ -117,13 +128,14 @@ for (i in best_asym) {
                          fontface='bold',
                          color='white',
                          size=8,
-                         show.legend=FALSE) + 
+                         show.legend=FALSE,
+                         max.iter = 7e4) + 
         xlim(-1,1) + 
         ylim(-1,1) +
         theme(plot.title=element_text(size=20),
               axis.title.x=element_text(size=18),
               axis.title.y=element_text(size=18),
-              axis.text.y=element_text(face='bold', size=14),
+              axis.text.x=element_text(face='bold', size=14),
               axis.text.y=element_text(face='bold', size=14)) +
         ggtitle(paste(i,'Loading Asymmetry')) +
         xlab('Negative loading asymmetry index') +
