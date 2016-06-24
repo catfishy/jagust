@@ -63,6 +63,7 @@ p1 = ggplot(df_av45,aes_string(x='AV45_NONTP_wcereb',y='NSFA_6')) +
   geom_point(aes_string(color='Diag.AV45')) + 
   geom_smooth(method='lm') + 
   ylim(-2.5,2.5) +
+  geom_vline(xintercept = 1.11) + 
   theme(plot.title=element_text(size=20),
         axis.title.x=element_text(size=18),
         axis.title.y=element_text(size=18),
@@ -78,6 +79,7 @@ p2 = ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y='NSFA_6')) +
   geom_point(aes_string(color='Diag.AV45')) + 
   geom_smooth(method='lm') + 
   ylim(-2.5,2.5) +
+  geom_vline(xintercept = 1.27) + 
   theme(plot.title=element_text(size=20),
         axis.title.x=element_text(size=18),
         axis.title.y=element_text(size=18),
@@ -142,7 +144,7 @@ p1 = ggplot(df_av45, aes_string(x=pcol, y=paste('ALL_CHANGE_',pcol,sep=''))) +
         axis.text.x=element_text(face='bold', size=14)) + 
   geom_hline(aes(yintercept=0.0)) + 
   ggtitle('Baseline NSFA_6 Score vs. Annualized Change') +
-  xlab('Cortical Summary SUVR (whole cereb. ref., PVC)') +
+  xlab('Baseline NSFA_6 Score') +
   ylab('Annualized Change')
 print(p1)
 

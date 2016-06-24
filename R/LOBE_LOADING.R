@@ -32,9 +32,9 @@ pos_asym_order = c('FRONTAL_POS_ASYM','PARIETAL_POS_ASYM','SENSORY_POS_ASYM','TE
 df_rois$ASYM_ABS = rowSums(abs(df_rois[, c(neg_asym_order,pos_asym_order)]))
 patterns_by_score = sort(colSums(abs(df_scores[,pattern_columns])), decreasing=TRUE)
 
-best_asym = df_rois[order(-df_rois$ASYM_ABS),][1:5,"FACTOR"]
-best_factors = df_rois[order(-df_rois$varperc),][1:5,"FACTOR"]
-best_factor_scores = names(patterns_by_score)[1:5]
+best_asym = df_rois[order(-df_rois$ASYM_ABS),][1:4,"FACTOR"]
+best_factors = df_rois[order(-df_rois$varperc),][1:4,"FACTOR"]
+best_factor_scores = names(patterns_by_score)[1:4]
 
 factor_levels = df_rois[order(-df_rois$varperc),'FACTOR']
 df_rois$FACTOR = factor(df_rois$FACTOR, levels = factor_levels)

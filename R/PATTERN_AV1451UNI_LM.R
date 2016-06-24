@@ -50,8 +50,8 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
 
 # target = "UW_EF_AV1451_1"
 # target = "UW_MEM_AV1451_1"
-# target = "ADAS_AV1451_1"
-target = "AVLT_AV1451_1"
+target = "ADAS_AV1451_1"
+# target = "AVLT_AV1451_1"
 # target = 'MMSE_AV1451_1'
 
 output_folder = 'R/output_av1451/'
@@ -68,19 +68,21 @@ pattern_columns = Filter(isPatternColumn,names(df_av1451))
 naive_columns = Filter(isNaiveColumn,names(df_av1451))
 non.na = complete.cases(df_av1451[,c(demog_columns,braak_columns,target)])
 df_av1451 = df_av1451[non.na,]
-df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 for (i in names(df_av1451)){
   if (i %in% to_factor){
     df_av1451[,eval(i)] = as.factor(as.character(df_av1451[,eval(i)]))
   }
 }
+
+
+df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 df_av1451$Diag.AV1451 = factor(df_av1451$Diag.AV1451, levels=valid_diags)
 
 # standardize predictors
 # cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
 # cross_normalization = preProcess(df_av1451[,cross_to_standardize])
 # df_av1451[,cross_to_standardize] = predict(cross_normalization, df_av1451[,cross_to_standardize])
-
+# 
 
 
 # Formula setup
@@ -178,6 +180,21 @@ p1 = ggplot(df_av1451, aes_string(x='NSFA_2', y='AVLT_AV1451_1')) +
   ylab('AVLT')
 print(p1)
 
+p5 = ggplot(df_av1451, aes_string(x='NSFA_7', y='AVLT_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_7 Factor Score vs. AVLT') +
+  xlab('NSFA_7 Factor Score') +
+  ylab('AVLT')
+print(p5)
+
+
 p2 = ggplot(df_av1451, aes_string(x='AV1451_Braak1_CerebGray_BL', y='AVLT_AV1451_1')) +
   geom_point(aes_string(color='Diag.AV1451')) +
   geom_smooth(method='lm') +
@@ -221,6 +238,20 @@ p1 = ggplot(df_av1451, aes_string(x='NSFA_2', y='ADAS_AV1451_1')) +
   xlab('NSFA_2 Factor Score') +
   ylab('ADAS-Cog')
 print(p1)
+
+p6 = ggplot(df_av1451, aes_string(x='NSFA_7', y='ADAS_AV1451_1')) +
+  geom_point(aes_string(color='Diag.AV1451')) +
+  geom_smooth(method='lm') +
+  theme(plot.title=element_text(size=20),
+        axis.title.x=element_text(size=18),
+        axis.title.y=element_text(size=18),
+        axis.text.y=element_text(face='bold', size=14),
+        axis.text.x=element_text(face='bold', size=14),
+        legend.title=element_blank()) +
+  ggtitle('NSFA_7 Factor Score vs. ADAS-Cog') +
+  xlab('NSFA_7 Factor Score') +
+  ylab('ADAS-Cog')
+print(p6)
 
 p2 = ggplot(df_av1451, aes_string(x='AV1451_Braak1_CerebGray_BL', y='ADAS_AV1451_1')) +
   geom_point(aes_string(color='Diag.AV1451')) +
