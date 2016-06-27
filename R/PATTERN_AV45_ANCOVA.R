@@ -40,15 +40,20 @@ av45_columns = c('CORTICAL_SUMMARY_prior','AV45_NONTP_wcereb')
 
 output_folder = 'R/output_av45_ancova/'
 
-valid_diags = c('N','EMCI','LMCI','AD')
+# valid_diags = c('N','EMCI','LMCI','AD')
+valid_diags = c('EMCI')
 
 # ancova_factors = 'Age.AV45 + Diag.AV1451 + APOE4_BIN'
-ancova_factors = 'Diag.AV45'
+# ancova_factors = 'Diag.AV45'
+# ancova_factors = 'Diag.AV45:AV45_NONTP_wcereb_BIN1.11'
 # ancova_factors = 'AV45_NONTP_wcereb_BIN1.11'
 # ancova_factors = 'Age.AV45'
 # ancova_factors = 'APOE4_BIN'
 # ancova_factors = 'Gender'
 # ancova_factors = 'Edu..Yrs.'
+ancova_factors = 'AVLT_slope_postAV45'
+# ancova_factors = 'ADASslope_postAV45'
+# ancova_factors = 'MMSEslope_postAV45'
 
 # IMPORT
 df_av45 = read.csv('nsfa/av45_pattern_dataset.csv')
@@ -64,9 +69,9 @@ pattern_columns = Filter(isPatternColumn,names(df_av45))
 naive_columns = Filter(isNaiveColumn,names(df_av45))
 
 # standardize predictors
-# cross_to_standardize = c(to_standardize,pattern_columns,naive_columns)
-# cross_normalization = preProcess(df_av45[,cross_to_standardize])
-# df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
+cross_to_standardize = c(to_standardize,pattern_columns,naive_columns)
+cross_normalization = preProcess(df_av45[,cross_to_standardize])
+df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
 
 # make response normal
 #df_av45[,eval(target)] = Gaussianize(df_av45[,eval(target)], type='hh', method='MLE', return.u=TRUE)
@@ -96,11 +101,11 @@ for (i in 1:NROW(all_formula)) {
   pvalues[pattern_str] = cur.lm.pvalue
   lmformula[pattern_str] = paste(pattern_formula[i])
   cur.lm.anova = Anova(cur.lm,type='III')
-    save.printout(paste(output_folder,pattern_str,'_',ancova_factors,'_ancova_anova','.txt',sep=''),cur.lm.anova)
-    save.printout(paste(output_folder,pattern_str,'_',ancova_factors,'_ancova_summary','.txt',sep=''),cur.lm.summary)
-    lm.plotfn = function() {par(mfrow=c(2,2));plot(cur.lm);title(pattern_str, outer=T, line=-2);}
-    save.plot(paste(output_folder,pattern_str,'_',ancova_factors,'_lmplot.pdf',sep=''), lm.plotfn)
-    save.plot(paste(output_folder,pattern_str,'_',ancova_factors,'_avplot.pdf',sep=''), function() {avPlots(cur.lm, ask=FALSE)})
+#   save.printout(paste(output_folder,pattern_str,'_',ancova_factors,'_ancova_anova','.txt',sep=''),cur.lm.anova)
+#   save.printout(paste(output_folder,pattern_str,'_',ancova_factors,'_ancova_summary','.txt',sep=''),cur.lm.summary)
+#   lm.plotfn = function() {par(mfrow=c(2,2));plot(cur.lm);title(pattern_str, outer=T, line=-2);}
+#   save.plot(paste(output_folder,pattern_str,'_',ancova_factors,'_lmplot.pdf',sep=''), lm.plotfn)
+#   save.plot(paste(output_folder,pattern_str,'_',ancova_factors,'_avplot.pdf',sep=''), function() {avPlots(cur.lm, ask=FALSE)})
 }
 
 pvalues.corrected = p.adjust(pvalues,method='bonferroni')

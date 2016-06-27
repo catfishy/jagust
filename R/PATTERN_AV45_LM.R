@@ -39,13 +39,13 @@ demog_columns = c('RID','APOE4_BIN','Diag.AV45','Age.AV45','Gender','Edu..Yrs.')
 av45_columns = c('CORTICAL_SUMMARY_prior')
 
 #target = "CORTICAL_SUMMARY_change"
-#target = "UW_EF_AV45_1"
+# target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
 target = "ADAS_AV45_1"
-#target = "ADASslope_postAV45"
+# target = "ADASslope_postAV45"
 # target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
-#target = "UW_MEM_AV45_1"
+# target = "UW_MEM_AV45_1"
 #target = "UW_MEM_slope"
 #target = "CSF_ABETA_closest_AV45_1"
 #target = "CSF_TAU_closest_AV45_1"
@@ -57,10 +57,10 @@ output_folder = 'R/output_all_diag/'
 output_folder = 'R/output_neg_emci/'
 
 positive_value=1
-valid_diags = c('N','SMC','EMCI','LMCI','AD')
-#valid_diags = c('N')
-#valid_diags = c('EMCI')
-#valid_diags = c('LMCI')
+# valid_diags = c('N','SMC','EMCI','LMCI','AD')
+valid_diags = c('N')
+# valid_diags = c('EMCI')
+# valid_diags = c('LMCI')
 
 
 #time_col_prefix = 'TIMEpostAV45_ADAS'
@@ -77,9 +77,15 @@ df_av45 = read.csv('nsfa/av45_pattern_dataset.csv')
 non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,target)])
 df_av45 = df_av45[non.na,]
 
+# remove target outliers
+target.mean = mean(df_av45[,target])
+target.sd = sd(df_av45[,target])
+df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*3,]
+df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*3,]
+
 # filter by diag or postivity
 df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
-# df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
+df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
 
 # make factors
 for (i in names(df_av45)){
@@ -92,10 +98,12 @@ pattern_columns = Filter(isPatternColumn,names(df_av45))
 naive_columns = Filter(isNaiveColumn,names(df_av45))
 
 
+
+
 # # standardize predictors
-# cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,target)
-# cross_normalization = preProcess(df_av45[,cross_to_standardize])
-# df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
+cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,target)
+cross_normalization = preProcess(df_av45[,cross_to_standardize])
+df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
 
 
 
@@ -147,9 +155,9 @@ nopattern.lars.test$coef = nopattern.lars.coef[nopattern.lars.test[,'Predictor_N
 nopattern.lars.sig = nopattern.lars.test[nopattern.lars.test$P.value <= 0.1,]
 nopattern.lars.cp = min(summary(nopattern.lars.model)$Cp)
 nopattern.lars.r2 = nopattern.lars.model$R2[which.min(summary(nopattern.lars.model)$Cp)]
-n = attr(summary(nopattern.lars.model)$Cp,'n')
-p = NROW(nopattern.lars.coef[nopattern.lars.coef != 0])
-nopattern.lars.r2adj = r2adj(nopattern.lars.r2,n,p)
+nopattern.lars.n = attr(summary(nopattern.lars.model)$Cp,'n')
+nopattern.lars.p = NROW(nopattern.lars.coef[nopattern.lars.coef != 0])
+nopattern.lars.r2adj = r2adj(nopattern.lars.r2,nopattern.lars.n,nopattern.lars.p)
 nopattern.lars.nonzero = nopattern.lars.test[nopattern.lars.test$coef != 0,'name']
 paste(nopattern.lars.nonzero,collapse=' + ')
 
@@ -164,11 +172,14 @@ onlypattern.lars.test$coef = onlypattern.lars.coef[onlypattern.lars.test[,'Predi
 onlypattern.lars.sig = onlypattern.lars.test[onlypattern.lars.test$P.value <= 0.1,]
 onlypattern.lars.cp = min(summary(onlypattern.lars.model)$Cp)
 onlypattern.lars.r2 = onlypattern.lars.model$R2[which.min(summary(onlypattern.lars.model)$Cp)]
-n = attr(summary(onlypattern.lars.model)$Cp,'n')
-p = NROW(onlypattern.lars.coef[onlypattern.lars.coef != 0])
-onlypattern.lars.r2adj = r2adj(onlypattern.lars.r2,n,p)
+onlypattern.lars.n = attr(summary(onlypattern.lars.model)$Cp,'n')
+onlypattern.lars.p = NROW(onlypattern.lars.coef[onlypattern.lars.coef != 0])
+onlypattern.lars.r2adj = r2adj(onlypattern.lars.r2,onlypattern.lars.n,onlypattern.lars.p)
 onlypattern.lars.nonzero = onlypattern.lars.test[onlypattern.lars.test$coef != 0,'name']
 paste(onlypattern.lars.nonzero,collapse=' + ')
+
+
+
 
 # ADAS likelihood test
 adas_base_form = paste("ADAS_AV45_1",'~ 1')
