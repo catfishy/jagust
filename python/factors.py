@@ -184,7 +184,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_18_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -205,8 +205,8 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # dod = False
 # bilateral = True
 
-# FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_18_16.csv'
+# # FOR ADNI AV1451
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -227,7 +227,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # bilateral = True
 
 # FOR ADNI AV1451 UNILATERAL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_06_18_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 pattern_mat = '../av1451uni_pattern_bl.mat'
 pattern_mat_2 = None

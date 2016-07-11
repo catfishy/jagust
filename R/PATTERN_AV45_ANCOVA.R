@@ -43,6 +43,7 @@ output_folder = 'R/output_av45_ancova/'
 # valid_diags = c('N','EMCI','LMCI','AD')
 valid_diags = c('EMCI')
 
+
 # ancova_factors = 'Age.AV45 + Diag.AV1451 + APOE4_BIN'
 # ancova_factors = 'Diag.AV45'
 # ancova_factors = 'Diag.AV45:AV45_NONTP_wcereb_BIN1.11'

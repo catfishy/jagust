@@ -460,7 +460,7 @@ if __name__ == "__main__":
     # dod_tau_pet_dates = importScanMeta(dod_meta_tau, with_viscode=True)
 
     #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '06_09_16'
+    timestamp = '07_05_16'
 
     # preprocess output folders
     preprocess_folder = '../docs/preprocess_output/%s/' % timestamp

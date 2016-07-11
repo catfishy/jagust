@@ -688,11 +688,18 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
         except:
             init_diag = None
         bl_visit = bl_registry[rid]
+
+        # write in subtypes
+        n_type = 'N'
+        if init_diag in set(['SMC']):
+            n_type = init_diag
         mci_type = 'LMCI'
-        if init_diag in set(['LMCI', 'EMCI', 'SMC']):
+        if init_diag in set(['LMCI', 'EMCI']):
             mci_type = init_diag
         subj_rows.sort_values(by='EXAMDATE', inplace=True)
         subj_rows.loc[subj_rows.diag == 'MCI','diag'] = mci_type
+        subj_rows.loc[subj_rows.diag == 'N','diag'] = n_type
+
         data = {'RID': rid,
                 'Init_Diagnosis': init_diag,
                 'Baseline': bl_visit,
@@ -1767,9 +1774,9 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/06_09_16/UCBERKELEYAV45_06_09_16_regular_tp.csv"
-    av45_nontp_file = "../output/06_09_16/UCBERKELEYAV45_06_09_16_regular_nontp.csv"
-    av1451_tp_file = "../output/06_09_16/UCBERKELEYAV1451_06_09_16_regular_tp.csv"
+    av45_tp_file = "../output/07_05_16/UCBERKELEYAV45_07_05_16_regular_tp.csv"
+    av45_nontp_file = "../output/07_05_16/UCBERKELEYAV45_07_05_16_regular_nontp.csv"
+    av1451_tp_file = "../output/07_05_16/UCBERKELEYAV1451_07_05_16_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/mostregions_output.csv"
 
@@ -1789,7 +1796,7 @@ if __name__ == '__main__':
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_05_04_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
-    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_04-05-2016.csv'
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_07-01-2016.csv'
 
     # Run pipeline
     runPipeline()

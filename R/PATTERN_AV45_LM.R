@@ -38,16 +38,17 @@ to_standardize = c('CORTICAL_SUMMARY_prior','Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','Diag.AV45','Age.AV45','Gender','Edu..Yrs.')
 av45_columns = c('CORTICAL_SUMMARY_prior')
 
-#target = "CORTICAL_SUMMARY_change"
+target = "CORTICAL_SUMMARY_change"
 # target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
-target = "ADAS_AV45_1"
+# target = "ADAS_AV45_1"
 # target = "ADASslope_postAV45"
 # target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
 # target = "UW_MEM_AV45_1"
-#target = "UW_MEM_slope"
-#target = "CSF_ABETA_closest_AV45_1"
+# target = "UW_MEM_slope"
+# target = "CSF_ABETA_closest_AV45_1"
+# target = "UCB_FS_HC.ICV_AV45_1"
 #target = "CSF_TAU_closest_AV45_1"
 #target = "CSF_PTAU_closest_AV45_1"
 # target = 'MMSE_AV45_1'
@@ -57,10 +58,11 @@ output_folder = 'R/output_all_diag/'
 output_folder = 'R/output_neg_emci/'
 
 positive_value=1
-# valid_diags = c('N','SMC','EMCI','LMCI','AD')
-valid_diags = c('N')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
+# valid_diags = c('N','SMC')
 # valid_diags = c('EMCI')
 # valid_diags = c('LMCI')
+# valid_diags = c('AD')
 
 
 #time_col_prefix = 'TIMEpostAV45_ADAS'
@@ -83,7 +85,7 @@ target.sd = sd(df_av45[,target])
 df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*3,]
 df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*3,]
 
-# filter by diag or postivity
+# filter by diag or positivity
 df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
 df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
 
@@ -160,6 +162,7 @@ nopattern.lars.p = NROW(nopattern.lars.coef[nopattern.lars.coef != 0])
 nopattern.lars.r2adj = r2adj(nopattern.lars.r2,nopattern.lars.n,nopattern.lars.p)
 nopattern.lars.nonzero = nopattern.lars.test[nopattern.lars.test$coef != 0,'name']
 paste(nopattern.lars.nonzero,collapse=' + ')
+paste(target,'~',paste(nopattern.lars.sig[,'name'], collapse=' + '))
 
 onlypattern_x = getxy(onlypattern_form,df_av45)
 y = as.numeric(df_av45[,target])
@@ -177,6 +180,7 @@ onlypattern.lars.p = NROW(onlypattern.lars.coef[onlypattern.lars.coef != 0])
 onlypattern.lars.r2adj = r2adj(onlypattern.lars.r2,onlypattern.lars.n,onlypattern.lars.p)
 onlypattern.lars.nonzero = onlypattern.lars.test[onlypattern.lars.test$coef != 0,'name']
 paste(onlypattern.lars.nonzero,collapse=' + ')
+paste(target,'~',paste(onlypattern.lars.sig[,'name'], collapse=' + '))
 
 
 
