@@ -25,6 +25,7 @@ library(lmtest)
 library(languageR)
 library(stringr)
 library(covTest)
+library(scales)
 
 source('R/LM_FUNCS.R')
 
@@ -40,26 +41,38 @@ av45_columns = c('CORTICAL_SUMMARY_prior','AV45_NONTP_wcereb')
 
 output_folder = 'R/output_av45_ancova/'
 
-# valid_diags = c('N','EMCI','LMCI','AD')
-valid_diags = c('EMCI')
+# valid_diags = c('N','SMC','EMCI','LMCI','AD')
+# valid_diags = c('N','SMC')
+# valid_diags = c('EMCI')
+valid_diags = c('LMCI')
+# valid_diags = c('AD')
+# valid_diags = c('EMCI','LMCI','AD')
+positive_value=1
 
 
-# ancova_factors = 'Age.AV45 + Diag.AV1451 + APOE4_BIN'
 # ancova_factors = 'Diag.AV45'
-# ancova_factors = 'Diag.AV45:AV45_NONTP_wcereb_BIN1.11'
 # ancova_factors = 'AV45_NONTP_wcereb_BIN1.11'
 # ancova_factors = 'Age.AV45'
 # ancova_factors = 'APOE4_BIN'
 # ancova_factors = 'Gender'
 # ancova_factors = 'Edu..Yrs.'
-ancova_factors = 'AVLT_slope_postAV45'
+
+# ancova_factors = 'AVLT_AV45_1'
+# ancova_factors = 'ADAS_AV45_1'
+# ancova_factors = 'UW_EF_AV45_1'
+ancova_factors = 'UW_MEM_AV45_1'
+# ancova_factors = 'CSF_ABETA_closest_AV45_1'
+# ancova_factors = 'UCB_FS_HC.ICV_AV45_1'
+
+# ancova_factors = 'AVLT_slope_postAV45'
 # ancova_factors = 'ADASslope_postAV45'
-# ancova_factors = 'MMSEslope_postAV45'
+# ancova_factors = 'UW_MEM_slope'
+# ancova_factors = 'UW_EF_slope'
+# ancova_factors = 'CORTICAL_SUMMARY_change'
 
 # IMPORT
 df_av45 = read.csv('nsfa/av45_pattern_dataset.csv')
-df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
-non.na = complete.cases(df_av45[,c(demog_columns,av45_columns)])
+non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,ancova_factors)])
 df_av45 = df_av45[non.na,]
 for (i in names(df_av45)){
   if (i %in% to_factor){
@@ -69,10 +82,21 @@ for (i in names(df_av45)){
 pattern_columns = Filter(isPatternColumn,names(df_av45))
 naive_columns = Filter(isNaiveColumn,names(df_av45))
 
-# standardize predictors
-cross_to_standardize = c(to_standardize,pattern_columns,naive_columns)
-cross_normalization = preProcess(df_av45[,cross_to_standardize])
-df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
+# remove target outliers
+target.mean = mean(df_av45[,ancova_factors])
+target.sd = sd(df_av45[,ancova_factors])
+df_av45 = df_av45[df_av45[,ancova_factors] <= target.mean+target.sd*5,]
+df_av45 = df_av45[df_av45[,ancova_factors] >= target.mean-target.sd*5,]
+
+# Filter by diag + positivity
+df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
+# df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
+df_av45 = df_av45[which(df_av45[,'positive_prior'] == positive_value),]
+
+# # standardize predictors
+# cross_to_standardize = c(to_standardize,pattern_columns,naive_columns)
+# cross_normalization = preProcess(df_av45[,cross_to_standardize])
+# df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
 
 # make response normal
 #df_av45[,eval(target)] = Gaussianize(df_av45[,eval(target)], type='hh', method='MLE', return.u=TRUE)
@@ -111,8 +135,20 @@ for (i in 1:NROW(all_formula)) {
 
 pvalues.corrected = p.adjust(pvalues,method='bonferroni')
 pvalues.sig = pvalues.corrected[pvalues.corrected < 0.05]
+unlist(pvalues)
 pvalues.corrected
+pvalues.sig
 
+
+plot(df_av45$NSFA_14,df_av45[,ancova_factors])
+
+
+ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y=ancova_factors,color='NSFA_6')) +
+  geom_point(size=3) +
+  geom_smooth(method='lm') +
+  scale_color_gradient2(limit=c(-2,2), low='#22FF00',mid='white',high='#FF0000',oob=squish) +
+  theme(panel.grid=element_blank(), 
+          panel.background=element_rect(fill='black'))
 
 
 to_graph = c('NSFA_6','NSFA_8','NSFA_0')

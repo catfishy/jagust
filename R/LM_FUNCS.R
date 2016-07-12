@@ -17,8 +17,24 @@ library(VGAM)
 library(lmtest)
 library(languageR)
 library(stringr)
+library(bootstrap)
 
 # FUNCTIONS
+
+theta.fit <- function(x,y){lsfit(x,y)}
+
+theta.predict <- function(fit,x){cbind(1,x)%*%fit$coef} 
+
+r2.shrinkage = function(form, target, data){
+  fit = lm(form,data)
+  X = getxy(nopattern_form,data)
+  y = as.numeric(data[,target])
+  results <- crossval(X,y,theta.fit,theta.predict,ngroup=20)
+  raw.r2 = cor(y, fit$fitted.values)**2 # raw R2 
+  cv.r2 = cor(y,results$cv.fit)**2 # cross-validated R2
+  c(raw.r2,cv.r2)
+}
+
 
 isPatternColumn = function(i){
   if (startsWith(i,'NSFA')) return(TRUE) else return(FALSE)

@@ -132,6 +132,7 @@ for (pcol in pattern_columns) {
   df_av45[,paste('ALL_CHANGE_',pcol,sep='')] = all_change
 }
 
+
 # plot factor 6 changes
 pcol = 'NSFA_6'
 p1 = ggplot(df_av45, aes_string(x=pcol, y=paste('ALL_CHANGE_',pcol,sep=''))) +

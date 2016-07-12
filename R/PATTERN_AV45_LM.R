@@ -38,10 +38,10 @@ to_standardize = c('CORTICAL_SUMMARY_prior','Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','Diag.AV45','Age.AV45','Gender','Edu..Yrs.')
 av45_columns = c('CORTICAL_SUMMARY_prior')
 
-target = "CORTICAL_SUMMARY_change"
+# target = "CORTICAL_SUMMARY_change"
 # target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
-# target = "ADAS_AV45_1"
+target = "ADAS_AV45_1"
 # target = "ADASslope_postAV45"
 # target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
@@ -63,6 +63,8 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 # valid_diags = c('EMCI')
 # valid_diags = c('LMCI')
 # valid_diags = c('AD')
+# valid_diags = c('EMCI','LMCI','AD')
+# valid_diags = c('LMCI','AD')
 
 
 #time_col_prefix = 'TIMEpostAV45_ADAS'
@@ -82,12 +84,13 @@ df_av45 = df_av45[non.na,]
 # remove target outliers
 target.mean = mean(df_av45[,target])
 target.sd = sd(df_av45[,target])
-df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*3,]
-df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*3,]
+df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*5,]
+df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
 
 # filter by diag or positivity
 df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
-df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
+# df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
+df_av45 = df_av45[which(df_av45[,'positive_prior'] == positive_value),]
 
 # make factors
 for (i in names(df_av45)){
@@ -103,9 +106,9 @@ naive_columns = Filter(isNaiveColumn,names(df_av45))
 
 
 # # standardize predictors
-cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,target)
-cross_normalization = preProcess(df_av45[,cross_to_standardize])
-df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
+# cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,target)
+# cross_normalization = preProcess(df_av45[,cross_to_standardize])
+# df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
 
 
 
@@ -154,7 +157,7 @@ nopattern.lars.test = data.frame(nopattern.lars.test[complete.cases(nopattern.la
 nopattern.lars.coef = coef(nopattern.lars.model, s=which.min(summary(nopattern.lars.model)$Cp), mode='step')
 nopattern.lars.test$name = names(nopattern.lars.coef[nopattern.lars.test[,'Predictor_Number']])
 nopattern.lars.test$coef = nopattern.lars.coef[nopattern.lars.test[,'Predictor_Number']]
-nopattern.lars.sig = nopattern.lars.test[nopattern.lars.test$P.value <= 0.1,]
+nopattern.lars.sig = nopattern.lars.test[nopattern.lars.test$P.value <= 0.05,]
 nopattern.lars.cp = min(summary(nopattern.lars.model)$Cp)
 nopattern.lars.r2 = nopattern.lars.model$R2[which.min(summary(nopattern.lars.model)$Cp)]
 nopattern.lars.n = attr(summary(nopattern.lars.model)$Cp,'n')
@@ -172,7 +175,7 @@ onlypattern.lars.test = data.frame(onlypattern.lars.test[complete.cases(onlypatt
 onlypattern.lars.coef = coef(onlypattern.lars.model, s=which.min(summary(onlypattern.lars.model)$Cp), mode='step')
 onlypattern.lars.test$name = names(onlypattern.lars.coef[onlypattern.lars.test[,'Predictor_Number']])
 onlypattern.lars.test$coef = onlypattern.lars.coef[onlypattern.lars.test[,'Predictor_Number']]
-onlypattern.lars.sig = onlypattern.lars.test[onlypattern.lars.test$P.value <= 0.1,]
+onlypattern.lars.sig = onlypattern.lars.test[onlypattern.lars.test$P.value <= 0.05,]
 onlypattern.lars.cp = min(summary(onlypattern.lars.model)$Cp)
 onlypattern.lars.r2 = onlypattern.lars.model$R2[which.min(summary(onlypattern.lars.model)$Cp)]
 onlypattern.lars.n = attr(summary(onlypattern.lars.model)$Cp,'n')
@@ -183,6 +186,12 @@ paste(onlypattern.lars.nonzero,collapse=' + ')
 paste(target,'~',paste(onlypattern.lars.sig[,'name'], collapse=' + '))
 
 
+
+# r2 shrinkage
+test1.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior + Gender'
+test2.form = 'ADAS_AV45_1 ~ NSFA_6 + NSFA_14'
+r2.shrinkage(test1.form, target, df_av45)
+r2.shrinkage(test2.form, target, df_av45)
 
 
 # ADAS likelihood test

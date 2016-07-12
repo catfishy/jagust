@@ -11,13 +11,14 @@ df_scores$NSFA_6_CLASS = as.factor(nsfa6.clust$classification - 1)
 df_scores$AD = as.factor(as.integer(df_scores$Diag.AV45 == 'AD'))
 
 valid_diags = c('N','SMC','EMCI','LMCI','AD')
+# valid_diags = c('EMCI','LMCI','AD')
 df_scores = df_scores[which(df_scores$Diag.AV45 %in% valid_diags),]
 df_scores$Diag.AV45 = as.factor(df_scores$Diag.AV45, levels=valid_diags)
 
-target = 'UW_MEM_AV45_1'
-target.slope = 'UW_MEM_slope'
-# target = 'ADAS_AV45_1'
-# target.slope = 'ADASslope_postAV45'
+# target = 'UW_MEM_AV45_1'
+# target.slope = 'UW_MEM_slope'
+target = 'ADAS_AV45_1'
+target.slope = 'ADASslope_postAV45'
 # target = 'AVLT_AV45_1'
 # target.slope = 'AVLT_slope_postAV45'
 # target = 'CSF_ABETA_closest_AV45_1'
@@ -44,17 +45,17 @@ target.mean = mean(df_scores[,target])
 target.sd = sd(df_scores[,target])
 target.slope.mean = mean(df_scores.slope[,target.slope])
 target.slope.sd = sd(df_scores.slope[,target.slope])
-df_scores = df_scores[df_scores[,target] <= target.mean+target.sd*3,]
-df_scores = df_scores[df_scores[,target] >= target.mean-target.sd*3,]
-df_scores.slope = df_scores.slope[df_scores.slope[,target.slope] <= target.slope.mean+target.slope.sd*3,]
-df_scores.slope = df_scores.slope[df_scores.slope[,target.slope] >= target.slope.mean-target.slope.sd*3,]
+df_scores = df_scores[df_scores[,target] <= target.mean+target.sd*5,]
+df_scores = df_scores[df_scores[,target] >= target.mean-target.sd*5,]
+df_scores.slope = df_scores.slope[df_scores.slope[,target.slope] <= target.slope.mean+target.slope.sd*5,]
+df_scores.slope = df_scores.slope[df_scores.slope[,target.slope] >= target.slope.mean-target.slope.sd*5,]
 nsfa.neg = df_scores[df_scores$NSFA_6_CLASS == 0,]
 nsfa.pos = df_scores[df_scores$NSFA_6_CLASS == 1,]
 nsfa.slope.neg = df_scores.slope[df_scores.slope$NSFA_6_CLASS == 0,]
 nsfa.slope.pos = df_scores.slope[df_scores.slope$NSFA_6_CLASS == 1,]
 
-# threshold_by = 'positive_prior'
-threshold_by = 'AV45_NONTP_wcereb_BIN1.11'
+threshold_by = 'positive_prior'
+# threshold_by = 'AV45_NONTP_wcereb_BIN1.11'
 suvr.neg = df_scores[df_scores[,threshold_by] == 0,]
 suvr.pos = df_scores[df_scores[,threshold_by] == 1,]
 suvr.slope.neg = df_scores.slope[df_scores.slope[,threshold_by] == 0,]
