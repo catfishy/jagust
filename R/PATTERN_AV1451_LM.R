@@ -46,10 +46,11 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
                   'AV1451_Braak6_CerebGray_BL')
 
 
-#target = "UW_EF_AV1451_1"
-target = "UW_MEM_AV1451_1"
-#target = "ADAS_AV1451_1"
-#target = "AVLT_AV1451_1"
+# target = "UW_EF_AV1451_1"
+# target = "UW_MEM_AV1451_1"
+target = "ADAS_AV1451_1"
+# target = "AVLT_AV1451_1"
+# target = 'MMSE_AV1451_1'
 
 output_folder = 'R/output_av1451/'
 
@@ -75,10 +76,10 @@ for (i in names(df_av1451)){
 df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 
 # standardize predictors
-cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
-cross_normalization = preProcess(df_av1451[,cross_to_standardize])
-df_av1451[,cross_to_standardize] = predict(cross_normalization, df_av1451[,cross_to_standardize])
-#df_av1451[,target] = scale(df_av1451[,target], center=TRUE, scale=FALSE)
+# cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
+# cross_normalization = preProcess(df_av1451[,cross_to_standardize])
+# df_av1451[,cross_to_standardize] = predict(cross_normalization, df_av1451[,cross_to_standardize])
+# df_av1451[,target] = scale(df_av1451[,target], center=TRUE, scale=FALSE)
 
 # # look at histograms
 # for (pcol in pattern_columns) {
@@ -118,23 +119,47 @@ braak_x = getxy(braak_form,df_av1451)
 y = as.numeric(df_av1451[,target])
 braak.lars.model = lars(braak_x,y,type='lasso')
 braak.lars.test = covTest(braak.lars.model,braak_x,y)$results
-braak.lars.sigcoef.idx = braak.lars.test[braak.lars.test[,'P-value'] < 0.1 & !is.na(braak.lars.test[,'P-value']),'Predictor_Number']
+braak.lars.test = data.frame(braak.lars.test[complete.cases(braak.lars.test),])
 braak.lars.coef = coef(braak.lars.model, s=which.min(summary(braak.lars.model)$Cp), mode='step')
+braak.lars.test$name = names(braak.lars.coef[braak.lars.test[,'Predictor_Number']])
+braak.lars.test$coef = braak.lars.coef[braak.lars.test[,'Predictor_Number']]
+braak.lars.sig = braak.lars.test[braak.lars.test$P.value <= 0.05,]
+braak.lars.cp = min(summary(braak.lars.model)$Cp)
 braak.lars.r2 = braak.lars.model$R2[which.min(summary(braak.lars.model)$Cp)]
-braak.lars.sigcoef = braak.lars.coef[braak.lars.sigcoef.idx]
-braak.lars.nonzerocoef = braak.lars.coef[braak.lars.coef != 0]
+braak.lars.n = attr(summary(braak.lars.model)$Cp,'n')
+braak.lars.p = NROW(braak.lars.coef[braak.lars.coef != 0])
+braak.lars.r2adj = r2adj(braak.lars.r2,braak.lars.n,braak.lars.p)
+braak.lars.nonzero = braak.lars.test[braak.lars.test$coef != 0,'name']
+paste(braak.lars.nonzero,collapse=' + ')
+paste(target,'~',paste(braak.lars.sig[,'name'], collapse=' + '))
 
 pattern_x = getxy(pattern_form,df_av1451)
 y = as.numeric(df_av1451[,target])
 pattern.lars.model = lars(pattern_x,y,type='lasso')
 pattern.lars.test = covTest(pattern.lars.model,pattern_x,y)$results
-pattern.lars.sigcoef.idx = pattern.lars.test[pattern.lars.test[,'P-value'] < 0.1 & !is.na(pattern.lars.test[,'P-value']),'Predictor_Number']
+pattern.lars.test = data.frame(pattern.lars.test[complete.cases(pattern.lars.test),])
 pattern.lars.coef = coef(pattern.lars.model, s=which.min(summary(pattern.lars.model)$Cp), mode='step')
+pattern.lars.test$name = names(pattern.lars.coef[pattern.lars.test[,'Predictor_Number']])
+pattern.lars.test$coef = pattern.lars.coef[pattern.lars.test[,'Predictor_Number']]
+pattern.lars.sig = pattern.lars.test[pattern.lars.test$P.value <= 0.05,]
+pattern.lars.cp = min(summary(pattern.lars.model)$Cp)
 pattern.lars.r2 = pattern.lars.model$R2[which.min(summary(pattern.lars.model)$Cp)]
-pattern.lars.sigcoef = pattern.lars.coef[pattern.lars.sigcoef.idx]
-pattern.lars.nonzerocoef = pattern.lars.coef[pattern.lars.coef != 0]
+pattern.lars.n = attr(summary(pattern.lars.model)$Cp,'n')
+pattern.lars.p = NROW(pattern.lars.coef[pattern.lars.coef != 0])
+pattern.lars.r2adj = r2adj(pattern.lars.r2,pattern.lars.n,pattern.lars.p)
+pattern.lars.nonzero = pattern.lars.test[pattern.lars.test$coef != 0,'name']
+paste(pattern.lars.nonzero,collapse=' + ')
+paste(target,'~',paste(pattern.lars.sig[,'name'], collapse=' + '))
 
-
+# r2 shrinkage
+test1.form = 'ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL'
+test2.form = 'ADAS_AV1451_1 ~ NSFA_0'
+# test3.form = 'ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL + AV1451_Braak1_CerebGray_BL + Age.AV1451 + Gender + APOE4_BIN'
+# test4.form = 'ADAS_AV1451_1 ~ NSFA_0 + NSFA_1 + NSFA_6 + NSFA_10 + NSFA_5 + NSFA_4 + Gender + NSFA_11 + NSFA_3 + NSFA_7 + Edu..Yrs. + NSFA_2 + NSFA_8 + NSFA_9'
+r2.shrinkage(test1.form, target, df_av1451)
+r2.shrinkage(test2.form, target, df_av1451)
+# r2.shrinkage(test3.form, target, df_av1451)
+# r2.shrinkage(test4.form, target, df_av1451)
 
 # Penalized LM
 braak.lasso.model = run.lasso(braak_form,df_av1451,'RMSE')

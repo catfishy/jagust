@@ -184,26 +184,27 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
-# data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-# pattern_mat = '../av45_pattern_bl.mat'
-# pattern_mat_2 = '../av45_pattern_scan2.mat'
-# pattern_mat_3 = '../av45_pattern_scan3.mat'
-# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-# nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
-# nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
-# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-# nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
-# # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-# model_file = None
-# output_file = '../nsfa/av45_pattern_dataset.csv'
-# topregions_output_file = '../nsfa/av45_top_regions.csv'
-# comp_output_file = '../nsfa/av45_roi_comparisons.csv'
-# comm_output_file = '../nsfa/av45_communality.csv'
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
-# dod = False
-# bilateral = True
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
+data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+pattern_mat = '../av45_pattern_bl.mat'
+pattern_mat_2 = '../av45_pattern_scan2.mat'
+pattern_mat_3 = '../av45_pattern_scan3.mat'
+nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
+nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
+nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
+# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+model_file = None
+output_file = '../nsfa/av45_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av45_top_regions.csv'
+comp_output_file = '../nsfa/av45_roi_comparisons.csv'
+comm_output_file = '../nsfa/av45_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
+dod = False
+bilateral = True
+ref = 'BIGREF2'
 
 # # FOR ADNI AV1451
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
@@ -225,28 +226,29 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
 # dod = False
 # bilateral = True
+# ref = 'WHOLECEREB'
 
 # FOR ADNI AV1451 UNILATERAL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
-data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
-pattern_mat = '../av1451uni_pattern_bl.mat'
-pattern_mat_2 = None
-pattern_mat_3 = None
-nsfa_activation_csv = '../nsfa/av1451uni_factor_activations.csv'
-nsfa_activation_csv_2 = None
-nsfa_activation_csv_3 = None
-nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
-nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
-model_file = None
-output_file = '../nsfa/av1451uni_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
-comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
-comm_output_file = '../nsfa/av1451uni_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451uni_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
-dod = False
-bilateral = False
-
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
+# data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+# pattern_mat = '../av1451uni_pattern_bl.mat'
+# pattern_mat_2 = None
+# pattern_mat_3 = None
+# nsfa_activation_csv = '../nsfa/av1451uni_factor_activations.csv'
+# nsfa_activation_csv_2 = None
+# nsfa_activation_csv_3 = None
+# nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
+# model_file = None
+# output_file = '../nsfa/av1451uni_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
+# comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451uni_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451uni_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
+# dod = False
+# bilateral = False
+# ref = 'WHOLECEREB'
 
 # FOR DOD AV45
 # master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
@@ -264,12 +266,14 @@ bilateral = False
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
 # dod = True
 # bilateral = True
+# ref = 'WHOLECEREB'
 
 scale_type = 'original'
 norm_type = 'L1'
 tracer = 'AV45'
 lut_file = "../FreeSurferColorLUT.txt"
-by_subj, threshold = importRoussetCSV(data_csv, translate_threshold=1.11)
+by_subj, threshold = importRoussetCSV(data_csv, ref_key=ref)
+print threshold
 
 lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
              'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','CEREBRAL_WHITE','BRAIN_STEM']
@@ -291,7 +295,7 @@ pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE
 if bilateral: # truncate keys
     pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
 
-data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer=tracer, ref_key='WHOLECEREB', norm_type=norm_type, bilateral=bilateral, dod=dod)
+data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer=tracer, ref_key=ref, norm_type=norm_type, bilateral=bilateral, dod=dod)
 pattern_bl_df = data['pattern_bl_df']
 pattern_scan2_df = data['pattern_scan2_df']
 pattern_scan3_df = data['pattern_scan3_df']

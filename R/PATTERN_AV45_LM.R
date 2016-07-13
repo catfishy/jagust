@@ -25,6 +25,7 @@ library(lmtest)
 library(languageR)
 library(stringr)
 library(covTest)
+library(scales)
 
 source('R/LM_FUNCS.R')
 
@@ -41,15 +42,15 @@ av45_columns = c('CORTICAL_SUMMARY_prior')
 # target = "CORTICAL_SUMMARY_change"
 # target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
-target = "ADAS_AV45_1"
+# target = "ADAS_AV45_1"
 # target = "ADASslope_postAV45"
 # target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
-# target = "UW_MEM_AV45_1"
+target = "UW_MEM_AV45_1"
 # target = "UW_MEM_slope"
 # target = "CSF_ABETA_closest_AV45_1"
 # target = "UCB_FS_HC.ICV_AV45_1"
-#target = "CSF_TAU_closest_AV45_1"
+# target = "CSF_TAU_closest_AV45_1"
 #target = "CSF_PTAU_closest_AV45_1"
 # target = 'MMSE_AV45_1'
 
@@ -65,7 +66,6 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 # valid_diags = c('AD')
 # valid_diags = c('EMCI','LMCI','AD')
 # valid_diags = c('LMCI','AD')
-
 
 #time_col_prefix = 'TIMEpostAV45_ADAS'
 #value_col_prefix = 'ADAScog'
@@ -89,8 +89,14 @@ df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
 
 # filter by diag or positivity
 df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
-# df_av45 = df_av45[which(df_av45[,'AV45_NONTP_wcereb_BIN1.11'] == positive_value),]
 df_av45 = df_av45[which(df_av45[,'positive_prior'] == positive_value),]
+
+# # filter by percentage around cutoff
+# cutoff = 0.87
+# keep = 250
+# df_av45$cutoff_diff = abs(df_av45$CORTICAL_SUMMARY_prior-cutoff)
+# df_av45 = df_av45[order(df_av45$cutoff_diff, decreasing=FALSE)[1:keep],]
+
 
 # make factors
 for (i in names(df_av45)){
@@ -148,7 +154,6 @@ naive_form = paste(base_form,paste(naive.addons,collapse=' '))
 
 
 # LARS lasso
-
 nopattern_x = getxy(nopattern_form,df_av45)
 y = as.numeric(df_av45[,target])
 nopattern.lars.model = lars(nopattern_x,y,type='lasso')
@@ -185,13 +190,47 @@ onlypattern.lars.nonzero = onlypattern.lars.test[onlypattern.lars.test$coef != 0
 paste(onlypattern.lars.nonzero,collapse=' + ')
 paste(target,'~',paste(onlypattern.lars.sig[,'name'], collapse=' + '))
 
+full_x = getxy(full_form,df_av45)
+y = as.numeric(df_av45[,target])
+full.lars.model = lars(full_x,y,type='lasso')
+full.lars.test = covTest(full.lars.model,full_x,y)$results
+full.lars.test = data.frame(full.lars.test[complete.cases(full.lars.test),])
+full.lars.coef = coef(full.lars.model, s=which.min(summary(full.lars.model)$Cp), mode='step')
+full.lars.test$name = names(full.lars.coef[full.lars.test[,'Predictor_Number']])
+full.lars.test$coef = full.lars.coef[full.lars.test[,'Predictor_Number']]
+full.lars.sig = full.lars.test[full.lars.test$P.value <= 0.05,]
+full.lars.cp = min(summary(full.lars.model)$Cp)
+full.lars.r2 = full.lars.model$R2[which.min(summary(full.lars.model)$Cp)]
+full.lars.n = attr(summary(full.lars.model)$Cp,'n')
+full.lars.p = NROW(full.lars.coef[full.lars.coef != 0])
+full.lars.r2adj = r2adj(full.lars.r2,full.lars.n,full.lars.p)
+full.lars.nonzero = full.lars.test[full.lars.test$coef != 0,'name']
+paste(full.lars.nonzero,collapse=' + ')
+paste(target,'~',paste(full.lars.sig[,'name'], collapse=' + '))
 
 
 # r2 shrinkage
-test1.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior + Gender'
-test2.form = 'ADAS_AV45_1 ~ NSFA_6 + NSFA_14'
+test1.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + APOE4_BIN + Gender + Edu..Yrs.'
+test2.form = 'UW_MEM_AV45_1 ~ NSFA_6 + NSFA_14 + NSFA_1'
+test3.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_0'
 r2.shrinkage(test1.form, target, df_av45)
 r2.shrinkage(test2.form, target, df_av45)
+r2.shrinkage(test3.form, target ,df_av45)
+
+toplot = 'NSFA_14'
+ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y=target,color=toplot)) +
+  geom_point(size=3) +
+  geom_smooth(method='lm') +
+  scale_color_gradient2(limit=c(-2,2), low='#22FF00',mid='white',high='#FF0000',oob=squish) +
+  theme(panel.grid=element_blank(), 
+        panel.background=element_rect(fill='black'))
+
+avPlots(lm(test1.form,df_av45))
+avPlots(lm(test2.form,df_av45))
+avPlots(lm(test3.form,df_av45))
+
+
+
 
 
 # ADAS likelihood test

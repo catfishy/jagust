@@ -27,9 +27,9 @@ theta.predict <- function(fit,x){cbind(1,x)%*%fit$coef}
 
 r2.shrinkage = function(form, target, data){
   fit = lm(form,data)
-  X = getxy(nopattern_form,data)
+  X = getxy(form,data)
   y = as.numeric(data[,target])
-  results <- crossval(X,y,theta.fit,theta.predict,ngroup=20)
+  results <- crossval(X,y,theta.fit,theta.predict,ngroup=10)
   raw.r2 = cor(y, fit$fitted.values)**2 # raw R2 
   cv.r2 = cor(y,results$cv.fit)**2 # cross-validated R2
   c(raw.r2,cv.r2)
@@ -238,16 +238,17 @@ run.lasso = function(form, dataset, metric) {
 }
 
 getxy = function(form, dataset) {
-  x = as.data.frame(model.matrix(as.formula(form),dataset))[,-1]
+  x = as.matrix(as.data.frame(model.matrix(as.formula(form),dataset))[,-1])
   nzv_cols = nearZeroVar(x)
   if (length(nzv_cols) > 0) {
     x = x[, -nzv_cols]
   }
-  corr_cols = findCorrelation(cor(x),.9)
-  if (length(corr_cols) > 0) {
-    x = x[, -corr_cols]
+  if (dim(x)[2] >1) {
+    corr_cols = findCorrelation(cor(x),.9)
+    if (length(corr_cols) > 0) {
+      x = x[, -corr_cols]
+    }
   }
-  
   colnames(x) = lapply(colnames(x), make.names)
   rownames(x) = NULL
   as.matrix(x)

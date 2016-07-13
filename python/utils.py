@@ -723,7 +723,7 @@ def ndcg(relevances, rank=20):
 
 
 
-def importRoussetCSV(rousset_csv, translate_threshold=1.11, as_df=False):
+def importRoussetCSV(rousset_csv,ref_key='WHOLECEREB', as_df=False):
     '''
     If include_threshold, translates to the new PVC threshold
     '''
@@ -743,7 +743,7 @@ def importRoussetCSV(rousset_csv, translate_threshold=1.11, as_df=False):
         for timepoint, tp_rows in subj_rows.groupby('timepoint'):
             pvc_df = tp_rows[['name','pvcval','nonpvcval','groupsize']]
             pvc_dict = pvc_df.set_index('name').to_dict(orient='index')
-            pvc_suvr = float(pvc_dict['COMPOSITE']['pvcval'])/float(pvc_dict['WHOLECEREB']['pvcval'])
+            pvc_suvr = float(pvc_dict['COMPOSITE']['pvcval'])/float(pvc_dict[ref_key]['pvcval'])
             nonpvc_suvr = float(pvc_dict['COMPOSITE']['nonpvcval'])/float(pvc_dict['WHOLECEREB']['nonpvcval'])
             slope_points.append((nonpvc_suvr,pvc_suvr))
             tp_results[timepoint] = pvc_dict
@@ -761,14 +761,11 @@ def importRoussetCSV(rousset_csv, translate_threshold=1.11, as_df=False):
     if as_df:
         by_subj = pd.DataFrame(by_subj).set_index('RID')
 
-    if translate_threshold is not None:
-        # determine threshold
-        slope, intercept, r, p, stderr = linregress([_[0] for _ in slope_points], [_[1] for _ in slope_points])
-        p = np.poly1d([slope, intercept])
-        new_threshold = round(p(translate_threshold),2)
-        return (by_subj, new_threshold)
-    else:
-        return (by_subj, None)
+    # determine threshold
+    slope, intercept, r, p, stderr = linregress([_[0] for _ in slope_points], [_[1] for _ in slope_points])
+    p = np.poly1d([slope, intercept])
+    new_threshold = round(p(1.11),2)
+    return (by_subj, new_threshold)
 
 
 def importRoussetResults(rousset_mat):

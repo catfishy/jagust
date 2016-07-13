@@ -35,9 +35,9 @@ from utils import importRoussetCSV, saveFakeAparcInput, importFreesurferLookup, 
 
 class DPGMM_SCALE(DPGMM):
 
-    def __init__(self, n_components=1, covariance_type='diag', 
+    def __init__(self, n_components=1, covariance_type='diag',
                  gamma_shape=1.0, gamma_inversescale=0.000001,
-                 random_state=None, tol=1e-3, verbose=0, n_iter=10, 
+                 random_state=None, tol=1e-3, verbose=0, n_iter=10,
                  min_covar=None, params='wmc', init_params='wmc'):
         self.gamma_shape = float(gamma_shape)
         self.gamma_inversescale = float(gamma_inversescale)
@@ -157,7 +157,7 @@ def compareTwoGroups(group1, group2, df, keys, adjust=True):
     hypos = len(keys)
     level = 0.05
     results = {}
-    
+
     def generateArgs(group1_members, group2_members, keys):
         for i, key in enumerate(keys):
             group1_vals = group1_members[key].dropna().tolist()
@@ -193,12 +193,12 @@ def group_comparisons(df, groups, keys, adjust=True):
     return data
 
 
-def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, 
+def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys,
         tracer='AV45', ref_key='WHOLECEREB', norm_type='L1', bilateral=True, dod=False):
     assert norm_type in set(['L1','L2','Linf'])
     assert tracer in set(['AV45','AV1451'])
-    assert ref_key in set(['WHOLECEREB'])
-
+    assert ref_key in set(['WHOLECEREB','BIGREF2','BIGREF'])
+    
     df = pd.read_csv(data_csv)
     if df['subject'].dtype != 'int64':
         df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
@@ -234,7 +234,7 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys,
         new_keys = joins.keys()
         new_size_keys = ['%s_SIZE' % _ for _ in new_keys]
         pivot_df = pivot_df[new_keys + new_size_keys]
-    
+
     # convert to SUVR + separate pattern region uptakes from lobe uptakes
     if ref_key not in pivot_df.columns:
         raise Exception("Ref Key %s not found in dataset" % ref_key)
@@ -368,7 +368,7 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys,
 
     # create result df
     results = []
-    for subj, rows in pivot_df.groupby(level=0):
+    for subj, rows in suvr_df.groupby(level=0):
         try:
             summary_prior = rows.loc[(subj,'BL'),'COMPOSITE']
             diag_prior = diags_df.loc[(subj,'BL'),'diag']
@@ -454,11 +454,11 @@ def bigGroups(result_df, threshold=10):
     return big_groups
 
 def fitNormalCdf(values, threshold):
-    g_1 = GMM(n_components=1, 
+    g_1 = GMM(n_components=1,
               covariance_type='full',
               tol=1e-6,
               n_iter=700,
-              params='wmc', 
+              params='wmc',
               init_params='wmc')
     g_1.fit([[_] for _ in values])
     mu_1, sigma_1 = (g_1.means_[0][0],np.sqrt(g_1.covars_[0][0][0]))
@@ -498,17 +498,17 @@ def parseConversions(groups, result_df, threshold, master_keys):
         # add cortical summary values
         cortical_summary_values = np.array(list(members_prior['CORTICAL_SUMMARY_prior']) + list(members_post['CORTICAL_SUMMARY_post']))
         cur_conversions['cortical_summary'] = cortical_summary_values.mean()
-        
+
         # calculate below threshold with fit
         # mu, sigma, cdf_val = fitNormalCdf(cortical_summary_values, threshold)
         # cur_conversions['below_threshold'] = cdf_val
-        
+
         # calculate raw below threshold percent
         cs_below_threshold = cortical_summary_values[cortical_summary_values <= threshold]
         cur_conversions['below_threshold'] = float(len(cs_below_threshold)) / float(len(cortical_summary_values))
 
         cur_conversions['cortical_summary_change'] = members_prior['CORTICAL_SUMMARY_change'].mean()
-        
+
         # add diagnostic counts
         prior_counts = Counter(list(members_prior['diag_prior']))
         prior_counts['MCI']  = prior_counts.get('EMCI',0) + prior_counts.get('LMCI',0)
@@ -548,7 +548,7 @@ def parseConversions(groups, result_df, threshold, master_keys):
         if total_counts > 0:
             pos_conversions = {k:v/total_counts for k,v in pos_conversions.items()}
         cur_conversions.update(pos_conversions)
-        
+
         # # add master field avgs
         # master_rows = result_df.loc[members_prior.index,master_keys]
         # master_counts = {"%s_N" % k: v for k,v in dict(master_rows.count()).iteritems()}
@@ -721,7 +721,7 @@ def graphNetworkConversions(groups, conversions, iterations=50, threshold=0.0, a
     plt.axis('off')
     plt.show()
 
-def plotValueScatter(result_df, groups, xys, fit_reg=False, test=True, show=False):  
+def plotValueScatter(result_df, groups, xys, fit_reg=False, test=True, show=False):
     figures = []
     for i, (x,y) in enumerate(xys):
         members = []
@@ -826,7 +826,7 @@ def plotValueBox(result_df, groups, value_key, save=False):
         plt.close()
     else:
         plt.show()
-    
+
 
 def flattenGroupComparisonResults(change_pvalues):
     flattened = []
@@ -868,7 +868,7 @@ def compareGroupPairs_worker(args):
     for k, (pval, m1, m2) in res.iteritems():
         expanded['%s_PVALUE' % k] = pval
         expanded['%s_MEAN1' % k] = m1
-        expanded['%s_MEAN2' % k] = m2 
+        expanded['%s_MEAN2' % k] = m2
     expanded['GROUP1'] = g1
     expanded['GROUP2'] = g2
     return expanded
@@ -925,7 +925,7 @@ def trainDPGMM(pattern_prior_df, pattern_post_df, result_df, covar_type, bilater
 
     # Choose alpha + do model selection
     components = len(patterns_only.index)
-    
+
     best_model = chooseBestModel(patterns_only, components, covar_type, gamma_shape=shape, gamma_inversescale=inversescale)
     alpha = best_model.alpha
     file_out = "%s_%s_%s_model.pkl" % (generateFileRoot(alpha, bilateral),covar_type,tracer)
@@ -1198,7 +1198,7 @@ def saveAV45LMEDataset(model, master_csv, pattern_prior_df, result_df, bilateral
     # drops rows with no pattern membership
     member_sums = full_df[list(valid_bl)].sum(axis=1)
     notmember = set(member_sums[member_sums==0].index)
-    full_df = full_df.drop(notmember) 
+    full_df = full_df.drop(notmember)
     all_output_file = '%s_AV45_ALL_longdata_slope.csv' % (generateFileRoot(model.alpha, bilateral))
     full_df.to_csv(all_output_file)
 
@@ -1225,7 +1225,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     proba_max_df = proba_df.max(axis=1)
     confident_assignments = proba_max_df[proba_max_df>=0.5].index
 
-    # Convert to categorical 
+    # Convert to categorical
     if categorize:
         for c in proba_df.columns:
             proba_df[c] = (proba_df[c]==proba_max_df)
@@ -1283,7 +1283,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
                 continue
             tp_tuple = (float(row[dt_key]),float(row[dv_key]))
             dep_by_subject[pid].append(tp_tuple)
-    
+
     # create longitudinal dataset
     full_df = pd.DataFrame()
     for pid, timepoints in dep_by_subject.iteritems():
@@ -1321,7 +1321,7 @@ def saveLMEDataset(model, master_csv, pattern_prior_df, result_df, dep_val_var, 
     # drops rows with no pattern membership
     member_sums = full_df[valid_patterns].sum(axis=1)
     notmember = set(member_sums[member_sums==0].index)
-    full_df = full_df.drop(notmember) 
+    full_df = full_df.drop(notmember)
     member_sums = slope_df[valid_patterns].sum(axis=1)
     notmember = set(member_sums[member_sums==0].index)
     slope_df = slope_df.drop(notmember)
@@ -1404,20 +1404,20 @@ if __name__ == '__main__':
                    'FDG_PONS_AV45_6MTHS','FDG_postAV45_slope']
     cat_keys = ['APOE4_BIN','APOE2_BIN','Gender','Handedness','SMOKING','DIABETES']
     summary_keys = ['CORTICAL_SUMMARY_post', 'CORTICAL_SUMMARY_prior', 'CORTICAL_SUMMARY_change']
-    pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE', 
-                    'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL', 
-                    'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL', 
-                    'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE', 
-                    'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL', 
-                    'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE', 
-                    'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL', 
-                    'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL', 
-                    'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS', 
-                    'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS', 
-                    'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL', 
-                    'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX', 
-                    'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER', 
-                    'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER', 
+    pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE',
+                    'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL',
+                    'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL',
+                    'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE',
+                    'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL',
+                    'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE',
+                    'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL',
+                    'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL',
+                    'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS',
+                    'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS',
+                    'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL',
+                    'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX',
+                    'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER',
+                    'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER',
                     'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER']
     if bilateral: # truncate keys
         pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
@@ -1439,18 +1439,18 @@ if __name__ == '__main__':
     rchange_df = data['change_df']
     pattern_col_order = list(pattern_prior_df.columns)
 
-    # Calculate 
+    # Calculate
     model_file = trainDPGMM(pattern_prior_df, pattern_post_df, result_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
 
     # Calculate regional change clusters
     model_file = trainChangeDPGMM(pattern_change_df, 'spherical', bilateral, tracer=tracer, scale_type=scale_type)
 
     # save patterns as mat file
-    scipy.io.savemat('av45_pattern_bl.mat',{'ID': list(pattern_bl_df.index), 
-                                            'Features': list(pattern_bl_df.columns), 
+    scipy.io.savemat('av45_pattern_bl.mat',{'ID': list(pattern_bl_df.index),
+                                            'Features': list(pattern_bl_df.columns),
                                             'Y':pattern_bl_df.T.as_matrix()})
-    scipy.io.savemat('av45_pattern_change.mat',{'ID': list(pattern_change_df.index), 
-                                                'Features': list(pattern_change_df.columns), 
+    scipy.io.savemat('av45_pattern_change.mat',{'ID': list(pattern_change_df.index),
+                                                'Features': list(pattern_change_df.columns),
                                                 'Y':pattern_change_df.T.as_matrix()})
 
     # Load
@@ -1594,4 +1594,3 @@ if __name__ == '__main__':
     plotValueScatter(result_df, [7,10], xys=to_scatter, fit_reg=True, test=True)
     plotValueScatter(result_df, [7,26], xys=to_scatter, fit_reg=True, test=True)
     plotValueScatter(result_df, [8,10], xys=to_scatter, fit_reg=True, test=True)
-

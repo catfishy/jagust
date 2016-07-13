@@ -51,12 +51,12 @@ braak_columns = c('AV1451_Braak12_CerebGray_BL',
                   'AV1451_Braak56_CerebGray_BL')
 
 
-valid_diags = c('N','EMCI','LMCI','AD')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 
 
 # IMPORT
-output_folder = 'R/output_av1451uni_ancova/'
-df_av1451 = read.csv('nsfa/av1451uni_pattern_dataset.csv')
+output_folder = 'R/output_av1451_ancova/'
+df_av1451 = read.csv('nsfa/av1451_pattern_dataset.csv')
 
 # ancova_factors = 'Age.AV1451 + Diag.AV1451 + APOE4_BIN'
 ancova_factors = 'Diag.AV1451'
@@ -132,7 +132,7 @@ for (i in 1:NROW(braak_formula)) {
 pvalues.corrected = p.adjust(pvalues,method='bonferroni')
 pvalues.sig = pvalues.corrected[pvalues.corrected < 0.05]
 
-pcol = 'NSFA_2'
+pcol = 'NSFA_0'
 
 # Diagnosis graphs
 p1 = ggplot(df_av1451, aes_string('Diag.AV1451',pcol)) +

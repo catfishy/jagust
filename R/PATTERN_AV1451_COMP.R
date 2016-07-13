@@ -53,10 +53,10 @@ braak_cum_columns = c('AV1451_Braak1_CerebGray_BL',
                       'AV1451_Braak6_CerebGray_Cum_BL')
 
 
-valid_diags = c('N','EMCI','LMCI','AD')
+valid_diags = c('N','SMC','EMCI','LMCI','AD')
 
 # IMPORT
-df_av1451 = read.csv('nsfa/av1451uni_pattern_dataset.csv')
+df_av1451 = read.csv('nsfa/av1451_pattern_dataset.csv')
 df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 df_av1451$Diag.AV1451 = factor(df_av1451$Diag.AV1451, levels=valid_diags)
 for (i in names(df_av1451)){
