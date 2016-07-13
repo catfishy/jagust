@@ -43,10 +43,10 @@ av45_columns = c('CORTICAL_SUMMARY_prior')
 # target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
 # target = "ADAS_AV45_1"
-# target = "ADASslope_postAV45"
+target = "ADASslope_postAV45"
 # target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
-target = "UW_MEM_AV45_1"
+# target = "UW_MEM_AV45_1"
 # target = "UW_MEM_slope"
 # target = "CSF_ABETA_closest_AV45_1"
 # target = "UCB_FS_HC.ICV_AV45_1"
@@ -82,10 +82,10 @@ non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,target)])
 df_av45 = df_av45[non.na,]
 
 # remove target outliers
-target.mean = mean(df_av45[,target])
-target.sd = sd(df_av45[,target])
-df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*5,]
-df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
+# target.mean = mean(df_av45[,target])
+# target.sd = sd(df_av45[,target])
+# df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*5,]
+# df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
 
 # filter by diag or positivity
 df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
@@ -93,7 +93,7 @@ df_av45 = df_av45[which(df_av45[,'positive_prior'] == positive_value),]
 
 # # filter by percentage around cutoff
 # cutoff = 0.87
-# keep = 250
+# keep = 300
 # df_av45$cutoff_diff = abs(df_av45$CORTICAL_SUMMARY_prior-cutoff)
 # df_av45 = df_av45[order(df_av45$cutoff_diff, decreasing=FALSE)[1:keep],]
 
@@ -210,9 +210,22 @@ paste(target,'~',paste(full.lars.sig[,'name'], collapse=' + '))
 
 
 # r2 shrinkage
-test1.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + APOE4_BIN + Gender + Edu..Yrs.'
-test2.form = 'UW_MEM_AV45_1 ~ NSFA_6 + NSFA_14 + NSFA_1'
-test3.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_0'
+# test1.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + Gender + Edu..Yrs.'
+# test2.form = 'UW_MEM_AV45_1 ~ NSFA_6 + NSFA_14 + NSFA_1'
+# test3.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_0'
+# test1.form = 'CORTICAL_SUMMARY_change ~ CORTICAL_SUMMARY_prior + APOE4_BIN'
+# test2.form = 'CORTICAL_SUMMARY_change ~ NSFA_6 + NSFA_5'
+# test3.form = 'CORTICAL_SUMMARY_change ~ NSFA_6 + NSFA_5'
+# test1.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior'
+# test2.form = 'ADAS_AV45_1 ~ NSFA_6 + NSFA_14'
+# test3.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_0'
+# test1.form = 'AVLT_AV45_1 ~ CORTICAL_SUMMARY_prior + Gender + Edu..Yrs.'
+# test2.form = 'AVLT_AV45_1 ~ NSFA_6 + NSFA_14 + Gender + NSFA_1'
+# test3.form = 'AVLT_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + Gender + NSFA_0'
+test1.form = 'ADASslope_postAV45 ~ CORTICAL_SUMMARY_prior'
+test2.form = 'ADASslope_postAV45 ~ NSFA_6 + NSFA_24 + NSFA_5'
+test3.form = 'ADASslope_postAV45 ~ CORTICAL_SUMMARY_prior'
+
 r2.shrinkage(test1.form, target, df_av45)
 r2.shrinkage(test2.form, target, df_av45)
 r2.shrinkage(test3.form, target ,df_av45)

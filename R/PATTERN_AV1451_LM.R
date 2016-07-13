@@ -48,7 +48,7 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
 
 # target = "UW_EF_AV1451_1"
 # target = "UW_MEM_AV1451_1"
-target = "ADAS_AV1451_1"
+# target = "ADAS_AV1451_1"
 # target = "AVLT_AV1451_1"
 # target = 'MMSE_AV1451_1'
 
@@ -151,15 +151,37 @@ pattern.lars.nonzero = pattern.lars.test[pattern.lars.test$coef != 0,'name']
 paste(pattern.lars.nonzero,collapse=' + ')
 paste(target,'~',paste(pattern.lars.sig[,'name'], collapse=' + '))
 
+full_x = getxy(full_form,df_av1451)
+y = as.numeric(df_av1451[,target])
+full.lars.model = lars(full_x,y,type='lasso')
+full.lars.test = covTest(full.lars.model,full_x,y)$results
+full.lars.test = data.frame(full.lars.test[complete.cases(full.lars.test),])
+full.lars.coef = coef(full.lars.model, s=which.min(summary(full.lars.model)$Cp), mode='step')
+full.lars.test$name = names(full.lars.coef[full.lars.test[,'Predictor_Number']])
+full.lars.test$coef = full.lars.coef[full.lars.test[,'Predictor_Number']]
+full.lars.sig = full.lars.test[full.lars.test$P.value <= 0.05,]
+full.lars.cp = min(summary(full.lars.model)$Cp)
+full.lars.r2 = full.lars.model$R2[which.min(summary(full.lars.model)$Cp)]
+full.lars.n = attr(summary(full.lars.model)$Cp,'n')
+full.lars.p = NROW(full.lars.coef[full.lars.coef != 0])
+full.lars.r2adj = r2adj(full.lars.r2,full.lars.n,full.lars.p)
+full.lars.nonzero = full.lars.test[full.lars.test$coef != 0,'name']
+paste(full.lars.nonzero,collapse=' + ')
+paste(target,'~',paste(full.lars.sig[,'name'], collapse=' + '))
+
 # r2 shrinkage
-test1.form = 'ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL'
-test2.form = 'ADAS_AV1451_1 ~ NSFA_0'
-# test3.form = 'ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL + AV1451_Braak1_CerebGray_BL + Age.AV1451 + Gender + APOE4_BIN'
-# test4.form = 'ADAS_AV1451_1 ~ NSFA_0 + NSFA_1 + NSFA_6 + NSFA_10 + NSFA_5 + NSFA_4 + Gender + NSFA_11 + NSFA_3 + NSFA_7 + Edu..Yrs. + NSFA_2 + NSFA_8 + NSFA_9'
+# test1.form = 'ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL'
+# test2.form = 'ADAS_AV1451_1 ~ NSFA_0'
+# test3.form = 'ADAS_AV1451_1 ~ NSFA_0'
+test1.form = 'AVLT_AV1451_1 ~ AV1451_Braak1_CerebGray_BL'
+test2.form = 'AVLT_AV1451_1 ~ NSFA_0'
+test3.form = 'AVLT_AV1451_1 ~ NSFA_0'
+
 r2.shrinkage(test1.form, target, df_av1451)
 r2.shrinkage(test2.form, target, df_av1451)
-# r2.shrinkage(test3.form, target, df_av1451)
-# r2.shrinkage(test4.form, target, df_av1451)
+r2.shrinkage(test3.form, target, df_av1451)
+
+
 
 # Penalized LM
 braak.lasso.model = run.lasso(braak_form,df_av1451,'RMSE')
