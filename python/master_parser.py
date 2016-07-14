@@ -96,7 +96,7 @@ def manualAddOns(master_df, rid_list):
 
 
 def syncAV1451RoussetResults(master_df, rousset_csv):
-    av1451_df, _ = importRoussetCSV(rousset_csv, translate_threshold=None, as_df=True)
+    av1451_df, _ = importRoussetCSV(rousset_csv, as_df=True)
     av1451_df['BRAAK12'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE'], ['BRAAK1','BRAAK2']) / av1451_df['CEREBGM']
     av1451_df['BRAAK34'] = df_mean(av1451_df, ['BRAAK3_SIZE','BRAAK4_SIZE'], ['BRAAK3','BRAAK4']) / av1451_df['CEREBGM']
     av1451_df['BRAAK56'] = df_mean(av1451_df, ['BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK5','BRAAK6']) / av1451_df['CEREBGM']
@@ -127,7 +127,7 @@ def syncAV1451RoussetResults(master_df, rousset_csv):
     return master_df
 
 def syncAV45RoussetResults(master_df, av45_rousset_csv):
-    av45_df, threshold = importRoussetCSV(av45_rousset_csv, translate_threshold=1.11, as_df=True)
+    av45_df, threshold = importRoussetCSV(av45_rousset_csv, as_df=True)
     av45_df = av45_df[['TP','COMPOSITE','WHOLECEREB','BIGREF']]
     av45_df['WCEREB_SUVR'] = av45_df['COMPOSITE']/av45_df['WHOLECEREB']
     av45_df['BIGREF_SUVR'] = av45_df['COMPOSITE']/av45_df['BIGREF']
@@ -1411,12 +1411,19 @@ def syncUCBFreesurferData(master_df, ucb_fs_volumes):
     headers += ['UCB_FS_postAV45_%s' % (i+1) for i in range(tmpts)]
     headers += ['UCB_FS_postAV45_count', 'UCB_FS_postAV45_interval',
                 'UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope',
-                'UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV45_1_DATE',
-                'UCB_FS_HC/ICV_AV45_2','UCB_FS_HC/ICV_AV45_2_DATE',
-                'UCB_FS_HC/ICV_AV45_3','UCB_FS_HC/ICV_AV45_3_DATE',
-                'UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_1_DATE',
-                'UCB_FS_HC/ICV_AV1451_2','UCB_FS_HC/ICV_AV1451_2_DATE',
-                'UCB_FS_HC/ICV_AV1451_3','UCB_FS_HC/ICV_AV1451_3_DATE']
+                'UCB_FS_HC/ICV_AV45_1',
+                'UCB_FS_HC/ICV_AV45_2',
+                'UCB_FS_HC/ICV_AV45_3',
+                'UCB_FS_HC/ICV_AV1451_1',
+                'UCB_FS_HC/ICV_AV1451_2',
+                'UCB_FS_HC/ICV_AV1451_3']
+    headers += ['UCB_FS_ICV_AV45_1','UCB_FS_AV45_1_DATE',
+                'UCB_FS_ICV_AV45_2','UCB_FS_AV45_2_DATE',
+                'UCB_FS_ICV_AV45_3','UCB_FS_AV45_3_DATE',
+                'UCB_FS_ICV_AV1451_1','UCB_FS_AV1451_1_DATE',
+                'UCB_FS_ICV_AV1451_2','UCB_FS_AV1451_2_DATE',
+                'UCB_FS_ICV_AV1451_3','UCB_FS_AV1451_3_DATE']
+
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -1438,31 +1445,45 @@ def syncUCBFreesurferData(master_df, ucb_fs_volumes):
         date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
         all_df = pd.concat((hcicv_bl_long,date_long),axis=1)
 
-        # Get closest av45 measurements
+        # Get closest av45 ICV measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'ICV', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        all_df['UCB_FS_ICV_AV45_1'] = closest_vals[0]
+        all_df['UCB_FS_ICV_AV45_2'] = closest_vals[1]
+        all_df['UCB_FS_ICV_AV45_3'] = closest_vals[2]
+
+        # Get closest AV1451 ICV measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'ICV', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        all_df['UCB_FS_ICV_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_ICV_AV1451_2'] = closest_vals[1]
+        all_df['UCB_FS_ICV_AV1451_3'] = closest_vals[2]
+
+        # Get closest av45 HC/ICV measurements
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         all_df['UCB_FS_HC/ICV_AV45_1'] = closest_vals[0]
-        all_df['UCB_FS_HC/ICV_AV45_1_DATE'] = closest_dates[0]
+        all_df['UCB_FS_AV45_1_DATE'] = closest_dates[0]
         all_df['UCB_FS_HC/ICV_AV45_2'] = closest_vals[1]
-        all_df['UCB_FS_HC/ICV_AV45_2_DATE'] = closest_dates[1]
+        all_df['UCB_FS_AV45_2_DATE'] = closest_dates[1]
         all_df['UCB_FS_HC/ICV_AV45_3'] = closest_vals[2]
-        all_df['UCB_FS_HC/ICV_AV45_3_DATE'] = closest_dates[2]
-        all_df['UCB_FS_HC/ICV_AV45_1_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV45_1_DATE'])
-        all_df['UCB_FS_HC/ICV_AV45_2_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV45_2_DATE'])
-        all_df['UCB_FS_HC/ICV_AV45_3_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV45_3_DATE'])
+        all_df['UCB_FS_AV45_3_DATE'] = closest_dates[2]
+        all_df['UCB_FS_AV45_1_DATE'] = pd.to_datetime(all_df['UCB_FS_AV45_1_DATE'])
+        all_df['UCB_FS_AV45_2_DATE'] = pd.to_datetime(all_df['UCB_FS_AV45_2_DATE'])
+        all_df['UCB_FS_AV45_3_DATE'] = pd.to_datetime(all_df['UCB_FS_AV45_3_DATE'])
 
-        # Get closest AV1451 measurements
+        # Get closest AV1451 HC/ICV measurements
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
         closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
         all_df['UCB_FS_HC/ICV_AV1451_1'] = closest_vals[0]
-        all_df['UCB_FS_HC/ICV_AV1451_1_DATE'] = closest_dates[0]
+        all_df['UCB_FS_AV1451_1_DATE'] = closest_dates[0]
         all_df['UCB_FS_HC/ICV_AV1451_2'] = closest_vals[1]
-        all_df['UCB_FS_HC/ICV_AV1451_2_DATE'] = closest_dates[1]
+        all_df['UCB_FS_AV1451_2_DATE'] = closest_dates[1]
         all_df['UCB_FS_HC/ICV_AV1451_3'] = closest_vals[2]
-        all_df['UCB_FS_HC/ICV_AV1451_3_DATE'] = closest_dates[2]
-        all_df['UCB_FS_HC/ICV_AV1451_1_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV1451_1_DATE'])
-        all_df['UCB_FS_HC/ICV_AV1451_2_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV1451_2_DATE'])
-        all_df['UCB_FS_HC/ICV_AV1451_3_DATE'] = pd.to_datetime(all_df['UCB_FS_HC/ICV_AV1451_3_DATE'])
+        all_df['UCB_FS_AV1451_3_DATE'] = closest_dates[2]
+        all_df['UCB_FS_AV1451_1_DATE'] = pd.to_datetime(all_df['UCB_FS_AV1451_1_DATE'])
+        all_df['UCB_FS_AV1451_2_DATE'] = pd.to_datetime(all_df['UCB_FS_AV1451_2_DATE'])
+        all_df['UCB_FS_AV1451_3_DATE'] = pd.to_datetime(all_df['UCB_FS_AV1451_3_DATE'])
 
         # Get slopes
         hcicv_bl_slope = df_slope(all_df, date_long.columns, hcicv_bl_long.columns, take_diff=False, exact=False)

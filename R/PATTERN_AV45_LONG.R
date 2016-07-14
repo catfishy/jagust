@@ -55,6 +55,33 @@ for (i in names(df_av45)){
 }
 
 
+pattern_columns = Filter(function(i) {startsWith(i,'NSFA_')}, names(df_av45))
+scan2_columns = Filter(function(i) {startsWith(i,'SCAN2_NSFA_')}, names(df_av45))
+scan3_columns = Filter(function(i) {startsWith(i,'SCAN3_NSFA_')}, names(df_av45))
+for (pcol in pattern_columns) {
+  scan2_col = gsub('NSFA_','SCAN2_NSFA_',pcol)
+  scan3_col = gsub('NSFA_','SCAN3_NSFA_',pcol)
+  scan2_change = (df_av45[,eval(scan2_col)]-df_av45[,eval(pcol)])/(df_av45$AV45_1_2_Diff)
+  scan3_change = (df_av45[,eval(scan3_col)]-df_av45[,eval(pcol)])/(df_av45$AV45_1_3_Diff)
+  all_change = scan3_change
+  all_change[is.na(all_change)] = scan2_change[is.na(all_change)]
+  df_av45[,paste('SCAN2_CHANGE_',pcol,sep='')] = scan2_change
+  df_av45[,paste('SCAN3_CHANGE_',pcol,sep='')] = scan3_change
+  df_av45[,paste('ALL_CHANGE_',pcol,sep='')] = all_change
+}
+
+# look at difference in change measures
+toplot = 'ALL_CHANGE_NSFA_5'
+ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y='CORTICAL_SUMMARY_change',color=toplot)) +
+  geom_point(size=3) +
+  geom_smooth(method='lm') +
+  scale_color_gradient2(low='#22FF00',mid='white',high='#FF0000',oob=squish) +
+  theme(panel.grid=element_blank(), 
+        panel.background=element_rect(fill='black'))
+
+
+
+
 # plot correlation with cortical summary
 pvc_r2 = summary(lm(NSFA_6 ~ CORTICAL_SUMMARY_prior, df_av45))$adj.r.squared
 nonpvc_r2 = summary(lm(NSFA_6 ~ AV45_NONTP_wcereb, df_av45))$adj.r.squared
@@ -91,12 +118,6 @@ p2 = ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y='NSFA_6')) +
   annotate("text",x=2.5,y=-1.5,size=18,label=paste("R2:",round(pvc_r2,3)))
 print(p2)
 
-
-
-
-pattern_columns = Filter(function(i) {startsWith(i,'NSFA_')}, names(df_av45))
-scan2_columns = Filter(function(i) {startsWith(i,'SCAN2_NSFA_')}, names(df_av45))
-scan3_columns = Filter(function(i) {startsWith(i,'SCAN3_NSFA_')}, names(df_av45))
 
 # pattern_columns = Filter(isPatternColumn,names(df_av45))
 # scan2_columns = Filter(isScan2Column,names(df_av45))
