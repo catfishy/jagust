@@ -40,10 +40,10 @@ demog_columns = c('RID','APOE4_BIN','Diag.AV45','Age.AV45','Gender','Edu..Yrs.')
 av45_columns = c('CORTICAL_SUMMARY_prior')
 
 # target = "CORTICAL_SUMMARY_change"
-target = 'CORTICAL_SUMMARY_prior'
+# target = 'CORTICAL_SUMMARY_prior'
 # target = "UW_EF_AV45_1"
 #target = "UW_EF_slope"
-# target = "ADAS_AV45_1"
+target = "ADAS_AV45_1"
 # target = "ADASslope_postAV45"
 # target = "AVLT_AV45_1"
 #target = "AVLT_slope_postAV45"
@@ -83,17 +83,18 @@ non.na = complete.cases(df_av45[,c(demog_columns,av45_columns,target)])
 df_av45 = df_av45[non.na,]
 
 # remove target outliers
-# target.mean = mean(df_av45[,target])
-# target.sd = sd(df_av45[,target])
-# df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*5,]
-# df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
+target.mean = mean(df_av45[,target])
+target.sd = sd(df_av45[,target])
+df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*5,]
+df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
 
 # filter by diag or positivity
 df_av45 = df_av45[which(df_av45$Diag.AV45 %in% valid_diags),]
-# df_av45 = df_av45[which(df_av45[,'positive_prior'] == positive_value),]
+df_av45 = df_av45[which(df_av45[,'positive_prior'] == positive_value),]
 
 # # filter by percentage around cutoff
-# cutoff = 0.87
+# # cutoff = 0.87
+# cutoff = 1.27
 # keep = 100
 # df_av45$cutoff_diff = abs(df_av45$CORTICAL_SUMMARY_prior-cutoff)
 # df_av45 = df_av45[order(df_av45$cutoff_diff, decreasing=FALSE)[1:keep],]
@@ -110,9 +111,7 @@ pattern_columns = Filter(isPatternColumn,names(df_av45))
 naive_columns = Filter(isNaiveColumn,names(df_av45))
 
 
-
-
-# # standardize predictors
+# # # standardize predictors
 # cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,target)
 # cross_normalization = preProcess(df_av45[,cross_to_standardize])
 # df_av45[,cross_to_standardize] = predict(cross_normalization, df_av45[,cross_to_standardize])
@@ -211,15 +210,15 @@ paste(target,'~',paste(full.lars.sig[,'name'], collapse=' + '))
 
 
 # r2 shrinkage
-# test1.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + Gender + Edu..Yrs.'
+# test1.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + Edu..Yrs.'
 # test2.form = 'UW_MEM_AV45_1 ~ NSFA_6 + NSFA_14 + NSFA_1'
-# test3.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_0'
-test1.form = 'CORTICAL_SUMMARY_change ~ CORTICAL_SUMMARY_prior + APOE4_BIN'
-test2.form = 'CORTICAL_SUMMARY_change ~ NSFA_5'
-test3.form = 'CORTICAL_SUMMARY_change ~ NSFA_5'
-# test1.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior'
-# test2.form = 'ADAS_AV45_1 ~ NSFA_6 + NSFA_14'
-# test3.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_0'
+# test3.form = 'UW_MEM_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_1'
+# test1.form = "CORTICAL_SUMMARY_change ~ CORTICAL_SUMMARY_prior + APOE4_BIN"
+# test2.form = 'CORTICAL_SUMMARY_change ~ NSFA_6'
+# test3.form = 'CORTICAL_SUMMARY_change ~ NSFA_6'
+test1.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior'
+test2.form = 'ADAS_AV45_1 ~ NSFA_6 + NSFA_14'
+test3.form = 'ADAS_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + NSFA_0'
 # test1.form = 'AVLT_AV45_1 ~ CORTICAL_SUMMARY_prior + Gender + Edu..Yrs.'
 # test2.form = 'AVLT_AV45_1 ~ NSFA_6 + NSFA_14 + Gender + NSFA_1'
 # test3.form = 'AVLT_AV45_1 ~ CORTICAL_SUMMARY_prior + NSFA_14 + Gender + NSFA_0'
@@ -227,11 +226,23 @@ test3.form = 'CORTICAL_SUMMARY_change ~ NSFA_5'
 # test2.form = 'ADASslope_postAV45 ~ NSFA_6 + NSFA_24 + NSFA_5'
 # test3.form = 'ADASslope_postAV45 ~ CORTICAL_SUMMARY_prior'
 
-r2.shrinkage(test1.form, target, df_av45)
-r2.shrinkage(test2.form, target, df_av45)
-r2.shrinkage(test3.form, target ,df_av45)
+test1_results = c()
+test2_results = c()
+test3_results = c()
+for (i in 1:50) {
+  test1_r2 = r2.shrinkage(test1.form, target, df_av45)[2]
+  test2_r2 = r2.shrinkage(test2.form, target, df_av45)[2]
+  test3_r2 = r2.shrinkage(test3.form, target ,df_av45)[2]
+  test1_results = c(test1_results,test1_r2)
+  test2_results = c(test2_results,test2_r2)
+  test3_results = c(test3_results,test3_r2)
+}
+mean(test1_results)
+mean(test2_results)
+mean(test3_results)
 
-toplot = 'NSFA_16'
+
+toplot = 'NSFA_14'
 ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y=target,color=toplot)) +
   geom_point(size=3) +
   geom_smooth(method='lm') +

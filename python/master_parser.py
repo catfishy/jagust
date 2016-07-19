@@ -712,7 +712,7 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
         data['Diag@AV45_3'] = closest_vals[2]
         # closest to AV1451 scans
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av1451_date1,av1451_date2,av1451_date3],day_limit=365*3/2)
         data['Diag@AV1451'] = closest_vals[0]
         data['Diag@AV1451_2'] = closest_vals[1]
         data['Diag@AV1451_3'] = closest_vals[2]
@@ -1403,7 +1403,42 @@ def syncUWData(master_df, uw_file, registry):
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
     return master_df
 
-def syncUCBFreesurferData(master_df, ucb_fs_volumes):
+def syncUCBFreesurferAV45SurfData(master_df, ucb_av45_fs_surfs):
+    fs_df = importFSSurfs(ucb_fs_surfs, as_df = True)
+    tmpts = max(Counter(fs_df.index).values())
+
+    headers = ['UCB_FS_TotalSurfArea_AV45_1',
+               'UCB_FS_TotalSurfArea_AV45_2',
+               'UCB_FS_TotalSurfArea_AV45_3',
+               'UCB_FS_NonSensorySurfArea_AV45_1',
+               'UCB_FS_NonSensorySurfArea_AV45_2',
+               'UCB_FS_NonSensorySurfArea_AV45_3']
+
+    def extraction_fn(rid, subj_rows):
+        data_row = {'RID': rid}
+        visits = set(subj_rows['Visit'])
+        if 'BL' in visits:
+            series = subj_rows[subj_rows.Visit == 'BL'].iloc[0]
+            data_row['UCB_FS_TotalSurfArea_AV45_1'] = series['TOTALAREA']
+            data_row['UCB_FS_NonSensorySurfArea_AV45_1'] = series['NONSENSORYAREA']
+        if 'Scan2' in visits:
+            series = subj_rows[subj_rows.Visit == 'Scan2'].iloc[0]
+            data_row['UCB_FS_TotalSurfArea_AV45_2'] = series['TOTALAREA']
+            data_row['UCB_FS_NonSensorySurfArea_AV45_2'] = series['NONSENSORYAREA']
+        if 'Scan3' in visits:
+            series = subj_rows[subj_rows.Visit == 'Scan3'].iloc[0]
+            data_row['UCB_FS_TotalSurfArea_AV45_3'] = series['TOTALAREA']
+            data_row['UCB_FS_NonSensorySurfArea_AV45_3'] = series['NONSENSORYAREA']
+        all_df = pd.DataFrame([data_row])
+        all_df.set_index('RID',inplace=True)
+        return all_df
+
+    parsed_df = parseSubjectGroups(fs_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
+
+
+def syncUCBFreesurferAV45VolData(master_df, ucb_fs_volumes):
     fs_df = importFSVolumes(ucb_fs_volumes, as_df=True)
     tmpts = max(Counter(fs_df.index).values())
 
@@ -1411,19 +1446,9 @@ def syncUCBFreesurferData(master_df, ucb_fs_volumes):
     headers += ['UCB_FS_postAV45_%s' % (i+1) for i in range(tmpts)]
     headers += ['UCB_FS_postAV45_count', 'UCB_FS_postAV45_interval',
                 'UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope',
-                'UCB_FS_HC/ICV_AV45_1',
-                'UCB_FS_HC/ICV_AV45_2',
-                'UCB_FS_HC/ICV_AV45_3',
-                'UCB_FS_HC/ICV_AV1451_1',
-                'UCB_FS_HC/ICV_AV1451_2',
-                'UCB_FS_HC/ICV_AV1451_3']
-    headers += ['UCB_FS_ICV_AV45_1','UCB_FS_AV45_1_DATE',
-                'UCB_FS_ICV_AV45_2','UCB_FS_AV45_2_DATE',
-                'UCB_FS_ICV_AV45_3','UCB_FS_AV45_3_DATE',
-                'UCB_FS_ICV_AV1451_1','UCB_FS_AV1451_1_DATE',
-                'UCB_FS_ICV_AV1451_2','UCB_FS_AV1451_2_DATE',
-                'UCB_FS_ICV_AV1451_3','UCB_FS_AV1451_3_DATE']
-
+                'UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV45_2','UCB_FS_HC/ICV_AV45_3',
+                'UCB_FS_ICV_AV45_1','UCB_FS_ICV_AV45_2','UCB_FS_ICV_AV45_3',
+                'UCB_FS_HC_AV45_1','UCB_FS_HC_AV45_2','UCB_FS_HC_AV45_3',]
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -1452,38 +1477,19 @@ def syncUCBFreesurferData(master_df, ucb_fs_volumes):
         all_df['UCB_FS_ICV_AV45_2'] = closest_vals[1]
         all_df['UCB_FS_ICV_AV45_3'] = closest_vals[2]
 
-        # Get closest AV1451 ICV measurements
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'ICV', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
-        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
-        all_df['UCB_FS_ICV_AV1451_1'] = closest_vals[0]
-        all_df['UCB_FS_ICV_AV1451_2'] = closest_vals[1]
-        all_df['UCB_FS_ICV_AV1451_3'] = closest_vals[2]
-
         # Get closest av45 HC/ICV measurements
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         all_df['UCB_FS_HC/ICV_AV45_1'] = closest_vals[0]
-        all_df['UCB_FS_AV45_1_DATE'] = closest_dates[0]
         all_df['UCB_FS_HC/ICV_AV45_2'] = closest_vals[1]
-        all_df['UCB_FS_AV45_2_DATE'] = closest_dates[1]
         all_df['UCB_FS_HC/ICV_AV45_3'] = closest_vals[2]
-        all_df['UCB_FS_AV45_3_DATE'] = closest_dates[2]
-        all_df['UCB_FS_AV45_1_DATE'] = pd.to_datetime(all_df['UCB_FS_AV45_1_DATE'])
-        all_df['UCB_FS_AV45_2_DATE'] = pd.to_datetime(all_df['UCB_FS_AV45_2_DATE'])
-        all_df['UCB_FS_AV45_3_DATE'] = pd.to_datetime(all_df['UCB_FS_AV45_3_DATE'])
 
-        # Get closest AV1451 HC/ICV measurements
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
-        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
-        all_df['UCB_FS_HC/ICV_AV1451_1'] = closest_vals[0]
-        all_df['UCB_FS_AV1451_1_DATE'] = closest_dates[0]
-        all_df['UCB_FS_HC/ICV_AV1451_2'] = closest_vals[1]
-        all_df['UCB_FS_AV1451_2_DATE'] = closest_dates[1]
-        all_df['UCB_FS_HC/ICV_AV1451_3'] = closest_vals[2]
-        all_df['UCB_FS_AV1451_3_DATE'] = closest_dates[2]
-        all_df['UCB_FS_AV1451_1_DATE'] = pd.to_datetime(all_df['UCB_FS_AV1451_1_DATE'])
-        all_df['UCB_FS_AV1451_2_DATE'] = pd.to_datetime(all_df['UCB_FS_AV1451_2_DATE'])
-        all_df['UCB_FS_AV1451_3_DATE'] = pd.to_datetime(all_df['UCB_FS_AV1451_3_DATE'])
+        # Get closest av45 HC measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HCV', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        all_df['UCB_FS_HC_AV45_1'] = closest_vals[0]
+        all_df['UCB_FS_HC_AV45_2'] = closest_vals[1]
+        all_df['UCB_FS_HC_AV45_3'] = closest_vals[2]
 
         # Get slopes
         hcicv_bl_slope = df_slope(all_df, date_long.columns, hcicv_bl_long.columns, take_diff=False, exact=False)
@@ -1500,6 +1506,15 @@ def syncUCBFreesurferData(master_df, ucb_fs_volumes):
 
     parsed_df = parseSubjectGroups(fs_df, extraction_fn)
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+
+    # convert some columns to strings because we need to keep sigfigs
+    to_convert = ['UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope',
+                  'UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV45_2',
+                  'UCB_FS_HC/ICV_AV45_3']
+    to_convert += ['UCB_FS_HC/ICV_%s' % (i+1) for i in range(tmpts)]
+    for col in to_convert:
+        master_df[col] = master_df[col].apply(lambda x: '%.6f' % x)
+
     return master_df
 
 
@@ -1742,12 +1757,14 @@ def runPipeline():
     master_df = syncMHISTData(master_df, mhist_file)
     print "\nSYNCING UW NEURO\n"
     master_df = syncUWData(master_df, uw_file, registry)
+    print "\nSYNCING UCB Freesurfer Surf\n"
+    master_df = syncUCBFreesurferAV45SurfData(master_df, ucb_fs_surfs)
+    print "\nSYNCING UCB Freesurfer Vol\n"
+    master_df = syncUCBFreesurferAV45VolData(master_df, ucb_fs_volumes)
     print "\nSYNCING UCSF LONG FreeSurfer\n"
     master_df = syncUCSFFreesurferData(master_df, ucsf_long_files, mprage_file, 'FSL')
     print "\nSYNCING UCSF CROSS FreeSurfer"
     master_df = syncUCSFFreesurferData(master_df, ucsf_cross_files, mprage_file, 'FSX')
-    print "\nSYNCING UCB Freesurfer\n"
-    master_df = syncUCBFreesurferData(master_df, ucb_fs_volumes)
     print "\nSYNCING FDG\n"
     master_df = syncFDGData(master_df, fdg_file, registry)
     print "\nSYNCING TBMSYN\n"
@@ -1818,6 +1835,7 @@ if __name__ == '__main__':
                         ('5.1','../docs/ADNI/UCSFFSX51_05_04_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
     ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_07-01-2016.csv'
+    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_07-15-2016.csv'
 
     # Run pipeline
     runPipeline()

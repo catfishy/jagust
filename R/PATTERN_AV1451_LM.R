@@ -48,7 +48,7 @@ braak_columns = c('AV1451_Braak1_CerebGray_BL',
 
 # target = "UW_EF_AV1451_1"
 # target = "UW_MEM_AV1451_1"
-# target = "ADAS_AV1451_1"
+target = "ADAS_AV1451_1"
 # target = "AVLT_AV1451_1"
 # target = 'MMSE_AV1451_1'
 
@@ -72,8 +72,15 @@ for (i in names(df_av1451)){
   }
 }
 
+# remove target outliers
+target.mean = mean(df_av45[,target])
+target.sd = sd(df_av45[,target])
+df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*5,]
+df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
+
+
 # Filter by diag
-df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
+# df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 
 # standardize predictors
 # cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
@@ -170,16 +177,27 @@ paste(full.lars.nonzero,collapse=' + ')
 paste(target,'~',paste(full.lars.sig[,'name'], collapse=' + '))
 
 # r2 shrinkage
-# test1.form = 'ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL'
-# test2.form = 'ADAS_AV1451_1 ~ NSFA_0'
-# test3.form = 'ADAS_AV1451_1 ~ NSFA_0'
-test1.form = 'AVLT_AV1451_1 ~ AV1451_Braak1_CerebGray_BL'
-test2.form = 'AVLT_AV1451_1 ~ NSFA_0'
-test3.form = 'AVLT_AV1451_1 ~ NSFA_0'
+test1.form = "ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL + AV1451_Braak3_CerebGray_BL"
+test2.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_9"
+test3.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_9"
+# test1.form = 'AVLT_AV1451_1 ~ AV1451_Braak1_CerebGray_BL'
+# test2.form = 'AVLT_AV1451_1 ~ NSFA_0'
+# test3.form = 'AVLT_AV1451_1 ~ NSFA_0'
 
-r2.shrinkage(test1.form, target, df_av1451)
-r2.shrinkage(test2.form, target, df_av1451)
-r2.shrinkage(test3.form, target, df_av1451)
+test1_results = c()
+test2_results = c()
+test3_results = c()
+for (i in 1:50) {
+  test1_r2 = r2.shrinkage(test1.form, target, df_av1451)[2]
+  test2_r2 = r2.shrinkage(test2.form, target, df_av1451)[2]
+  test3_r2 = r2.shrinkage(test3.form, target ,df_av1451)[2]
+  test1_results = c(test1_results,test1_r2)
+  test2_results = c(test2_results,test2_r2)
+  test3_results = c(test3_results,test3_r2)
+}
+mean(test1_results)
+mean(test2_results)
+mean(test3_results)
 
 
 

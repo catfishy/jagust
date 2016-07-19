@@ -723,7 +723,7 @@ def ndcg(relevances, rank=20):
 
 
 
-def importRoussetCSV(rousset_csv,ref_key='WHOLECEREB', as_df=False):
+def importRoussetCSV(rousset_csv, ref_key='WHOLECEREB', as_df=False):
     '''
     If include_threshold, translates to the new PVC threshold
     '''
@@ -1969,6 +1969,64 @@ def importAV45(av45_file, as_df=False):
     else:
         return convertToSubjDict(df,sort_by='EXAMDATE')
 
+def importFSSurfs(surf_file, as_df=False):
+    df = pd.read_csv(surf_file)
+    df.loc[:,'RID'] = df.loc[:,'SubjectID'].apply(lambda x: int(x.split('-')[-1]))
+
+    allregion = ['bankssts_area',
+                 'caudalanteriorcingulate_area',
+                 'caudalmiddlefrontal_area',
+                 'cuneus_area',
+                 'entorhinal_area',
+                 'fusiform_area',
+                 'inferiorparietal_area',
+                 'inferiortemporal_area',
+                 'isthmuscingulate_area',
+                 'lateraloccipital_area',
+                 'lateralorbitofrontal_area',
+                 'lingual_area',
+                 'medialorbitofrontal_area',
+                 'middletemporal_area',
+                 'parahippocampal_area',
+                 'paracentral_area',
+                 'parsopercularis_area',
+                 'parsorbitalis_area',
+                 'parstriangularis_area',
+                 'pericalcarine_area',
+                 'postcentral_area',
+                 'posteriorcingulate_area',
+                 'precentral_area',
+                 'precuneus_area',
+                 'rostralanteriorcingulate_area',
+                 'rostralmiddlefrontal_area',
+                 'superiorfrontal_area',
+                 'superiorparietal_area',
+                 'superiortemporal_area',
+                 'supramarginal_area',
+                 'frontalpole_area',
+                 'temporalpole_area',
+                 'transversetemporal_area',
+                 'insula_area',
+                 'WhiteSurfArea_area']
+    nonsensoryregion = [_ for _ in allregion if _ not in ['precentral_area',
+                                                          'postcentral_area',
+                                                          'cuneus_area',
+                                                          'lingual_area',
+                                                          'lateraloccipital_area']]
+
+    total_sum = ['lh_%s' % _ for _ in allregion] + ['rh_%s' % _ for _ in allregion]
+    nonsensory_sum = ['lh_%s' % _ for _ in nonsensoryregion] + ['rh_%s' % _ for _ in nonsensoryregion]
+    df['TOTALAREA'] = df[total_sum].sum(axis=1)
+    df['NONSENSORYAREA'] = df[nonsensory_sum].sum(axis=1)
+
+    df = df[['RID','Visit','TOTALAREA','NONSENSORYAREA']]
+    df.dropna(inplace=True)
+    df.set_index('RID',inplace=True)
+
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by=None)
 
 def importFSVolumes(vol_file, as_df=False):
     df = pd.read_csv(vol_file)

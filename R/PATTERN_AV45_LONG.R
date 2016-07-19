@@ -79,7 +79,12 @@ ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y='CORTICAL_SUMMARY_change'
   theme(panel.grid=element_blank(), 
         panel.background=element_rect(fill='black'))
 
-
+ggplot(df_av45,aes_string(x='CORTICAL_SUMMARY_prior',y='NSFA_6',color='NSFA_5')) +
+  geom_point(size=3) +
+  geom_smooth(method='lm') +
+  scale_color_gradient2(low='#22FF00',mid='white',high='#FF0000',oob=squish) +
+  theme(panel.grid=element_blank(), 
+        panel.background=element_rect(fill='black'))
 
 
 # plot correlation with cortical summary

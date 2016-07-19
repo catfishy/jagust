@@ -4,6 +4,7 @@ import cPickle
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 import scipy
+import scipy.io as sio
 
 from utils import *
 from patterns import parseRawDataset, scaleRawInput
@@ -170,6 +171,9 @@ def compareToBraakStages(loading_df, bilateral, cum=False):
     df = pd.DataFrame(results).set_index('FACTOR')
     return df
 
+def saveRegionMask(regions, output_file):
+    sio.savemat(output_file, {'regions': [{'inds': regions, 'val': 1.0}]})
+
 def savePatternAsAparc(df, lut_file, bilateral, out_template):
     if bilateral:
         index_lookup = bilateralTranslations(lut_file)
@@ -204,7 +208,8 @@ nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
 igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
 dod = False
 bilateral = True
-ref = 'BIGREF2'
+ref = 'WHOLECEREB'
+# ref = 'BIGREF2'
 
 # # FOR ADNI AV1451
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
@@ -267,6 +272,19 @@ ref = 'BIGREF2'
 # dod = True
 # bilateral = True
 # ref = 'WHOLECEREB'
+
+# Save CS and braak region masks
+av45_cs_mask_file = "../output/fake_aparc_inputs/av45_cs_mask.mat"
+av1451_braak12_mask_file = "../output/fake_aparc_inputs/av1451_braak12_mask.mat"
+av1451_braak34_mask_file = "../output/fake_aparc_inputs/av1451_braak34_mask.mat"
+av1451_braak56_mask_file = "../output/fake_aparc_inputs/av1451_braak56_mask.mat"
+saveRegionMask(SUMMARY, av45_cs_mask_file)
+saveRegionMask(BRAAK1+BRAAK2, av1451_braak12_mask_file)
+saveRegionMask(BRAAK3+BRAAK4, av1451_braak34_mask_file)
+saveRegionMask(BRAAK5+BRAAK6, av1451_braak56_mask_file)
+sys.exit(1)
+
+
 
 scale_type = 'original'
 norm_type = 'L1'
