@@ -23,15 +23,16 @@ RID_ADDONS = [78,93,108,458,514,691,724,739,821,853,916,1080,1271]
 ######### SYNCING INFRASTRUCTURE (MOST FUNCTIONS DEPEND ON THESE) ##################
 
 def getAV45Dates(rid, master_df):
-    bl_av45 = av45_2 = av45_3 = np.nan
+    bl_av45 = av45_2 = av45_3 = av45_4 = np.nan
     try:
         row = master_df.loc[rid]
         bl_av45 = row.get('AV45_Date')
         av45_2 = row.get('AV45_2_Date')
         av45_3 = row.get('AV45_3_Date')
+        av45_4 = row.get('AV45_4_Date')
     except Exception as e:
         pass
-    return (bl_av45, av45_2, av45_3)
+    return (bl_av45, av45_2, av45_3, av45_4)
 
 def getAV1451Dates(rid, master_df):
     bl_av1451 = av1451_2 = av1451_3 = np.nan
@@ -195,7 +196,7 @@ def syncFAQData(master_df, faq_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
 
         # get longitudinal measurements
         subj_rows['RID'] = rid
@@ -247,7 +248,7 @@ def syncNPIData(master_df, npi_file):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
 
         # get longitudinal measurements
         subj_rows['RID'] = rid
@@ -315,7 +316,7 @@ def syncCDRData(master_df, cdr_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
         data = {'RID': rid}
 
@@ -373,7 +374,7 @@ def syncGDData(master_df, gd_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Get long measurements
@@ -437,7 +438,7 @@ def syncADASCogData(master_df, adni1_adas_file, adnigo2_adas_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Get long measurements
@@ -503,7 +504,7 @@ def syncMMSEData(master_df, mmse_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Get long measurements
@@ -568,7 +569,7 @@ def syncAVLTData(master_df, neuro_battery_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Get long measurements
@@ -705,7 +706,7 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
                 'Baseline': bl_visit,
                 'FollowupTimetoDX': (pivot_date-bl_visit).days/365.25}
         # closest to AV45 scans
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
         data['Diag@AV45'] = closest_vals[0]
         data['Diag@AV45_2'] = closest_vals[1]
@@ -741,7 +742,7 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
 def syncAV1451Data(master_df, av1451_file):
     av1451_df = importAV1451(av1451_file, as_df=True)
 
-    valid_timepoints = ['BL', 'Scan2', 'Scan3']
+    valid_timepoints = ['BL', 'Scan2']
     headers = ['AV1451_Braak12_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak34_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak56_CerebGray_%s' % tp for tp in valid_timepoints]
@@ -758,20 +759,21 @@ def syncAV1451Data(master_df, av1451_file):
     headers += ['AV1451_Braak6_CerebGray_Cum_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_WM_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_WM_CerebGray_%s' % tp for tp in valid_timepoints]
-
+    headers += ['AV1451_%s_closest_AV45_interval' % tp for tp in valid_timepoints]
+    headers += ['AV1451_%s_closest_AV45_wcereb' % tp for tp in valid_timepoints]
+    headers += ['AV1451_%s_closest_AV45_wcereb_BIN1.11' % tp for tp in valid_timepoints]
+    headers += ['AV1451_%s_closest_AV45_wcereb_retroSlope' % tp for tp in valid_timepoints]
     after = [_ for _ in master_df.columns if _.startswith('AV45_') and 'PVC' not in _][-1]
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE', inplace=True)
+        av45_dates = [_ for _ in getAV45Dates(rid, master_df) if not isnan(_)]
+        av1451_dates = getAV1451Dates(rid, master_df)
         data = {'RID': int(rid)}
         for i, (idx, row) in enumerate(subj_rows.iterrows()):
-            if i == 0:
-                tp = 'BL'
-            elif i == 1:
-                tp = 'Scan2'
-            elif i == 2:
-                tp = 'Scan3'
-            else:
+            try:
+                tp = valid_timepoints[i]
+            except:
                 raise Exception("Raise # of AV1451 timepoints")
 
             # look at white matter
@@ -820,6 +822,19 @@ def syncAV1451Data(master_df, av1451_file):
             data['AV1451_WM_%s' % tp] = wm
             data['AV1451_WM_CerebGray_%s' % tp] = wm / cerebg
 
+            # get closest AV45 data
+            scan_date = av1451_dates[i]
+            if len(av45_dates) > 0:
+                av45_idx, av45_date = sorted(enumerate(av45_dates),key=lambda x: abs(x[1]-scan_date).days)[0]
+                av45_interval = (av45_date-scan_date).days
+                if abs(av45_interval) <= 730:
+                    # add in closest AV45 fields
+                    data['AV1451_%s_closest_AV45_interval' % tp] = av45_interval
+                    data['AV1451_%s_closest_AV45_wcereb' % tp] = master_df.loc[rid,'AV45_NONTP_%s_wcereb' % (av45_idx+1,)]
+                    data['AV1451_%s_closest_AV45_wcereb_BIN1.11' % tp] = master_df.loc[rid,'AV45_NONTP_%s_wcereb_BIN1.11' % (av45_idx+1,)]
+                    if av45_idx > 0:
+                        data['AV1451_%s_closest_AV45_wcereb_retroSlope' % tp] = master_df.loc[rid,'AV45_NONTP_wcereb_Slope_%spts' % (av45_idx+1,)]
+
         return pd.DataFrame([data]).set_index('RID')
 
     parsed_df = parseSubjectGroups(av1451_df, extraction_fn)
@@ -845,26 +860,27 @@ def syncAV45Data(master_df, av45_file, suffix=None):
 
 
 def parseAV45Entries(rid, subj_rows, suffix=None):
+    timepoints = 4
     subj_rows.sort_values(by='EXAMDATE', inplace=True)
     exam_times = list(subj_rows['EXAMDATE'])
     exam_timedeltas = [(_-exam_times[0]).days / 365.0 for _ in exam_times]
 
-    wm70_composite_keys = ['AV45_WM70/composite', 'AV45_2_WM70/composite', 'AV45_3_WM70/composite']
-    wm70_cerebg_keys = ['AV45_WM70/cerebg', 'AV45_2_WM70/cerebg', 'AV45_3_WM70/cerebg']
-    wm70_wcereb_keys = ['AV45_WM70/wcereb', 'AV45_2_WM70/wcereb', 'AV45_3_WM70/wcereb']
+    wm70_composite_keys = ['AV45_%s_WM70/composite' % (i+1,) for i in range(timepoints)]
+    wm70_cerebg_keys = ['AV45_%s_WM70/cerebg' % (i+1,) for i in range(timepoints)]
+    wm70_wcereb_keys = ['AV45_%s_WM70/wcereb' % (i+1,) for i in range(timepoints)]
     unilateral_keys = ['AV45_LeftPutamen/WM70','AV45_RightPutamen/WM70',
                        'AV45_LeftCaudate/WM70','AV45_RightCaudate/WM70',
                        'AV45_LeftPallidum/WM70','AV45_RightPallidum/WM70']
-    bigref_keys = ['AV45_BigRef','AV45_2_BigRef','AV45_3_BigRef'] # assuming composite ROI
-    wm70_keys = ['AV45_WM70','AV45_2_WM70','AV45_3_WM70'] # assuming composite ROI
-    cerebg_keys = ['AV45_cerebg','AV45_2_cerebg','AV45_3_cerebg'] # assuming composite ROI
-    wcereb_keys = ['AV45_wcereb','AV45_2_wcereb','AV45_3_wcereb'] # assuming composite ROI
-    brainstem_keys = ['AV45_brainstem','AV45_2_brainstem','AV45_3_brainstem'] # assuming composite ROI
-    wmratio_keys = ['AV45_WMratio','AV45_2_WMratio','AV45_3_WMratio']
-    frontal_bigref_keys = ['AV45_Frontal/BigRef','AV45_2_Frontal/BigRef','AV45_3_Frontal/BigRef']
-    cingulate_bigref_keys = ['AV45_Cingulate/BigRef','AV45_2_Cingulate/BigRef','AV45_3_Cingulate/BigRef']
-    parietal_bigref_keys = ['AV45_Parietal/BigRef','AV45_2_Parietal/BigRef','AV45_3_Parietal/BigRef']
-    temporal_bigref_keys = ['AV45_Temporal/BigRef','AV45_2_Temporal/BigRef','AV45_3_Temporal/BigRef']
+    bigref_keys = ['AV45_%s_BigRef' % (i+1,) for i in range(timepoints)]
+    wm70_keys = ['AV45_%s_WM70' % (i+1,) for i in range(timepoints)]
+    cerebg_keys = ['AV45_%s_cerebg' % (i+1,) for i in range(timepoints)]
+    wcereb_keys = ['AV45_%s_wcereb' % (i+1,) for i in range(timepoints)]
+    # brainstem_keys = ['AV45_brainstem','AV45_2_brainstem','AV45_3_brainstem'] # assuming composite ROI
+    wmratio_keys = ['AV45_%s_WMratio' % (i+1,) for i in range(timepoints)]
+    frontal_bigref_keys = ['AV45_%s_Frontal/BigRef' % (i+1,) for i in range(timepoints)]
+    cingulate_bigref_keys = ['AV45_%s_Cingulate/BigRef' % (i+1,) for i in range(timepoints)]
+    parietal_bigref_keys = ['AV45_%s_Parietal/BigRef' % (i+1,) for i in range(timepoints)]
+    temporal_bigref_keys = ['AV45_%s_Temporal/BigRef' % (i+1,) for i in range(timepoints)]
 
     # generate additional keys and arrange into header list
     all_wm70_composite_keys = wm70_composite_keys + \
@@ -872,21 +888,21 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                          ["%s_pchange_ABS" % _ for _ in wm70_composite_keys[1:]] + \
                          ["%s_diff" % _ for _ in wm70_composite_keys[1:]] + \
                          ["%s_diff_ABS" % _ for _ in wm70_composite_keys[1:]] + \
-                         ['AV45_WM70/composite_Slope_2pts', 'AV45_WM70/composite_Slope_3pts'] + \
+                         ['AV45_WM70/composite_Slope_2pts', 'AV45_WM70/composite_Slope_3pts', 'AV45_WM70/composite_Slope_4pts'] + \
                          ['AV45_WM70/composite_Slope_1and3', 'AV45_WM70/composite_Slope_2and3']
     all_wm70_cerebg_keys = wm70_cerebg_keys + \
                            ["%s_pchange" % _ for _ in wm70_cerebg_keys[1:]] + \
                            ["%s_pchange_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
                            ["%s_diff" % _ for _ in wm70_cerebg_keys[1:]] + \
                            ["%s_diff_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
-                           ['AV45_WM70/cerebg_Slope_2pts', 'AV45_WM70/cerebg_Slope_3pts'] + \
+                           ['AV45_WM70/cerebg_Slope_2pts', 'AV45_WM70/cerebg_Slope_3pts', 'AV45_WM70/cerebg_Slope_4pts'] + \
                            ['AV45_WM70/cerebg_Slope_1and3', 'AV45_WM70/cerebg_Slope_2and3']
     all_wm70_wcereb_keys = wm70_wcereb_keys + \
                            ["%s_pchange" % _ for _ in wm70_wcereb_keys[1:]] + \
                            ["%s_pchange_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
                            ["%s_diff" % _ for _ in wm70_wcereb_keys[1:]] + \
                            ["%s_diff_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
-                           ['AV45_WM70/wcereb_Slope_2pts', 'AV45_WM70/wcereb_Slope_3pts'] + \
+                           ['AV45_WM70/wcereb_Slope_2pts', 'AV45_WM70/wcereb_Slope_3pts', 'AV45_WM70/wcereb_Slope_4pts'] + \
                            ['AV45_WM70/wcereb_Slope_1and3', 'AV45_WM70/wcereb_Slope_2and3']
     all_unilateral_keys = unilateral_keys
     all_bigref_keys = bigref_keys + \
@@ -895,7 +911,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                       ["%s_diff" % _ for _ in bigref_keys[1:]] + \
                       ["%s_diff_ABS" % _ for _ in bigref_keys[1:]] + \
                       ["%s_BIN.79" % _ for _ in bigref_keys] + \
-                      ['AV45_BigRef_Slope_2pts', 'AV45_BigRef_Slope_3pts'] + \
+                      ['AV45_BigRef_Slope_2pts', 'AV45_BigRef_Slope_3pts', 'AV45_BigRef_Slope_4pts'] + \
                       ['AV45_BigRef_Slope_1and3', 'AV45_BigRef_Slope_2and3']
     all_wm70_keys = wm70_keys + \
                     ["%s_pchange" % _ for _ in wm70_keys[1:]] + \
@@ -903,7 +919,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                     ["%s_diff" % _ for _ in wm70_keys[1:]] + \
                     ["%s_diff_ABS" % _ for _ in wm70_keys[1:]] + \
                     ["%s_BIN.62" % _ for _ in wm70_keys] + \
-                    ['AV45_WM70_Slope_2pts', 'AV45_WM70_Slope_3pts'] + \
+                    ['AV45_WM70_Slope_2pts', 'AV45_WM70_Slope_3pts', 'AV45_WM70_Slope_4pts'] + \
                     ['AV45_WM70_Slope_1and3', 'AV45_WM70_Slope_2and3']
     all_cerebg_keys = cerebg_keys + \
                     ["%s_pchange" % _ for _ in cerebg_keys[1:]] + \
@@ -911,7 +927,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                     ["%s_diff" % _ for _ in cerebg_keys[1:]] + \
                     ["%s_diff_ABS" % _ for _ in cerebg_keys[1:]] + \
                     ["%s_BIN1.26" % _ for _ in cerebg_keys] + \
-                    ['AV45_cerebg_Slope_2pts', 'AV45_cerebg_Slope_3pts'] + \
+                    ['AV45_cerebg_Slope_2pts', 'AV45_cerebg_Slope_3pts', 'AV45_cerebg_Slope_4pts'] + \
                     ['AV45_cerebg_Slope_1and3', 'AV45_cerebg_Slope_2and3']
     all_wcereb_keys = wcereb_keys + \
                     ["%s_pchange" % _ for _ in wcereb_keys[1:]] + \
@@ -919,42 +935,42 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                     ["%s_diff" % _ for _ in wcereb_keys[1:]] + \
                     ["%s_diff_ABS" % _ for _ in wcereb_keys[1:]] + \
                     ["%s_BIN1.11" % _ for _ in wcereb_keys] + \
-                    ['AV45_wcereb_Slope_2pts', 'AV45_wcereb_Slope_3pts'] + \
+                    ['AV45_wcereb_Slope_2pts', 'AV45_wcereb_Slope_3pts', 'AV45_wcereb_Slope_4pts'] + \
                     ['AV45_wcereb_Slope_1and3', 'AV45_wcereb_Slope_2and3']
-    all_brainstem_keys = brainstem_keys + \
-                    ["%s_pchange" % _ for _ in brainstem_keys[1:]] + \
-                    ["%s_pchange_ABS" % _ for _ in brainstem_keys[1:]] + \
-                    ["%s_diff" % _ for _ in brainstem_keys[1:]] + \
-                    ["%s_diff_ABS" % _ for _ in brainstem_keys[1:]] + \
-                    ["%s_BIN.79" % _ for _ in brainstem_keys] + \
-                    ['AV45_brainstem_Slope_2pts', 'AV45_brainstem_Slope_3pts'] + \
-                    ['AV45_brainstem_Slope_1and3', 'AV45_brainstem_Slope_2and3']
+    # all_brainstem_keys = brainstem_keys + \
+    #                 ["%s_pchange" % _ for _ in brainstem_keys[1:]] + \
+    #                 ["%s_pchange_ABS" % _ for _ in brainstem_keys[1:]] + \
+    #                 ["%s_diff" % _ for _ in brainstem_keys[1:]] + \
+    #                 ["%s_diff_ABS" % _ for _ in brainstem_keys[1:]] + \
+    #                 ["%s_BIN.79" % _ for _ in brainstem_keys] + \
+    #                 ['AV45_brainstem_Slope_2pts', 'AV45_brainstem_Slope_3pts'] + \
+    #                 ['AV45_brainstem_Slope_1and3', 'AV45_brainstem_Slope_2and3']
     all_wmratio_keys = wmratio_keys + \
                       ["%s_pchange" % _ for _ in wmratio_keys[1:]] + \
                       ["%s_pchange_ABS" % _ for _ in wmratio_keys[1:]] + \
                       ["%s_diff" % _ for _ in wmratio_keys[1:]] + \
                       ["%s_diff_ABS" % _ for _ in wmratio_keys[1:]] + \
-                      ['AV45_WMratio_Slope_2pts', 'AV45_WMratio_Slope_3pts'] + \
+                      ['AV45_WMratio_Slope_2pts', 'AV45_WMratio_Slope_3pts', 'AV45_WMratio_Slope_4pts'] + \
                       ['AV45_WMratio_Slope_1and3', 'AV45_WMratio_Slope_2and3']
     all_frontal_bigref_keys = frontal_bigref_keys + \
                       ["%s_pchange" % _ for _ in frontal_bigref_keys[1:]] + \
                       ["%s_diff" % _ for _ in frontal_bigref_keys[1:]] + \
-                      ['AV45_Frontal/BigRef_Slope_2pts', 'AV45_Frontal/BigRef_Slope_3pts'] + \
+                      ['AV45_Frontal/BigRef_Slope_2pts', 'AV45_Frontal/BigRef_Slope_3pts', 'AV45_Frontal/BigRef_Slope_4pts'] + \
                       ['AV45_Frontal/BigRef_Slope_1and3', 'AV45_Frontal/BigRef_Slope_2and3']
     all_cingulate_bigref_keys = cingulate_bigref_keys + \
                       ["%s_pchange" % _ for _ in cingulate_bigref_keys[1:]] + \
                       ["%s_diff" % _ for _ in cingulate_bigref_keys[1:]] + \
-                      ['AV45_Cingulate/BigRef_Slope_2pts', 'AV45_Cingulate/BigRef_Slope_3pts'] + \
+                      ['AV45_Cingulate/BigRef_Slope_2pts', 'AV45_Cingulate/BigRef_Slope_3pts', 'AV45_Cingulate/BigRef_Slope_4pts'] + \
                       ['AV45_Cingulate/BigRef_Slope_1and3', 'AV45_Cingulate/BigRef_Slope_2and3']
     all_parietal_bigref_keys = parietal_bigref_keys + \
                       ["%s_pchange" % _ for _ in parietal_bigref_keys[1:]] + \
                       ["%s_diff" % _ for _ in parietal_bigref_keys[1:]] + \
-                      ['AV45_Parietal/BigRef_Slope_2pts', 'AV45_Parietal/BigRef_Slope_3pts'] + \
+                      ['AV45_Parietal/BigRef_Slope_2pts', 'AV45_Parietal/BigRef_Slope_3pts', 'AV45_Parietal/BigRef_Slope_4pts'] + \
                       ['AV45_Parietal/BigRef_Slope_1and3', 'AV45_Parietal/BigRef_Slope_2and3']
     all_temporal_bigref_keys = temporal_bigref_keys + \
                       ["%s_pchange" % _ for _ in temporal_bigref_keys[1:]] + \
                       ["%s_diff" % _ for _ in temporal_bigref_keys[1:]] + \
-                      ['AV45_Temporal/BigRef_Slope_2pts', 'AV45_Temporal/BigRef_Slope_3pts'] + \
+                      ['AV45_Temporal/BigRef_Slope_2pts', 'AV45_Temporal/BigRef_Slope_3pts', 'AV45_Temporal/BigRef_Slope_4pts'] + \
                       ['AV45_Temporal/BigRef_Slope_1and3', 'AV45_Temporal/BigRef_Slope_2and3']
     all_av45_key_lists = [all_wm70_composite_keys,
                           all_wm70_cerebg_keys,
@@ -964,7 +980,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                           all_wm70_keys,
                           all_cerebg_keys,
                           all_wcereb_keys,
-                          all_brainstem_keys,
+                        #   all_brainstem_keys,
                           all_wmratio_keys,
                           all_frontal_bigref_keys,
                           all_cingulate_bigref_keys,
@@ -977,7 +993,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                           all_wm70_keys,
                           all_cerebg_keys,
                           all_wcereb_keys,
-                          all_brainstem_keys,
+                        #   all_brainstem_keys,
                           all_wmratio_keys,
                           all_frontal_bigref_keys,
                           all_cingulate_bigref_keys,
@@ -990,7 +1006,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                  all_wm70_keys,
                  all_cerebg_keys,
                  all_wcereb_keys,
-                 all_brainstem_keys,
+                #  all_brainstem_keys,
                  all_wmratio_keys]
     all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
 
@@ -1025,7 +1041,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
         data[wm70_keys[i]] = compositeroi/wm70
         data[cerebg_keys[i]] = compositeroi/cerebg
         data[wcereb_keys[i]] = compositeroi/wcereb
-        data[brainstem_keys[i]] = compositeroi/brainstem
+        # data[brainstem_keys[i]] = compositeroi/brainstem
         data[frontal_bigref_keys[i]] = frontal/bigref
         data[cingulate_bigref_keys[i]] = cingulate/bigref
         data[parietal_bigref_keys[i]] = parietal/bigref
@@ -1034,7 +1050,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
         data["%s_BIN.62" % wm70_keys[i]] = 1 if (compositeroi/wm70) > 0.62 else 0
         data["%s_BIN1.26" % cerebg_keys[i]] = 1 if (compositeroi/cerebg) > 1.26 else 0
         data["%s_BIN1.11" % wcereb_keys[i]] = 1 if (compositeroi/wcereb) > 1.11 else 0
-        data["%s_BIN.79" % brainstem_keys[i]] = 1 if (compositeroi/brainstem) > 0.79 else 0
+        # data["%s_BIN.79" % brainstem_keys[i]] = 1 if (compositeroi/brainstem) > 0.79 else 0
 
 
         # fill in derivative keys
@@ -1048,7 +1064,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
             data['AV45_RightPallidum/WM70'] = rightpallidum/wm70
             data[wmratio_keys[i]] = (compositeroi/wcereb)
             wm70_0 = wm70
-        elif i == 1 or i == 2:
+        else:
             data[wmratio_keys[i]] = (compositeroi/wcereb) / (wm70/wm70_0)
             for pl in pchange_diff_lists:
                 diff = (data[pl[i]] - data[pl[0]]) / exam_timedeltas[i] # annualized
@@ -1063,7 +1079,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_WM70_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_keys[:2]])))
                 data['AV45_cerebg_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[:2]])))
                 data['AV45_wcereb_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[:2]])))
-                data['AV45_brainstem_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:2]])))
+                # data['AV45_brainstem_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:2]])))
                 data['AV45_WM70/composite_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:2]])))
                 data['AV45_WM70/cerebg_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:2]])))
                 data['AV45_WM70/wcereb_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:2]])))
@@ -1072,14 +1088,14 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_Cingulate/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[:2]])))
                 data['AV45_Parietal/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[:2]])))
                 data['AV45_Temporal/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[:2]])))
-            if i == 2:
+            elif i == 2:
                 # using all 3 timepoints
                 times = exam_timedeltas[:3]
                 data['AV45_BigRef_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in bigref_keys[:3]])))
                 data['AV45_WM70_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_keys[:3]])))
                 data['AV45_cerebg_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[:3]])))
                 data['AV45_wcereb_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[:3]])))
-                data['AV45_brainstem_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:3]])))
+                # data['AV45_brainstem_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:3]])))
                 data['AV45_WM70/composite_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:3]])))
                 data['AV45_WM70/cerebg_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:3]])))
                 data['AV45_WM70/wcereb_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:3]])))
@@ -1094,7 +1110,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_WM70_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_keys[1:3]])))
                 data['AV45_cerebg_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[1:3]])))
                 data['AV45_wcereb_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[1:3]])))
-                data['AV45_brainstem_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[1:3]])))
+                # data['AV45_brainstem_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[1:3]])))
                 data['AV45_WM70/composite_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[1:3]])))
                 data['AV45_WM70/cerebg_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[1:3]])))
                 data['AV45_WM70/wcereb_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[1:3]])))
@@ -1109,7 +1125,7 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_WM70_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_keys[0::2]])))
                 data['AV45_cerebg_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[0::2]])))
                 data['AV45_wcereb_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[0::2]])))
-                data['AV45_brainstem_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[0::2]])))
+                # data['AV45_brainstem_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[0::2]])))
                 data['AV45_WM70/composite_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[0::2]])))
                 data['AV45_WM70/cerebg_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[0::2]])))
                 data['AV45_WM70/wcereb_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[0::2]])))
@@ -1118,6 +1134,22 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_Cingulate/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[0::2]])))
                 data['AV45_Parietal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[0::2]])))
                 data['AV45_Temporal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[0::2]])))
+            elif i == 3:
+                times = exam_timedeltas[:4]
+                data['AV45_BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in bigref_keys[:4]])))
+                data['AV45_WM70_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_keys[:4]])))
+                data['AV45_cerebg_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[:4]])))
+                data['AV45_wcereb_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[:4]])))
+                # data['AV45_brainstem_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:4]])))
+                data['AV45_WM70/composite_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:4]])))
+                data['AV45_WM70/cerebg_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:4]])))
+                data['AV45_WM70/wcereb_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:4]])))
+                data['AV45_WMratio_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wmratio_keys[:4]])))
+                data['AV45_Frontal/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in frontal_bigref_keys[:4]])))
+                data['AV45_Cingulate/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[:4]])))
+                data['AV45_Parietal/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[:4]])))
+                data['AV45_Temporal/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[:4]])))
+
 
     if suffix is not None:
         new_keys = []
@@ -1150,7 +1182,7 @@ def syncFDGData(master_df, fdg_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Get long measurements
@@ -1209,7 +1241,7 @@ def syncTBMSynData(master_df, tbm_file):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
         bl_examdate = subj_rows.iloc[0]['EXAMDATEBL']
         if isnan(av45_date1) or abs(av45_date1 - bl_examdate).days > 210:
@@ -1286,7 +1318,7 @@ def syncCSFData(master_df, csf_files, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         subj_rows['RID'] = rid
@@ -1355,7 +1387,7 @@ def syncUWData(master_df, uw_file, registry):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # get long measurements
@@ -1452,7 +1484,7 @@ def syncUCBFreesurferAV45VolData(master_df, ucb_fs_volumes):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Calculate HC/ICV
@@ -1545,7 +1577,7 @@ def syncUCSFFreesurferData(master_df, ucsf_files, mprage_file, prefix):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Filter: only use 1.5T scans if no 3T scans
@@ -1629,7 +1661,7 @@ def syncWMHData(master_df, wmh_file):
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
-        av45_date1, av45_date2, av45_date3 = getAV45Dates(rid, master_df)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Get long measurements
@@ -1791,7 +1823,7 @@ if __name__ == '__main__':
     pd.options.mode.chained_assignment = None
 
     # IO files
-    master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_03_07_16.csv"
+    master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv"
     output_file = "../FDG_AV45_COGdata_%s.csv" % (now.strftime("%m_%d_%y"))
 
     # ADNI docs
@@ -1812,9 +1844,9 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/07_05_16/UCBERKELEYAV45_07_05_16_regular_tp.csv"
-    av45_nontp_file = "../output/07_05_16/UCBERKELEYAV45_07_05_16_regular_nontp.csv"
-    av1451_tp_file = "../output/07_05_16/UCBERKELEYAV1451_07_05_16_regular_tp.csv"
+    av45_tp_file = "../output/08_05_16/UCBERKELEYAV45_08_05_16_regular_tp.csv"
+    av45_nontp_file = "../output/08_05_16/UCBERKELEYAV45_08_05_16_regular_nontp.csv"
+    av1451_tp_file = "../output/08_05_16/UCBERKELEYAV1451_08_05_16_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/mostregions_output.csv"
 
@@ -1830,12 +1862,12 @@ if __name__ == '__main__':
     # MR files
     tbm_file = '../docs/ADNI/MAYOADIRL_MRI_TBMSYN_12_08_15.csv'
     ucsf_long_files = [('4.4','../docs/ADNI/UCSFFSL_02_01_16.csv'),
-                       ('5.1','../docs/ADNI/UCSFFSL51Y1_05_04_16.csv')]
+                       ('5.1','../docs/ADNI/UCSFFSL51ALL_08_01_16.csv')]
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
-                        ('5.1','../docs/ADNI/UCSFFSX51_05_04_16.csv'),
+                        ('5.1','../docs/ADNI/UCSFFSX51_08_01_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
-    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_07-01-2016.csv'
-    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_07-15-2016.csv'
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_08-04-2016.csv'
+    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_08-04-2016.csv'
 
     # Run pipeline
     runPipeline()

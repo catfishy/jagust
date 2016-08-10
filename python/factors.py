@@ -188,31 +188,33 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
-data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
-pattern_mat = '../av45_pattern_bl.mat'
-pattern_mat_2 = '../av45_pattern_scan2.mat'
-pattern_mat_3 = '../av45_pattern_scan3.mat'
-nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
-nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
-nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
-nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
-nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
-# model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-model_file = None
-output_file = '../nsfa/av45_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av45_top_regions.csv'
-comp_output_file = '../nsfa/av45_roi_comparisons.csv'
-comm_output_file = '../nsfa/av45_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
-dod = False
-bilateral = True
-ref = 'WHOLECEREB'
-# ref = 'BIGREF2'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
+# data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+# pattern_mat = '../av45_pattern_bl.mat'
+# pattern_mat_2 = '../av45_pattern_scan2.mat'
+# pattern_mat_3 = '../av45_pattern_scan3.mat'
+# nsfa_activation_csv = '../nsfa/av45_factor_activations.csv'
+# nsfa_activation_csv_2 = '../nsfa/av45_factor_activations_scan2.csv'
+# nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
+# nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
+# # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
+# model_file = None
+# output_file = '../nsfa/av45_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av45_top_regions.csv'
+# comp_output_file = '../nsfa/av45_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av45_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av45_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av45_pattern_loading_%s"
+# dod = False
+# bilateral = True
+# sep_frontal = True
+# ref = 'WHOLECEREB'
+# # ref = 'BIGREF2'
+# tracer = 'AV45'
 
-# # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
+# FOR ADNI AV1451
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -231,10 +233,12 @@ ref = 'WHOLECEREB'
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451_pattern_loading_%s"
 # dod = False
 # bilateral = True
+# sep_frontal = True
 # ref = 'WHOLECEREB'
+# tracer = 'AV1451'
 
 # FOR ADNI AV1451 UNILATERAL
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451uni_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -253,7 +257,33 @@ ref = 'WHOLECEREB'
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451uni_pattern_loading_%s"
 # dod = False
 # bilateral = False
+# sep_frontal = True
 # ref = 'WHOLECEREB'
+# tracer = 'AV1451'
+
+# FOR ADNI AV1451 SKULL
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
+data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
+pattern_mat = '../av1451skull_pattern_bl.mat'
+pattern_mat_2 = None
+pattern_mat_3 = None
+nsfa_activation_csv = '../nsfa/av1451skull_factor_activations.csv'
+nsfa_activation_csv_2 = None
+nsfa_activation_csv_3 = None
+nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
+model_file = None
+output_file = '../nsfa/av1451skull_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
+comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
+comm_output_file = '../nsfa/av1451skull_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451skull_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451skull_pattern_loading_%s"
+dod = False
+bilateral = True
+sep_frontal = False
+ref = 'CEREBGM'
+tracer = 'AV1451'
 
 # FOR DOD AV45
 # master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
@@ -271,49 +301,67 @@ ref = 'WHOLECEREB'
 # igmm_output_template = "../output/fake_aparc_inputs/igmm/dod_pattern_loading_%s"
 # dod = True
 # bilateral = True
+# sep_frontal = True
 # ref = 'WHOLECEREB'
+# tracer = 'AV45'
 
 # Save CS and braak region masks
-av45_cs_mask_file = "../output/fake_aparc_inputs/av45_cs_mask.mat"
-av1451_braak12_mask_file = "../output/fake_aparc_inputs/av1451_braak12_mask.mat"
-av1451_braak34_mask_file = "../output/fake_aparc_inputs/av1451_braak34_mask.mat"
-av1451_braak56_mask_file = "../output/fake_aparc_inputs/av1451_braak56_mask.mat"
-saveRegionMask(SUMMARY, av45_cs_mask_file)
-saveRegionMask(BRAAK1+BRAAK2, av1451_braak12_mask_file)
-saveRegionMask(BRAAK3+BRAAK4, av1451_braak34_mask_file)
-saveRegionMask(BRAAK5+BRAAK6, av1451_braak56_mask_file)
-sys.exit(1)
+# av45_cs_mask_file = "../output/fake_aparc_inputs/av45_cs_mask.mat"
+# av1451_braak12_mask_file = "../output/fake_aparc_inputs/av1451_braak12_mask.mat"
+# av1451_braak34_mask_file = "../output/fake_aparc_inputs/av1451_braak34_mask.mat"
+# av1451_braak56_mask_file = "../output/fake_aparc_inputs/av1451_braak56_mask.mat"
+# saveRegionMask(SUMMARY, av45_cs_mask_file)
+# saveRegionMask(BRAAK1+BRAAK2, av1451_braak12_mask_file)
+# saveRegionMask(BRAAK3+BRAAK4, av1451_braak34_mask_file)
+# saveRegionMask(BRAAK5+BRAAK6, av1451_braak56_mask_file)
+# sys.exit(1)
 
 
 
 scale_type = 'original'
 norm_type = 'L1'
-tracer = 'AV45'
 lut_file = "../FreeSurferColorLUT.txt"
 by_subj, threshold = importRoussetCSV(data_csv, ref_key=ref)
 print threshold
 
 lobe_keys = ['FRONTAL','PARIETAL','CINGULATE','TEMPORAL','OCCIPITAL','MEDIALOCCIPITAL',
-             'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','CEREBRAL_WHITE','BRAIN_STEM']
-pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL', 'CTX_LH_FRONTALPOLE',
+             'SENSORY','BASALGANGLIA','LIMBIC','CEREBGM','CEREBWM','HEMIWM','BRAIN_STEM']
+pattern_keys = ['BRAIN_STEM', 'CTX_LH_BANKSSTS', 'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CUNEUS', 'CTX_LH_ENTORHINAL',
                 'CTX_LH_FUSIFORM', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INSULA', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_LATERALOCCIPITAL',
-                'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_LINGUAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL',
-                'CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE',
-                'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL',
+                'CTX_LH_LINGUAL', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARAHIPPOCAMPAL',
+                'CTX_LH_PERICALCARINE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTERIORCINGULATE',
+                'CTX_LH_PRECENTRAL', 'CTX_LH_PRECUNEUS', 'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORPARIETAL',
                 'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TRANSVERSETEMPORAL', 'CTX_RH_BANKSSTS', 'CTX_RH_CAUDALANTERIORCINGULATE',
-                'CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FRONTALPOLE', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL',
-                'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_LINGUAL',
-                'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS',
-                'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS',
-                'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL',
-                'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE', 'LEFT_CEREBELLUM_CORTEX',
-                'LEFT_CEREBELLUM_WHITE_MATTER', 'LEFT_CEREBRAL_WHITE_MATTER', 'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER',
-                'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE', 'RIGHT_CEREBELLUM_CORTEX', 'RIGHT_CEREBELLUM_WHITE_MATTER',
-                'RIGHT_CEREBRAL_WHITE_MATTER', 'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER']
+                'CTX_RH_CUNEUS', 'CTX_RH_ENTORHINAL', 'CTX_RH_FUSIFORM', 'CTX_RH_INFERIORPARIETAL',
+                'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INSULA', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LINGUAL',
+                'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARAHIPPOCAMPAL',
+                'CTX_RH_PERICALCARINE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_PRECENTRAL', 'CTX_RH_PRECUNEUS',
+                'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORTEMPORAL',
+                'CTX_RH_SUPRAMARGINAL', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TRANSVERSETEMPORAL', 'LEFT_ACCUMBENS_AREA', 'LEFT_AMYGDALA', 'LEFT_CAUDATE',
+                'LEFT_HIPPOCAMPUS', 'LEFT_PALLIDUM', 'LEFT_PUTAMEN', 'LEFT_THALAMUS_PROPER',
+                'RIGHT_ACCUMBENS_AREA', 'RIGHT_AMYGDALA', 'RIGHT_CAUDATE',
+                'RIGHT_HIPPOCAMPUS', 'RIGHT_PALLIDUM', 'RIGHT_PUTAMEN', 'RIGHT_THALAMUS_PROPER',
+                'CEREBWM','CEREBGM','HEMIWM']
+# add separate frontal keys
+sep_frontal_keys = ['CTX_LH_PARSOPERCULARIS', 'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS',
+                    'CTX_RH_PARSOPERCULARIS', 'CTX_RH_PARSORBITALIS', 'CTX_RH_PARSTRIANGULARIS',
+                    'CTX_RH_FRONTALPOLE','CTX_LH_FRONTALPOLE',
+                    'CTX_LH_LATERALORBITOFRONTAL','CTX_RH_LATERALORBITOFRONTAL',
+                    'CTX_LH_MEDIALORBITOFRONTAL','CTX_RH_MEDIALORBITOFRONTAL',
+                    'CTX_LH_CAUDALMIDDLEFRONTAL','CTX_RH_CAUDALMIDDLEFRONTAL',
+                    'CTX_LH_ROSTRALMIDDLEFRONTAL','CTX_RH_ROSTRALMIDDLEFRONTAL']
+# add aggregated frontal keys
+agg_frontal_keys = ['LEFT_ORBITOFR','LEFT_MIDDLEFR','LEFT_PARSFR','RIGHT_ORBITOFR','RIGHT_MIDDLEFR','RIGHT_PARSFR']
+if sep_frontal:
+    pattern_keys += sep_frontal_keys
+else:
+    pattern_keys += agg_frontal_keys
+# make bilateral
 if bilateral: # truncate keys
     pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
+print pattern_keys
 
-data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, tracer=tracer, ref_key=ref, norm_type=norm_type, bilateral=bilateral, dod=dod)
+data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file, tracer=tracer, ref_key=ref, norm_type=norm_type, bilateral=bilateral, dod=dod)
 pattern_bl_df = data['pattern_bl_df']
 pattern_scan2_df = data['pattern_scan2_df']
 pattern_scan3_df = data['pattern_scan3_df']
@@ -341,10 +389,10 @@ pattern_scan3_df = pattern_scan3_df[column_order]
 if pattern_scan3_df.index.nlevels > 1:
     pattern_scan3_df.index = pattern_scan3_df.index.droplevel(1)
 
-# savePatternAsMat(pattern_bl_df, pattern_mat)
-# savePatternAsMat(pattern_scan2_df, pattern_mat_2)
-# savePatternAsMat(pattern_scan3_df, pattern_mat_3)
-# sys.exit(1)
+savePatternAsMat(pattern_bl_df, pattern_mat)
+savePatternAsMat(pattern_scan2_df, pattern_mat_2)
+savePatternAsMat(pattern_scan3_df, pattern_mat_3)
+sys.exit(1)
 
 
 

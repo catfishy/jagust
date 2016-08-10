@@ -27,6 +27,7 @@ import pandas as pd
 
 from utils import *
 
+ALL_TP = ['BL','Scan2','Scan3','Scan4','Scan5']
 
 ALL_REGION_KEYS = ['BRAIN_STEM','BRAIN_STEM_SIZE','3RD_VENTRICLE','3RD_VENTRICLE_SIZE','4TH_VENTRICLE','4TH_VENTRICLE_SIZE','5TH_VENTRICLE','5TH_VENTRICLE_SIZE','CC_ANTERIOR','CC_ANTERIOR_SIZE',
                   'CC_CENTRAL','CC_CENTRAL_SIZE','CC_MID_ANTERIOR','CC_MID_ANTERIOR_SIZE','CC_MID_POSTERIOR','CC_MID_POSTERIOR_SIZE','CC_POSTERIOR','CC_POSTERIOR_SIZE',
@@ -232,118 +233,57 @@ def getVisitCode(rid, date, registry, cutoff=60):
             print "CLOSEST VISCODE AT %s > %s (%s, %s)" % (abs(date-metadata['EXAMDATE']).days, cutoff, rid, date)
     return (vc, vc2)
 
-def aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_file, dod=False):
+def aggregateAllRegionFiles(mean_files, size_files, lut_table, meta_file, dod=False):
     '''
     if dod:
         - RID -> SCRNO
         - VISCODE2 is removed
     '''
-    # read into dataframes
-    try:
-        bl_means_df = pd.read_csv(bl_means)
-        bl_sizes_df = pd.read_csv(bl_sizes)
-    except Exception as e:
-        print "Can't Read BL input: %s" % e
-        bl_means_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
-        bl_sizes_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
-    try:
-        v2_means_df = pd.read_csv(v2_means)
-        v2_sizes_df = pd.read_csv(v2_sizes)
-    except Exception as e:
-        print "Can't Read V2 input: %s" % e
-        v2_means_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
-        v2_sizes_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
-    try:
-        v3_means_df = pd.read_csv(v3_means)
-        v3_sizes_df = pd.read_csv(v3_sizes)
-    except Exception as e:
-        print "Can't Read V3 input: %s" % e
-        v3_means_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
-        v3_sizes_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
-
-    # convert headers
-    bl_means_df.columns = [translateColumn(_, lut_table) for _ in bl_means_df.columns]
-    v2_means_df.columns = [translateColumn(_, lut_table) for _ in v2_means_df.columns]
-    v3_means_df.columns = [translateColumn(_, lut_table) for _ in v3_means_df.columns]
-    bl_sizes_df.columns = [translateColumn(_, lut_table) for _ in bl_sizes_df.columns]
-    v2_sizes_df.columns = [translateColumn(_, lut_table) for _ in v2_sizes_df.columns]
-    v3_sizes_df.columns = [translateColumn(_, lut_table) for _ in v3_sizes_df.columns]
-    # add exam dates
-    bl_means_df['EXAMDATE'] = ''
-    v2_means_df['EXAMDATE'] = ''
-    v3_means_df['EXAMDATE'] = ''
-
-    # fill in exam dates + visit codes
+    tp_df = []
     try:
         visits = importScanMeta(meta_file, with_viscode=True)
-    except Exception as e:
+    except:
         visits = None
-
-    if visits is None:
-        bl_means_df['VISCODE'] = np.nan
-        bl_means_df['VISCODE2'] = np.nan
-        bl_means_df['EXAMDATE'] = np.nan
-        v2_means_df['VISCODE'] = np.nan
-        v2_means_df['VISCODE2'] = np.nan
-        v2_means_df['EXAMDATE'] = np.nan
-        v3_means_df['VISCODE'] = np.nan
-        v3_means_df['VISCODE2'] = np.nan
-        v3_means_df['EXAMDATE'] = np.nan
-    else:
+    print mean_files
+    print size_files
+    for i, tp in enumerate(ALL_TP):
+        mean_file = mean_files[i]
+        size_file = size_files[i]
         try:
-            for i in bl_means_df.index:
-                rid = bl_means_df.ix[i,'RID']
-                subj_visits = visits[rid]
-                date = sorted(subj_visits.keys())[0]
-                vc = subj_visits[date]['VISCODE']
-                bl_means_df.ix[i,'EXAMDATE'] = date
-                bl_means_df.ix[i,'VISCODE'] = vc
-                if not dod:
-                    vc2 = subj_visits[date]['VISCODE2']
-                    bl_means_df.ix[i,'VISCODE2'] = vc2
+            mean_df = pd.read_csv(mean_file)
+            size_df = pd.read_csv(size_file)
         except Exception as e:
-            print "BL PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
-            raise e
-        try:
-            for i in v2_means_df.index:
-                rid = v2_means_df.ix[i,'RID']
+            print "Can't read %s, %s" % (mean_file, size_file)
+            mean_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+            size_df = pd.DataFrame(columns=['RID', 'EXAMDATE'])
+        mean_df.columns = [translateColumn(_, lut_table) for _ in mean_df.columns]
+        size_df.columns = [translateColumn(_, lut_table) for _ in size_df.columns]
+        # add in dates + viscodes
+        if visits is not None:
+            for row_idx in mean_df.index:
+                rid = mean_df.ix[row_idx,'RID']
                 subj_visits = visits[rid]
-                date = sorted(subj_visits.keys())[1]
-                vc = subj_visits[date]['VISCODE']
-                v2_means_df.ix[i,'EXAMDATE'] = date
-                v2_means_df.ix[i,'VISCODE'] = vc
-                if not dod:
-                    vc2 = subj_visits[date]['VISCODE2']
-                    v2_means_df.ix[i,'VISCODE2'] = vc2
-        except Exception as e:
-            print "Scan2 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
-            raise e
-        try:
-            for i in v3_means_df.index:
-                rid = v3_means_df.ix[i,'RID']
-                subj_visits = visits[rid]
-                date = sorted(subj_visits.keys())[2]
-                vc = subj_visits[date]['VISCODE']
-                v3_means_df.ix[i,'EXAMDATE'] = date
-                v3_means_df.ix[i,'VISCODE'] = vc
-                if not dod:
-                    vc2 = subj_visits[date]['VISCODE2']
-                    v3_means_df.ix[i,'VISCODE2'] = vc2
-        except Exception as e:
-            print "Scan3 PET DATE Problem: %s, in meta: %s" % (rid,visits[rid])
-            raise e
-
-    # merge sizes
-    bl_means_df = bl_means_df.merge(bl_sizes_df, on='RID', suffixes=['','_SIZE'])
-    v2_means_df = v2_means_df.merge(v2_sizes_df, on='RID', suffixes=['','_SIZE'])
-    v3_means_df = v3_means_df.merge(v3_sizes_df, on='RID', suffixes=['','_SIZE'])
+                try:
+                    tp_date = sorted(subj_visits.keys())[i]
+                except:
+                    msg = 'No Date: %s, %s' % (rid,tp)
+                    raise Exception(msg)
+                vc = subj_visits[tp_date].get('VISCODE',np.nan)
+                vc2 = subj_visits[tp_date].get('VISCODE2',np.nan)
+                mean_df.ix[row_idx,'EXAMDATE'] = tp_date
+                mean_df.ix[row_idx,'VISCODE'] = vc
+                mean_df.ix[row_idx,'VISCODE2'] = vc2
+        else:
+            mean_df.ix['EXAMDATE'] = pd.NaT
+            mean_df.ix['VISCODE'] = np.nan
+            mean_df.ix['VISCODE2'] = np.nan
+        merged = mean_df.merge(size_df, on='RID', suffixes=['','_SIZE'])
+        tp_df.append(merged)
 
     # concat visits
-    all_rows = pd.concat((bl_means_df, v2_means_df, v3_means_df), axis=0)
+    all_rows = pd.concat(tp_df, axis=0)
     all_rows.reset_index(inplace=True, drop=True)
     all_rows.sort_values(by=['RID','EXAMDATE'], inplace=True)
-    if visits is not None:
-        all_rows.loc[:,'EXAMDATE'] = all_rows.loc[:,'EXAMDATE'].apply(lambda x: x.strftime('%Y-%m-%d'))
 
     # Order columns
     key_columns = ['RID', 'VISCODE', 'VISCODE2', 'EXAMDATE']
@@ -386,29 +326,24 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
     '''
     Assumes preprocess outputs include all freesurfer regions (no pre-aggregation)
     '''
-    bl_means = v2_means = v3_means = bl_sizes = v2_sizes = v3_sizes = None
     addon = "_nontp" if nontp else "_tp"
-    for filename in os.listdir(folder_name):
-        '''
-        if allregions and 'allregions' not in filename:
-            continue
-        '''
-        if "BL%s_means" % addon in filename:
-            bl_means = os.path.join(folder_name, filename)
-        elif "SCAN2%s_means" % addon in filename:
-            v2_means = os.path.join(folder_name, filename)
-        elif "SCAN3%s_means" % addon in filename:
-            v3_means = os.path.join(folder_name, filename)
-        elif "BL%s_roisize" % addon in filename:
-            bl_sizes = os.path.join(folder_name, filename)
-        elif "SCAN2%s_roisize" % addon in filename:
-            v2_sizes = os.path.join(folder_name, filename)
-        elif "SCAN3%s_roisize" % addon in filename:
-            v3_sizes = os.path.join(folder_name, filename)
-    to_return = (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
-    if not all([_ for _ in to_return]):
-        raise Exception("Couldn't find preprocess output: %s" % (to_return,))
-    return (bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes)
+    mean_keys = ["*%s%s_means*" % (tp,addon) for tp in ALL_TP]
+    size_keys = ["*%s%s_roisize*" % (tp,addon) for tp in ALL_TP]
+    mean_files = []
+    size_files = []
+    for mk in mean_keys:
+        fp = os.path.join(folder_name,mk)
+        try:
+            mean_files.append(glob(fp)[0])
+        except:
+            raise Exception("Couldn't find preprocess output %s" % fp)
+    for sk in size_keys:
+        fp = os.path.join(folder_name,sk)
+        try:
+            size_files.append(glob(fp)[0])
+        except:
+            raise Exception("Couldn't find preprocess output %s" % fp)
+    return (mean_files,size_files)
 
 def ADNINamingConventions(input_df):
     rename_dict = {'BRAIN_STEM': 'BRAINSTEM',
@@ -460,16 +395,16 @@ if __name__ == "__main__":
     # dod_tau_pet_dates = importScanMeta(dod_meta_tau, with_viscode=True)
 
     #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '07_05_16'
+    timestamp = '08_10_16'
 
     # preprocess output folders
     preprocess_folder = '../docs/preprocess_output/%s/' % timestamp
-    adni_av45_preprocess_folder = '%sAV45' % preprocess_folder
-    dod_av45_preprocess_folder = '%sAV45_DOD' % preprocess_folder
-    dep_av45_preprocess_folder = '%sAV45_DEP' % preprocess_folder
-    adni_tau_preprocess_folder = '%sTAU' % preprocess_folder
-    dod_tau_preprocess_folder = '%sTAU_DOD' % preprocess_folder
-    dep_tau_preprocess_folder = '%sTAU_DEP' % preprocess_folder
+    adni_av45_preprocess_folder = '%sadni_av45' % preprocess_folder
+    dod_av45_preprocess_folder = '%sdod_adni' % preprocess_folder
+    dep_av45_preprocess_folder = '%sdep_adni_av45' % preprocess_folder
+    adni_tau_preprocess_folder = '%sadni_av1451' % preprocess_folder
+    dod_tau_preprocess_folder = '%sdod_adni_av1451' % preprocess_folder
+    dep_tau_preprocess_folder = '%sdep_adni_av1451' % preprocess_folder
 
     # create output folder
     output_folder = '../output/%s' % timestamp
@@ -482,22 +417,22 @@ if __name__ == "__main__":
     regular_output = os.path.join(output_folder, regular_filename)
     allregions_output = os.path.join(output_folder, allregions_filename)
     merged_output = os.path.join(output_folder, merged_filename)
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_pet)
-    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    mean_files, size_files = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=True)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, meta_pet)
+    df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
-    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     CreateLONIVersions(df, ADNI_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
 
     # ADNI AV45 TP
     regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_regular_tp.csv' % (timestamp))
     allregions_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_allregions_tp.csv' % (timestamp))
     merged_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_merged_tp.csv' % (timestamp))
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_pet)
-    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    mean_files, size_files = findPreprocessOutputFiles(adni_av45_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, meta_pet)
+    df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
-    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
 
     # ADNI TAU TP
     regular_filename = 'UCBERKELEYAV1451_%s_regular_tp.csv' % (timestamp)
@@ -506,11 +441,11 @@ if __name__ == "__main__":
     regular_output = os.path.join(output_folder, regular_filename)
     allregions_output = os.path.join(output_folder, allregions_filename)
     merged_output = os.path.join(output_folder, merged_filename)
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(adni_tau_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, meta_tau)
-    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    mean_files, size_files = findPreprocessOutputFiles(adni_tau_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, meta_tau)
+    df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES_EXTRA)
-    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     CreateLONIVersions(df, TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
 
     # DOD AV45 NONTP
@@ -520,11 +455,11 @@ if __name__ == "__main__":
     regular_output = os.path.join(output_folder, regular_filename)
     allregions_output = os.path.join(output_folder, allregions_filename)
     merged_output = os.path.join(output_folder, merged_filename)
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_av45_preprocess_folder, nontp=True)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_meta_pet, dod=True)
-    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    mean_files, size_files = findPreprocessOutputFiles(dod_av45_preprocess_folder, nontp=True)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, dod_meta_pet, dod=True)
+    df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalAV45Calculations(df, lut_table, keys=DOD_FIELDNAMES_EXTRA)
-    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     CreateLONIVersions(df, DOD_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
 
     # DOD TAU TP
@@ -534,23 +469,23 @@ if __name__ == "__main__":
     regular_output = os.path.join(output_folder, regular_filename)
     allregions_output = os.path.join(output_folder, allregions_filename)
     merged_output = os.path.join(output_folder, merged_filename)
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dod_tau_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dod_meta_tau, dod=True)
-    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    mean_files, size_files = findPreprocessOutputFiles(dod_tau_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, dod_meta_tau, dod=True)
+    df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES_EXTRA)
-    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     CreateLONIVersions(df, DOD_TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
 
     # DEP AV45 TP
-    regular_filename = 'UCBERKELEYAV1451_DEP_%s_regular_tp.csv' % (timestamp)
-    allregions_filename = 'UCBERKELEYAV1451_DEP_%s_allregions_tp.csv' % (timestamp)
-    merged_filename = 'UCBERKELEYAV1451_DEP_%s_merged_tp.csv' % (timestamp)
+    regular_filename = 'UCBERKELEYAV45_DEP_%s_regular_tp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV45_DEP_%s_allregions_tp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV45_DEP_%s_merged_tp.csv' % (timestamp)
     regular_output = os.path.join(output_folder, regular_filename)
     allregions_output = os.path.join(output_folder, allregions_filename)
     merged_output = os.path.join(output_folder, merged_filename)
-    bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes = findPreprocessOutputFiles(dep_av45_preprocess_folder, nontp=False)
-    df = aggregateAllRegionFiles(bl_means, v2_means, v3_means, bl_sizes, v2_sizes, v3_sizes, lut_table, dep_meta_pet, dod=False)
-    df.to_csv(allregions_output,index=False,float_format='%.4f')
+    mean_files, size_files = findPreprocessOutputFiles(dep_av45_preprocess_folder, nontp=False)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, dep_meta_pet, dod=False)
+    df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalAV45Calculations(df, lut_table, keys=DEP_FIELDNAMES_EXTRA)
-    full_df.to_csv(regular_output,index=False,float_format='%.4f')
+    full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     CreateLONIVersions(df, DEP_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=False)

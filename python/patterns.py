@@ -193,15 +193,26 @@ def group_comparisons(df, groups, keys, adjust=True):
     return data
 
 
-def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys,
+def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
         tracer='AV45', ref_key='WHOLECEREB', norm_type='L1', bilateral=True, dod=False):
     assert norm_type in set(['L1','L2','Linf'])
     assert tracer in set(['AV45','AV1451'])
-    assert ref_key in set(['WHOLECEREB','BIGREF2','BIGREF'])
-    
+    assert ref_key in set(['WHOLECEREB','BIGREF2','BIGREF','CEREBGM'])
+
     df = pd.read_csv(data_csv)
     if df['subject'].dtype != 'int64':
         df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
+
+    # rename columns
+    ind_df = df[['ind','name']].drop_duplicates()
+    lut = importFreesurferLookup(lut_file, flip=False)
+    translate = {}
+    for i, row in ind_df.iterrows():
+        group_idx = [int(_) for _ in row['ind'].split(';')]
+        if len(group_idx) == 1 and group_idx[0] in lut:
+            translate[row['name']] = lut[group_idx[0]]
+    df['name'] = df['name'].apply(lambda x: translate.get(x,x))
+
     value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
     size_df = pd.pivot_table(df, values='groupsize', index=['subject','timepoint'], columns='name')
     value_df.columns = [_.upper().replace('-','_') for _ in value_df.columns]

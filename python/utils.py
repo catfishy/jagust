@@ -49,6 +49,14 @@ BRAAK4 = [1015,10,1002,1026,1023,1010,1035,1009,1033,2015,49,2002,2026,2023,2010
 BRAAK5 = [1028,1012,1014,1032,1003,1027,1018,1019,1020,11,12,1011,1031,1008,1030,13,1029,1025,1001,26,1034,2028,2012,2014,2032,2003,2027,2018,2019,2020,50,51,2011,2031,2008,2030,52,2029,2025,2001,58,2034]
 BRAAK6 = [1021,1022,1005,1024,1017,2021,2022,2005,2024,2017]
 
+# DEFINITIONS FOR FRONTAL REGIONS
+LEFT_ORBITOFR = [1012,1014,1032]
+LEFT_MIDDLEFR = [1003,1027]
+LEFT_PARSFR = [1018,1019,1020]
+RIGHT_ORBITOFR = [2012,2014,2032]
+RIGHT_MIDDLEFR = [2003,2027]
+RIGHT_PARSFR = [2018,2019,2020]
+
 # DEFINITIONS FOR LOBES (FOR ANALYZING SPATIAL PATTERNS)
 FRONTAL_LOBE = [1028,2028,1003,2003,1027,2027,1032,2032,1012,2012,1014,2014,1020,2020,1019,2019,1018,2018]
 PARIETAL_LOBE = [1029,2029,1008,2008,1025,2025,1031,2031]
@@ -1647,7 +1655,7 @@ def importScanMeta(meta_file, with_viscode=False):
         rows = rows[[date_col] + viscode_cols]
         rows = rows.sort_values(by=date_col)
         dedup_rows = rows[rows.shift(-1) != rows]
-        dedup_rows.dropna(inplace=True)
+        dedup_rows.dropna(subset=[date_col],inplace=True)
         if with_viscode:
             dedup_rows.set_index(date_col,inplace=True)
             scans[pid] = dedup_rows.to_dict(orient='index')
