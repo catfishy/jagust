@@ -1,9 +1,0 @@
-Anova Table (Type III tests)
-
-Response: AV1451_Braak56_CerebGray_BL
-            Sum Sq Df F value  Pr(>F)  
-(Intercept)  0.012  1  0.0137 0.90749  
-Diag.AV1451  7.129  3  2.6289 0.06227 .
-Residuals   38.871 43                  
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1

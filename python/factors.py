@@ -377,7 +377,6 @@ result_df = data['result_df']
 rchange_df = data['change_df']
 pattern_col_order = list(pattern_prior_df.columns)
 
-# SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
 column_order = pattern_bl_df.columns
 pattern_bl_df = pattern_bl_df[column_order]
 if pattern_bl_df.index.nlevels > 1:
@@ -389,11 +388,11 @@ pattern_scan3_df = pattern_scan3_df[column_order]
 if pattern_scan3_df.index.nlevels > 1:
     pattern_scan3_df.index = pattern_scan3_df.index.droplevel(1)
 
-savePatternAsMat(pattern_bl_df, pattern_mat)
-savePatternAsMat(pattern_scan2_df, pattern_mat_2)
-savePatternAsMat(pattern_scan3_df, pattern_mat_3)
-sys.exit(1)
-
+# SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
+# savePatternAsMat(pattern_bl_df, pattern_mat)
+# savePatternAsMat(pattern_scan2_df, pattern_mat_2)
+# savePatternAsMat(pattern_scan3_df, pattern_mat_3)
+# sys.exit(1)
 
 
 # Create NSFA patterns df
@@ -516,14 +515,14 @@ else:
     master_df.set_index('RID', inplace=True)
     columns = ['Age@AV45','Age@AV1451','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)',
                'Diag@AV45','Diag@AV1451','AV45_1_2_Diff','AV45_1_3_Diff',
-               'AV45_NONTP_wcereb_BIN1.11',
+               'AV45_NONTP_1_wcereb_BIN1.11',
                'AV45_NONTP_2_wcereb_BIN1.11',
                'AV45_NONTP_3_wcereb_BIN1.11',
-               'AV45_NONTP_wcereb',
+               'AV45_NONTP_1_wcereb',
                'AV45_NONTP_2_wcereb',
                'AV45_NONTP_3_wcereb',
                'AV45_NONTP_wcereb_Slope']
-    columns += ['UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_slope']
+    columns += ['UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_slope']
     columns += ['ADAS_AV45_1','ADAS_AV1451_1','ADASslope_postAV45']
     columns += ['AVLT_AV45_1','AVLT_AV1451_1','AVLT_slope_postAV45']
     columns += ['MMSEslope_postAV45','MMSE_AV45_1','MMSE_AV1451_1']
@@ -569,7 +568,10 @@ else:
                 'AV1451_Braak5_CerebGray_Cum_BL',
                 'AV1451_Braak6_CerebGray_Cum_BL',
                 'AV1451_WM_BL',
-                'AV1451_WM_CerebGray_BL']
+                'AV1451_WM_CerebGray_BL',
+                'AV1451_BL_closest_AV45_wcereb',
+                'AV1451_BL_closest_AV45_wcereb_BIN1.11',
+                'AV1451_BL_closest_AV45_wcereb_retroSlope']
     other_df = master_df[columns]
 
 print columns

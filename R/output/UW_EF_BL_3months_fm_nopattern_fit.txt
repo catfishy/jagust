@@ -1,2 +1,0 @@
-  Class   Family     Link   N  Marginal Conditional      AIC
-1    lm gaussian identity 221 0.1633792          NA 599.7452

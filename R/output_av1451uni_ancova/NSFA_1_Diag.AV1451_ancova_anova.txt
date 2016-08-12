@@ -1,7 +1,0 @@
-Anova Table (Type III tests)
-
-Response: NSFA_1
-            Sum Sq Df F value Pr(>F)
-(Intercept)  0.126  1  0.1183 0.7326
-Diag.AV1451  0.207  3  0.0647 0.9782
-Residuals   45.793 43               
