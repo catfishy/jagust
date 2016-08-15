@@ -212,6 +212,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # ref = 'WHOLECEREB'
 # # ref = 'BIGREF2'
 # tracer = 'AV45'
+# trim_sid=True
 
 # FOR ADNI AV1451
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
@@ -236,6 +237,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # sep_frontal = True
 # ref = 'WHOLECEREB'
 # tracer = 'AV1451'
+# trim_sid=True
 
 # FOR ADNI AV1451 UNILATERAL
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
@@ -260,30 +262,58 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # sep_frontal = True
 # ref = 'WHOLECEREB'
 # tracer = 'AV1451'
+# trim_sid=True
 
 # FOR ADNI AV1451 SKULL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
-data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
-pattern_mat = '../av1451skull_pattern_bl.mat'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
+# data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
+# pattern_mat = '../av1451skull_pattern_bl.mat'
+# pattern_mat_2 = None
+# pattern_mat_3 = None
+# nsfa_activation_csv = '../nsfa/av1451skull_factor_activations.csv'
+# nsfa_activation_csv_2 = None
+# nsfa_activation_csv_3 = None
+# nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
+# model_file = None
+# output_file = '../nsfa/av1451skull_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
+# comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451skull_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451skull_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451skull_pattern_loading_%s"
+# dod = False
+# bilateral = True
+# sep_frontal = False
+# ref = 'CEREBGM'
+# tracer = 'AV1451'
+# trim_sid=True
+
+# FOR BACS AV1451 SKULL
+master_csv = None
+data_csv = '../datasets/pvc_bacs_av1451/tauskullregions_output.csv'
+pattern_mat = '../av1451bacs_pattern_bl.mat'
 pattern_mat_2 = None
 pattern_mat_3 = None
-nsfa_activation_csv = '../nsfa/av1451skull_factor_activations.csv'
+nsfa_activation_csv = '../nsfa/av1451bacs_factor_activations.csv'
 nsfa_activation_csv_2 = None
 nsfa_activation_csv_3 = None
-nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
-nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
+nsfa_loading_csv = '../nsfa/av1451bacs_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av1451bacs_lambdag.csv'
 model_file = None
-output_file = '../nsfa/av1451skull_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
-comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
-comm_output_file = '../nsfa/av1451skull_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451skull_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451skull_pattern_loading_%s"
+output_file = '../nsfa/av1451bacs_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av1451bacs_top_regions.csv'
+comp_output_file = '../nsfa/av1451bacs_roi_comparisons.csv'
+comm_output_file = '../nsfa/av1451bacs_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451bacs_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451bacs_pattern_loading_%s"
 dod = False
 bilateral = True
 sep_frontal = False
 ref = 'CEREBGM'
 tracer = 'AV1451'
+trim_sid = False
+
 
 # FOR DOD AV45
 # master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
@@ -304,6 +334,7 @@ tracer = 'AV1451'
 # sep_frontal = True
 # ref = 'WHOLECEREB'
 # tracer = 'AV45'
+# trim_sid = False
 
 # Save CS and braak region masks
 # av45_cs_mask_file = "../output/fake_aparc_inputs/av45_cs_mask.mat"
@@ -315,8 +346,6 @@ tracer = 'AV1451'
 # saveRegionMask(BRAAK3+BRAAK4, av1451_braak34_mask_file)
 # saveRegionMask(BRAAK5+BRAAK6, av1451_braak56_mask_file)
 # sys.exit(1)
-
-
 
 scale_type = 'original'
 norm_type = 'L1'
@@ -361,7 +390,9 @@ if bilateral: # truncate keys
     pattern_keys = list(set([_.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','') for _ in pattern_keys]))
 print pattern_keys
 
-data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file, tracer=tracer, ref_key=ref, norm_type=norm_type, bilateral=bilateral, dod=dod)
+data = parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
+                       tracer=tracer, ref_key=ref, norm_type=norm_type,
+                       bilateral=bilateral, dod=dod, trim_sid=trim_sid)
 pattern_bl_df = data['pattern_bl_df']
 pattern_scan2_df = data['pattern_scan2_df']
 pattern_scan3_df = data['pattern_scan3_df']
@@ -397,7 +428,7 @@ if pattern_scan3_df.index.nlevels > 1:
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
-nsfa_act_df.index = nsfa_act_df.index.astype('int64')
+# nsfa_act_df.index = nsfa_act_df.index.astype('int64')
 nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
 nsfa_lambdag = map(float,list(pd.read_csv(nsfa_lambdag_csv).columns))
 # only keep factors with nonzero loadings
@@ -498,83 +529,84 @@ else:
     igmm_prob_df = pd.DataFrame()
 
 # Get master data
-if dod:
-    master_df = pd.read_csv(master_csv, low_memory=False)
-    master_df.set_index('SCRNO', inplace=True)
-    columns = ['Age','Sex','Edu','APOE4BIN','Diag_closest_AV45_BL',
-               'ANTIDEP_USE','SSRI','PTGroup','GroupNum','GroupNum_TBI','GroupNum_PTSD']
-    columns += [_ for _ in master_df.columns if _.startswith('ADAS')]
-    columns += [_ for _ in master_df.columns if _.startswith('AVLT')]
-    columns += [_ for _ in master_df.columns if _.startswith('GD')]
-    columns += [_ for _ in master_df.columns if _.startswith('CDR_GLOBAL')]
-    columns += [_ for _ in master_df.columns if _.startswith('CDR_SOB')]
-    other_df = master_df[columns]
+if master_csv is not None:
+    if dod:
+        master_df = pd.read_csv(master_csv, low_memory=False)
+        master_df.set_index('SCRNO', inplace=True)
+        columns = ['Age','Sex','Edu','APOE4BIN','Diag_closest_AV45_BL',
+                   'ANTIDEP_USE','SSRI','PTGroup','GroupNum','GroupNum_TBI','GroupNum_PTSD']
+        columns += [_ for _ in master_df.columns if _.startswith('ADAS')]
+        columns += [_ for _ in master_df.columns if _.startswith('AVLT')]
+        columns += [_ for _ in master_df.columns if _.startswith('GD')]
+        columns += [_ for _ in master_df.columns if _.startswith('CDR_GLOBAL')]
+        columns += [_ for _ in master_df.columns if _.startswith('CDR_SOB')]
+        other_df = master_df[columns]
+    else:
+        master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+        master_df.columns = master_df.columns.get_level_values(1)
+        master_df.set_index('RID', inplace=True)
+        columns = ['Age@AV45','Age@AV1451','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)',
+                   'Diag@AV45','Diag@AV1451','AV45_1_2_Diff','AV45_1_3_Diff',
+                   'AV45_NONTP_1_wcereb_BIN1.11',
+                   'AV45_NONTP_2_wcereb_BIN1.11',
+                   'AV45_NONTP_3_wcereb_BIN1.11',
+                   'AV45_NONTP_1_wcereb',
+                   'AV45_NONTP_2_wcereb',
+                   'AV45_NONTP_3_wcereb',
+                   'AV45_NONTP_wcereb_Slope']
+        columns += ['UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_slope']
+        columns += ['ADAS_AV45_1','ADAS_AV1451_1','ADASslope_postAV45']
+        columns += ['AVLT_AV45_1','AVLT_AV1451_1','AVLT_slope_postAV45']
+        columns += ['MMSEslope_postAV45','MMSE_AV45_1','MMSE_AV1451_1']
+        columns += ['WMH_percentOfICV_AV45_1','WMH_percentOfICV_slope']
+        columns += ['UW_MEM_AV45_1','UW_MEM_AV1451_1','UW_MEM_slope']
+        columns += ['UW_EF_AV45_1','UW_EF_AV1451_1','UW_EF_slope']
+        columns += ['CSF_ABETA_closest_AV45_1','CSF_ABETA_closest_AV45_1_BIN_192',
+                    'CSF_ABETA_closest_AV1451_1','CSF_ABETA_closest_AV1451_1_BIN_192',
+                    'CSF_ABETA_slope']
+        columns += ['CSF_TAU_closest_AV45_1','CSF_TAU_closest_AV45_1_BIN_93',
+                    'CSF_TAU_closest_AV1451_1','CSF_TAU_closest_AV1451_1_BIN_93',
+                    'CSF_TAU_slope']
+        columns += ['CSF_PTAU_closest_AV45_1','CSF_PTAU_closest_AV45_1_BIN_23',
+                    'CSF_PTAU_closest_AV1451_1','CSF_PTAU_closest_AV1451_1_BIN_23',
+                    'CSF_PTAU_slope']
+        columns += ['GD_AV45_1','GD_slope']
+        columns += ['CDR_GLOBAL_AV45_1',
+                   'CDR_MEMORY_AV45_1',
+                   'CDR_ORIENT_AV45_1',
+                   'CDR_JUDGE_AV45_1',
+                   'CDR_COMMUN_AV45_1',
+                   'CDR_HOME_AV45_1',
+                   'CDR_CARE_AV45_1',
+                   'CDR_GLOBAL_AV1451_1',
+                   'CDR_MEMORY_AV1451_1',
+                   'CDR_ORIENT_AV1451_1',
+                   'CDR_JUDGE_AV1451_1',
+                   'CDR_COMMUN_AV1451_1',
+                   'CDR_HOME_AV1451_1',
+                   'CDR_CARE_AV1451_1']
+        columns += ['AV1451_Braak12_CerebGray_BL',
+                    'AV1451_Braak34_CerebGray_BL',
+                    'AV1451_Braak56_CerebGray_BL',
+                    'AV1451_Braak1_CerebGray_BL',
+                    'AV1451_Braak2_CerebGray_BL',
+                    'AV1451_Braak3_CerebGray_BL',
+                    'AV1451_Braak4_CerebGray_BL',
+                    'AV1451_Braak5_CerebGray_BL',
+                    'AV1451_Braak6_CerebGray_BL',
+                    'AV1451_Braak2_CerebGray_Cum_BL',
+                    'AV1451_Braak3_CerebGray_Cum_BL',
+                    'AV1451_Braak4_CerebGray_Cum_BL',
+                    'AV1451_Braak5_CerebGray_Cum_BL',
+                    'AV1451_Braak6_CerebGray_Cum_BL',
+                    'AV1451_WM_BL',
+                    'AV1451_WM_CerebGray_BL',
+                    'AV1451_BL_closest_AV45_wcereb',
+                    'AV1451_BL_closest_AV45_wcereb_BIN1.11',
+                    'AV1451_BL_closest_AV45_wcereb_retroSlope']
+        other_df = master_df[columns]
 else:
-    master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
-    master_df.columns = master_df.columns.get_level_values(1)
-    master_df.set_index('RID', inplace=True)
-    columns = ['Age@AV45','Age@AV1451','Gender','APOE2_BIN','APOE4_BIN','Edu.(Yrs)',
-               'Diag@AV45','Diag@AV1451','AV45_1_2_Diff','AV45_1_3_Diff',
-               'AV45_NONTP_1_wcereb_BIN1.11',
-               'AV45_NONTP_2_wcereb_BIN1.11',
-               'AV45_NONTP_3_wcereb_BIN1.11',
-               'AV45_NONTP_1_wcereb',
-               'AV45_NONTP_2_wcereb',
-               'AV45_NONTP_3_wcereb',
-               'AV45_NONTP_wcereb_Slope']
-    columns += ['UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_slope']
-    columns += ['ADAS_AV45_1','ADAS_AV1451_1','ADASslope_postAV45']
-    columns += ['AVLT_AV45_1','AVLT_AV1451_1','AVLT_slope_postAV45']
-    columns += ['MMSEslope_postAV45','MMSE_AV45_1','MMSE_AV1451_1']
-    columns += ['WMH_percentOfICV_AV45_1','WMH_percentOfICV_slope']
-    columns += ['UW_MEM_AV45_1','UW_MEM_AV1451_1','UW_MEM_slope']
-    columns += ['UW_EF_AV45_1','UW_EF_AV1451_1','UW_EF_slope']
-    columns += ['CSF_ABETA_closest_AV45_1','CSF_ABETA_closest_AV45_1_BIN_192',
-                'CSF_ABETA_closest_AV1451_1','CSF_ABETA_closest_AV1451_1_BIN_192',
-                'CSF_ABETA_slope']
-    columns += ['CSF_TAU_closest_AV45_1','CSF_TAU_closest_AV45_1_BIN_93',
-                'CSF_TAU_closest_AV1451_1','CSF_TAU_closest_AV1451_1_BIN_93',
-                'CSF_TAU_slope']
-    columns += ['CSF_PTAU_closest_AV45_1','CSF_PTAU_closest_AV45_1_BIN_23',
-                'CSF_PTAU_closest_AV1451_1','CSF_PTAU_closest_AV1451_1_BIN_23',
-                'CSF_PTAU_slope']
-    columns += ['GD_AV45_1','GD_slope']
-    columns += ['CDR_GLOBAL_AV45_1',
-               'CDR_MEMORY_AV45_1',
-               'CDR_ORIENT_AV45_1',
-               'CDR_JUDGE_AV45_1',
-               'CDR_COMMUN_AV45_1',
-               'CDR_HOME_AV45_1',
-               'CDR_CARE_AV45_1',
-               'CDR_GLOBAL_AV1451_1',
-               'CDR_MEMORY_AV1451_1',
-               'CDR_ORIENT_AV1451_1',
-               'CDR_JUDGE_AV1451_1',
-               'CDR_COMMUN_AV1451_1',
-               'CDR_HOME_AV1451_1',
-               'CDR_CARE_AV1451_1']
-    columns += ['AV1451_Braak12_CerebGray_BL',
-                'AV1451_Braak34_CerebGray_BL',
-                'AV1451_Braak56_CerebGray_BL',
-                'AV1451_Braak1_CerebGray_BL',
-                'AV1451_Braak2_CerebGray_BL',
-                'AV1451_Braak3_CerebGray_BL',
-                'AV1451_Braak4_CerebGray_BL',
-                'AV1451_Braak5_CerebGray_BL',
-                'AV1451_Braak6_CerebGray_BL',
-                'AV1451_Braak2_CerebGray_Cum_BL',
-                'AV1451_Braak3_CerebGray_Cum_BL',
-                'AV1451_Braak4_CerebGray_Cum_BL',
-                'AV1451_Braak5_CerebGray_Cum_BL',
-                'AV1451_Braak6_CerebGray_Cum_BL',
-                'AV1451_WM_BL',
-                'AV1451_WM_CerebGray_BL',
-                'AV1451_BL_closest_AV45_wcereb',
-                'AV1451_BL_closest_AV45_wcereb_BIN1.11',
-                'AV1451_BL_closest_AV45_wcereb_retroSlope']
-    other_df = master_df[columns]
-
-print columns
+    other_df = pd.DataFrame()
 
 # Apply threshold
 result_df['positive_prior'] = (result_df['CORTICAL_SUMMARY_prior'] >= threshold).astype(int)
@@ -587,9 +619,9 @@ if len(igmm_prob_df.index) > 0:
     combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
 else:
     combined_df = nsfa_act_df
-combined_df = combined_df.merge(result_df,left_index=True,right_index=True)
-combined_df = combined_df.merge(other_df,left_index=True,right_index=True)
-combined_df = combined_df.merge(scores_df,left_index=True,right_index=True)
+combined_df = combined_df.merge(result_df,left_index=True,right_index=True,how='left')
+combined_df = combined_df.merge(other_df,left_index=True,right_index=True,how='left')
+combined_df = combined_df.merge(scores_df,left_index=True,right_index=True,how='left')
 if dod:
     combined_df.index.name = 'SCRNO'
 else:

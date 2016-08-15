@@ -264,6 +264,37 @@ def df_count(df, time_cols, value_cols):
     counts = df.apply(calc_count, axis=1)
     return counts
 
+def retro_slope(df, date_col, val_col, from_date, to_date, exact=False):
+    '''
+    Expects a dataframe with date_col and val_col, each datapoint is a row
+    Filters our rows before from_date and after to_date
+    If exact, then return None if it doesn't have values for all timepoints
+    within the date range
+    '''
+    # make sure columns exist
+    assert date_col in df.columns, "%s not found" % date_col
+    assert val_col in df.columns, "%s not found" % val_col
+    cur_df = df[[date_col,val_col]]
+    # filter by date
+    if not isnan(from_date):
+        cur_df = cur_df[cur_df[date_col] >= from_date]
+    if not isnan(to_date):
+        cur_df = cur_df[cur_df[date_col] <= to_date]
+    if len(cur_df.index) < 2:
+        return None
+    cur_df.sort_values(date_col,ascending=True,inplace=True)
+    times = list(cur_df[date_col])
+    vals = list(cur_df[val_col])
+    points = [(t,v) for  t,v in zip(times,vals) if not isnan(t) and not isnan(v)]
+    if exact and len(points) != len(cur_df.index):
+        return None
+    if len(points) < 2:
+        return None
+    # take diff and calc slope
+    first_time = points[0][0]
+    points = [(yrDiff(t,first_time),v) for t,v in points]
+    return slope(points)
+
 
 def df_slope(df, time_cols, value_cols, take_diff=False, exact=False):
     '''
@@ -287,6 +318,8 @@ def df_slope(df, time_cols, value_cols, take_diff=False, exact=False):
         values = [row[vc] for vc in value_cols]
         points = [(t,v) for  t,v in zip(times,values) if not isnan(t) and not isnan(v)]
         if exact and len(points) != timepoints:
+            return None
+        if len(points) < 2:
             return None
         if take_diff:
             first_time = points[0][0]

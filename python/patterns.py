@@ -194,13 +194,14 @@ def group_comparisons(df, groups, keys, adjust=True):
 
 
 def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
-        tracer='AV45', ref_key='WHOLECEREB', norm_type='L1', bilateral=True, dod=False):
+        tracer='AV45', ref_key='WHOLECEREB', norm_type='L1',
+        bilateral=True, dod=False, trim_sid=True):
     assert norm_type in set(['L1','L2','Linf'])
     assert tracer in set(['AV45','AV1451'])
     assert ref_key in set(['WHOLECEREB','BIGREF2','BIGREF','CEREBGM'])
 
     df = pd.read_csv(data_csv)
-    if df['subject'].dtype != 'int64':
+    if df['subject'].dtype != 'int64' and trim_sid:
         df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
 
     # rename columns
@@ -294,44 +295,10 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
     else:
         raise Exception("Invalid norm type")
 
-
-    # Import master csv
-    if dod:
-        master_df = pd.read_csv(master_csv, low_memory=False)
-        master_df.set_index('SCRNO',inplace=True)
-        # Get Diagnoses
-        if tracer == 'AV45':
-            diag_keys = {'BL': 'Diag_closest_AV45_BL',
-                         'Scan2': 'Diag_closest_AV45_2',
-                         'Scan3': ''}
-        else:
-            raise Exception("Diag keys for tracer %s not specified" % tracer)
-    else:
-        master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
-        master_df.columns = master_df.columns.get_level_values(1)
-        master_df.set_index('RID',inplace=True)
-        # Get Diagnoses
-        if tracer == 'AV45':
-            diag_keys = {'BL': 'Diag@AV45_long',
-                         'Scan2': 'Diag@AV45_2_long',
-                         'Scan3': 'Diag@AV45_3_long'}
-        elif tracer == 'AV1451':
-            diag_keys = {'BL': 'Diag@AV1451',
-                         'Scan2': 'Diag@AV45_2',
-                         'Scan3': 'Diag@AV45_3'}
-        else:
-            raise Exception("Diag keys for tracer %s not specified" % tracer)
-
-    diags = []
-    for subj, tp in pivot_df.index.values:
-        diags.append({'subject': subj, 'timepoint': tp, 'diag': master_df.loc[subj,diag_keys[tp]]})
-    diags_df = pd.DataFrame(diags).set_index(['subject','timepoint'])
-
     # split by timepoint
     pattern_bl_df = pattern_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
     uptake_bl_df = uptake_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
     lobes_bl_df = lobes_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
-
     try:
         pattern_scan2_df = pattern_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
         uptake_scan2_df = uptake_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
@@ -340,7 +307,6 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
         pattern_scan2_df = pd.DataFrame(columns=pattern_bl_df.columns)
         uptake_scan2_df = pd.DataFrame(columns=uptake_bl_df.columns)
         lobes_scan2_df = pd.DataFrame(columns=lobes_bl_df.columns)
-
     try:
         pattern_scan3_df = pattern_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
         uptake_scan3_df = uptake_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
@@ -350,21 +316,10 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
         uptake_scan3_df = pd.DataFrame(columns=uptake_bl_df.columns)
         lobes_scan3_df = pd.DataFrame(columns=lobes_bl_df.columns)
 
-    # Get years between scans
-    yrs = {}
-    # for subj in pattern_scan3_df.index:
-    #     yrs[subj] = master_df.loc[subj,'%s_1_3_Diff' % tracer]
-    # for subj in list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index)):
-    #     yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
-    for subj in pattern_scan2_df.index:
-        yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
-    yr_df = pd.DataFrame(yrs.items(), columns=['subject','yrs']).set_index('subject')
-
     # join patterns/lobes/uptakes into prior/post
     pattern_prior_df = pattern_bl_df.copy()
     lobes_prior_df = lobes_bl_df.copy()
     uptake_prior_df = uptake_bl_df.copy()
-
     # pattern_post_df = pd.concat((pattern_scan3_df,pattern_scan2_df.loc[list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index)),:]), axis=0)
     # lobes_post_df = pd.concat((lobes_scan3_df,lobes_scan2_df.loc[list(set(lobes_scan2_df.index) - set(lobes_scan3_df.index)),:]), axis=0)
     # uptake_post_df = pd.concat((uptake_scan3_df,uptake_scan2_df.loc[list(set(uptake_scan2_df.index) - set(uptake_scan3_df.index)),:]), axis=0)
@@ -372,42 +327,90 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
     lobes_post_df = lobes_scan2_df
     uptake_post_df = uptake_scan2_df
 
-    # calculate uptake change and lobe change
-    pattern_change_df = pattern_post_df.subtract(pattern_prior_df.loc[pattern_post_df.index,:]).divide(yr_df.yrs, axis='index')
-    uptake_change_df = uptake_post_df.subtract(uptake_prior_df.loc[uptake_post_df.index,:]).divide(yr_df.yrs, axis='index')
-    lobes_change_df = lobes_post_df.subtract(lobes_prior_df.loc[lobes_post_df.index,:]).divide(yr_df.yrs, axis='index')
+    # Import master csv
+    if master_csv is not None:
+        if dod:
+            master_df = pd.read_csv(master_csv, low_memory=False)
+            master_df.set_index('SCRNO',inplace=True)
+            # Get Diagnoses
+            if tracer == 'AV45':
+                diag_keys = {'BL': 'Diag_closest_AV45_BL',
+                             'Scan2': 'Diag_closest_AV45_2',
+                             'Scan3': ''}
+            else:
+                raise Exception("Diag keys for tracer %s not specified" % tracer)
+        else:
+            master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+            master_df.columns = master_df.columns.get_level_values(1)
+            master_df.set_index('RID',inplace=True)
+            # Get Diagnoses
+            if tracer == 'AV45':
+                diag_keys = {'BL': 'Diag@AV45_long',
+                             'Scan2': 'Diag@AV45_2_long',
+                             'Scan3': 'Diag@AV45_3_long'}
+            elif tracer == 'AV1451':
+                diag_keys = {'BL': 'Diag@AV1451',
+                             'Scan2': 'Diag@AV45_2',
+                             'Scan3': 'Diag@AV45_3'}
+            else:
+                raise Exception("Diag keys for tracer %s not specified" % tracer)
+
+        diags = []
+        for subj, tp in pivot_df.index.values:
+            diags.append({'subject': subj, 'timepoint': tp, 'diag': master_df.loc[subj,diag_keys[tp]]})
+        diags_df = pd.DataFrame(diags).set_index(['subject','timepoint'])
+
+        # Get years between scans
+        yrs = {}
+        # for subj in pattern_scan3_df.index:
+        #     yrs[subj] = master_df.loc[subj,'%s_1_3_Diff' % tracer]
+        # for subj in list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index)):
+        #     yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
+        for subj in pattern_scan2_df.index:
+            yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
+        yr_df = pd.DataFrame(yrs.items(), columns=['subject','yrs']).set_index('subject')
+
+        # calculate uptake change and lobe change
+        pattern_change_df = pattern_post_df.subtract(pattern_prior_df.loc[pattern_post_df.index,:]).divide(yr_df.yrs, axis='index')
+        uptake_change_df = uptake_post_df.subtract(uptake_prior_df.loc[uptake_post_df.index,:]).divide(yr_df.yrs, axis='index')
+        lobes_change_df = lobes_post_df.subtract(lobes_prior_df.loc[lobes_post_df.index,:]).divide(yr_df.yrs, axis='index')
+    else:
+        diags_df = pd.DataFrame()
+        yr_df = pd.DataFrame()
+        pattern_change_df = pd.DataFrame()
+        uptake_change_df = pd.DataFrame()
+        lobes_change_df = pd.DataFrame()
 
     # create result df
     results = []
     for subj, rows in suvr_df.groupby(level=0):
-        try:
-            summary_prior = rows.loc[(subj,'BL'),'COMPOSITE']
-            diag_prior = diags_df.loc[(subj,'BL'),'diag']
-        except Exception as e:
-            print "%s has no BL row" % subj
-            continue
+        to_add = {'subject': subj}
         indices = set(rows.index.values)
-        # if (subj,'Scan3') in indices:
-        #     yr_diff = yr_df.loc[subj,'yrs']
-        #     summary_post = rows.loc[(subj,'Scan3'),'COMPOSITE']
-        #     diag_post = diags_df.loc[(subj,'Scan3'),'diag']
-        if (subj,'Scan2') in indices:
-            yr_diff = yr_df.loc[subj,'yrs']
-            summary_post = rows.loc[(subj,'Scan2'),'COMPOSITE']
-            diag_post = diags_df.loc[(subj,'Scan2'),'diag']
-        else:
-            yr_diff = None
-            summary_post = None
-            diag_post = None
+        summary_prior = rows.loc[(subj,'BL'),'COMPOSITE']
+        to_add['CORTICAL_SUMMARY_prior'] = summary_prior
+        # add diag and change values
+        diag_prior = None
+        diag_post = None
+        yr_diff = None
+        summary_post = None
         summary_change = None
-        if summary_post is not None:
+        if not diags_df.empty:
+            try:
+                diag_prior = diags_df.loc[(subj,'BL'),'diag']
+            except Exception as e:
+                print "%s has no BL diag value" % subj
+        if (subj,'Scan2') in indices:
+            summary_post = rows.loc[(subj,'Scan2'),'COMPOSITE']
+            if not yr_df.empty:
+                yr_diff = yr_df.loc[subj,'yrs']
+            if not diags_df.empty:
+                diag_post = diags_df.loc[(subj,'Scan2'),'diag']
+        if summary_post is not None and yr_diff is not None:
             summary_change = (summary_post-summary_prior)/yr_diff
-        to_add = {'CORTICAL_SUMMARY_post': summary_post,
-                  'CORTICAL_SUMMARY_prior': summary_prior,
-                  'diag_prior': diag_prior,
-                  'diag_post': diag_post,
-                  'CORTICAL_SUMMARY_change': summary_change,
-                  'subject': subj}
+        to_add['CORTICAL_SUMMARY_post'] = summary_post
+        to_add['CORTICAL_SUMMARY_change'] = summary_change
+        to_add['diag_prior'] = diag_prior
+        to_add['diag_post'] = diag_post
         results.append(to_add)
     result_df = pd.DataFrame(results).set_index('subject')
 

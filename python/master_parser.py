@@ -434,7 +434,8 @@ def syncADASCogData(master_df, adni1_adas_file, adnigo2_adas_file, registry):
                 'ADAS_AV45_3','ADAS_AV45_3_DATE',
                 'ADAS_AV1451_1','ADAS_AV1451_1_DATE',
                 'ADAS_AV1451_2','ADAS_AV1451_2_DATE',
-                'ADAS_AV1451_3','ADAS_AV1451_3_DATE']
+                'ADAS_AV1451_3','ADAS_AV1451_3_DATE',
+                'ADAS_retroslope_AV1451_BL']
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -453,6 +454,16 @@ def syncADASCogData(master_df, adni1_adas_file, adnigo2_adas_file, registry):
         all_df['ADASslope_postAV45'] = adas_slope[rid]
         last_date = subj_rows.iloc[-1]['EXAMDATE']
         all_df['ADAS_post_AV45_followuptime'] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
+
+        # Retroactive slope from first AV1451 scan
+        if not isnan(av1451_date1):
+            all_df['ADAS_retroslope_AV1451_BL'] = retro_slope(subj_rows,
+                                                              'EXAMDATE',
+                                                              'TOTSCORE',
+                                                              av45_date1-timedelta(days=90),
+                                                              av1451_date1+timedelta(days=90),
+                                                              exact=False)
+
 
         # Get closest av45 measurements
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTSCORE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
@@ -500,7 +511,8 @@ def syncMMSEData(master_df, mmse_file, registry):
                 'MMSE_AV45_3','MMSE_AV45_3_DATE',
                 'MMSE_AV1451_1','MMSE_AV1451_1_DATE',
                 'MMSE_AV1451_2','MMSE_AV1451_2_DATE',
-                'MMSE_AV1451_3','MMSE_AV1451_3_DATE']
+                'MMSE_AV1451_3','MMSE_AV1451_3_DATE',
+                'MMSE_retroslope_AV1451_BL']
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -519,6 +531,15 @@ def syncMMSEData(master_df, mmse_file, registry):
         all_df['MMSEslope_postAV45'] = mmse_slope[rid]
         last_date = subj_rows.iloc[-1]['EXAMDATE']
         all_df['MMSE_post_AV45_followuptime'] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
+
+        # Retroactive slope from first AV1451 scan
+        if not isnan(av1451_date1):
+            all_df['MMSE_retroslope_AV1451_BL'] = retro_slope(subj_rows,
+                                                              'EXAMDATE',
+                                                              'MMSCORE',
+                                                              av45_date1-timedelta(days=90),
+                                                              av1451_date1+timedelta(days=90),
+                                                              exact=False)
 
         # Get closest av45 measurements
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'MMSCORE', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
@@ -565,7 +586,8 @@ def syncAVLTData(master_df, neuro_battery_file, registry):
                 'AVLT_AV1451_2','AVLT_AV1451_2_DATE',
                 'AVLT_AV1451_3','AVLT_AV1451_3_DATE',
                 'AVLT_post_AV45_followuptime',
-                'AVLT_slope_postAV45']
+                'AVLT_slope_postAV45',
+                'AVLT_retroslope_AV1451_BL']
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -584,6 +606,15 @@ def syncAVLTData(master_df, neuro_battery_file, registry):
         all_df['AVLT_slope_postAV45'] = avlt_slope[rid]
         last_date = subj_rows.iloc[-1]['EXAMDATE']
         all_df['AVLT_post_AV45_followuptime'] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
+
+        # Retroactive slope from first AV1451 scan
+        if not isnan(av1451_date1):
+            all_df['AVLT_retroslope_AV1451_BL'] = retro_slope(subj_rows,
+                                                              'EXAMDATE',
+                                                              'TOTS',
+                                                              av45_date1-timedelta(days=90),
+                                                              av1451_date1+timedelta(days=90),
+                                                              exact=False)
 
         # Get closest av45 measurements
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
@@ -1343,12 +1374,12 @@ def syncCSFData(master_df, csf_files, registry):
         all_df['CSF_TAU_closest_AV45_1'], all_df['CSF_TAU_closest_AV45_2'], all_df['CSF_TAU_closest_AV45_3'] = tuple(closest_tau)
         all_df['CSF_TAU_closest_AV45_1_BIN_93'], all_df['CSF_TAU_closest_AV45_2_BIN_93'], all_df['CSF_TAU_closest_AV45_3_BIN_93'] = tuple(closest_tau_bin)
 
-        closest_ptau = groupClosest(subj_rows, 'EXAMDATE', 'PTAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
-        closest_ptau_bin = groupClosest(subj_rows, 'EXAMDATE', 'PTAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
-        closest_abeta = groupClosest(subj_rows, 'EXAMDATE', 'ABETA', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
-        closest_abeta_bin = groupClosest(subj_rows, 'EXAMDATE', 'ABETA_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
-        closest_tau = groupClosest(subj_rows, 'EXAMDATE', 'TAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
-        closest_tau_bin = groupClosest(subj_rows, 'EXAMDATE', 'TAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=365)
+        closest_ptau = groupClosest(subj_rows, 'EXAMDATE', 'PTAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
+        closest_ptau_bin = groupClosest(subj_rows, 'EXAMDATE', 'PTAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
+        closest_abeta = groupClosest(subj_rows, 'EXAMDATE', 'ABETA', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
+        closest_abeta_bin = groupClosest(subj_rows, 'EXAMDATE', 'ABETA_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
+        closest_tau = groupClosest(subj_rows, 'EXAMDATE', 'TAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
+        closest_tau_bin = groupClosest(subj_rows, 'EXAMDATE', 'TAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
         all_df['CSF_PTAU_closest_AV1451_1'], all_df['CSF_PTAU_closest_AV1451_2'], all_df['CSF_PTAU_closest_AV1451_3'] = tuple(closest_ptau)
         all_df['CSF_PTAU_closest_AV1451_1_BIN_23'], all_df['CSF_PTAU_closest_AV1451_2_BIN_23'], all_df['CSF_PTAU_closest_AV1451_3_BIN_23'] = tuple(closest_ptau_bin)
         all_df['CSF_ABETA_closest_AV1451_1'], all_df['CSF_ABETA_closest_AV1451_2'], all_df['CSF_ABETA_closest_AV1451_3'] = tuple(closest_abeta)
@@ -1380,10 +1411,12 @@ def syncUWData(master_df, uw_file, registry):
     headers += ['UW_postAV45_%s' % (i+1) for i in range(tmpts)]
     headers += ['UW_MEM_postAV45_count', 'UW_MEM_slope',
                 'UW_MEM_AV45_1','UW_MEM_AV45_2','UW_MEM_AV45_3',
-                'UW_MEM_AV1451_1','UW_MEM_AV1451_2','UW_MEM_AV1451_3']
+                'UW_MEM_AV1451_1','UW_MEM_AV1451_2','UW_MEM_AV1451_3',
+                'UW_MEM_retroslope_AV1451_BL']
     headers += ['UW_EF_postAV45_count', 'UW_EF_slope',
                 'UW_EF_AV45_1','UW_EF_AV45_2','UW_EF_AV45_3',
-                'UW_EF_AV1451_1','UW_EF_AV1451_2','UW_EF_AV1451_3']
+                'UW_EF_AV1451_1','UW_EF_AV1451_2','UW_EF_AV1451_3',
+                'UW_EF_retroslope_AV1451_BL']
 
     def extraction_fn(rid, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -1398,6 +1431,21 @@ def syncUWData(master_df, uw_file, registry):
         date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.25 if not isnan(av45_date1) else np.nan)
         date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
         all_df = pd.concat((mem_long,ef_long,date_long),axis=1)
+
+        # Retroactive slope from first AV1451 scan
+        if not isnan(av1451_date1):
+            all_df['UW_MEM_retroslope_AV1451_BL'] = retro_slope(subj_rows,
+                                                                'EXAMDATE',
+                                                                'ADNI_MEM',
+                                                                av45_date1-timedelta(days=90),
+                                                                av1451_date1+timedelta(days=90),
+                                                                exact=False)
+            all_df['UW_EF_retroslope_AV1451_BL'] = retro_slope(subj_rows,
+                                                               'EXAMDATE',
+                                                               'ADNI_EF',
+                                                               av45_date1-timedelta(days=90),
+                                                               av1451_date1+timedelta(days=90),
+                                                               exact=False)
 
         # get slopes
         mem_slope = df_slope(all_df, date_long.columns, mem_long.columns, take_diff=False, exact=False)
@@ -1848,7 +1896,7 @@ if __name__ == '__main__':
     av45_nontp_file = "../output/08_05_16/UCBERKELEYAV45_08_05_16_regular_nontp.csv"
     av1451_tp_file = "../output/08_05_16/UCBERKELEYAV1451_08_05_16_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
-    av1451_rousset_csv = "../datasets/pvc_adni_av1451/mostregions_output.csv"
+    av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauskullregions_output.csv"
 
     # Cog files
     mmse_file = "../docs/ADNI/MMSE.csv"
