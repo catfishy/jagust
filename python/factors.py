@@ -63,11 +63,15 @@ def calculateAsymmetry(loading_df):
 
 def calculateFactorScores(loading_df, pattern_df, scaler=None):
     # standardize pattern
-    if scaler is None:
-        scaler = StandardScaler().fit(pattern_df)
-    standard_df = pd.DataFrame(scaler.transform(pattern_df))
-    standard_df.set_index(pattern_df.index, inplace=True)
-    standard_df.columns = pattern_df.columns
+    # if scaler is None:
+    #     scaler = StandardScaler().fit(pattern_df)
+    # standard_df = pd.DataFrame(scaler.transform(pattern_df))
+    # standard_df.set_index(pattern_df.index, inplace=True)
+    # standard_df.columns = pattern_df.columns
+
+    # don't standardize pattern
+    standard_df = pattern_df
+
     # calculate scores
     scores_df = pd.DataFrame()
     for factor in loading_df.columns:
@@ -265,54 +269,54 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 SKULL
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
-# data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
-# pattern_mat = '../av1451skull_pattern_bl.mat'
-# pattern_mat_2 = None
-# pattern_mat_3 = None
-# nsfa_activation_csv = '../nsfa/av1451skull_factor_activations.csv'
-# nsfa_activation_csv_2 = None
-# nsfa_activation_csv_3 = None
-# nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
-# nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
-# model_file = None
-# output_file = '../nsfa/av1451skull_pattern_dataset.csv'
-# topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
-# comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
-# comm_output_file = '../nsfa/av1451skull_communality.csv'
-# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451skull_factor_loading_%s"
-# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451skull_pattern_loading_%s"
-# dod = False
-# bilateral = True
-# sep_frontal = False
-# ref = 'CEREBGM'
-# tracer = 'AV1451'
-# trim_sid=True
-
-# FOR BACS AV1451 SKULL
-master_csv = None
-data_csv = '../datasets/pvc_bacs_av1451/tauskullregions_output.csv'
-pattern_mat = '../av1451bacs_pattern_bl.mat'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
+data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
+pattern_mat = '../av1451skull_pattern_bl.mat'
 pattern_mat_2 = None
 pattern_mat_3 = None
-nsfa_activation_csv = '../nsfa/av1451bacs_factor_activations.csv'
+nsfa_activation_csv = '../nsfa/av1451skull_factor_activations.csv'
 nsfa_activation_csv_2 = None
 nsfa_activation_csv_3 = None
-nsfa_loading_csv = '../nsfa/av1451bacs_factor_loadings.csv'
-nsfa_lambdag_csv = '../nsfa/av1451bacs_lambdag.csv'
+nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
 model_file = None
-output_file = '../nsfa/av1451bacs_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av1451bacs_top_regions.csv'
-comp_output_file = '../nsfa/av1451bacs_roi_comparisons.csv'
-comm_output_file = '../nsfa/av1451bacs_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451bacs_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451bacs_pattern_loading_%s"
+output_file = '../nsfa/av1451skull_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
+comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
+comm_output_file = '../nsfa/av1451skull_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451skull_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451skull_pattern_loading_%s"
 dod = False
 bilateral = True
 sep_frontal = False
 ref = 'CEREBGM'
 tracer = 'AV1451'
-trim_sid = False
+trim_sid=True
+
+# FOR BACS AV1451 SKULL
+# master_csv = None
+# data_csv = '../datasets/pvc_bacs_av1451/tauskullregions_output.csv'
+# pattern_mat = '../av1451bacs_pattern_bl.mat'
+# pattern_mat_2 = None
+# pattern_mat_3 = None
+# nsfa_activation_csv = '../nsfa/av1451bacs_factor_activations.csv'
+# nsfa_activation_csv_2 = None
+# nsfa_activation_csv_3 = None
+# nsfa_loading_csv = '../nsfa/av1451bacs_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av1451bacs_lambdag.csv'
+# model_file = None
+# output_file = '../nsfa/av1451bacs_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451bacs_top_regions.csv'
+# comp_output_file = '../nsfa/av1451bacs_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451bacs_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451bacs_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451bacs_pattern_loading_%s"
+# dod = False
+# bilateral = True
+# sep_frontal = False
+# ref = 'CEREBGM'
+# tracer = 'AV1451'
+# trim_sid = False
 
 
 # FOR DOD AV45
@@ -400,6 +404,7 @@ pattern_prior_df = data['pattern_prior_df']
 pattern_post_df = data['pattern_post_df']
 pattern_change_df = data['pattern_change_df']
 uptake_prior_df = data['uptake_prior_df']
+uptake_prior_df.index = uptake_prior_df.index.droplevel(1)
 uptake_post_df = data['uptake_post_df']
 lobes_prior_df = data['lobes_prior_df']
 lobes_post_df = data['lobes_post_df']
@@ -460,17 +465,19 @@ if nsfa_activation_csv_3 is not None:
     nsfa_act_df = nsfa_act_df.merge(nsfa_act_3_df, left_index=True, right_index=True, how='outer')
 
 
+
+
 # get naive ratios
-uptake_prior_df.index = uptake_prior_df.index.droplevel(1)
-scores_df, scaler = calculateFactorScores(nsfa_load_df, pattern_bl_df, scaler=None)
-if not pattern_scan2_df.empty:
-    scores_scan2_df, scaler = calculateFactorScores(nsfa_load_df, pattern_scan2_df, scaler=scaler)
-    scores_scan2_df.columns = [_.replace('SCORE','SCORE_SCAN2') for _ in scores_scan2_df.columns]
-    scores_df = scores_df.merge(scores_scan2_df, left_index=True, right_index=True, how='outer')
-if not pattern_scan3_df.empty:
-    scores_scan3_df, scaler = calculateFactorScores(nsfa_load_df, pattern_scan3_df, scaler=scaler)
-    scores_scan3_df.columns = [_.replace('SCORE','SCORE_SCAN3') for _ in scores_scan3_df.columns]
-    scores_df = scores_df.merge(scores_scan3_df, left_index=True, right_index=True, how='outer')
+scores_df, scaler = calculateFactorScores(nsfa_load_df,uptake_prior_df)
+# scores_df, scaler = calculateFactorScores(nsfa_load_df, pattern_bl_df, scaler=None)
+# if not pattern_scan2_df.empty:
+#     scores_scan2_df, scaler = calculateFactorScores(nsfa_load_df, pattern_scan2_df, scaler=scaler)
+#     scores_scan2_df.columns = [_.replace('SCORE','SCORE_SCAN2') for _ in scores_scan2_df.columns]
+#     scores_df = scores_df.merge(scores_scan2_df, left_index=True, right_index=True, how='outer')
+# if not pattern_scan3_df.empty:
+#     scores_scan3_df, scaler = calculateFactorScores(nsfa_load_df, pattern_scan3_df, scaler=scaler)
+#     scores_scan3_df.columns = [_.replace('SCORE','SCORE_SCAN3') for _ in scores_scan3_df.columns]
+#     scores_df = scores_df.merge(scores_scan3_df, left_index=True, right_index=True, how='outer')
 
 # Look at variance explained + communality
 num_vars = nsfa_load_df.shape[1]
