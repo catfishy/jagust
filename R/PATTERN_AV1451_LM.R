@@ -36,7 +36,7 @@ to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post',
               'diag_prior','diag_post','APOE4_BIN','APOE2_BIN','Gender',
               'Diag.AV45','Diag.AV1451','positive_prior','positive_post',
               'AV45_NONTP_wcereb_BIN1.11','AV45_NONTP_2_wcereb_BIN1.11',
-              'AV45_NONTP_3_wcereb_BIN1.11')
+              'AV45_NONTP_3_wcereb_BIN1.11','AV1451_BL_closest_AV45_wcereb_BIN1.11')
 to_standardize = c('Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','Diag.AV1451','Age.AV1451','Gender','Edu..Yrs.')
 diag_columns = c('Diag.AV45','Diag.AV1451')
@@ -54,7 +54,8 @@ braak_columns = c('AV1451_Braak12_CerebGray_BL',
 # target = "UW_MEM_AV1451_1"
 # target = "ADAS_AV1451_1"
 # target = "AVLT_AV1451_1"
-target = "AV1451_BL_closest_AV45_wcereb_BIN1.11"
+# target = "AV1451_BL_closest_AV45_wcereb_BIN1.11"
+target = 'AV1451_BL_closest_AV45_wcereb'
 
 # target = "ADAS_retroslope_AV1451_BL"
 # target = "AVLT_retroslope_AV1451_BL"
@@ -72,8 +73,8 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 
 # IMPORT
 df_av1451 = read.csv('nsfa/av1451skull_pattern_dataset.csv')
-pattern_columns = Filter(isPatternColumn,names(df_av1451))
-naive_columns = Filter(isNaiveColumn,names(df_av1451))
+pattern_columns = Filter(isNaiveColumn,names(df_av1451))
+# pattern_columns = Filter(isPatternColumn,names(df_av1451))
 non.na = complete.cases(df_av1451[,c(demog_columns,braak_columns,target)])
 df_av1451 = df_av1451[non.na,]
 for (i in names(df_av1451)){
@@ -139,7 +140,7 @@ braak.lars.test = data.frame(braak.lars.test[complete.cases(braak.lars.test),])
 braak.lars.coef = coef(braak.lars.model, s=which.min(summary(braak.lars.model)$Cp), mode='step')
 braak.lars.test$name = names(braak.lars.coef[braak.lars.test[,'Predictor_Number']])
 braak.lars.test$coef = braak.lars.coef[braak.lars.test[,'Predictor_Number']]
-braak.lars.sig = braak.lars.test[braak.lars.test$P.value <= 0.05,]
+braak.lars.sig = braak.lars.test[braak.lars.test$P.value <= 0.1,]
 braak.lars.cp = min(summary(braak.lars.model)$Cp)
 braak.lars.r2 = braak.lars.model$R2[which.min(summary(braak.lars.model)$Cp)]
 braak.lars.n = attr(summary(braak.lars.model)$Cp,'n')
@@ -157,7 +158,7 @@ pattern.lars.test = data.frame(pattern.lars.test[complete.cases(pattern.lars.tes
 pattern.lars.coef = coef(pattern.lars.model, s=which.min(summary(pattern.lars.model)$Cp), mode='step')
 pattern.lars.test$name = names(pattern.lars.coef[pattern.lars.test[,'Predictor_Number']])
 pattern.lars.test$coef = pattern.lars.coef[pattern.lars.test[,'Predictor_Number']]
-pattern.lars.sig = pattern.lars.test[pattern.lars.test$P.value <= 0.05,]
+pattern.lars.sig = pattern.lars.test[pattern.lars.test$P.value <= 0.1,]
 pattern.lars.cp = min(summary(pattern.lars.model)$Cp)
 pattern.lars.r2 = pattern.lars.model$R2[which.min(summary(pattern.lars.model)$Cp)]
 pattern.lars.n = attr(summary(pattern.lars.model)$Cp,'n')
@@ -175,7 +176,7 @@ full.lars.test = data.frame(full.lars.test[complete.cases(full.lars.test),])
 full.lars.coef = coef(full.lars.model, s=which.min(summary(full.lars.model)$Cp), mode='step')
 full.lars.test$name = names(full.lars.coef[full.lars.test[,'Predictor_Number']])
 full.lars.test$coef = full.lars.coef[full.lars.test[,'Predictor_Number']]
-full.lars.sig = full.lars.test[full.lars.test$P.value <= 0.05,]
+full.lars.sig = full.lars.test[full.lars.test$P.value <= 0.1,]
 full.lars.cp = min(summary(full.lars.model)$Cp)
 full.lars.r2 = full.lars.model$R2[which.min(summary(full.lars.model)$Cp)]
 full.lars.n = attr(summary(full.lars.model)$Cp,'n')
@@ -189,13 +190,24 @@ paste(target,'~',paste(full.lars.sig[,'name'], collapse=' + '))
 # test1.form = "ADAS_AV1451_1 ~ AV1451_Braak56_CerebGray_BL"
 # test2.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_3 + NSFA_8"
 # test3.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_3 + NSFA_8"
+
 # test1.form = "AVLT_AV1451_1 ~ Age.AV1451"
 # test2.form = "AVLT_AV1451_1 ~ NSFA_3"
 # test3.form = "AVLT_AV1451_1 ~ NSFA_3"
+
 # test1.form = "ADAS_retroslope_AV1451_BL ~ AV1451_Braak56_CerebGray_BL + APOE4_BIN"
 # test2.form = "ADAS_retroslope_AV1451_BL ~ NSFA_0"
 # test3.form = "ADAS_retroslope_AV1451_BL ~ NSFA_0"
-test2.form = "AV1451_BL_closest_AV45_wcereb_retroSlope ~ NSFA_7"
+
+# test2.form = "AV1451_BL_closest_AV45_wcereb_retroSlope ~ NSFA_7"
+
+# test1.form = "AV1451_BL_closest_AV45_wcereb ~ AV1451_Braak12_CerebGray_BL + APOE4_BIN + Age.AV1451 + AV1451_Braak56_CerebGray_BL + Edu..Yrs."
+# test2.form = "AV1451_BL_closest_AV45_wcereb ~ NSFA_0 + NSFA_3 + APOE4_BIN + NSFA_1 + Age.AV1451 + NSFA_7 + NSFA_6 + NSFA_10 + NSFA_4 + NSFA_2"
+# test3.form = "AV1451_BL_closest_AV45_wcereb ~ AV1451_Braak12_CerebGray_BL + NSFA_0 + NSFA_3 + APOE4_BIN + Age.AV1451 + NSFA_10"
+
+test1.form = "AV1451_BL_closest_AV45_wcereb ~ AV1451_Braak12_CerebGray_BL + Age.AV1451 + AV1451_Braak56_CerebGray_BL"
+test2.form = "AV1451_BL_closest_AV45_wcereb ~ SCORE_NSFA_10 + APOE4_BIN + SCORE_NSFA_9"
+test3.form = "AV1451_BL_closest_AV45_wcereb ~ SCORE_NSFA_10 + APOE4_BIN"
 
 test1_results = c()
 test2_results = c()
@@ -214,109 +226,40 @@ mean(test3_results)
 
 
 
-# Penalized LM
-braak.lasso.model = run.lasso(braak_form,df_av1451,'RMSE')
-braak.lasso.metric = subset(braak.lasso.model$results, fraction == braak.lasso.model$bestTune$fraction)
-braak.lasso.coef = predict.enet(braak.lasso.model$finalModel, type='coefficients',s=braak.lasso.model$bestTune$fraction, mode='fraction')$coefficients
-braak.lasso.coef = braak.lasso.coef[braak.lasso.coef != 0]
-
-pattern.lasso.model = run.lasso(pattern_form,df_av1451,'RMSE')
-pattern.lasso.metric = subset(pattern.lasso.model$results, fraction == pattern.lasso.model$bestTune$fraction)
-pattern.lasso.coef = predict.enet(pattern.lasso.model$finalModel, type='coefficients',s=pattern.lasso.model$bestTune$fraction, mode='fraction')$coefficients
-pattern.lasso.coef = pattern.lasso.coef[pattern.lasso.coef != 0]
-
-naive.lasso.model = run.lasso(naive_form,df_av1451,'RMSE')
-naive.lasso.metric = subset(naive.lasso.model$results, fraction == naive.lasso.model$bestTune$fraction)
-naive.lasso.coef = predict.enet(naive.lasso.model$finalModel, type='coefficients',s=naive.lasso.model$bestTune$fraction, mode='fraction')$coefficients
-naive.lasso.coef = naive.lasso.coef[naive.lasso.coef != 0]
-
-full.lasso.model = run.lasso(full_form,df_av1451,'Rsquared')
-full.lasso.metric = subset(full.lasso.model$results, fraction == full.lasso.model$bestTune$fraction)
-full.lasso.coef = predict.enet(full.lasso.model$finalModel, type='coefficients',s=full.lasso.model$bestTune$fraction, mode='fraction')$coefficients
-full.lasso.coef = full.lasso.coef[full.lasso.coef != 0]
-
-
-
-
 # GLM net
+link='binomial'
 
-braak.glmnet.model = run.glmnet(braak_form,df_av1451,'Rsquared')
-braak.glmnet.metric = subset(braak.glmnet.model$results, alpha == braak.glmnet.model$bestTune$alpha & lambda == braak.glmnet.model$bestTune$lambda)
-braak.glmnet.coef = predict.glmnet(braak.glmnet.model$finalModel,type='coefficients',s=braak.glmnet.model$bestTune$lambda)
+y = as.numeric(df_av1451[,target])
+braak_x = getxy(braak_form,df_av1451)
+pattern_x = getxy(pattern_form,df_av1451)
+full_x = getxy(full_form,df_av1451)
 
-naive.glmnet.model = run.glmnet(naive_form,df_av1451,'Rsquared')
-naive.glmnet.metric = subset(naive.glmnet.model$results, alpha == naive.glmnet.model$bestTune$alpha & lambda == naive.glmnet.model$bestTune$lambda)
-naive.glmnet.coef = predict.glmnet(naive.glmnet.model$finalModel,type='coefficients',s=naive.glmnet.model$bestTune$lambda)
+braak.cvfit = cv.glmnet(braak_x,y,family=link)
+pattern.cvfit = cv.glmnet(pattern_x,y,family=link)
+full.cvfit = cv.glmnet(full_x,y,family=link)
 
-pattern.glmnet.model = run.glmnet(pattern_form,df_av1451,'Rsquared')
-pattern.glmnet.metric = subset(pattern.glmnet.model$results, alpha == pattern.glmnet.model$bestTune$alpha & lambda == pattern.glmnet.model$bestTune$lambda)
-pattern.glmnet.coef = predict.glmnet(pattern.glmnet.model$finalModel,type='coefficients',s=pattern.glmnet.model$bestTune$lambda)
+braak.coef = coef(braak.cvfit,s='lambda.1se')
+vars = rownames(braak.coef)[summary(braak.coef)$i[summary(braak.coef)$i != 1]]
+paste(target,'~',paste(vars,collapse=' + '))
 
-full.glmnet.model = run.glmnet(full_form,df_av1451,'Rsquared')
-full.glmnet.metric = subset(full.glmnet.model$results, alpha == full.glmnet.model$bestTune$alpha & lambda == full.glmnet.model$bestTune$lambda)
-full.glmnet.coef = predict.glmnet(full.glmnet.model$finalModel,type='coefficients',s=full.glmnet.model$bestTune$lambda)
+pattern.coef = coef(pattern.cvfit,s='lambda.1se')
+vars = rownames(pattern.coef)[summary(pattern.coef)$i[summary(pattern.coef)$i != 1]]
+paste(target,'~',paste(vars,collapse=' + '))
+
+full.coef = coef(full.cvfit,s='lambda.1se')
+vars = rownames(full.coef)[summary(full.coef)$i[summary(full.coef)$i != 1]]
+paste(target,'~',paste(vars,collapse=' + '))
+
+# form1 = "AV1451_BL_closest_AV45_wcereb_BIN1.11 ~ APOE4_BIN + Age.AV1451 + Gender + AV1451_Braak12_CerebGray_BL + AV1451_Braak56_CerebGray_BL"
+# form2 = "AV1451_BL_closest_AV45_wcereb_BIN1.11 ~ APOE4_BIN + Age.AV1451 + Gender + NSFA_0 + NSFA_1 + NSFA_2 + NSFA_3 + NSFA_7 + NSFA_11"
+# form3 = "AV1451_BL_closest_AV45_wcereb_BIN1.11 ~ APOE4_BIN + Age.AV1451 + Gender + NSFA_0 + NSFA_7 + AV1451_Braak12_CerebGray_BL + AV1451_Braak56_CerebGray_BL"
+
+form1 = "AV1451_BL_closest_AV45_wcereb_BIN1.11 ~ APOE4_BIN + Age.AV1451 + Gender + AV1451_Braak12_CerebGray_BL + AV1451_Braak56_CerebGray_BL"
+form2 = "AV1451_BL_closest_AV45_wcereb_BIN1.11 ~ APOE4_BIN + Age.AV1451 + Gender + SCORE_NSFA_0 + SCORE_NSFA_7 + SCORE_NSFA_10 + SCORE_NSFA_11"
+form3 = "AV1451_BL_closest_AV45_wcereb_BIN1.11 ~ APOE4_BIN + Age.AV1451 + Gender + SCORE_NSFA_7 + SCORE_NSFA_10 + AV1451_Braak12_CerebGray_BL + AV1451_Braak56_CerebGray_BL"
 
 
-
-# RFE
-
-
-rfe.onlypattern = run.rfe(onlypattern_form, target, df_av1451, 2)
-optvars = rfe.onlypattern$optVariables
-
-pattern_form = paste(target,"~",diag_str,"Age.AV1451 + Gender + Edu..Yrs. + APOE4_BIN +",paste(optvars,collapse=' + '))
-fm_base = lm(as.formula(base_form),data=df_av1451)
-fm_braak = lm(as.formula(braak_form),data=df_av1451)
-fm_pattern = lm(as.formula(pattern_form),data=df_av1451)
-
-rfe.base = run.rfe(base_form, target, df_av1451, 2)
-rfe.braak = run.rfe(braak_form, target, df_av1451, 2)
-rfe.pattern = run.rfe(pattern_form, target, df_av1451, 2)
-fm_base = rfe.base$fit
-fm_braak = rfe.braak$fit
-fm_pattern = rfe.pattern$fit
-
-fm_base.summary = summary(fm_base)
-fm_braak.summary = summary(fm_braak)
-fm_pattern.summary = summary(fm_pattern)
-
-fm_base.fit = sem.model.fits(fm_base)
-fm_braak.fit = sem.model.fits(fm_braak)
-fm_pattern.fit = sem.model.fits(fm_pattern)
-
-fm_base.anova = Anova(fm_base,type='III')
-fm_braak.anova = Anova(fm_braak,type='III')
-fm_pattern.anova = Anova(fm_pattern,type='III')
-
-save.printout(paste(output_folder,target,'_fm_base_summary','.txt',sep=''),fm_base.summary)
-save.printout(paste(output_folder,target,'_fm_pattern_summary','.txt',sep=''),fm_pattern.summary)
-save.printout(paste(output_folder,target,'_fm_braak_summary','.txt',sep=''),fm_braak.summary)
-save.printout(paste(output_folder,target,'_fm_base_fit','.txt',sep=''),fm_base.fit)
-save.printout(paste(output_folder,target,'_fm_pattern_fit','.txt',sep=''),fm_pattern.fit)
-save.printout(paste(output_folder,target,'_fm_braak_fit','.txt',sep=''),fm_braak.fit)
-save.printout(paste(output_folder,target,'_fm_base_anova','.txt',sep=''),fm_base.anova)
-save.printout(paste(output_folder,target,'_fm_pattern_anova','.txt',sep=''),fm_pattern.anova)
-save.printout(paste(output_folder,target,'_fm_braak_anova','.txt',sep=''),fm_braak.anova)
-save(rfe.base,file=paste(output_folder,target,'_rfe_base_obj',sep=''))
-save(rfe.pattern,file=paste(output_folder,target,'_rfe_pattern_obj',sep=''))
-save(rfe.braak,file=paste(output_folder,target,'_rfe_braak_obj',sep=''))
-
-fm_base.plotfn = function() {par(mfrow=c(2,2));plot(fm_base);title("Base Model", outer=T, line=-2);}
-fm_pattern.plotfn = function() {par(mfrow=c(2,2));plot(fm_pattern);title("Pattern Model", outer=T, line=-2);}
-fm_braak.plotfn = function() {par(mfrow=c(2,2));plot(fm_braak);title("Braak Model", outer=T, line=-2);}
-save.plot(paste(output_folder,target,'_fm_base_lmplot.pdf',sep=''), fm_base.plotfn)
-save.plot(paste(output_folder,target,'_fm_pattern_lmplot.pdf',sep=''), fm_pattern.plotfn)
-save.plot(paste(output_folder,target,'_fm_braak_lmplot.pdf',sep=''), fm_braak.plotfn)
-
-save.plot(paste(output_folder,target,'_fm_base_avplot.pdf',sep=''), function() {avPlots(fm_base, ask=FALSE)})
-save.plot(paste(output_folder,target,'_fm_pattern_avplot.pdf',sep=''), function() {avPlots(fm_pattern, ask=FALSE)})
-save.plot(paste(output_folder,target,'_fm_braak_avplot.pdf',sep=''), function() {avPlots(fm_braak, ask=FALSE)})
-
-fm_base.summary
-fm_pattern.summary
-fm_braak.summary
-
-fm_base.fit
-fm_pattern.fit
-fm_braak.fit
+summary(glm(form1,data=df_av1451,family=binomial()))
+summary(glm(form2,data=df_av1451,family=binomial()))
+summary(glm(form3,data=df_av1451,family=binomial()))
 

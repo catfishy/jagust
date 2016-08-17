@@ -44,7 +44,7 @@ isPatternColumn = Vectorize(isPatternColumn)
 isNaiveColumn = function(i){
   if (startsWith(i,'SCORE_NSFA')) return(TRUE) else return(FALSE)
 }
-isPatternColumn = Vectorize(isPatternColumn)
+isNaiveColumn = Vectorize(isNaiveColumn)
 
 isScan2Column = function(i){
   if (startsWith(i,'SCAN2_NSFA')) return(TRUE) else return(FALSE)
