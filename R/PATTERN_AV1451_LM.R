@@ -25,6 +25,8 @@ library(lmtest)
 library(languageR)
 library(stringr)
 library(Jmisc)
+library(lars)
+library(covTest)
 
 source('R/LM_FUNCS.R')
 
@@ -38,19 +40,27 @@ to_factor = c('RID','ad_prior','ad_post','positive_prior','positive_post',
 to_standardize = c('Age.AV45','Edu..Yrs.')
 demog_columns = c('RID','APOE4_BIN','Diag.AV1451','Age.AV1451','Gender','Edu..Yrs.')
 diag_columns = c('Diag.AV45','Diag.AV1451')
-braak_columns = c('AV1451_Braak1_CerebGray_BL',
-                  'AV1451_Braak2_CerebGray_BL',
-                  'AV1451_Braak3_CerebGray_BL',
-                  'AV1451_Braak4_CerebGray_BL',
-                  'AV1451_Braak5_CerebGray_BL',
-                  'AV1451_Braak6_CerebGray_BL')
-
+# braak_columns = c('AV1451_Braak1_CerebGray_BL',
+#                   'AV1451_Braak2_CerebGray_BL',
+#                   'AV1451_Braak3_CerebGray_BL',
+#                   'AV1451_Braak4_CerebGray_BL',
+#                   'AV1451_Braak5_CerebGray_BL',
+#                   'AV1451_Braak6_CerebGray_BL')
+braak_columns = c('AV1451_Braak12_CerebGray_BL',
+                  'AV1451_Braak34_CerebGray_BL',
+                  'AV1451_Braak56_CerebGray_BL')
 
 # target = "UW_EF_AV1451_1"
 # target = "UW_MEM_AV1451_1"
-target = "ADAS_AV1451_1"
+# target = "ADAS_AV1451_1"
 # target = "AVLT_AV1451_1"
-# target = 'MMSE_AV1451_1'
+target = "AV1451_BL_closest_AV45_wcereb_BIN1.11"
+
+# target = "ADAS_retroslope_AV1451_BL"
+# target = "AVLT_retroslope_AV1451_BL"
+# target = "UW_MEM_retroslope_AV1451_BL"
+# target = "UW_EF_retroslope_AV1451_BL"
+# target = "AV1451_BL_closest_AV45_wcereb_retroSlope"
 
 output_folder = 'R/output_av1451/'
 
@@ -61,7 +71,7 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 #valid_diags = c('LMCI')
 
 # IMPORT
-df_av1451 = read.csv('nsfa/av1451_pattern_dataset.csv')
+df_av1451 = read.csv('nsfa/av1451skull_pattern_dataset.csv')
 pattern_columns = Filter(isPatternColumn,names(df_av1451))
 naive_columns = Filter(isNaiveColumn,names(df_av1451))
 non.na = complete.cases(df_av1451[,c(demog_columns,braak_columns,target)])
@@ -73,14 +83,13 @@ for (i in names(df_av1451)){
 }
 
 # remove target outliers
-target.mean = mean(df_av45[,target])
-target.sd = sd(df_av45[,target])
-df_av45 = df_av45[df_av45[,target] <= target.mean+target.sd*5,]
-df_av45 = df_av45[df_av45[,target] >= target.mean-target.sd*5,]
-
+# target.mean = mean(df_av1451[,target])
+# target.sd = sd(df_av1451[,target])
+# df_av1451 = df_av1451[df_av1451[,target] <= target.mean+target.sd*5,]
+# df_av1451 = df_av1451[df_av1451[,target] >= target.mean-target.sd*5,]
 
 # Filter by diag
-# df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
+df_av1451 = df_av1451[which(df_av1451$Diag.AV1451 %in% valid_diags),]
 
 # standardize predictors
 # cross_to_standardize = c(to_standardize,pattern_columns,naive_columns,braak_columns,target)
@@ -177,12 +186,16 @@ paste(full.lars.nonzero,collapse=' + ')
 paste(target,'~',paste(full.lars.sig[,'name'], collapse=' + '))
 
 # r2 shrinkage
-test1.form = "ADAS_AV1451_1 ~ AV1451_Braak5_CerebGray_BL + AV1451_Braak3_CerebGray_BL"
-test2.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_9"
-test3.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_9"
-# test1.form = 'AVLT_AV1451_1 ~ AV1451_Braak1_CerebGray_BL'
-# test2.form = 'AVLT_AV1451_1 ~ NSFA_0'
-# test3.form = 'AVLT_AV1451_1 ~ NSFA_0'
+# test1.form = "ADAS_AV1451_1 ~ AV1451_Braak56_CerebGray_BL"
+# test2.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_3 + NSFA_8"
+# test3.form = "ADAS_AV1451_1 ~ NSFA_0 + NSFA_3 + NSFA_8"
+# test1.form = "AVLT_AV1451_1 ~ Age.AV1451"
+# test2.form = "AVLT_AV1451_1 ~ NSFA_3"
+# test3.form = "AVLT_AV1451_1 ~ NSFA_3"
+# test1.form = "ADAS_retroslope_AV1451_BL ~ AV1451_Braak56_CerebGray_BL + APOE4_BIN"
+# test2.form = "ADAS_retroslope_AV1451_BL ~ NSFA_0"
+# test3.form = "ADAS_retroslope_AV1451_BL ~ NSFA_0"
+test2.form = "AV1451_BL_closest_AV45_wcereb_retroSlope ~ NSFA_7"
 
 test1_results = c()
 test2_results = c()

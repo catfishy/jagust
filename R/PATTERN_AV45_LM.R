@@ -26,6 +26,7 @@ library(languageR)
 library(stringr)
 library(covTest)
 library(scales)
+library(lars)
 
 source('R/LM_FUNCS.R')
 

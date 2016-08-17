@@ -188,7 +188,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -215,7 +215,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -240,7 +240,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 UNILATERAL
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451uni_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -265,7 +265,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 SKULL
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_05_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
 # pattern_mat = '../av1451skull_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -428,7 +428,10 @@ if pattern_scan3_df.index.nlevels > 1:
 
 # Create NSFA patterns df
 nsfa_act_df = pd.read_csv(nsfa_activation_csv).T
-# nsfa_act_df.index = nsfa_act_df.index.astype('int64')
+try:
+    nsfa_act_df.index = nsfa_act_df.index.astype('int64')
+except:
+    pass
 nsfa_load_df = pd.read_csv(nsfa_loading_csv).T
 nsfa_lambdag = map(float,list(pd.read_csv(nsfa_lambdag_csv).columns))
 # only keep factors with nonzero loadings
@@ -555,12 +558,17 @@ if master_csv is not None:
                    'AV45_NONTP_3_wcereb',
                    'AV45_NONTP_wcereb_Slope']
         columns += ['UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_slope']
-        columns += ['ADAS_AV45_1','ADAS_AV1451_1','ADASslope_postAV45']
-        columns += ['AVLT_AV45_1','AVLT_AV1451_1','AVLT_slope_postAV45']
-        columns += ['MMSEslope_postAV45','MMSE_AV45_1','MMSE_AV1451_1']
+        columns += ['ADAS_AV45_1','ADAS_AV1451_1',
+                    'ADASslope_postAV45','ADAS_retroslope_AV1451_BL']
+        columns += ['AVLT_AV45_1','AVLT_AV1451_1',
+                    'AVLT_slope_postAV45','AVLT_retroslope_AV1451_BL']
+        columns += ['MMSEslope_postAV45','MMSE_AV45_1',
+                    'MMSE_AV1451_1','MMSE_retroslope_AV1451_BL']
         columns += ['WMH_percentOfICV_AV45_1','WMH_percentOfICV_slope']
-        columns += ['UW_MEM_AV45_1','UW_MEM_AV1451_1','UW_MEM_slope']
-        columns += ['UW_EF_AV45_1','UW_EF_AV1451_1','UW_EF_slope']
+        columns += ['UW_MEM_AV45_1','UW_MEM_AV1451_1',
+                    'UW_MEM_slope','UW_MEM_retroslope_AV1451_BL']
+        columns += ['UW_EF_AV45_1','UW_EF_AV1451_1',
+                    'UW_EF_slope','UW_EF_retroslope_AV1451_BL']
         columns += ['CSF_ABETA_closest_AV45_1','CSF_ABETA_closest_AV45_1_BIN_192',
                     'CSF_ABETA_closest_AV1451_1','CSF_ABETA_closest_AV1451_1_BIN_192',
                     'CSF_ABETA_slope']
@@ -571,20 +579,6 @@ if master_csv is not None:
                     'CSF_PTAU_closest_AV1451_1','CSF_PTAU_closest_AV1451_1_BIN_23',
                     'CSF_PTAU_slope']
         columns += ['GD_AV45_1','GD_slope']
-        columns += ['CDR_GLOBAL_AV45_1',
-                   'CDR_MEMORY_AV45_1',
-                   'CDR_ORIENT_AV45_1',
-                   'CDR_JUDGE_AV45_1',
-                   'CDR_COMMUN_AV45_1',
-                   'CDR_HOME_AV45_1',
-                   'CDR_CARE_AV45_1',
-                   'CDR_GLOBAL_AV1451_1',
-                   'CDR_MEMORY_AV1451_1',
-                   'CDR_ORIENT_AV1451_1',
-                   'CDR_JUDGE_AV1451_1',
-                   'CDR_COMMUN_AV1451_1',
-                   'CDR_HOME_AV1451_1',
-                   'CDR_CARE_AV1451_1']
         columns += ['AV1451_Braak12_CerebGray_BL',
                     'AV1451_Braak34_CerebGray_BL',
                     'AV1451_Braak56_CerebGray_BL',
@@ -619,6 +613,7 @@ if len(igmm_prob_df.index) > 0:
     combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
 else:
     combined_df = nsfa_act_df
+
 combined_df = combined_df.merge(result_df,left_index=True,right_index=True,how='left')
 combined_df = combined_df.merge(other_df,left_index=True,right_index=True,how='left')
 combined_df = combined_df.merge(scores_df,left_index=True,right_index=True,how='left')

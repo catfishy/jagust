@@ -244,7 +244,7 @@ getxy = function(form, dataset) {
     x = x[, -nzv_cols]
   }
   if (dim(x)[2] >1) {
-    corr_cols = findCorrelation(cor(x),.9)
+    corr_cols = findCorrelation(cor(x),.95)
     if (length(corr_cols) > 0) {
       x = x[, -corr_cols]
     }
