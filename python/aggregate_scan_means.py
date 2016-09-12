@@ -88,11 +88,17 @@ DOD_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE','CEREBELLUMGREYMATTER','BRA
 DEP_FIELDNAMES = ADNI_FIELDNAMES
 DEP_FIELDNAMES_EXTRA = ADNI_FIELDNAMES_EXTRA
 TAU_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
-TAU_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
-                        'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
+TAU_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE',
+                        'CEREBELLUMGREYMATTER','CEREBELLUMGREYMATTER_SIZE',
+                        'BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
+                        'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
+                        'ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
 DOD_TAU_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE','ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
-DOD_TAU_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE','BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
-                            'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE', 'ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
+DOD_TAU_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE',
+                            'CEREBELLUMGREYMATTER','CEREBELLUMGREYMATTER_SIZE',
+                            'BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE', 'BRAAK3', 'BRAAK3_SIZE',
+                            'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
+                            'ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
 
 
 def DFWeightedMean(df, keys):
@@ -103,7 +109,13 @@ def DFWeightedMean(df, keys):
     means = df.loc[:,keys].multiply(ratios).sum(axis=1)
     return (means, sizes)
 
-def additionalTauCalculations(df, lut_table, keys=None):
+def DFMax(df, keys):
+    size_keys = ['%s_SIZE' % _ for _ in keys]
+    sizes = df.loc[:,size_keys].sum(axis=1)
+    maxs = df.loc[:,keys].max(axis=1)
+    return (maxs, sizes)
+
+def additionalTauCalculations(df, lut_table, keys=None, max_val=False):
     df = df.copy()
     cerebg = [translateColumn(_, lut_table) for _ in CEREBG]
     braak1 = [translateColumn(_, lut_table) for _ in BRAAK1]
@@ -113,38 +125,39 @@ def additionalTauCalculations(df, lut_table, keys=None):
     braak5 = [translateColumn(_, lut_table) for _ in BRAAK5]
     braak6 = [translateColumn(_, lut_table) for _ in BRAAK6]
 
-    # calculate cereb gray
-    means, sizes = DFWeightedMean(df, cerebg)
-    df.loc[:,'CEREBELLUMGREYMATTER_SIZE'] = sizes
-    df.loc[:,'CEREBELLUMGREYMATTER'] = means
-
     # calculate braak stages
-    means, sizes = DFWeightedMean(df, braak1)
+    agg_fn = DFMax if max_val else DFWeightedMean
+
+    # calculate cereb gray mean
+    aggs, sizes = agg_fn(df, cerebg)
+    df.loc[:,'CEREBELLUMGREYMATTER_SIZE'] = sizes
+    df.loc[:,'CEREBELLUMGREYMATTER'] = aggs
+
+    aggs, sizes = agg_fn(df, braak1)
     df.loc[:,'BRAAK1_SIZE'] = sizes
-    df.loc[:,'BRAAK1'] = means
-    means, sizes = DFWeightedMean(df, braak2)
+    df.loc[:,'BRAAK1'] = aggs
+    aggs, sizes = agg_fn(df, braak2)
     df.loc[:,'BRAAK2_SIZE'] = sizes
-    df.loc[:,'BRAAK2'] = means
-    means, sizes = DFWeightedMean(df, braak3)
+    df.loc[:,'BRAAK2'] = aggs
+    aggs, sizes = agg_fn(df, braak3)
     df.loc[:,'BRAAK3_SIZE'] = sizes
-    df.loc[:,'BRAAK3'] = means
-    means, sizes = DFWeightedMean(df, braak4)
+    df.loc[:,'BRAAK3'] = aggs
+    aggs, sizes = agg_fn(df, braak4)
     df.loc[:,'BRAAK4_SIZE'] = sizes
-    df.loc[:,'BRAAK4'] = means
-    means, sizes = DFWeightedMean(df, braak5)
+    df.loc[:,'BRAAK4'] = aggs
+    aggs, sizes = agg_fn(df, braak5)
     df.loc[:,'BRAAK5_SIZE'] = sizes
-    df.loc[:,'BRAAK5'] = means
-    means, sizes = DFWeightedMean(df, braak6)
+    df.loc[:,'BRAAK5'] = aggs
+    aggs, sizes = agg_fn(df, braak6)
     df.loc[:,'BRAAK6_SIZE'] = sizes
-    df.loc[:,'BRAAK6'] = means
+    df.loc[:,'BRAAK6'] = aggs
 
     if keys:
         df = df.loc[:,keys]
 
     return df
 
-
-def additionalAV45Calculations(df, lut_table, keys=None):
+def additionalAV45Calculations(df, lut_table, keys=None, max_val=False):
     '''
     Do additional calculations
     If keys given, filter/sort by the list of keys before outputting
@@ -162,34 +175,39 @@ def additionalAV45Calculations(df, lut_table, keys=None):
     compref = ['ERODED_SUBCORTICALWM', 'BRAIN_STEM', 'WHOLECEREBELLUM']
 
     # calculate composite
-    frontal_means, frontal_sizes = DFWeightedMean(df, frontal)
-    parietal_means, parietal_sizes = DFWeightedMean(df, parietal)
-    cingulate_means, cingulate_sizes = DFWeightedMean(df, cingulate)
-    temporal_means, temporal_sizes = DFWeightedMean(df, temporal)
-    df.loc[:,'FRONTAL'] = frontal_means
+    agg_fn = DFMax if max_val else DFWeightedMean
+
+    frontal_aggs, frontal_sizes = agg_fn(df, frontal)
+    parietal_aggs, parietal_sizes = agg_fn(df, parietal)
+    cingulate_aggs, cingulate_sizes = agg_fn(df, cingulate)
+    temporal_aggs, temporal_sizes = agg_fn(df, temporal)
+    df.loc[:,'FRONTAL'] = frontal_aggs
     df.loc[:,'FRONTAL_SIZE'] = frontal_sizes
-    df.loc[:,'PARIETAL'] = parietal_means
+    df.loc[:,'PARIETAL'] = parietal_aggs
     df.loc[:,'PARIETAL_SIZE'] = parietal_sizes
-    df.loc[:,'CINGULATE'] = cingulate_means
+    df.loc[:,'CINGULATE'] = cingulate_aggs
     df.loc[:,'CINGULATE_SIZE'] = cingulate_sizes
-    df.loc[:,'TEMPORAL'] = temporal_means
+    df.loc[:,'TEMPORAL'] = temporal_aggs
     df.loc[:,'TEMPORAL_SIZE'] = temporal_sizes
     df.loc[:,'COMPOSITE_SIZE'] = frontal_sizes + parietal_sizes + cingulate_sizes + temporal_sizes
-    df.loc[:,'COMPOSITE'] = pd.DataFrame([frontal_means,parietal_means,cingulate_means,temporal_means]).mean()
+    if max_val:
+        df.loc[:,'COMPOSITE'] = pd.DataFrame([frontal_aggs,parietal_aggs,cingulate_aggs,temporal_aggs]).max()
+    else:
+        df.loc[:,'COMPOSITE'] = pd.DataFrame([frontal_aggs,parietal_aggs,cingulate_aggs,temporal_aggs]).mean()
 
     # calculate cereb white
-    means, sizes = DFWeightedMean(df, cerebw)
+    means, sizes = agg_fn(df, cerebw)
     df.loc[:,'CEREBELLUMWHITEMATTER_SIZE'] = sizes
     df.loc[:,'CEREBELLUMWHITEMATTER'] = means
 
     # calculate cereb gray
-    means, sizes = DFWeightedMean(df, cerebg)
+    means, sizes = agg_fn(df, cerebg)
     df.loc[:,'CEREBELLUMGREYMATTER_SIZE'] = sizes
     df.loc[:,'CEREBELLUMGREYMATTER'] = means
 
     # calculate whole cerebellum
-    left_means, left_sizes = DFWeightedMean(df, cerebl)
-    right_means, right_sizes = DFWeightedMean(df, cerebr)
+    left_means, left_sizes = agg_fn(df, cerebl)
+    right_means, right_sizes = agg_fn(df, cerebr)
     df.loc[:,'WHOLECEREBELLUM_SIZE'] = left_sizes + right_sizes
     df.loc[:,'WHOLECEREBELLUM'] = pd.DataFrame([left_means,right_means]).mean()
 
@@ -322,12 +340,13 @@ def mergeRegularWithAllRegions(regular_output, allregions_output, output_file, d
         all_df.insert(len(all_df.columns), 'update_stamp',stamps)
     all_df.to_csv(output_file) # , float_format='%.8f'
 
-def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
+def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False, max_val=False):
     '''
     Assumes preprocess outputs include all freesurfer regions (no pre-aggregation)
     '''
     addon = "_nontp" if nontp else "_tp"
-    mean_keys = ["*%s%s_means*" % (tp,addon) for tp in ALL_TP]
+    agg = "_max" if max_val else "_means"
+    mean_keys = ["*%s%s%s*" % (tp,addon,agg) for tp in ALL_TP]
     size_keys = ["*%s%s_roisize*" % (tp,addon) for tp in ALL_TP]
     mean_files = []
     size_files = []
@@ -345,6 +364,15 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False):
             raise Exception("Couldn't find preprocess output %s" % fp)
     return (mean_files,size_files)
 
+def MAXNamingConventions(input_df):
+    # rename_dict = {'CEREBELLUMWHITEMATTER': 'CEREBELLUMWHITEMATTER_MEAN',
+    #                'CEREBELLUMGREYMATTER': 'CEREBELLUMGREYMATTER_MEAN',
+    #                'WHOLECEREBELLUM': 'WHOLECEREBELLUM_MEAN',
+    #                'COMPOSITE_REF': 'COMPOSITE_REF_MEAN'}
+    # output_df = input_df.rename(columns=rename_dict)
+    # return output_df
+    return input_df
+
 def ADNINamingConventions(input_df):
     rename_dict = {'BRAIN_STEM': 'BRAINSTEM',
                    'BRAIN_STEM_SIZE' : 'BRAINSTEM_SIZE',
@@ -357,14 +385,17 @@ def ADNINamingConventions(input_df):
     output_df = input_df.rename(columns=rename_dict)
     return output_df
 
-def CreateLONIVersions(allregions_df, fieldnames, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=False):
+def CreateLONIVersions(allregions_df, fieldnames, lut_table, output_folder,
+                       allregions_filename, regular_filename,
+                       tau=False, max_val=False):
     allregions_output = os.path.join(output_folder,'LONI_%s' % allregions_filename)
     regular_output = os.path.join(output_folder,'LONI_%s' % regular_filename)
-    merged_output = os.path.join(output_folder,'LONI_%s' % merged_filename)
-    full_df = additionalAV45Calculations(allregions_df, lut_table, keys=fieldnames)
-    ADNINamingConventions(allregions_df).to_csv(allregions_output,index=False,float_format='%.4f')
+    if tau:
+        full_df = additionalTauCalculations(allregions_df, lut_table, keys=fieldnames, max_val=max_val)
+    else:
+        full_df = additionalAV45Calculations(allregions_df, lut_table, keys=fieldnames, max_val=max_val)
+    # ADNINamingConventions(allregions_df).to_csv(allregions_output,index=False,float_format='%.4f')
     ADNINamingConventions(full_df).to_csv(regular_output,index=False,float_format='%.4f')
-    #mergeRegularWithAllRegions(regular_output, allregions_output, merged_output, dod=dod)
 
 if __name__ == "__main__":
     # freesurfer region lookup
@@ -384,18 +415,7 @@ if __name__ == "__main__":
     dep_meta_pet = "../docs/DEP/AV45META.csv"
     dep_meta_tau = "../docs/DEP/TAUMETA.csv"
 
-    # # registry imports
-    # adni_registry = importRegistry(registry_file)
-    # dod_registry = importDODRegistry(dod_registry_file)
-
-    # # pet date imports
-    # adni_av45_pet_dates = importScanMeta(meta_pet, with_viscode=True)
-    # adni_tau_pet_dates = importScanMeta(meta_tau, with_viscode=True)
-    # dod_av45_pet_dates = importScanMeta(dod_meta_pet, with_viscode=True)
-    # dod_tau_pet_dates = importScanMeta(dod_meta_tau, with_viscode=True)
-
-    #timestamp = datetime.now().strftime('%m_%d_%y')
-    timestamp = '08_10_16'
+    timestamp = '08-23-2016'
 
     # preprocess output folders
     preprocess_folder = '../docs/preprocess_output/%s/' % timestamp
@@ -422,7 +442,9 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalAV45Calculations(df, lut_table, keys=ADNI_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
-    CreateLONIVersions(df, ADNI_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
+    CreateLONIVersions(df, ADNI_FIELDNAMES, lut_table, output_folder,
+                       allregions_filename, regular_filename,
+                       tau=False, max_val=False)
 
     # ADNI AV45 TP
     regular_output = os.path.join(output_folder, 'UCBERKELEYAV45_%s_regular_tp.csv' % (timestamp))
@@ -446,7 +468,22 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
-    CreateLONIVersions(df, TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename)
+    CreateLONIVersions(df, TAU_FIELDNAMES, lut_table, output_folder,
+                       allregions_filename, regular_filename,
+                       tau=True, max_val=False)
+
+    # ADNI TAU TP MAX
+    regular_filename = 'UCBERKELEYAV1451_MAX_%s_regular_tp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV1451_MAX_%s_allregions_tp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV1451_MAX_%s_merged_tp.csv' % (timestamp)
+    regular_output = os.path.join(output_folder, regular_filename)
+    allregions_output = os.path.join(output_folder, allregions_filename)
+    merged_output = os.path.join(output_folder, merged_filename)
+    mean_files, size_files = findPreprocessOutputFiles(adni_tau_preprocess_folder, nontp=False, max_val=True)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, meta_tau)
+    MAXNamingConventions(df).to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
+    full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES_EXTRA, max_val=True)
+    MAXNamingConventions(full_df).to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
 
     # DOD AV45 NONTP
     regular_filename = 'UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % (timestamp)
@@ -460,7 +497,9 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalAV45Calculations(df, lut_table, keys=DOD_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
-    CreateLONIVersions(df, DOD_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
+    CreateLONIVersions(df, DOD_FIELDNAMES, lut_table, output_folder,
+                       allregions_filename, regular_filename,
+                       tau=False, max_val=False)
 
     # DOD TAU TP
     regular_filename = 'UCBERKELEYAV1451_DOD_%s_regular_tp.csv' % (timestamp)
@@ -474,7 +513,6 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
-    CreateLONIVersions(df, DOD_TAU_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=True)
 
     # DEP AV45 TP
     regular_filename = 'UCBERKELEYAV45_DEP_%s_regular_tp.csv' % (timestamp)
@@ -488,4 +526,6 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalAV45Calculations(df, lut_table, keys=DEP_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
-    CreateLONIVersions(df, DEP_FIELDNAMES, lut_table, output_folder, allregions_filename, regular_filename, merged_filename, dod=False)
+    CreateLONIVersions(df, DEP_FIELDNAMES, lut_table, output_folder,
+                       allregions_filename, regular_filename,
+                       tau=False, max_val=False)

@@ -189,10 +189,37 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
         pattern = dict(df[colname])
         saveFakeAparcInput(output_name,pattern,index_lookup)
 
+def flipPVCOutput(pvc_output_file):
+    # read file and format subject ids
+    df = pd.read_csv(pvc_output_file)
+    if df['subject'].dtype != 'int64':
+        df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
+    # translate regions
+    ind_df = df[['ind','name']].drop_duplicates()
+    lut = importFreesurferLookup(lut_file, flip=False)
+    translate = {}
+    for i, row in ind_df.iterrows():
+        group_idx = [int(_) for _ in row['ind'].split(';')]
+        if len(group_idx) == 1 and group_idx[0] in lut:
+            translate[row['name']] = lut[group_idx[0]]
+    df['name'] = df['name'].apply(lambda x: translate.get(x,x))
+    # pivot
+    value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
+    size_df = pd.pivot_table(df, values='groupsize', index=['subject','timepoint'], columns='name')
+    value_df.columns = [_.upper().replace('-','_') for _ in value_df.columns]
+    size_df.columns = ["%s_SIZE" % (_.upper().replace('-','_'),) for _ in size_df.columns]
+    original_keys = value_df.columns
+    pivot_df = value_df.merge(size_df,left_index=True,right_index=True)
+    # remove size columns
+    columns = [_ for _ in pivot_df.columns if 'SIZE' not in _]
+    pivot_df = pivot_df[columns]
+    return pivot_df
+
+
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -219,7 +246,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -244,7 +271,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 UNILATERAL
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451uni_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -269,8 +296,10 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 SKULL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_12_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
+region_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake.csv'
+region_bilateral_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake_bilateral.csv'
 pattern_mat = '../av1451skull_pattern_bl.mat'
 pattern_mat_2 = None
 pattern_mat_3 = None
@@ -296,6 +325,7 @@ trim_sid=True
 # FOR BACS AV1451 SKULL
 # master_csv = None
 # data_csv = '../datasets/pvc_bacs_av1451/tauskullregions_output.csv'
+# region_csv = '../datasets/pvc_bacs_av1451/tauskullregions_uptake.csv'
 # pattern_mat = '../av1451bacs_pattern_bl.mat'
 # pattern_mat_2 = None
 # pattern_mat_3 = None
@@ -424,7 +454,12 @@ pattern_scan3_df = pattern_scan3_df[column_order]
 if pattern_scan3_df.index.nlevels > 1:
     pattern_scan3_df.index = pattern_scan3_df.index.droplevel(1)
 
-# SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
+# SAVE REGIONAL UPTAKES FILE
+# flipPVCOutput(data_csv).to_csv(region_csv)
+# uptake_prior_df.to_csv(region_bilateral_csv)
+# sys.exit(1)
+
+# # SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
 # savePatternAsMat(pattern_bl_df, pattern_mat)
 # savePatternAsMat(pattern_scan2_df, pattern_mat_2)
 # savePatternAsMat(pattern_scan3_df, pattern_mat_3)
@@ -586,22 +621,16 @@ if master_csv is not None:
                     'CSF_PTAU_closest_AV1451_1','CSF_PTAU_closest_AV1451_1_BIN_23',
                     'CSF_PTAU_slope']
         columns += ['GD_AV45_1','GD_slope']
-        columns += ['AV1451_Braak12_CerebGray_BL',
-                    'AV1451_Braak34_CerebGray_BL',
-                    'AV1451_Braak56_CerebGray_BL',
-                    'AV1451_Braak1_CerebGray_BL',
-                    'AV1451_Braak2_CerebGray_BL',
-                    'AV1451_Braak3_CerebGray_BL',
-                    'AV1451_Braak4_CerebGray_BL',
-                    'AV1451_Braak5_CerebGray_BL',
-                    'AV1451_Braak6_CerebGray_BL',
-                    'AV1451_Braak2_CerebGray_Cum_BL',
-                    'AV1451_Braak3_CerebGray_Cum_BL',
-                    'AV1451_Braak4_CerebGray_Cum_BL',
-                    'AV1451_Braak5_CerebGray_Cum_BL',
-                    'AV1451_Braak6_CerebGray_Cum_BL',
-                    'AV1451_WM_BL',
-                    'AV1451_WM_CerebGray_BL',
+        columns += ['AV1451_PVC_Braak1_CerebGray_BL',
+                    'AV1451_PVC_Braak2_CerebGray_BL',
+                    'AV1451_PVC_Braak3_CerebGray_BL',
+                    'AV1451_PVC_Braak4_CerebGray_BL',
+                    'AV1451_PVC_Braak5_CerebGray_BL',
+                    'AV1451_PVC_Braak6_CerebGray_BL',
+                    'AV1451_PVC_Braak12_CerebGray_BL',
+                    'AV1451_PVC_Braak34_CerebGray_BL',
+                    'AV1451_PVC_Braak56_CerebGray_BL',
+                    'AV1451_PVC_BraakAll_CerebGray_BL',
                     'AV1451_BL_closest_AV45_wcereb',
                     'AV1451_BL_closest_AV45_wcereb_BIN1.11',
                     'AV1451_BL_closest_AV45_wcereb_retroSlope']
@@ -632,5 +661,5 @@ else:
 combined_df.to_csv(output_file,index=True)
 
 # Save loading patterns
-# savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
+savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
 # savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)

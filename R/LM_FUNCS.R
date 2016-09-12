@@ -18,8 +18,95 @@ library(lmtest)
 library(languageR)
 library(stringr)
 library(bootstrap)
+library(zoo)
+library(scales)
 
 # FUNCTIONS
+
+coef.heatplot = function(lars_coef) {
+  base_size = 30
+  lars_coef[,'(Intercept)'] = NULL
+  lars_coef.m = melt(as.matrix(lars_coef))
+  p = ggplot(lars_coef.m, aes(Var2, Var1)) + 
+    geom_tile(aes(fill = value), 
+              colour='grey50') + 
+    scale_fill_gradient2(low="red", 
+                         high="blue", 
+                         limits=c(-1,1), 
+                         oob=squish,
+                         breaks=c(-1,-0.5,0,0.5,1),
+                         labels=c("<= -1",'-0.5','0','0.5','>= 1')) + 
+    labs(x="",y="") + 
+    theme_bw() +
+    scale_x_discrete(expand = c(0, 0)) + 
+    scale_y_discrete(expand = c(0, 0)) +
+    coord_fixed(ratio=1) + 
+    theme(panel.border=element_blank(),
+          axis.ticks = element_blank(),
+          legend.key.size = unit(2, "cm"),
+          legend.title=element_blank(),
+          legend.text = element_text(size=base_size),
+          axis.text.y = element_text(size=base_size),
+          axis.text.x = element_text(size=base_size, 
+                                     angle = 300, 
+                                     hjust = 0))
+  p
+}
+
+
+create.lm.from.coefcsv = function(coef_csv) {
+  df = read.csv(coef_csv,row.names='X')
+  df$X.Intercept. = NULL
+  formulas = c()
+  for(i in 1:nrow(df)) {
+    row = df[i,]
+    target = rownames(row)
+    chosen = colnames(row)[row != 0]
+    if (length(chosen) == 0L) {
+      formulas[[target]] = ""
+    } else {
+      args = paste(sapply(chosen,clean.varname),collapse=' + ')
+      lmform = paste(target,'~',args)
+      formulas[[target]] = lmform
+    }
+  }
+  formulas
+}
+
+clean.varname = function(name) {
+  name = gsub('APOE4_BIN1','APOE4_BIN',name)
+  name = gsub('Gender1','Gender',name)
+  name
+}
+
+
+get.lars.coeff = function(x,y,target){
+  full.lars.model = lars(x,y,type='lar')
+  full.lars.coef = coef(full.lars.model, s=which.min(summary(full.lars.model)$Cp), mode='step')
+  coef.df = as.data.frame(as.matrix(full.lars.coef))
+  colnames(coef.df) = c(target)
+  t(coef.df)
+}
+
+get.glmnet.coeff = function(x,y,target,use_min=FALSE,family='gaussian'){
+  num_pts = dim(x)[1]
+  cvfit = glmnet::cv.glmnet(x, y, 
+                            nfolds=num_pts,
+                            family=family)
+#   localminima = rollapply(as.zoo(cvfit$cvm), 3, function(x) which.min(x)==2)
+#   minima.lambda = cvfit$lambda[localminima]
+  min.lambda = cvfit$lambda.min
+  se.lambda = cvfit$lambda.1se
+  mid.lambda = (min.lambda + se.lambda)/2
+  if (use_min) {
+    lambda = min.lambda
+  } else {
+    lambda = mid.lambda
+  }
+  coef.df = as.data.frame(as.matrix(coef(cvfit,s=lambda)))
+  colnames(coef.df) = c(target)
+  t(coef.df)
+}
 
 theta.fit <- function(x,y){lsfit(x,y)}
 
@@ -27,7 +114,7 @@ theta.predict <- function(fit,x){cbind(1,x)%*%fit$coef}
 
 r2.shrinkage = function(form, target, data){
   fit = lm(form,data)
-  X = getxy(form,data)
+  X = getxy(form,data,FALSE)
   y = as.numeric(data[,target])
   results <- crossval(X,y,theta.fit,theta.predict,ngroup=10)
   raw.r2 = cor(y, fit$fitted.values)**2 # raw R2 
@@ -35,6 +122,26 @@ r2.shrinkage = function(form, target, data){
   c(raw.r2,cv.r2)
 }
 
+r2.shrinkage.mean = function(form, target, data){
+  results = c()
+  for (i in 1:100) {
+    test_r2 = r2.shrinkage(form,target,data)[2]
+    results = c(results,test_r2)
+  }
+  mean(results)
+}
+
+
+
+isFSColumn = function(i){
+  if (startsWith(i,'LEFT') || startsWith(i,'RIGHT') || startsWith(i,'CTX')) return(TRUE) else return(FALSE)
+}
+isFSColumn = Vectorize((isFSColumn))
+
+isSizeColumn = function(i){
+  if (length(grep("SIZE",i))>0) return(TRUE) else return(FALSE)
+}
+isSizeColumn = Vectorize((isSizeColumn))
 
 isPatternColumn = function(i){
   if (startsWith(i,'NSFA')) return(TRUE) else return(FALSE)
@@ -237,16 +344,18 @@ run.lasso = function(form, dataset, metric) {
   model 
 }
 
-getxy = function(form, dataset) {
+getxy = function(form, dataset, remove) {
   x = as.matrix(as.data.frame(model.matrix(as.formula(form),dataset))[,-1])
-  nzv_cols = nearZeroVar(x)
-  if (length(nzv_cols) > 0) {
-    x = x[, -nzv_cols]
-  }
-  if (dim(x)[2] >1) {
-    corr_cols = findCorrelation(cor(x),.95)
-    if (length(corr_cols) > 0) {
-      x = x[, -corr_cols]
+  if (remove) {
+    nzv_cols = nearZeroVar(x)
+    if (length(nzv_cols) > 0) {
+      x = x[, -nzv_cols]
+    }
+    if (dim(x)[2] >1) {
+      corr_cols = findCorrelation(cor(x),.95)
+      if (length(corr_cols) > 0) {
+        x = x[, -corr_cols]
+      }
     }
   }
   colnames(x) = lapply(colnames(x), make.names)

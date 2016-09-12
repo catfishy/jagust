@@ -98,9 +98,17 @@ def manualAddOns(master_df, rid_list):
 
 def syncAV1451RoussetResults(master_df, rousset_csv):
     av1451_df, _ = importRoussetCSV(rousset_csv, as_df=True)
+    av1451_df['BRAAK1'] = av1451_df['BRAAK1'] / av1451_df['CEREBGM']
+    av1451_df['BRAAK2'] = av1451_df['BRAAK2'] / av1451_df['CEREBGM']
+    av1451_df['BRAAK3'] = av1451_df['BRAAK3'] / av1451_df['CEREBGM']
+    av1451_df['BRAAK4'] = av1451_df['BRAAK4'] / av1451_df['CEREBGM']
+    av1451_df['BRAAK5'] = av1451_df['BRAAK5'] / av1451_df['CEREBGM']
+    av1451_df['BRAAK6'] = av1451_df['BRAAK6'] / av1451_df['CEREBGM']
+
     av1451_df['BRAAK12'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE'], ['BRAAK1','BRAAK2']) / av1451_df['CEREBGM']
     av1451_df['BRAAK34'] = df_mean(av1451_df, ['BRAAK3_SIZE','BRAAK4_SIZE'], ['BRAAK3','BRAAK4']) / av1451_df['CEREBGM']
     av1451_df['BRAAK56'] = df_mean(av1451_df, ['BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK5','BRAAK6']) / av1451_df['CEREBGM']
+    av1451_df['BRAAKALL'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE','BRAAK3_SIZE','BRAAK4_SIZE','BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6']) / av1451_df['CEREBGM']
 
     # make pivots
     index_name = av1451_df.index.name
@@ -108,22 +116,39 @@ def syncAV1451RoussetResults(master_df, rousset_csv):
     braak12_df = av1451_df.pivot(index_name,'TP','BRAAK12')
     braak34_df = av1451_df.pivot(index_name,'TP','BRAAK34')
     braak56_df = av1451_df.pivot(index_name,'TP','BRAAK56')
+    braakall_df = av1451_df.pivot(index_name,'TP','BRAAKALL')
+    braak1_df = av1451_df.pivot(index_name,'TP','BRAAK1')
+    braak2_df = av1451_df.pivot(index_name,'TP','BRAAK2')
+    braak3_df = av1451_df.pivot(index_name,'TP','BRAAK3')
+    braak4_df = av1451_df.pivot(index_name,'TP','BRAAK4')
+    braak5_df = av1451_df.pivot(index_name,'TP','BRAAK5')
+    braak6_df = av1451_df.pivot(index_name,'TP','BRAAK6')
 
     # rename columns
     braak12_df.columns = ['AV1451_PVC_Braak12_CerebGray_%s' % _ for _ in braak12_df.columns]
     braak34_df.columns = ['AV1451_PVC_Braak34_CerebGray_%s' % _ for _ in braak34_df.columns]
     braak56_df.columns = ['AV1451_PVC_Braak56_CerebGray_%s' % _ for _ in braak56_df.columns]
+    braak1_df.columns = ['AV1451_PVC_Braak1_CerebGray_%s' % _ for _ in braak1_df.columns]
+    braak2_df.columns = ['AV1451_PVC_Braak2_CerebGray_%s' % _ for _ in braak2_df.columns]
+    braak3_df.columns = ['AV1451_PVC_Braak3_CerebGray_%s' % _ for _ in braak3_df.columns]
+    braak4_df.columns = ['AV1451_PVC_Braak4_CerebGray_%s' % _ for _ in braak4_df.columns]
+    braak5_df.columns = ['AV1451_PVC_Braak5_CerebGray_%s' % _ for _ in braak5_df.columns]
+    braak6_df.columns = ['AV1451_PVC_Braak6_CerebGray_%s' % _ for _ in braak6_df.columns]
+    braakall_df.columns = ['AV1451_PVC_BraakAll_CerebGray_%s' % _ for _ in braakall_df.columns]
 
     # merge together
     parsed_df = braak12_df.merge(braak34_df,left_index=True,right_index=True)
     parsed_df = parsed_df.merge(braak56_df,left_index=True,right_index=True)
+    parsed_df = parsed_df.merge(braak1_df,left_index=True,right_index=True)
+    parsed_df = parsed_df.merge(braak2_df,left_index=True,right_index=True)
+    parsed_df = parsed_df.merge(braak3_df,left_index=True,right_index=True)
+    parsed_df = parsed_df.merge(braak4_df,left_index=True,right_index=True)
+    parsed_df = parsed_df.merge(braak5_df,left_index=True,right_index=True)
+    parsed_df = parsed_df.merge(braak6_df,left_index=True,right_index=True)
+    parsed_df = parsed_df.merge(braakall_df,left_index=True,right_index=True)
 
-    valid_timepoints = ['BL', 'Scan2', 'Scan3']
-    headers = ['AV1451_PVC_Braak12_CerebGray_%s' % tp for tp in valid_timepoints]
-    headers += ['AV1451_PVC_Braak34_CerebGray_%s' % tp for tp in valid_timepoints]
-    headers += ['AV1451_PVC_Braak56_CerebGray_%s' % tp for tp in valid_timepoints]
     after = [_ for _ in master_df.columns if _.startswith('AV45') and 'PVC' not in _][-1]
-
+    headers = list(parsed_df.columns)
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=after, restrict=True)
     return master_df
 
@@ -774,7 +799,8 @@ def syncAV1451Data(master_df, av1451_file):
     av1451_df = importAV1451(av1451_file, as_df=True)
 
     valid_timepoints = ['BL', 'Scan2']
-    headers = ['AV1451_Braak12_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers = ['AV1451_CerebGray_%s' % tp for tp in valid_timepoints]
+    headers += ['AV1451_Braak12_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak34_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak56_CerebGray_%s' % tp for tp in valid_timepoints]
     headers += ['AV1451_Braak1_CerebGray_%s' % tp for tp in valid_timepoints]
@@ -834,6 +860,7 @@ def syncAV1451Data(master_df, av1451_file):
             braak5_cum = weightedMean([braak1,braak2,braak3,braak4,braak5]) / cerebg
             braak6_cum = weightedMean([braak1,braak2,braak3,braak4,braak5,braak6]) / cerebg
 
+            data['AV1451_CerebGray_%s' % tp] = cerebg
             data['AV1451_Braak12_CerebGray_%s' % tp] = braak12
             data['AV1451_Braak34_CerebGray_%s' % tp] = braak34
             data['AV1451_Braak56_CerebGray_%s' % tp] = braak56
@@ -1801,6 +1828,12 @@ def eliminateColumns(master_df):
     master_df.drop(to_remove, axis=1, inplace=True)
     return master_df
 
+def normalizeColumns(master_df):
+    to_norm = ['Notes']
+    for col in to_norm:
+        master_df[col] = master_df[col].apply(lambda x: str(x).replace(',',';'))
+    return master_df
+
 
 def runPipeline():
     master_df = parseCSV(master_file, use_second_line=True, as_df=True)
@@ -1811,6 +1844,8 @@ def runPipeline():
 
     print "\nELIMINATING COLUMNS\n"
     master_df = eliminateColumns(master_df)
+    print "\nNORMALIZING COLUMNS\n"
+    master_df = normalizeColumns(master_df)
     print "\nMANUALLY ADDING SUBJECTS"
     master_df = manualAddOns(master_df, RID_ADDONS)
     print "\nSYNCING AV45 NONTP\n"
@@ -1892,9 +1927,9 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/08_05_16/UCBERKELEYAV45_08_05_16_regular_tp.csv"
-    av45_nontp_file = "../output/08_05_16/UCBERKELEYAV45_08_05_16_regular_nontp.csv"
-    av1451_tp_file = "../output/08_05_16/UCBERKELEYAV1451_08_05_16_regular_tp.csv"
+    av45_tp_file = "../output/08-23-2016/UCBERKELEYAV45_08-23-2016_regular_tp.csv"
+    av45_nontp_file = "../output/08-23-2016/UCBERKELEYAV45_08-23-2016_regular_nontp.csv"
+    av1451_tp_file = "../output/08-23-2016/UCBERKELEYAV1451_08-23-2016_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauskullregions_output.csv"
 
