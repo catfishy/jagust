@@ -219,7 +219,7 @@ def flipPVCOutput(pvc_output_file):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -246,7 +246,7 @@ def flipPVCOutput(pvc_output_file):
 # trim_sid=True
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -271,7 +271,7 @@ def flipPVCOutput(pvc_output_file):
 # trim_sid=True
 
 # FOR ADNI AV1451 UNILATERAL
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451uni_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -296,7 +296,7 @@ def flipPVCOutput(pvc_output_file):
 # trim_sid=True
 
 # FOR ADNI AV1451 SKULL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_08_29_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
 region_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake.csv'
 region_bilateral_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake_bilateral.csv'
@@ -455,9 +455,8 @@ if pattern_scan3_df.index.nlevels > 1:
     pattern_scan3_df.index = pattern_scan3_df.index.droplevel(1)
 
 # SAVE REGIONAL UPTAKES FILE
-# flipPVCOutput(data_csv).to_csv(region_csv)
-# uptake_prior_df.to_csv(region_bilateral_csv)
-# sys.exit(1)
+flipPVCOutput(data_csv).to_csv(region_csv)
+uptake_prior_df.to_csv(region_bilateral_csv)
 
 # # SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
 # savePatternAsMat(pattern_bl_df, pattern_mat)

@@ -97,59 +97,45 @@ def manualAddOns(master_df, rid_list):
 
 
 def syncAV1451RoussetResults(master_df, rousset_csv):
+    timepoints = ['BL']
     av1451_df, _ = importRoussetCSV(rousset_csv, as_df=True)
-    av1451_df['BRAAK1'] = av1451_df['BRAAK1'] / av1451_df['CEREBGM']
-    av1451_df['BRAAK2'] = av1451_df['BRAAK2'] / av1451_df['CEREBGM']
-    av1451_df['BRAAK3'] = av1451_df['BRAAK3'] / av1451_df['CEREBGM']
-    av1451_df['BRAAK4'] = av1451_df['BRAAK4'] / av1451_df['CEREBGM']
-    av1451_df['BRAAK5'] = av1451_df['BRAAK5'] / av1451_df['CEREBGM']
-    av1451_df['BRAAK6'] = av1451_df['BRAAK6'] / av1451_df['CEREBGM']
 
-    av1451_df['BRAAK12'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE'], ['BRAAK1','BRAAK2']) / av1451_df['CEREBGM']
-    av1451_df['BRAAK34'] = df_mean(av1451_df, ['BRAAK3_SIZE','BRAAK4_SIZE'], ['BRAAK3','BRAAK4']) / av1451_df['CEREBGM']
-    av1451_df['BRAAK56'] = df_mean(av1451_df, ['BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK5','BRAAK6']) / av1451_df['CEREBGM']
-    av1451_df['BRAAKALL'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE','BRAAK3_SIZE','BRAAK4_SIZE','BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6']) / av1451_df['CEREBGM']
+    av1451_df['BRAAKALL'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE','BRAAK3_SIZE','BRAAK4_SIZE','BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6'])
 
-    # make pivots
-    index_name = av1451_df.index.name
-    av1451_df.reset_index(inplace=True)
-    braak12_df = av1451_df.pivot(index_name,'TP','BRAAK12')
-    braak34_df = av1451_df.pivot(index_name,'TP','BRAAK34')
-    braak56_df = av1451_df.pivot(index_name,'TP','BRAAK56')
-    braakall_df = av1451_df.pivot(index_name,'TP','BRAAKALL')
-    braak1_df = av1451_df.pivot(index_name,'TP','BRAAK1')
-    braak2_df = av1451_df.pivot(index_name,'TP','BRAAK2')
-    braak3_df = av1451_df.pivot(index_name,'TP','BRAAK3')
-    braak4_df = av1451_df.pivot(index_name,'TP','BRAAK4')
-    braak5_df = av1451_df.pivot(index_name,'TP','BRAAK5')
-    braak6_df = av1451_df.pivot(index_name,'TP','BRAAK6')
+    column_translations = {'BRAAK1': 'AV1451_PVC_Braak1_%s_%s',
+                           'BRAAK2': 'AV1451_PVC_Braak2_%s_%s',
+                           'BRAAK3': 'AV1451_PVC_Braak3_%s_%s',
+                           'BRAAK4': 'AV1451_PVC_Braak4_%s_%s',
+                           'BRAAK5': 'AV1451_PVC_Braak5_%s_%s',
+                           'BRAAK6': 'AV1451_PVC_Braak6_%s_%s',
+                           'BRAAK12': 'AV1451_PVC_Braak12_%s_%s',
+                           'BRAAK34': 'AV1451_PVC_Braak34_%s_%s',
+                           'BRAAK56': 'AV1451_PVC_Braak56_%s_%s',
+                           'BRAAKALL': 'AV1451_PVC_BraakAll_%s_%s'}
+    column_order = ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6',
+                    'BRAAK12','BRAAK34','BRAAK56','BRAAKALL']
+    ref_region_translations = {'CEREBGM': 'CerebGray',
+                               'WHOLECEREB': 'WholeCereb',
+                               'HEMIWM': 'HemiWM',
+                               'brainstem': 'Brainstem',
+                               'BIGREF2': 'BigRef'}
+    to_merge = []
+    for tp in timepoints:
+        cur_df = av1451_df[av1451_df['TP'] == tp]
+        roi_df = cur_df[column_order]
+        for ref in ref_region_translations:
+            suvr_df = roi_df.divide(cur_df[ref],axis=0)
+            cur_translations = {k: v % (ref_region_translations[ref],tp) for k,v in column_translations.iteritems()}
+            suvr_df.rename(columns=cur_translations,inplace=True)
+            to_merge.append(suvr_df)
 
-    # rename columns
-    braak12_df.columns = ['AV1451_PVC_Braak12_CerebGray_%s' % _ for _ in braak12_df.columns]
-    braak34_df.columns = ['AV1451_PVC_Braak34_CerebGray_%s' % _ for _ in braak34_df.columns]
-    braak56_df.columns = ['AV1451_PVC_Braak56_CerebGray_%s' % _ for _ in braak56_df.columns]
-    braak1_df.columns = ['AV1451_PVC_Braak1_CerebGray_%s' % _ for _ in braak1_df.columns]
-    braak2_df.columns = ['AV1451_PVC_Braak2_CerebGray_%s' % _ for _ in braak2_df.columns]
-    braak3_df.columns = ['AV1451_PVC_Braak3_CerebGray_%s' % _ for _ in braak3_df.columns]
-    braak4_df.columns = ['AV1451_PVC_Braak4_CerebGray_%s' % _ for _ in braak4_df.columns]
-    braak5_df.columns = ['AV1451_PVC_Braak5_CerebGray_%s' % _ for _ in braak5_df.columns]
-    braak6_df.columns = ['AV1451_PVC_Braak6_CerebGray_%s' % _ for _ in braak6_df.columns]
-    braakall_df.columns = ['AV1451_PVC_BraakAll_CerebGray_%s' % _ for _ in braakall_df.columns]
-
-    # merge together
-    parsed_df = braak12_df.merge(braak34_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braak56_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braak1_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braak2_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braak3_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braak4_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braak5_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braak6_df,left_index=True,right_index=True)
-    parsed_df = parsed_df.merge(braakall_df,left_index=True,right_index=True)
+    merged = to_merge[0]
+    for df in to_merge[1:]:
+        merged = merged.merge(df,left_index=True,right_index=True)
 
     after = [_ for _ in master_df.columns if _.startswith('AV45') and 'PVC' not in _][-1]
-    headers = list(parsed_df.columns)
-    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=after, restrict=True)
+    headers = list(merged.columns)
+    master_df = updateDataFrame(master_df, merged, headers=headers, after=after, restrict=True)
     return master_df
 
 def syncAV45RoussetResults(master_df, av45_rousset_csv):
@@ -1401,12 +1387,12 @@ def syncCSFData(master_df, csf_files, registry):
         all_df['CSF_TAU_closest_AV45_1'], all_df['CSF_TAU_closest_AV45_2'], all_df['CSF_TAU_closest_AV45_3'] = tuple(closest_tau)
         all_df['CSF_TAU_closest_AV45_1_BIN_93'], all_df['CSF_TAU_closest_AV45_2_BIN_93'], all_df['CSF_TAU_closest_AV45_3_BIN_93'] = tuple(closest_tau_bin)
 
-        closest_ptau = groupClosest(subj_rows, 'EXAMDATE', 'PTAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
-        closest_ptau_bin = groupClosest(subj_rows, 'EXAMDATE', 'PTAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
-        closest_abeta = groupClosest(subj_rows, 'EXAMDATE', 'ABETA', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
-        closest_abeta_bin = groupClosest(subj_rows, 'EXAMDATE', 'ABETA_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
-        closest_tau = groupClosest(subj_rows, 'EXAMDATE', 'TAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
-        closest_tau_bin = groupClosest(subj_rows, 'EXAMDATE', 'TAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=730)
+        closest_ptau = groupClosest(subj_rows, 'EXAMDATE', 'PTAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=1095)
+        closest_ptau_bin = groupClosest(subj_rows, 'EXAMDATE', 'PTAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=1095)
+        closest_abeta = groupClosest(subj_rows, 'EXAMDATE', 'ABETA', [av1451_date1,av1451_date2,av1451_date3],day_limit=1095)
+        closest_abeta_bin = groupClosest(subj_rows, 'EXAMDATE', 'ABETA_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=1095)
+        closest_tau = groupClosest(subj_rows, 'EXAMDATE', 'TAU', [av1451_date1,av1451_date2,av1451_date3],day_limit=1095)
+        closest_tau_bin = groupClosest(subj_rows, 'EXAMDATE', 'TAU_BIN', [av1451_date1,av1451_date2,av1451_date3],day_limit=1095)
         all_df['CSF_PTAU_closest_AV1451_1'], all_df['CSF_PTAU_closest_AV1451_2'], all_df['CSF_PTAU_closest_AV1451_3'] = tuple(closest_ptau)
         all_df['CSF_PTAU_closest_AV1451_1_BIN_23'], all_df['CSF_PTAU_closest_AV1451_2_BIN_23'], all_df['CSF_PTAU_closest_AV1451_3_BIN_23'] = tuple(closest_ptau_bin)
         all_df['CSF_ABETA_closest_AV1451_1'], all_df['CSF_ABETA_closest_AV1451_2'], all_df['CSF_ABETA_closest_AV1451_3'] = tuple(closest_abeta)
@@ -1819,7 +1805,8 @@ def eliminateColumns(master_df):
                           'TBMSyn','AV45_','UW_','FSL_','FSX_','UCB_FS',
                           'FDG','AVLT','ADAS','TIMEpostAV45_ADAS','TIMEpostAV45_MMSE',
                           'MMSCORE','CSF','WMH','TIME_ADAS','TIMEreltoAV45_ADAS',
-                          'TIME_AVLT','TIMEreltoAV45_AVLT','TIMEpostAV45_AVLT']
+                          'TIME_AVLT','TIMEreltoAV45_AVLT','TIMEpostAV45_AVLT',
+                          'NPITOTAL']
     for prefix in to_remove_prefixes:
         to_remove += [_ for _ in master_df.columns if _.startswith(prefix)]
 
@@ -1866,8 +1853,8 @@ def runPipeline():
     master_df = syncDiagnosisData(master_df, diagnosis_file, arm_file, registry)
     print "\nSYNCING FAQ\n"
     master_df = syncFAQData(master_df, faq_file, registry)
-    print "\nSYNCING NPI\n"
-    master_df = syncNPIData(master_df, npi_file)
+    # print "\nSYNCING NPI\n"
+    # master_df = syncNPIData(master_df, npi_file)
     print "\nSYNCING MHIST\n"
     master_df = syncMHISTData(master_df, mhist_file)
     print "\nSYNCING UW NEURO\n"
@@ -1927,9 +1914,9 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/08-23-2016/UCBERKELEYAV45_08-23-2016_regular_tp.csv"
-    av45_nontp_file = "../output/08-23-2016/UCBERKELEYAV45_08-23-2016_regular_nontp.csv"
-    av1451_tp_file = "../output/08-23-2016/UCBERKELEYAV1451_08-23-2016_regular_tp.csv"
+    av45_tp_file = "../output/08-31-2016/UCBERKELEYAV45_08-31-2016_regular_tp.csv"
+    av45_nontp_file = "../output/08-31-2016/UCBERKELEYAV45_08-31-2016_regular_nontp.csv"
+    av1451_tp_file = "../output/08-31-2016/UCBERKELEYAV1451_08-31-2016_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauskullregions_output.csv"
 
@@ -1949,8 +1936,8 @@ if __name__ == '__main__':
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_08_01_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
-    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_08-04-2016.csv'
-    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_08-04-2016.csv'
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_08-30-2016.csv'
+    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_08-30-2016.csv'
 
     # Run pipeline
     runPipeline()

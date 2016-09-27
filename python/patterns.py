@@ -343,6 +343,7 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
             master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
             master_df.columns = master_df.columns.get_level_values(1)
             master_df.set_index('RID',inplace=True)
+
             # Get Diagnoses
             if tracer == 'AV45':
                 diag_keys = {'BL': 'Diag@AV45_long',
