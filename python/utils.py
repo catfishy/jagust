@@ -768,7 +768,34 @@ def ndcg(relevances, rank=20):
 
 ######################################################
 
+############### PVC output manipulation ##############
 
+def flipPVCOutput(pvc_output_file, lut_file, remove_size=True):
+    # read file and format subject ids
+    df = pd.read_csv(pvc_output_file)
+    if df['subject'].dtype != 'int64':
+        df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
+    # translate regions
+    ind_df = df[['ind','name']].drop_duplicates()
+    lut = importFreesurferLookup(lut_file, flip=False)
+    translate = {}
+    for i, row in ind_df.iterrows():
+        group_idx = [int(_) for _ in row['ind'].split(';')]
+        if len(group_idx) == 1 and group_idx[0] in lut:
+            translate[row['name']] = lut[group_idx[0]]
+    df['name'] = df['name'].apply(lambda x: translate.get(x,x))
+    # pivot
+    value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
+    size_df = pd.pivot_table(df, values='groupsize', index=['subject','timepoint'], columns='name')
+    value_df.columns = [_.upper().replace('-','_') for _ in value_df.columns]
+    size_df.columns = ["%s_SIZE" % (_.upper().replace('-','_'),) for _ in size_df.columns]
+    original_keys = value_df.columns
+    pivot_df = value_df.merge(size_df,left_index=True,right_index=True)
+    # remove size columns
+    if remove_size:
+        columns = [_ for _ in pivot_df.columns if 'SIZE' not in _]
+        pivot_df = pivot_df[columns]
+    return pivot_df
 
 def importRoussetCSV(rousset_csv, ref_key='WHOLECEREB', as_df=False):
     '''
@@ -829,97 +856,6 @@ def importRawRoussetResults(rousset_mat):
     subj_list = data['subj_list'][0]
     sorted_data = dict(zip(subj_list,result_list))
     return sorted_data
-
-
-def parseAllRegionOutput(all_region_file, lut_file):
-    blacklist = ['RID', 'EXAMDATE']
-    lut_table = importFreesurferLookup(lut_file)
-    lut_reverse = {v.upper().replace('-','_'):k for k,v in lut_table.iteritems()}
-    df = pd.read_csv(all_region_file)
-    df = df.fillna(0.0)
-    index_lookup = {k:[lut_reverse[k]] for k in df.columns if k not in blacklist and 'SIZE' not in k}
-
-    wcereb_names = [lut_table[_].upper().replace('-','_') for _ in WHOLECEREBELLUM]
-    wcereb_sizes = ['%s_SIZE' % _ for _ in wcereb_names]
-    bigref_names = [lut_table[_].upper().replace('-','_') for _ in BIGREF]
-    bigref_sizes = ['%s_SIZE' % _ for _ in bigref_names]
-    summary_names = [lut_table[_].upper().replace('-','_') for _ in SUMMARY]
-    summary_sizes = ['%s_SIZE' % _ for _ in summary_names]
-    wm_names = [lut_table[_].upper().replace('-','_') for _ in WHITEMATTER]
-    wm_sizes = ['%s_SIZE' % _ for _ in wm_names]
-
-    # calculate aggregate regions
-    for i in df.index:
-        wcereb_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(wcereb_names, wcereb_sizes)]
-        df.loc[i,'whole_cerebellum'] = weightedMean(wcereb_pts)
-        index_lookup['whole_cerebellum'] = WHOLECEREBELLUM
-        bigref_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(bigref_names, bigref_sizes)]
-        df.loc[i,'composite_ref'] = weightedMean(bigref_pts)
-        index_lookup['composite_ref'] = BIGREF
-        summary_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(summary_names, summary_sizes)]
-        df.loc[i,'cortical_summary'] = weightedMean(summary_pts)
-        index_lookup['cortical_summary'] = SUMMARY
-        wm_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(wm_names, wm_sizes)]
-        df.loc[i,'white_matter'] = weightedMean(wm_pts)
-        index_lookup['white_matter'] = WHITEMATTER
-        df.loc[i,'EXAMDATE'] = parseDate(df.loc[i,'EXAMDATE'])
-
-    data_bl = {}
-    data_scan2 = {}
-    data_scan3 = {}
-    grouped = df.groupby(by=['RID'])
-    for rid, rows in grouped:
-        rows = rows.sort(columns=['EXAMDATE']).reset_index(drop=True)
-        if len(rows)>=1:
-            data_bl[rid] = {k:v for k,v in dict(rows.iloc[0]).iteritems() if k not in blacklist and 'SIZE' not in k}
-        if len(rows)>=2:
-            data_scan2[rid] = {k:v for k,v in dict(rows.iloc[1]).iteritems() if k not in blacklist and 'SIZE' not in k}
-        if len(rows)>=3:
-            data_scan3[rid] = {k:v for k,v in dict(rows.iloc[2]).iteritems() if k not in blacklist and 'SIZE' not in k}
-    return data_bl, data_scan2, data_scan3, index_lookup
-
-
-def parseRawAV45Output(av45_file, registry_file, lut_file):
-    lut_table = importFreesurferLookup(lut_file)
-    registry =  importRegistry(registry_file)
-    data = importAV45(av45_file, registry=registry)
-
-    # save column names
-    index_lookup = {lut_table[code].upper().replace('-','_'):[code] for code in SUMMARY}
-
-    # parse data
-    data_bl = {}
-    data_scan2 = {}
-    data_scan3 = {}
-    for rid, rows in data.iteritems():
-        rows = sorted(rows, key=lambda x: x['EXAMDATE'])
-        if len(rows) > 0:
-            data_row = rows[0]
-            data_bl[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
-            data_bl[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
-        if len(rows) > 1:
-            data_row = rows[1]
-            data_scan2[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
-            data_scan2[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
-        if len(rows) > 2:
-            data_row = rows[2]
-            data_scan3[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
-            data_scan3[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
-
-    return data_bl, data_scan2, data_scan3, index_lookup
-
-def bilateralTranslations(lut_file):
-    lut_table = importFreesurferLookup(lut_file, flip=True)
-    bilateral_dict = defaultdict(list)
-    for k,v in lut_table.iteritems():
-        bilateral_key = k.lower().replace('-','_').replace('lh.','').replace('rh.','').replace('lh_','').replace('rh_','').replace('right_','').replace('left_','').upper()
-        bilateral_dict[bilateral_key].append(v)
-
-    # add lobe names and keys
-    bilateral_dict = dict(bilateral_dict)
-    bilateral_dict.update(LOBES)
-
-    return bilateral_dict
 
 def parseRawRousset_inner(data, translations=None):
     names = [unwrap(_) for _ in data['names']]
@@ -985,32 +921,6 @@ def parseRawRousset(bl_file, scan2_file, scan3_file, translations=None):
         data_scan3[rid] = val_lookup
     return data_bl, data_scan2, data_scan3, index_lookup
 
-def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True, ref_key='whole_cerebellum'):
-    assert ref_key in ['whole_cerebellum','composite_ref']
-
-    regions_to_remove = [k for k,v in index_lookup.iteritems() if len(list(set(REGION_BLACKLIST) & set(list(v)))) > 0]
-
-    index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
-    for rid,val in data_bl.iteritems():
-        ref_value = 1.0
-        if suvr:
-            ref_value = val.get(ref_key,1.0)
-        new_val = {k: v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
-        data_bl[rid] = new_val
-    for rid,val in data_scan2.iteritems():
-        ref_value = 1.0
-        if suvr:
-            ref_value = val.get(ref_key,1.0)
-        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
-        data_scan2[rid] = new_val
-    for rid,val in data_scan3.iteritems():
-        ref_value = 1.0
-        if suvr:
-            ref_value = val.get(ref_key,1.0)
-        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
-        data_scan3[rid] = new_val
-    return data_bl, data_scan2, data_scan3, index_lookup
-
 def unwrap(arg):
     try:
         while len(arg) == 1 and type(arg) in set([list, tuple, np.ndarray]):
@@ -1041,7 +951,9 @@ def parseResult(arg):
     data = zipFields(arg)
     return data
 
+######################################################
 
+############ IMPORT FUNCTIONS ###################
 
 def extractDiagnosesFromMasterData(master_df, as_df=True):
     df = master_df[['Init_Diagnosis']]
@@ -1052,7 +964,6 @@ def extractDiagnosesFromMasterData(master_df, as_df=True):
         return df
     else:
         return convertToSubjDict(df,extract='diag', singular=True)
-
 
 def parseCSV(file_path, delimiter=',', use_second_line=False, as_df=False):
     if use_second_line:
@@ -1157,7 +1068,11 @@ def importDODRegistry(dod_registry_file, as_df=False):
     all_columns = ['SCRNO','RID','VISCODE','EXAMDATE']
     df = df[all_columns]
     df.dropna(inplace=True)
-    df.set_index('SCRNO',inplace=True)
+    df['VISCODE2'] = ''
+
+    # Set index
+    # df.set_index('SCRNO',inplace=True)
+    df.set_index(['SCRNO','VISCODE','VISCODE2'],inplace=True)
 
     #df = df[~df['VISCODE'].str.startswith('sc')]
     df.loc[:,'EXAMDATE'] = df.loc[:,'EXAMDATE'].apply(parseDate)
@@ -1394,67 +1309,6 @@ def importFDG(fdg_file, registry, as_df=False):
         return df
     else:
         return convertToSubjDict(df)
-
-# UNUSED
-'''
-def importExtractedFDG(fdg_file, registry, as_df=False):
-    headers, lines = parseCSV(fdg_file, delimiter='\t')
-    fdg_rows = []
-
-    for line in lines:
-        subj = line['PTID']
-        subj_id = int(subj.split('_')[-1])
-        date_str = line['DATE'].strip().split(' ')[0].strip()
-        examdate = parseDate(date_str)
-        subject_registry = registry.get(subj_id,[])
-        if len(subject_registry) == 0:
-            raise Exception("NO SUBJECT REGISTRY")
-        # find viscode in registry
-        vc_name = line['VISCODE'].strip()
-        vc = convertVisitName(vc_name)
-        vc2 = None
-        if vc is not None:
-            # find vc2 from registry
-            for regrow in subject_registry:
-                if regrow['VISCODE'].strip() == vc:
-                    vc2 = regrow['VISCODE2']
-                    break
-        if vc is None or vc2 is None:
-            # find by examdate
-            subj_sort = sorted(subject_registry, key=lambda x: abs(examdate-x['EXAMDATE']).days)
-            closest = subj_sort[0]
-            if abs(closest['EXAMDATE']-examdate).days < 90:
-                vc = closest['VISCODE']
-                vc2 = closest['VISCODE2']
-            else:
-                print "VISCODE NAME COULD NOT BE CONVERTED AND CLOSEST DATE OUT OF RANGE: %s, %s, %s" % (vc_name,vc,vc2)
-        if vc is not None and vc2 is None:
-            # copy over
-            print "COPYING VC TO VC2"
-            vc2 = vc
-        if vc is None or vc2 is None:
-            print "COULD NOT FIND VISCODES FOR %s, %s, %s" % (subj_id, examdate, line['VISCODE'])
-            vc = ''
-            vc2 = ''
-        data = {'RID': subj_id,
-                'VISCODE': vc,
-                'VISCODE2': vc2,
-                'UID': line['UID'].strip(),
-                'ROINAME': line['ROINAME'].strip(),
-                'ROILAT': line['ROILAT'].strip(),
-                'EXAMDATE': examdate,
-                'MEAN': float(line['MEAN']),
-                'MEDIAN': float(line['MEDIAN']),
-                'MODE': float(line['MODE']),
-                'MIN': float(line['MIN']),
-                'MAX': float(line['MAX']),
-                'STDEV': float(line['STDEV']),
-                'NANVOX': int(line['NANVOX']),
-                'TOTVOX': int(line['TOTVOX']),
-                'update_stamp': ts}
-        fdg_rows.append(data)
-    return fdg_rows
-'''
 
 def importDemog(demog_file, as_df=False):
     df = pd.read_csv(demog_file)
@@ -2135,31 +1989,120 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
     else:
         return convertToSubjDict(df,sort_by='EXAMDATE')
 
+######################################################
 
-# NOT USED
-'''
-def calculateCSVDifference(file1, file2, index='RID'):
-    headers1, rows1 = parseCSV(file1)
-    headers2, rows2 = parseCSV(file2)
-    common_headers = list(set(headers1) & set(headers2))
-    differences = {h:[] for h in common_headers}
-    # index the rows
-    index1 = {}
-    for r in rows1:
-        key = r.get(index)
-        if key:
-            index1[key.lower().strip()] = r
-    index2 = {}
-    for r in rows2:
-        key = r.get(index)
-        if key:
-            index2[key.lower().strip()] = r
-    common_keys = list(set(index1.keys()) & set(index2.keys()))
-    for key, header in itertools.product(common_keys, common_headers):
-        cur_diff = float(index1[key][header]) - float(index2[key][header])
-        differences[header].append(cur_diff)
-    diff_distr = {}
-    for k,values in differences.iteritems():
-        diff_distr[k] = (np.mean(values), np.std(values), np.max(values), np.min(values))
-    return diff_distr
-'''
+def parseAllRegionOutput(all_region_file, lut_file):
+    blacklist = ['RID', 'EXAMDATE']
+    lut_table = importFreesurferLookup(lut_file)
+    lut_reverse = {v.upper().replace('-','_'):k for k,v in lut_table.iteritems()}
+    df = pd.read_csv(all_region_file)
+    df = df.fillna(0.0)
+    index_lookup = {k:[lut_reverse[k]] for k in df.columns if k not in blacklist and 'SIZE' not in k}
+
+    wcereb_names = [lut_table[_].upper().replace('-','_') for _ in WHOLECEREBELLUM]
+    wcereb_sizes = ['%s_SIZE' % _ for _ in wcereb_names]
+    bigref_names = [lut_table[_].upper().replace('-','_') for _ in BIGREF]
+    bigref_sizes = ['%s_SIZE' % _ for _ in bigref_names]
+    summary_names = [lut_table[_].upper().replace('-','_') for _ in SUMMARY]
+    summary_sizes = ['%s_SIZE' % _ for _ in summary_names]
+    wm_names = [lut_table[_].upper().replace('-','_') for _ in WHITEMATTER]
+    wm_sizes = ['%s_SIZE' % _ for _ in wm_names]
+
+    # calculate aggregate regions
+    for i in df.index:
+        wcereb_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(wcereb_names, wcereb_sizes)]
+        df.loc[i,'whole_cerebellum'] = weightedMean(wcereb_pts)
+        index_lookup['whole_cerebellum'] = WHOLECEREBELLUM
+        bigref_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(bigref_names, bigref_sizes)]
+        df.loc[i,'composite_ref'] = weightedMean(bigref_pts)
+        index_lookup['composite_ref'] = BIGREF
+        summary_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(summary_names, summary_sizes)]
+        df.loc[i,'cortical_summary'] = weightedMean(summary_pts)
+        index_lookup['cortical_summary'] = SUMMARY
+        wm_pts = [(df.loc[i,size],df.loc[i,name]) for name,size in zip(wm_names, wm_sizes)]
+        df.loc[i,'white_matter'] = weightedMean(wm_pts)
+        index_lookup['white_matter'] = WHITEMATTER
+        df.loc[i,'EXAMDATE'] = parseDate(df.loc[i,'EXAMDATE'])
+
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    grouped = df.groupby(by=['RID'])
+    for rid, rows in grouped:
+        rows = rows.sort(columns=['EXAMDATE']).reset_index(drop=True)
+        if len(rows)>=1:
+            data_bl[rid] = {k:v for k,v in dict(rows.iloc[0]).iteritems() if k not in blacklist and 'SIZE' not in k}
+        if len(rows)>=2:
+            data_scan2[rid] = {k:v for k,v in dict(rows.iloc[1]).iteritems() if k not in blacklist and 'SIZE' not in k}
+        if len(rows)>=3:
+            data_scan3[rid] = {k:v for k,v in dict(rows.iloc[2]).iteritems() if k not in blacklist and 'SIZE' not in k}
+    return data_bl, data_scan2, data_scan3, index_lookup
+
+
+def parseRawAV45Output(av45_file, registry_file, lut_file):
+    lut_table = importFreesurferLookup(lut_file)
+    registry =  importRegistry(registry_file)
+    data = importAV45(av45_file, registry=registry)
+
+    # save column names
+    index_lookup = {lut_table[code].upper().replace('-','_'):[code] for code in SUMMARY}
+
+    # parse data
+    data_bl = {}
+    data_scan2 = {}
+    data_scan3 = {}
+    for rid, rows in data.iteritems():
+        rows = sorted(rows, key=lambda x: x['EXAMDATE'])
+        if len(rows) > 0:
+            data_row = rows[0]
+            data_bl[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
+            data_bl[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
+        if len(rows) > 1:
+            data_row = rows[1]
+            data_scan2[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
+            data_scan2[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
+        if len(rows) > 2:
+            data_row = rows[2]
+            data_scan3[rid] = {k: float(data_row[k] or 0) for k in index_lookup}
+            data_scan3[rid]['whole_cerebellum'] = float(data_row['WHOLECEREBELLUM'])
+
+    return data_bl, data_scan2, data_scan3, index_lookup
+
+def bilateralTranslations(lut_file):
+    lut_table = importFreesurferLookup(lut_file, flip=True)
+    bilateral_dict = defaultdict(list)
+    for k,v in lut_table.iteritems():
+        bilateral_key = k.lower().replace('-','_').replace('lh.','').replace('rh.','').replace('lh_','').replace('rh_','').replace('right_','').replace('left_','').upper()
+        bilateral_dict[bilateral_key].append(v)
+
+    # add lobe names and keys
+    bilateral_dict = dict(bilateral_dict)
+    bilateral_dict.update(LOBES)
+
+    return bilateral_dict
+
+def removeBlacklistedGroups(data_bl, data_scan2, data_scan3, index_lookup, suvr=True, ref_key='whole_cerebellum'):
+    assert ref_key in ['whole_cerebellum','composite_ref']
+
+    regions_to_remove = [k for k,v in index_lookup.iteritems() if len(list(set(REGION_BLACKLIST) & set(list(v)))) > 0]
+
+    index_lookup = {k:v for k,v in index_lookup.iteritems() if k not in regions_to_remove}
+    for rid,val in data_bl.iteritems():
+        ref_value = 1.0
+        if suvr:
+            ref_value = val.get(ref_key,1.0)
+        new_val = {k: v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
+        data_bl[rid] = new_val
+    for rid,val in data_scan2.iteritems():
+        ref_value = 1.0
+        if suvr:
+            ref_value = val.get(ref_key,1.0)
+        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
+        data_scan2[rid] = new_val
+    for rid,val in data_scan3.iteritems():
+        ref_value = 1.0
+        if suvr:
+            ref_value = val.get(ref_key,1.0)
+        new_val = {k:v/ref_value for k,v in val.iteritems() if k not in regions_to_remove}
+        data_scan3[rid] = new_val
+    return data_bl, data_scan2, data_scan3, index_lookup

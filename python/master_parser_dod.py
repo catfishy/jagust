@@ -399,17 +399,17 @@ def syncADNIMasterData(master_df, av45_master_file):
                     'Age': row['Age@AV45'],
                     'Edu': row['Edu.(Yrs)'],
                     'APOE4BIN': row['APOE4_BIN'],
-                    'ADAS_TOTSCORE': row['ADAS_3MTH_AV45'],
-                    'AVLT_total_6mths_Examdate': row['AVLT_3MTHS_AV45'],
+                    'ADAS_TOTSCORE': row['ADAS_AV45_1'],
+                    'AVLT_total_6mths_Examdate': row['AVLT_AV45_1'],
                     'CAPS_CURRSCORE': '',
                     'CAPS_LIFETIME_SCORE': '',
                     'WMH_WHITMATHYP': row['WMH_WHITMATHYP.1'],
                     'WMH_percentOfICV': row['WMH_percentOfICV.1'],
-                    'GDtotal': row['GD_AV45_6MTHS'],
+                    'GDtotal': row['GD_AV45_1'],
                     'MRIDATE': '',
-                    'CSF_abeta': row['CSF_ABETA.1'],
-                    'CSF_tau': row['CSF_TAU.1'],
-                    'CSF_ptau': row['CSF_PTAU.1'],
+                    'CSF_abeta': row['CSF_ABETA_closest_AV45_1'],
+                    'CSF_tau': row['CSF_TAU_closest_AV45_1'],
+                    'CSF_ptau': row['CSF_PTAU_closest_AV45_1'],
                     'SCRNO': scrno
                     }
         return pd.DataFrame([new_data]).set_index('SCRNO')
@@ -422,13 +422,13 @@ def syncADNIMasterData(master_df, av45_master_file):
 def syncDiagData(master_df, diag_file):
     diag_df = importADNIDiagnosis(diag_file, as_df=True)
     timepoints = max(Counter(diag_df.index).values())
-    
+
     # Add comparison date
     comp_date = datetime(year=2016, month=4, day=1)
     comp_key = 'Diag_%s' % (comp_date.strftime('%b%Y'),)
     diag_df['TimeFromCompDate'] = diag_df['EXAMDATE'].apply(lambda x: abs(x-comp_date).days)
 
-    # header order 
+    # header order
     headers = ['Diag_%s' % (_+1,) for _ in range(timepoints)]
     headers += ["Diag_Date_%s" % (_+1,) for _ in range(timepoints)]
     headers += [comp_key, 'Diag_closest_AV45_BL', 'Diag_closest_AV45_2']
@@ -455,7 +455,7 @@ def syncDiagData(master_df, diag_file):
 
 def syncStudyData(master_df, elig_file):
     '''
-    GroupNum: 1=C, 2=PTSD, 3=TBI, 4=PTSD+TBI 
+    GroupNum: 1=C, 2=PTSD, 3=TBI, 4=PTSD+TBI
     GroupNum_PTSD:  1=C, 2=PTSD or PTSD+TBI, 3=TBI
     GroupNum_TBI: 1=C, 2=PTSD, 3=TBI or PTSD+TBI
     '''
@@ -500,6 +500,76 @@ def syncStudyData(master_df, elig_file):
     master_df.loc[adni_subj,'GroupNum_PTSD'] = 5
     master_df.loc[adni_subj,'GroupNum_TBI'] = 5
     return master_df
+
+def syncAV1451RoussetData(master_df, av1451_pvc_file):
+    timepoints = ['BL','Scan2']
+    av1451_df, _ = importRoussetCSV(av1451_pvc_file, as_df=True)
+
+    av1451_df['BRAAKALL'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE','BRAAK3_SIZE','BRAAK4_SIZE','BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6'])
+    column_translations = {'BRAAK1': 'AV1451_PVC_Braak1_%s_%s',
+                           'BRAAK2': 'AV1451_PVC_Braak2_%s_%s',
+                           'BRAAK3': 'AV1451_PVC_Braak3_%s_%s',
+                           'BRAAK4': 'AV1451_PVC_Braak4_%s_%s',
+                           'BRAAK5': 'AV1451_PVC_Braak5_%s_%s',
+                           'BRAAK6': 'AV1451_PVC_Braak6_%s_%s',
+                           'BRAAK12': 'AV1451_PVC_Braak12_%s_%s',
+                           'BRAAK34': 'AV1451_PVC_Braak34_%s_%s',
+                           'BRAAK56': 'AV1451_PVC_Braak56_%s_%s',
+                           'BRAAKALL': 'AV1451_PVC_BraakAll_%s_%s'}
+    column_order = ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6',
+                    'BRAAK12','BRAAK34','BRAAK56','BRAAKALL']
+    ref_region_translations = {'CEREBGM': 'CerebGray',
+                               'WHOLECEREB': 'WholeCereb'}
+    to_merge = []
+    for tp in timepoints:
+        cur_df = av1451_df[av1451_df['TP'] == tp]
+        roi_df = cur_df[column_order]
+        for ref in ref_region_translations:
+            suvr_df = roi_df.divide(cur_df[ref],axis=0)
+            cur_translations = {k: v % (ref_region_translations[ref],tp) for k,v in column_translations.iteritems()}
+            suvr_df.rename(columns=cur_translations,inplace=True)
+            to_merge.append(suvr_df)
+
+    merged = to_merge[0]
+    for df in to_merge[1:]:
+        merged = merged.merge(df,left_index=True,right_index=True,how='outer')
+
+    after = [_ for _ in master_df.columns if _.startswith('AV45') and 'PVC' not in _][-1]
+    headers = list(merged.columns)
+    master_df = updateDataFrame(master_df, merged, headers=headers, after=after, restrict=True)
+    return master_df
+
+def syncAV1451MaxData(master_df, av1451_max_file):
+    av1451_df = importAV1451(av1451_file, as_df=True)
+    timepoints = max(Counter(av1451_df.index).values())
+
+    # create header order
+    row_indices = range(1,timepoints+1)
+    headers = []
+    headers += ['AV1451_%s_Braak12_Max' % i for i in row_indices]
+    headers += ['AV1451_%s_Braak34_Max' % i for i in row_indices]
+    headers += ['AV1451_%s_Braak56_Max' % i for i in row_indices]
+
+    # create extraction function
+    def extraction_fn(scrno, subj_rows):
+        new_data = {'SCRNO': scrno}
+        subj_rows.sort_values(by='EXAMDATE', inplace=True)
+
+        for i, (idx, row) in enumerate(subj_rows.iterrows()):
+            row_i = i + 1
+            braak12 = max(row['BRAAK1'],row['BRAAK2'])
+            braak34 = max(row['BRAAK3'],row['BRAAK4'])
+            braak56 = max(row['BRAAK5'],row['BRAAK6'])
+            new_data['AV1451_%s_Braak12_Max' % row_i] = braak12
+            new_data['AV1451_%s_Braak34_Max' % row_i] = braak34
+            new_data['AV1451_%s_Braak56_Max' % row_i] = braak56
+
+        return pd.DataFrame([new_data]).set_index('SCRNO')
+
+    parsed_df = parseSubjectGroups(av1451_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=False)
+    return master_df
+
 
 def syncAV1451Data(master_df, av1451_file):
     av1451_df = importAV1451(av1451_file, as_df=True)
@@ -562,7 +632,7 @@ def syncAV1451Data(master_df, av1451_file):
             new_data['AV1451_%s_LEFT_PUTAMEN_CerebGray' % row_i] = float(row['LEFT_PUTAMEN'])/cerebg
             new_data['AV1451_%s_RIGHT_PUTAMEN_CerebGray' % row_i] = float(row['RIGHT_PUTAMEN'])/cerebg
             new_data['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['LEFT_CHOROID_PLEXUS'])/cerebg
-            new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/cerebg 
+            new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/cerebg
 
         return pd.DataFrame([new_data]).set_index('SCRNO')
 
@@ -620,9 +690,9 @@ def syncAV45Data(master_df, av45_file, diags_df):
 
 def parseAV45SubjectRows(scrno, subj_rows):
     # reference dicts
-    left_frontal_keys = ['CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_PARSOPERCULARIS', 
+    left_frontal_keys = ['CTX_LH_CAUDALMIDDLEFRONTAL', 'CTX_LH_LATERALORBITOFRONTAL', 'CTX_LH_MEDIALORBITOFRONTAL', 'CTX_LH_PARSOPERCULARIS',
                     'CTX_LH_PARSORBITALIS', 'CTX_LH_PARSTRIANGULARIS', 'CTX_LH_ROSTRALMIDDLEFRONTAL', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_FRONTALPOLE']
-    right_frontal_keys = ['CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_PARSOPERCULARIS', 
+    right_frontal_keys = ['CTX_RH_CAUDALMIDDLEFRONTAL', 'CTX_RH_LATERALORBITOFRONTAL', 'CTX_RH_MEDIALORBITOFRONTAL', 'CTX_RH_PARSOPERCULARIS',
                      'CTX_RH_PARSORBITALIS', 'CTX_RH_PARSTRIANGULARIS', 'CTX_RH_ROSTRALMIDDLEFRONTAL', 'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_FRONTALPOLE']
     left_cingulate_keys = ['CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_POSTERIORCINGULATE', 'CTX_LH_ROSTRALANTERIORCINGULATE']
     right_cingulate_keys = ['CTX_RH_CAUDALANTERIORCINGULATE', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_ROSTRALANTERIORCINGULATE']
@@ -708,7 +778,7 @@ def parseAV45SubjectRows(scrno, subj_rows):
         data['AV45_%s_parietal_MR_asymmetry' % (i+1)] = asymIndex(left_parietal_size, right_parietal_size)
         data['AV45_%s_temporal__MR_asymmetry' % (i+1)] = asymIndex(left_temporal_size, right_temporal_size)
         data['AV45_%s_ventrical_MR_asymmetry' % (i+1)] = asymIndex(left_ventrical_size, right_ventrical_size)
-    
+
     return pd.DataFrame([data]).set_index('SCRNO')
 
 
@@ -741,6 +811,10 @@ def runPipeline():
     master_df = syncAV45Data(master_df, av45_file, diags_df) # adds new patients
     print "\nSYNCING AV1451\n"
     master_df = syncAV1451Data(master_df, av1451_file) # adds new patients
+    print "\nSYNCING AV1451 MAX\n"
+    master_df = syncAV1451MaxData(master_df, av1451_max_file)
+    print "\nSYNCING AV1451 Rousset\n"
+    master_df = syncAV1451RoussetData(master_df, av1451_pvc_file)
     print "\nSYNCING DIAG\n"
     master_df = syncDiagData(master_df, diag_file)
     print "\nSYNCING ANTIDEP\n"
@@ -787,11 +861,15 @@ if __name__ == '__main__':
     output_file = "../DOD_DATA_%s.csv" % (now.strftime("%m_%d_%y"))
 
     # ADNI master file
-    av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_01_19_16.csv'
+    av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
     # AV45 file
-    av45_file = '../output/04_05_16/UCBERKELEYAV45_DOD_04_05_16_regular_nontp.csv'
+    av45_file = '../output/10-04-2016/UCBERKELEYAV45_DOD_10-04-2016_regular_nontp.csv'
     # AV1451 file
-    av1451_file = '../output/04_05_16/UCBERKELEYAV1451_DOD_04_05_16_regular_tp.csv'
+    av1451_file = '../output/10-04-2016/UCBERKELEYAV1451_DOD_10-04-2016_regular_tp.csv'
+    # AV1451 Max file
+    av1451_max_file = '../output/10-04-2016/UCBERKELEYAV1451_DOD_MAX_10-04-2016_regular_tp.csv'
+    # AV1451 PVC file
+    av1451_pvc_file = '../datasets/pvc_dod_av1451/tauskullregions_output.csv'
 
     # Registry file
     registry_file = "../docs/DOD/REGISTRY.csv"

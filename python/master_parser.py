@@ -749,13 +749,13 @@ def syncDiagnosisData(master_df, diag_file, arm_file, registry):
                 'FollowupTimetoDX': (pivot_date-bl_visit).days/365.25}
         # closest to AV45 scans
         av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av45_date1,av45_date2,av45_date3],day_limit=365/2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av45_date1,av45_date2,av45_date3],day_limit=365)
         data['Diag@AV45'] = closest_vals[0]
         data['Diag@AV45_2'] = closest_vals[1]
         data['Diag@AV45_3'] = closest_vals[2]
         # closest to AV1451 scans
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av1451_date1,av1451_date2,av1451_date3],day_limit=365*3/2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av1451_date1,av1451_date2,av1451_date3],day_limit=365*3)
         data['Diag@AV1451'] = closest_vals[0]
         data['Diag@AV1451_2'] = closest_vals[1]
         data['Diag@AV1451_3'] = closest_vals[2]
@@ -1806,7 +1806,7 @@ def eliminateColumns(master_df):
                           'FDG','AVLT','ADAS','TIMEpostAV45_ADAS','TIMEpostAV45_MMSE',
                           'MMSCORE','CSF','WMH','TIME_ADAS','TIMEreltoAV45_ADAS',
                           'TIME_AVLT','TIMEreltoAV45_AVLT','TIMEpostAV45_AVLT',
-                          'NPITOTAL']
+                          'NPITOTAL','AV1451']
     for prefix in to_remove_prefixes:
         to_remove += [_ for _ in master_df.columns if _.startswith(prefix)]
 
@@ -1914,9 +1914,9 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/08-31-2016/UCBERKELEYAV45_08-31-2016_regular_tp.csv"
-    av45_nontp_file = "../output/08-31-2016/UCBERKELEYAV45_08-31-2016_regular_nontp.csv"
-    av1451_tp_file = "../output/08-31-2016/UCBERKELEYAV1451_08-31-2016_regular_tp.csv"
+    av45_tp_file = "../output/10-10-2016/UCBERKELEYAV45_10-10-2016_regular_tp.csv"
+    av45_nontp_file = "../output/10-10-2016/UCBERKELEYAV45_10-10-2016_regular_nontp.csv"
+    av1451_tp_file = "../output/10-10-2016/UCBERKELEYAV1451_10-10-2016_regular_tp.csv"
     av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauskullregions_output.csv"
 
@@ -1936,8 +1936,8 @@ if __name__ == '__main__':
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_08_01_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
-    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_08-30-2016.csv'
-    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_08-30-2016.csv'
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_10-07-2016.csv'
+    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_10-07-2016.csv'
 
     # Run pipeline
     runPipeline()

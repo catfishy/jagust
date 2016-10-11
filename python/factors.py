@@ -189,32 +189,6 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
         pattern = dict(df[colname])
         saveFakeAparcInput(output_name,pattern,index_lookup)
 
-def flipPVCOutput(pvc_output_file):
-    # read file and format subject ids
-    df = pd.read_csv(pvc_output_file)
-    if df['subject'].dtype != 'int64':
-        df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
-    # translate regions
-    ind_df = df[['ind','name']].drop_duplicates()
-    lut = importFreesurferLookup(lut_file, flip=False)
-    translate = {}
-    for i, row in ind_df.iterrows():
-        group_idx = [int(_) for _ in row['ind'].split(';')]
-        if len(group_idx) == 1 and group_idx[0] in lut:
-            translate[row['name']] = lut[group_idx[0]]
-    df['name'] = df['name'].apply(lambda x: translate.get(x,x))
-    # pivot
-    value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
-    size_df = pd.pivot_table(df, values='groupsize', index=['subject','timepoint'], columns='name')
-    value_df.columns = [_.upper().replace('-','_') for _ in value_df.columns]
-    size_df.columns = ["%s_SIZE" % (_.upper().replace('-','_'),) for _ in size_df.columns]
-    original_keys = value_df.columns
-    pivot_df = value_df.merge(size_df,left_index=True,right_index=True)
-    # remove size columns
-    columns = [_ for _ in pivot_df.columns if 'SIZE' not in _]
-    pivot_df = pivot_df[columns]
-    return pivot_df
-
 
 # SETUP FILES
 
@@ -299,7 +273,7 @@ def flipPVCOutput(pvc_output_file):
 master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
 region_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake.csv'
-region_bilateral_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake_bilateral.csv'
+region_bilateral_csv = '../datasets/pvc_adni_av1451/tauskullregions_suvr_bilateral.csv'
 pattern_mat = '../av1451skull_pattern_bl.mat'
 pattern_mat_2 = None
 pattern_mat_3 = None
@@ -497,8 +471,6 @@ if nsfa_activation_csv_3 is not None:
     nsfa_act_3_df = nsfa_act_3_df[bl_columns]
     nsfa_act_3_df.columns = ['SCAN3_%s' % _ for _ in nsfa_act_3_df.columns]
     nsfa_act_df = nsfa_act_df.merge(nsfa_act_3_df, left_index=True, right_index=True, how='outer')
-
-
 
 
 # get naive ratios

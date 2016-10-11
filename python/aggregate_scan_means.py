@@ -100,6 +100,38 @@ DOD_TAU_FIELDNAMES_EXTRA = ['SCRNO','VISCODE','EXAMDATE',
                             'BRAAK4', 'BRAAK4_SIZE', 'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
                             'ERODED_SUBCORTICALWM','ERODED_SUBCORTICALWM_SIZE'] + ALL_REGION_KEYS
 
+TAU_PVC_REGIONS = ['BRAAK1', 'BRAAK1_SIZE', 'BRAAK2', 'BRAAK2_SIZE',
+                   'BRAAK3', 'BRAAK3_SIZE', 'BRAAK4', 'BRAAK4_SIZE',
+                   'BRAAK5', 'BRAAK5_SIZE', 'BRAAK6', 'BRAAK6_SIZE',
+                   'CEREBGM', 'CEREBGM_SIZE', 'CEREBWM', 'CEREBWM_SIZE',
+                   'BRAIN_STEM', 'BRAIN_STEM_SIZE', 'HEMIWM', 'HEMIWM_SIZE',
+                   'BONE', 'BONE_SIZE', 'CSF_SA', 'CSF_SA_SIZE', 'SOFT_TISSUE', 'SOFT_TISSUE_SIZE',
+                   'LEFT_MIDDLEFR', 'LEFT_MIDDLEFR_SIZE', 'LEFT_ORBITOFR', 'LEFT_ORBITOFR_SIZE',
+                   'LEFT_PARSFR', 'LEFT_PARSFR_SIZE', 'LEFT_ACCUMBENS_AREA', 'LEFT_ACCUMBENS_AREA_SIZE',
+                   'LEFT_AMYGDALA', 'LEFT_AMYGDALA_SIZE', 'LEFT_CAUDATE', 'LEFT_CAUDATE_SIZE', 'LEFT_HIPPOCAMPUS', 'LEFT_HIPPOCAMPUS_SIZE',
+                   'LEFT_PALLIDUM', 'LEFT_PALLIDUM_SIZE', 'LEFT_PUTAMEN', 'LEFT_PUTAMEN_SIZE', 'LEFT_THALAMUS_PROPER', 'LEFT_THALAMUS_PROPER_SIZE',
+                   'RIGHT_MIDDLEFR', 'RIGHT_MIDDLEFR_SIZE', 'RIGHT_ORBITOFR', 'RIGHT_ORBITOFR_SIZE', 'RIGHT_PARSFR', 'RIGHT_PARSFR_SIZE',
+                   'RIGHT_ACCUMBENS_AREA', 'RIGHT_ACCUMBENS_AREA_SIZE', 'RIGHT_AMYGDALA', 'RIGHT_AMYGDALA_SIZE', 'RIGHT_CAUDATE', 'RIGHT_CAUDATE_SIZE',
+                   'RIGHT_HIPPOCAMPUS', 'RIGHT_HIPPOCAMPUS_SIZE', 'RIGHT_PALLIDUM', 'RIGHT_PALLIDUM_SIZE', 'RIGHT_PUTAMEN', 'RIGHT_PUTAMEN_SIZE',
+                   'RIGHT_THALAMUS_PROPER', 'RIGHT_THALAMUS_PROPER_SIZE', 'CHOROID', 'CHOROID_SIZE', 'CTX_LH_BANKSSTS', 'CTX_LH_BANKSSTS_SIZE',
+                   'CTX_LH_CAUDALANTERIORCINGULATE', 'CTX_LH_CAUDALANTERIORCINGULATE_SIZE', 'CTX_LH_CUNEUS', 'CTX_LH_CUNEUS_SIZE', 'CTX_LH_ENTORHINAL', 'CTX_LH_ENTORHINAL_SIZE',
+                   'CTX_LH_FUSIFORM', 'CTX_LH_FUSIFORM_SIZE', 'CTX_LH_INFERIORPARIETAL', 'CTX_LH_INFERIORPARIETAL_SIZE', 'CTX_LH_INFERIORTEMPORAL', 'CTX_LH_INFERIORTEMPORAL_SIZE',
+                   'CTX_LH_INSULA', 'CTX_LH_INSULA_SIZE', 'CTX_LH_ISTHMUSCINGULATE', 'CTX_LH_ISTHMUSCINGULATE_SIZE', 'CTX_LH_LATERALOCCIPITAL', 'CTX_LH_LATERALOCCIPITAL_SIZE',
+                   'CTX_LH_LINGUAL', 'CTX_LH_LINGUAL_SIZE', 'CTX_LH_MIDDLETEMPORAL', 'CTX_LH_MIDDLETEMPORAL_SIZE', 'CTX_LH_PARACENTRAL', 'CTX_LH_PARACENTRAL_SIZE',
+                   'CTX_LH_PARAHIPPOCAMPAL', 'CTX_LH_PARAHIPPOCAMPAL_SIZE', 'CTX_LH_PERICALCARINE', 'CTX_LH_PERICALCARINE_SIZE', 'CTX_LH_POSTCENTRAL', 'CTX_LH_POSTCENTRAL_SIZE',
+                   'CTX_LH_POSTERIORCINGULATE', 'CTX_LH_POSTERIORCINGULATE_SIZE', 'CTX_LH_PRECENTRAL', 'CTX_LH_PRECENTRAL_SIZE', 'CTX_LH_PRECUNEUS', 'CTX_LH_PRECUNEUS_SIZE',
+                   'CTX_LH_ROSTRALANTERIORCINGULATE', 'CTX_LH_ROSTRALANTERIORCINGULATE_SIZE', 'CTX_LH_SUPERIORFRONTAL', 'CTX_LH_SUPERIORFRONTAL_SIZE', 'CTX_LH_SUPERIORPARIETAL', 'CTX_LH_SUPERIORPARIETAL_SIZE',
+                   'CTX_LH_SUPERIORTEMPORAL', 'CTX_LH_SUPERIORTEMPORAL_SIZE', 'CTX_LH_SUPRAMARGINAL', 'CTX_LH_SUPRAMARGINAL_SIZE', 'CTX_LH_TEMPORALPOLE', 'CTX_LH_TEMPORALPOLE_SIZE',
+                   'CTX_LH_TRANSVERSETEMPORAL', 'CTX_LH_TRANSVERSETEMPORAL_SIZE', 'CTX_RH_BANKSSTS', 'CTX_RH_BANKSSTS_SIZE', 'CTX_RH_CAUDALANTERIORCINGULATE', 'CTX_RH_CAUDALANTERIORCINGULATE_SIZE',
+                   'CTX_RH_CUNEUS', 'CTX_RH_CUNEUS_SIZE', 'CTX_RH_ENTORHINAL', 'CTX_RH_ENTORHINAL_SIZE', 'CTX_RH_FUSIFORM', 'CTX_RH_FUSIFORM_SIZE', 'CTX_RH_INFERIORPARIETAL', 'CTX_RH_INFERIORPARIETAL_SIZE',
+                   'CTX_RH_INFERIORTEMPORAL', 'CTX_RH_INFERIORTEMPORAL_SIZE', 'CTX_RH_INSULA', 'CTX_RH_INSULA_SIZE', 'CTX_RH_ISTHMUSCINGULATE', 'CTX_RH_ISTHMUSCINGULATE_SIZE', 'CTX_RH_LATERALOCCIPITAL', 'CTX_RH_LATERALOCCIPITAL_SIZE',
+                   'CTX_RH_LINGUAL', 'CTX_RH_LINGUAL_SIZE', 'CTX_RH_MIDDLETEMPORAL', 'CTX_RH_MIDDLETEMPORAL_SIZE', 'CTX_RH_PARACENTRAL', 'CTX_RH_PARACENTRAL_SIZE', 'CTX_RH_PARAHIPPOCAMPAL', 'CTX_RH_PARAHIPPOCAMPAL_SIZE',
+                   'CTX_RH_PERICALCARINE', 'CTX_RH_PERICALCARINE_SIZE', 'CTX_RH_POSTCENTRAL', 'CTX_RH_POSTCENTRAL_SIZE', 'CTX_RH_POSTERIORCINGULATE', 'CTX_RH_POSTERIORCINGULATE_SIZE',
+                   'CTX_RH_PRECENTRAL', 'CTX_RH_PRECENTRAL_SIZE', 'CTX_RH_PRECUNEUS', 'CTX_RH_PRECUNEUS_SIZE', 'CTX_RH_ROSTRALANTERIORCINGULATE', 'CTX_RH_ROSTRALANTERIORCINGULATE_SIZE',
+                   'CTX_RH_SUPERIORFRONTAL', 'CTX_RH_SUPERIORFRONTAL_SIZE', 'CTX_RH_SUPERIORPARIETAL', 'CTX_RH_SUPERIORPARIETAL_SIZE', 'CTX_RH_SUPERIORTEMPORAL', 'CTX_RH_SUPERIORTEMPORAL_SIZE',
+                   'CTX_RH_SUPRAMARGINAL', 'CTX_RH_SUPRAMARGINAL_SIZE', 'CTX_RH_TEMPORALPOLE', 'CTX_RH_TEMPORALPOLE_SIZE', 'CTX_RH_TRANSVERSETEMPORAL', 'CTX_RH_TRANSVERSETEMPORAL_SIZE', 'OTHER', 'OTHER_SIZE']
+ADNI_TAU_PVC_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE'] + TAU_PVC_REGIONS
+DOD_TAU_PVC_FIELDNAMES = ['SCRNO','VISCODE','EXAMDATE'] + TAU_PVC_REGIONS
 
 def DFWeightedMean(df, keys):
     size_keys = ['%s_SIZE' % _ for _ in keys]
@@ -340,7 +372,8 @@ def mergeRegularWithAllRegions(regular_output, allregions_output, output_file, d
         all_df.insert(len(all_df.columns), 'update_stamp',stamps)
     all_df.to_csv(output_file) # , float_format='%.8f'
 
-def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False, max_val=False):
+def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False,
+                              max_val=False):
     '''
     Assumes preprocess outputs include all freesurfer regions (no pre-aggregation)
     '''
@@ -365,12 +398,6 @@ def findPreprocessOutputFiles(folder_name, nontp=False, allregions=False, max_va
     return (mean_files,size_files)
 
 def MAXNamingConventions(input_df):
-    # rename_dict = {'CEREBELLUMWHITEMATTER': 'CEREBELLUMWHITEMATTER_MEAN',
-    #                'CEREBELLUMGREYMATTER': 'CEREBELLUMGREYMATTER_MEAN',
-    #                'WHOLECEREBELLUM': 'WHOLECEREBELLUM_MEAN',
-    #                'COMPOSITE_REF': 'COMPOSITE_REF_MEAN'}
-    # output_df = input_df.rename(columns=rename_dict)
-    # return output_df
     return input_df
 
 def ADNINamingConventions(input_df):
@@ -397,6 +424,26 @@ def CreateLONIVersions(allregions_df, fieldnames, lut_table, output_folder,
     # ADNINamingConventions(allregions_df).to_csv(allregions_output,index=False,float_format='%.4f')
     ADNINamingConventions(full_df).to_csv(regular_output,index=False,float_format='%.4f')
 
+def parsePVCOutputForLONI(pvc_output, lut_file, headers, meta_file, dod=False):
+    df = flipPVCOutput(pvc_output, lut_file, remove_size=False)
+    df.reset_index(inplace=True)
+    # convert timepoint to viscodes and examdates
+    visits = importScanMeta(meta_file, with_viscode=True)
+    for idx, row in df.iterrows():
+        subj_entry = visits[row['subject']]
+        tp_idx = ALL_TP.index(row['timepoint'])
+        examdate = sorted(subj_entry.keys())[tp_idx]
+        df.loc[idx,'EXAMDATE'] = examdate
+        for k,v in subj_entry[examdate].iteritems():
+            df.loc[idx,k] = v
+    if dod:
+        df.rename(columns={'subject': 'SCRNO'}, inplace=True)
+    else:
+        df.rename(columns={'subject': 'RID'}, inplace=True)
+
+    df = df[headers]
+    return df
+
 if __name__ == "__main__":
     # freesurfer region lookup
     lut_file = "../FreeSurferColorLUT.txt"
@@ -415,7 +462,7 @@ if __name__ == "__main__":
     dep_meta_pet = "../docs/DEP/AV45META.csv"
     dep_meta_tau = "../docs/DEP/TAUMETA.csv"
 
-    timestamp = '08-31-2016'
+    timestamp = '10-10-2016'
 
     # preprocess output folders
     preprocess_folder = '../docs/preprocess_output/%s/' % timestamp
@@ -426,9 +473,25 @@ if __name__ == "__main__":
     dod_tau_preprocess_folder = '%sdod_adni_av1451' % preprocess_folder
     dep_tau_preprocess_folder = '%sdep_adni_av1451' % preprocess_folder
 
+    # PVC output files
+    adni_av45_pvc_output = '/usr/local/jagust/datasets/pvc_adni_av45/mostregions_output.csv'
+    adni_av1451_pvc_output = '/usr/local/jagust/datasets/pvc_adni_av1451/tauskullregions_output.csv'
+    dod_av45_pvc_output = '/usr/local/jagust/datasets/pvc_dod_av45/mostregions_output.csv'
+    dod_av1451_pvc_output = '/usr/local/jagust/datasets/pvc_dod_av1451/tauskullregions_output.csv'
+
     # create output folder
     output_folder = '../output/%s' % timestamp
     mkdir_p(output_folder)
+
+    # ADNI AV1451 PVC
+    output_filename = os.path.join(output_folder,"UCBERKELEYAV1451_PVC_%s_tp.csv" % (timestamp))
+    df = parsePVCOutputForLONI(adni_av1451_pvc_output, lut_file, ADNI_TAU_PVC_FIELDNAMES, meta_tau, dod=False)
+    df.to_csv(output_filename,index=False,float_format='%.4f',date_format='%Y-%m-%d')
+
+    # DOD AV1451 PVC
+    output_filename = os.path.join(output_folder,"UCBERKELEYAV1451_DOD_PVC_%s_tp.csv" % (timestamp))
+    df = parsePVCOutputForLONI(dod_av1451_pvc_output, lut_file, DOD_TAU_PVC_FIELDNAMES, dod_meta_tau, dod=True)
+    df.to_csv(output_filename,index=False,float_format='%.4f',date_format='%Y-%m-%d')
 
     # ADNI AV45 NONTP
     regular_filename = 'UCBERKELEYAV45_%s_regular_nontp.csv' % (timestamp)
@@ -513,6 +576,19 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
+
+    # DOD TAU TP MAX
+    regular_filename = 'UCBERKELEYAV1451_DOD_MAX_%s_regular_tp.csv' % (timestamp)
+    allregions_filename = 'UCBERKELEYAV1451_DOD_MAX_%s_allregions_tp.csv' % (timestamp)
+    merged_filename = 'UCBERKELEYAV1451_DOD_MAX_%s_merged_tp.csv' % (timestamp)
+    regular_output = os.path.join(output_folder, regular_filename)
+    allregions_output = os.path.join(output_folder, allregions_filename)
+    merged_output = os.path.join(output_folder, merged_filename)
+    mean_files, size_files = findPreprocessOutputFiles(dod_tau_preprocess_folder, nontp=False, max_val=True)
+    df = aggregateAllRegionFiles(mean_files, size_files, lut_table, dod_meta_tau, dod=True)
+    MAXNamingConventions(df).to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
+    full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES_EXTRA, max_val=True)
+    MAXNamingConventions(full_df).to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
 
     # DEP AV45 TP
     regular_filename = 'UCBERKELEYAV45_DEP_%s_regular_tp.csv' % (timestamp)
