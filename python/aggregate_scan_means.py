@@ -462,7 +462,7 @@ if __name__ == "__main__":
     dep_meta_pet = "../docs/DEP/AV45META.csv"
     dep_meta_tau = "../docs/DEP/TAUMETA.csv"
 
-    timestamp = '10-10-2016'
+    timestamp = '10-14-2016'
 
     # preprocess output folders
     preprocess_folder = '../docs/preprocess_output/%s/' % timestamp
@@ -484,12 +484,12 @@ if __name__ == "__main__":
     mkdir_p(output_folder)
 
     # ADNI AV1451 PVC
-    output_filename = os.path.join(output_folder,"UCBERKELEYAV1451_PVC_%s_tp.csv" % (timestamp))
+    output_filename = os.path.join(output_folder,"LONI_UCBERKELEYAV1451_PVC_%s_tp.csv" % (timestamp))
     df = parsePVCOutputForLONI(adni_av1451_pvc_output, lut_file, ADNI_TAU_PVC_FIELDNAMES, meta_tau, dod=False)
     df.to_csv(output_filename,index=False,float_format='%.4f',date_format='%Y-%m-%d')
 
     # DOD AV1451 PVC
-    output_filename = os.path.join(output_folder,"UCBERKELEYAV1451_DOD_PVC_%s_tp.csv" % (timestamp))
+    output_filename = os.path.join(output_folder,"LONI_UCBERKELEYAV1451_DOD_PVC_%s_tp.csv" % (timestamp))
     df = parsePVCOutputForLONI(dod_av1451_pvc_output, lut_file, DOD_TAU_PVC_FIELDNAMES, dod_meta_tau, dod=True)
     df.to_csv(output_filename,index=False,float_format='%.4f',date_format='%Y-%m-%d')
 
@@ -531,7 +531,7 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalTauCalculations(df, lut_table, keys=TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
-    CreateLONIVersions(df, TAU_FIELDNAMES, lut_table, output_folder,
+    CreateLONIVersions(df, TAU_FIELDNAMES_EXTRA, lut_table, output_folder,
                        allregions_filename, regular_filename,
                        tau=True, max_val=False)
 
@@ -576,6 +576,9 @@ if __name__ == "__main__":
     df.to_csv(allregions_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
     full_df = additionalTauCalculations(df, lut_table, keys=DOD_TAU_FIELDNAMES_EXTRA)
     full_df.to_csv(regular_output,index=False,float_format='%.4f',date_format='%Y-%m-%d')
+    CreateLONIVersions(df, DOD_TAU_FIELDNAMES_EXTRA, lut_table, output_folder,
+                       allregions_filename, regular_filename,
+                       tau=True, max_val=False)
 
     # DOD TAU TP MAX
     regular_filename = 'UCBERKELEYAV1451_DOD_MAX_%s_regular_tp.csv' % (timestamp)
