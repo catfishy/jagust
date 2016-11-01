@@ -1,0 +1,22 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1.19892 -0.50940 -0.08329  0.40795  1.83204 
+
+Coefficients:
+                                 Estimate Std. Error t value Pr(>|t|)   
+(Intercept)                     1.443e-16  1.382e-01   0.000  1.00000   
+NSFA_3                         -2.701e-01  1.499e-01  -1.802  0.08419 . 
+NSFA_7                          4.151e-01  1.448e-01   2.867  0.00849 **
+NSFA_8                         -2.589e-01  1.469e-01  -1.762  0.09084 . 
+AV1451_PVC_Braak1_CerebGray_BL -3.623e-01  1.587e-01  -2.283  0.03157 * 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.7441 on 24 degrees of freedom
+Multiple R-squared:  0.5254,	Adjusted R-squared:  0.4463 
+F-statistic: 6.642 on 4 and 24 DF,  p-value: 0.0009538
+

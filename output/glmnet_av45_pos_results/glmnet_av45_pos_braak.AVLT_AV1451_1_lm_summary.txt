@@ -1,0 +1,19 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-1.0696 -0.6808 -0.2893  0.4684  2.2082 
+
+Coefficients:
+                                 Estimate Std. Error t value Pr(>|t|)  
+(Intercept)                     1.392e-16  1.696e-01    0.00   1.0000  
+AV1451_PVC_Braak1_CerebGray_BL -4.419e-01  1.726e-01   -2.56   0.0164 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9135 on 27 degrees of freedom
+Multiple R-squared:  0.1953,	Adjusted R-squared:  0.1655 
+F-statistic: 6.552 on 1 and 27 DF,  p-value: 0.01639
+

@@ -1,0 +1,24 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.77206 -0.39490 -0.07975  0.44679  1.80210 
+
+Coefficients:
+                            Estimate Std. Error t value Pr(>|t|)   
+(Intercept)                 -0.11587    0.12987  -0.892  0.37573   
+APOE4_BIN1                   0.42487    0.21845   1.945  0.05633 . 
+Age.AV1451                   0.14059    0.12710   1.106  0.27292   
+CTX_PARAHIPPOCAMPAL          0.44055    0.13774   3.198  0.00218 **
+CTX_CUNEUS                  -0.26544    0.11407  -2.327  0.02324 * 
+CTX_TRANSVERSETEMPORAL      -0.05842    0.11459  -0.510  0.61195   
+CTX_CAUDALANTERIORCINGULATE -0.34623    0.13074  -2.648  0.01025 * 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.8381 on 62 degrees of freedom
+Multiple R-squared:  0.3595,	Adjusted R-squared:  0.2975 
+F-statistic:   5.8 on 6 and 62 DF,  p-value: 7.657e-05
+

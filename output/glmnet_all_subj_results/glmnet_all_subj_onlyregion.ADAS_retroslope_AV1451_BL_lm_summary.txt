@@ -1,0 +1,21 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-2.1181 -0.3820  0.0204  0.3687  3.5418 
+
+Coefficients:
+                     Estimate Std. Error t value Pr(>|t|)   
+(Intercept)        -0.0007547  0.0931903  -0.008  0.99356   
+AMYGDALA            0.1688187  0.2046247   0.825  0.41225   
+CTX_ENTORHINAL      0.1157731  0.2034953   0.569  0.57128   
+CTX_MIDDLETEMPORAL  0.3956239  0.1401649   2.823  0.00624 **
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.7907 on 68 degrees of freedom
+Multiple R-squared:  0.4013,	Adjusted R-squared:  0.3749 
+F-statistic: 15.19 on 3 and 68 DF,  p-value: 1.147e-07
+

@@ -1,0 +1,21 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.7598 -0.4179 -0.1241  0.4440  1.3948 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept) -2.811e-17  1.116e-01   0.000  1.00000    
+NSFA_0       5.656e-01  1.160e-01   4.877 5.13e-05 ***
+NSFA_4      -3.670e-01  1.151e-01  -3.189  0.00382 ** 
+NSFA_8       2.948e-01  1.160e-01   2.542  0.01758 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.601 on 25 degrees of freedom
+Multiple R-squared:  0.6775,	Adjusted R-squared:  0.6388 
+F-statistic:  17.5 on 3 and 25 DF,  p-value: 2.476e-06
+

@@ -1,0 +1,21 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-3.10244 -0.53844  0.01529  0.48740  2.56015 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)  
+(Intercept)   0.1593     0.1426   1.117   0.2678  
+APOE4_BIN1   -0.4272     0.2333  -1.831   0.0715 .
+Age.AV1451   -0.2603     0.1150  -2.264   0.0267 *
+NSFA_1       -0.1743     0.1146  -1.520   0.1330  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9356 on 68 degrees of freedom
+Multiple R-squared:  0.1617,	Adjusted R-squared:  0.1247 
+F-statistic: 4.372 on 3 and 68 DF,  p-value: 0.007113
+

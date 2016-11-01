@@ -1,0 +1,19 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-2.47184 -0.57995  0.02973  0.68761  1.83309 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)  
+(Intercept) -0.01757    0.17767  -0.099   0.9220  
+Edu..Yrs.    0.39275    0.18286   2.148   0.0412 *
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.9391 on 26 degrees of freedom
+Multiple R-squared:  0.1507,	Adjusted R-squared:  0.118 
+F-statistic: 4.613 on 1 and 26 DF,  p-value: 0.04122
+

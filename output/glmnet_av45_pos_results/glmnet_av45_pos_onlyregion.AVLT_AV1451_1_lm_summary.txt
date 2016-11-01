@@ -1,0 +1,20 @@
+
+Call:
+lm(formula = lm_form, data = df_cur)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-1.4422 -0.5678 -0.3081  0.3884  1.6476 
+
+Coefficients:
+                    Estimate Std. Error t value Pr(>|t|)   
+(Intercept)        2.440e-16  1.501e-01   0.000  1.00000   
+AMYGDALA          -5.475e-01  1.527e-01  -3.584  0.00137 **
+CTX_PERICALCARINE -3.059e-01  1.527e-01  -2.002  0.05578 . 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.8083 on 26 degrees of freedom
+Multiple R-squared:  0.3934,	Adjusted R-squared:  0.3467 
+F-statistic:  8.43 on 2 and 26 DF,  p-value: 0.001507
+
