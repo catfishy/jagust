@@ -70,7 +70,7 @@ ADNI_FIELDNAMES = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                    'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
 ADNI_FIELDNAMES_EXTRA = ['RID','VISCODE','VISCODE2','EXAMDATE','CEREBELLUMGREYMATTER','CEREBELLUMWHITEMATTER','WHOLECEREBELLUM',
-                   'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL',
+                   'ERODED_SUBCORTICALWM','COMPOSITE','COMPOSITE_REF','FRONTAL','CINGULATE','PARIETAL','TEMPORAL','EARLYACCUM',
                    'SUMMARYSUVR_WHOLECEREBNORM','SUMMARYSUVR_WHOLECEREBNORM_1.11CUTOFF',
                    'LEFT_PUTAMEN','RIGHT_PUTAMEN','LEFT_CAUDATE','RIGHT_CAUDATE','LEFT_PALLIDUM','RIGHT_PALLIDUM',
                    'SUMMARYSUVR_COMPOSITE_REFNORM','SUMMARYSUVR_COMPOSITE_REFNORM_0.79CUTOFF'] + ALL_REGION_KEYS
@@ -204,6 +204,7 @@ def additionalAV45Calculations(df, lut_table, keys=None, max_val=False):
     temporal = [translateColumn(_, lut_table) for _ in TEMPORAL]
     cingulate = [translateColumn(_, lut_table) for _ in CINGULATE]
     wcereb = [translateColumn(_, lut_table) for _ in WHOLECEREBELLUM]
+    earlyaccum = [translateColumn(_, lut_table) for _ in AV45_EARLYACCUM]
     compref = ['ERODED_SUBCORTICALWM', 'BRAIN_STEM', 'WHOLECEREBELLUM']
 
     # calculate composite
@@ -213,6 +214,7 @@ def additionalAV45Calculations(df, lut_table, keys=None, max_val=False):
     parietal_aggs, parietal_sizes = agg_fn(df, parietal)
     cingulate_aggs, cingulate_sizes = agg_fn(df, cingulate)
     temporal_aggs, temporal_sizes = agg_fn(df, temporal)
+    earlyaccum_aggs, earlyaccum_sizes = agg_fn(df, earlyaccum)
     df.loc[:,'FRONTAL'] = frontal_aggs
     df.loc[:,'FRONTAL_SIZE'] = frontal_sizes
     df.loc[:,'PARIETAL'] = parietal_aggs
@@ -221,6 +223,8 @@ def additionalAV45Calculations(df, lut_table, keys=None, max_val=False):
     df.loc[:,'CINGULATE_SIZE'] = cingulate_sizes
     df.loc[:,'TEMPORAL'] = temporal_aggs
     df.loc[:,'TEMPORAL_SIZE'] = temporal_sizes
+    df.loc[:,'EARLYACCUM'] = earlyaccum_aggs
+    df.loc[:,'EARLYACCUM_SIZE'] = earlyaccum_sizes
     df.loc[:,'COMPOSITE_SIZE'] = frontal_sizes + parietal_sizes + cingulate_sizes + temporal_sizes
     if max_val:
         df.loc[:,'COMPOSITE'] = pd.DataFrame([frontal_aggs,parietal_aggs,cingulate_aggs,temporal_aggs]).max()
@@ -247,7 +251,7 @@ def additionalAV45Calculations(df, lut_table, keys=None, max_val=False):
     df.loc[:,'COMPOSITE_REF_SIZE'] = df.loc[:,['%s_SIZE' % _ for _ in compref]].sum(axis=1)
     df.loc[:,'COMPOSITE_REF'] = df.loc[:,compref].mean(axis=1)
 
-    # SUVR'S
+    # SUVRs
     df.loc[:,'SUMMARYSUVR_WHOLECEREBNORM'] = df.loc[:,'COMPOSITE'].divide(df.loc[:,'WHOLECEREBELLUM'], axis=0)
     df.loc[:,'SUMMARYSUVR_COMPOSITE_REFNORM'] = df.loc[:,'COMPOSITE'].divide(df.loc[:,'COMPOSITE_REF'], axis=0)
 

@@ -7,7 +7,254 @@ import scipy
 import scipy.io as sio
 
 from utils import *
-from patterns import parseRawDataset, scaleRawInput
+
+def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
+        tracer='AV45', ref_key='WHOLECEREB', norm_type='L1',
+        bilateral=True, dod=False, trim_sid=True):
+    assert norm_type in set(['L1','L2','Linf'])
+    assert tracer in set(['AV45','AV1451'])
+    assert ref_key in set(['WHOLECEREB','BIGREF2','BIGREF','CEREBGM'])
+
+    df = pd.read_csv(data_csv)
+    if df['subject'].dtype != 'int64' and trim_sid:
+        df.loc[:,'subject'] = df.loc[:,'subject'].apply(lambda x: int(x.split('-')[-1]))
+
+    # rename columns
+    ind_df = df[['ind','name']].drop_duplicates()
+    lut = importFreesurferLookup(lut_file, flip=False)
+    translate = {}
+    for i, row in ind_df.iterrows():
+        group_idx = [int(_) for _ in row['ind'].split(';')]
+        if len(group_idx) == 1 and group_idx[0] in lut:
+            translate[row['name']] = lut[group_idx[0]]
+    df['name'] = df['name'].apply(lambda x: translate.get(x,x))
+
+    value_df = pd.pivot_table(df, values='pvcval', index=['subject','timepoint'], columns='name')
+    size_df = pd.pivot_table(df, values='groupsize', index=['subject','timepoint'], columns='name')
+    value_df.columns = [_.upper().replace('-','_') for _ in value_df.columns]
+    size_df.columns = ["%s_SIZE" % (_.upper().replace('-','_'),) for _ in size_df.columns]
+    original_keys = value_df.columns
+    pivot_df = value_df.merge(size_df,left_index=True,right_index=True)
+
+    # drop subjects with no timepoint-specific baseline
+    valid_subjects = set([subj for subj,tp in pivot_df.index.values if tp == 'BL'])
+    valid_indices = [(subj,tp) for subj,tp in pivot_df.index.values if subj in valid_subjects]
+    pivot_df = pivot_df.loc[valid_indices,:]
+
+    # weighted average into bilateral regions
+    if bilateral:
+        joins = defaultdict(list)
+        for o_k in original_keys:
+            new_k = o_k.replace('LH_','').replace('RH_','').replace('RIGHT_','').replace('LEFT_','')
+            joins[new_k].append(o_k)
+
+        for k,v in joins.items():
+            if len(v) > 1:
+                weighted = pd.DataFrame([pivot_df[o_k]*pivot_df['%s_SIZE' % (o_k,)]  for o_k in v]).T.sum(axis=1)
+                weight_sum = pivot_df[["%s_SIZE" % o_k for o_k in v]].sum(axis=1)
+                weighted_avg = weighted/weight_sum
+                weighted_avg = pd.DataFrame(weighted_avg,columns=[k])
+                weights = pd.DataFrame(weight_sum,columns=['%s_SIZE' % k])
+                pivot_df = pivot_df.merge(weighted_avg, left_index=True, right_index=True)
+                pivot_df = pivot_df.merge(weights, left_index=True, right_index=True)
+
+        new_keys = joins.keys()
+        new_size_keys = ['%s_SIZE' % _ for _ in new_keys]
+        pivot_df = pivot_df[new_keys + new_size_keys]
+
+    # convert to SUVR + separate pattern region uptakes from lobe uptakes
+    if ref_key not in pivot_df.columns:
+        raise Exception("Ref Key %s not found in dataset" % ref_key)
+    uptake_keys = [_ for _ in pivot_df.columns if 'SIZE' not in _]
+    suvr_df = pivot_df[uptake_keys].divide(pivot_df[ref_key],axis='index')
+    if len(set(pattern_keys) - set(suvr_df.columns)) > 0:
+        raise Exception("Some pattern keys are unavailable: %s" % (set(pattern_keys) - set(suvr_df.columns),))
+    uptake_df = suvr_df[pattern_keys].copy()
+    if len(set(lobe_keys) - set(suvr_df.columns)) > 0:
+        raise Exception("Some lobe keys are unavailable: %s" % (set(lobe_keys) - set(suvr_df.columns),))
+    lobes_df = suvr_df[lobe_keys].copy()
+
+    # Calculate mass (total, unaveraged signal per region) --> use for patterns
+    signal_df = pivot_df[pattern_keys]
+    signal_sizes_df = pivot_df[["%s_SIZE" % _ for _ in pattern_keys]]
+    signal_sizes_df.columns = signal_df.columns
+
+    # weighted by region volume
+    '''
+    l1 = np.abs(signal_df*signal_sizes_df).sum(axis=1)
+    l2 = np.sqrt((np.square(signal_df)*signal_sizes_df).sum(axis=1))
+    linf = np.abs(signal_df).max(axis=1)
+    '''
+    # unweighted
+    l1 = np.abs(signal_df).sum(axis=1)
+    l2 = np.sqrt(np.square(signal_df).sum(axis=1))
+    linf = np.abs(signal_df).max(axis=1)
+
+    # Calculate normalization constant that would equate L1, L2, and Linf norms
+    l1_goal = int(l1.mean())
+    l2_goal = int(l2.mean())
+    linf_goal = int(linf.mean())
+    l1_denom = l1/l1_goal
+    l2_denom = l2/l2_goal
+    linf_denom = linf/linf_goal
+
+    if norm_type == 'L1':
+        print l1_goal
+        pattern_df = signal_df.divide(l1_denom,axis=0)
+    elif norm_type == 'L2':
+        print l2_goal
+        pattern_df = signal_df.divide(l2_denom,axis=0)
+    elif norm_type == 'Linf':
+        print linf_goal
+        pattern_df = signal_df.divide(linf_denom,axis=0)
+    else:
+        raise Exception("Invalid norm type")
+
+    # split by timepoint
+    pattern_bl_df = pattern_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
+    uptake_bl_df = uptake_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
+    lobes_bl_df = lobes_df.loc[(slice(None),'BL'),:].reset_index(level=1,drop=True)
+    try:
+        pattern_scan2_df = pattern_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
+        uptake_scan2_df = uptake_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
+        lobes_scan2_df = lobes_df.loc[(slice(None),'Scan2'),:].reset_index(level=1,drop=True)
+    except:
+        pattern_scan2_df = pd.DataFrame(columns=pattern_bl_df.columns)
+        uptake_scan2_df = pd.DataFrame(columns=uptake_bl_df.columns)
+        lobes_scan2_df = pd.DataFrame(columns=lobes_bl_df.columns)
+    try:
+        pattern_scan3_df = pattern_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+        uptake_scan3_df = uptake_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+        lobes_scan3_df = lobes_df.loc[(slice(None),'Scan3'),:].reset_index(level=1,drop=True)
+    except:
+        pattern_scan3_df = pd.DataFrame(columns=pattern_bl_df.columns)
+        uptake_scan3_df = pd.DataFrame(columns=uptake_bl_df.columns)
+        lobes_scan3_df = pd.DataFrame(columns=lobes_bl_df.columns)
+
+    # join patterns/lobes/uptakes into prior/post
+    pattern_prior_df = pattern_bl_df.copy()
+    lobes_prior_df = lobes_bl_df.copy()
+    uptake_prior_df = uptake_bl_df.copy()
+    # pattern_post_df = pd.concat((pattern_scan3_df,pattern_scan2_df.loc[list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index)),:]), axis=0)
+    # lobes_post_df = pd.concat((lobes_scan3_df,lobes_scan2_df.loc[list(set(lobes_scan2_df.index) - set(lobes_scan3_df.index)),:]), axis=0)
+    # uptake_post_df = pd.concat((uptake_scan3_df,uptake_scan2_df.loc[list(set(uptake_scan2_df.index) - set(uptake_scan3_df.index)),:]), axis=0)
+    pattern_post_df = pattern_scan2_df
+    lobes_post_df = lobes_scan2_df
+    uptake_post_df = uptake_scan2_df
+
+    # Import master csv
+    if master_csv is not None:
+        if dod:
+            master_df = pd.read_csv(master_csv, low_memory=False)
+            master_df.set_index('SCRNO',inplace=True)
+            # Get Diagnoses
+            if tracer == 'AV45':
+                diag_keys = {'BL': 'Diag_closest_AV45_BL',
+                             'Scan2': 'Diag_closest_AV45_2',
+                             'Scan3': ''}
+            else:
+                raise Exception("Diag keys for tracer %s not specified" % tracer)
+        else:
+            master_df = pd.read_csv(master_csv, low_memory=False, header=[0,1])
+            master_df.columns = master_df.columns.get_level_values(1)
+            master_df.set_index('RID',inplace=True)
+
+            # Get Diagnoses
+            if tracer == 'AV45':
+                diag_keys = {'BL': 'Diag@AV45_long',
+                             'Scan2': 'Diag@AV45_2_long',
+                             'Scan3': 'Diag@AV45_3_long'}
+            elif tracer == 'AV1451':
+                diag_keys = {'BL': 'Diag@AV1451',
+                             'Scan2': 'Diag@AV45_2',
+                             'Scan3': 'Diag@AV45_3'}
+            else:
+                raise Exception("Diag keys for tracer %s not specified" % tracer)
+
+        diags = []
+        for subj, tp in pivot_df.index.values:
+            diags.append({'subject': subj, 'timepoint': tp, 'diag': master_df.loc[subj,diag_keys[tp]]})
+        diags_df = pd.DataFrame(diags).set_index(['subject','timepoint'])
+
+        # Get years between scans
+        yrs = {}
+        # for subj in pattern_scan3_df.index:
+        #     yrs[subj] = master_df.loc[subj,'%s_1_3_Diff' % tracer]
+        # for subj in list(set(pattern_scan2_df.index) - set(pattern_scan3_df.index)):
+        #     yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
+        for subj in pattern_scan2_df.index:
+            yrs[subj] = master_df.loc[subj,'%s_1_2_Diff' % tracer]
+        yr_df = pd.DataFrame(yrs.items(), columns=['subject','yrs']).set_index('subject')
+
+        # calculate uptake change and lobe change
+        pattern_change_df = pattern_post_df.subtract(pattern_prior_df.loc[pattern_post_df.index,:]).divide(yr_df.yrs, axis='index')
+        uptake_change_df = uptake_post_df.subtract(uptake_prior_df.loc[uptake_post_df.index,:]).divide(yr_df.yrs, axis='index')
+        lobes_change_df = lobes_post_df.subtract(lobes_prior_df.loc[lobes_post_df.index,:]).divide(yr_df.yrs, axis='index')
+    else:
+        diags_df = pd.DataFrame()
+        yr_df = pd.DataFrame()
+        pattern_change_df = pd.DataFrame()
+        uptake_change_df = pd.DataFrame()
+        lobes_change_df = pd.DataFrame()
+
+    # create result df
+    results = []
+    for subj, rows in suvr_df.groupby(level=0):
+        to_add = {'subject': subj}
+        indices = set(rows.index.values)
+        summary_prior = rows.loc[(subj,'BL'),'COMPOSITE']
+        to_add['CORTICAL_SUMMARY_prior'] = summary_prior
+        # add diag and change values
+        diag_prior = None
+        diag_post = None
+        yr_diff = None
+        summary_post = None
+        summary_change = None
+        if not diags_df.empty:
+            try:
+                diag_prior = diags_df.loc[(subj,'BL'),'diag']
+            except Exception as e:
+                print "%s has no BL diag value" % subj
+        if (subj,'Scan2') in indices:
+            summary_post = rows.loc[(subj,'Scan2'),'COMPOSITE']
+            if not yr_df.empty:
+                yr_diff = yr_df.loc[subj,'yrs']
+            if not diags_df.empty:
+                diag_post = diags_df.loc[(subj,'Scan2'),'diag']
+        if summary_post is not None and yr_diff is not None:
+            summary_change = (summary_post-summary_prior)/yr_diff
+        to_add['CORTICAL_SUMMARY_post'] = summary_post
+        to_add['CORTICAL_SUMMARY_change'] = summary_change
+        to_add['diag_prior'] = diag_prior
+        to_add['diag_post'] = diag_post
+        results.append(to_add)
+    result_df = pd.DataFrame(results).set_index('subject')
+
+    # create return object
+    data = {'pattern_bl_df': pattern_bl_df,
+            'pattern_scan2_df': pattern_scan2_df,
+            'pattern_scan3_df': pattern_scan3_df,
+            'pattern_prior_df': pattern_prior_df,
+            'pattern_post_df': pattern_post_df,
+            'uptake_prior_df': uptake_prior_df,
+            'uptake_post_df': uptake_post_df,
+            'lobes_prior_df': lobes_prior_df,
+            'lobes_post_df': lobes_post_df,
+            'pattern_change_df': pattern_change_df,
+            'change_df': uptake_change_df,
+            'lobes_change_df': lobes_change_df,
+            'result_df': result_df}
+    to_return = {}
+    for k,v in data.iteritems():
+        if 'prior' in k:
+            v['timepoint'] = 'prior'
+            v.set_index('timepoint', append=True, inplace=True)
+        elif 'post' in k:
+            v['timepoint'] = 'post'
+            v.set_index('timepoint', append=True, inplace=True)
+        to_return[k] = v
+    return to_return
+
 
 def savePatternAsMat(pattern_df, output_file):
     scipy.io.savemat(output_file,{'ID': list(pattern_df.index),
@@ -193,7 +440,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # SETUP FILES
 
 # FOR ADNI AV45
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
 # data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
@@ -203,8 +450,6 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # nsfa_activation_csv_3 = '../nsfa/av45_factor_activations_scan3.csv'
 # nsfa_loading_csv = '../nsfa/av45_factor_loadings.csv'
 # nsfa_lambdag_csv = '../nsfa/av45_lambdag.csv'
-# # model_file = '../dpgmm_alpha12.89_bilateral_spherical_AV45_model_L1.pkl'
-# model_file = None
 # output_file = '../nsfa/av45_pattern_dataset.csv'
 # topregions_output_file = '../nsfa/av45_top_regions.csv'
 # comp_output_file = '../nsfa/av45_roi_comparisons.csv'
@@ -220,7 +465,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -230,7 +475,6 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # nsfa_activation_csv_3 = None
 # nsfa_loading_csv = '../nsfa/av1451_factor_loadings.csv'
 # nsfa_lambdag_csv = '../nsfa/av1451_lambdag.csv'
-# model_file = None
 # output_file = '../nsfa/av1451_pattern_dataset.csv'
 # topregions_output_file = '../nsfa/av1451_top_regions.csv'
 # comp_output_file = '../nsfa/av1451_roi_comparisons.csv'
@@ -245,7 +489,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 UNILATERAL
-# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
 # data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451uni_pattern_bl.mat'
 # pattern_mat_2 = None
@@ -255,7 +499,6 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # nsfa_activation_csv_3 = None
 # nsfa_loading_csv = '../nsfa/av1451uni_factor_loadings.csv'
 # nsfa_lambdag_csv = '../nsfa/av1451uni_lambdag.csv'
-# model_file = None
 # output_file = '../nsfa/av1451uni_pattern_dataset.csv'
 # topregions_output_file = '../nsfa/av1451uni_top_regions.csv'
 # comp_output_file = '../nsfa/av1451uni_roi_comparisons.csv'
@@ -270,7 +513,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 SKULL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
+master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
 data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
 region_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake.csv'
 region_bilateral_csv = '../datasets/pvc_adni_av1451/tauskullregions_suvr_bilateral.csv'
@@ -282,7 +525,6 @@ nsfa_activation_csv_2 = None
 nsfa_activation_csv_3 = None
 nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
 nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
-model_file = None
 output_file = '../nsfa/av1451skull_pattern_dataset.csv'
 topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
 comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
@@ -300,6 +542,7 @@ trim_sid=True
 # master_csv = None
 # data_csv = '../datasets/pvc_bacs_av1451/tauskullregions_output.csv'
 # region_csv = '../datasets/pvc_bacs_av1451/tauskullregions_uptake.csv'
+# region_bilateral_csv = '../datasets/pvc_bacs_av1451/tauskullregions_suvr_bilateral.csv'
 # pattern_mat = '../av1451bacs_pattern_bl.mat'
 # pattern_mat_2 = None
 # pattern_mat_3 = None
@@ -308,7 +551,6 @@ trim_sid=True
 # nsfa_activation_csv_3 = None
 # nsfa_loading_csv = '../nsfa/av1451bacs_factor_loadings.csv'
 # nsfa_lambdag_csv = '../nsfa/av1451bacs_lambdag.csv'
-# model_file = None
 # output_file = '../nsfa/av1451bacs_pattern_dataset.csv'
 # topregions_output_file = '../nsfa/av1451bacs_top_regions.csv'
 # comp_output_file = '../nsfa/av1451bacs_roi_comparisons.csv'
@@ -330,7 +572,6 @@ trim_sid=True
 # pattern_mat_2 = '../dod_av45_pattern_bl.mat'
 # nsfa_activation_csv = '../nsfa/dod_av45_factor_activations.csv'
 # nsfa_loading_csv = '../nsfa/dod_av45_factor_loadings.csv'
-# model_file = None
 # output_file = '../nsfa/dod_pattern_dataset.csv'
 # topregions_output_file = '../nsfa/dod_top_regions.csv'
 # comp_output_file = '../nsfa/dod_braak_comparisons.csv'
@@ -429,7 +670,7 @@ if pattern_scan3_df.index.nlevels > 1:
     pattern_scan3_df.index = pattern_scan3_df.index.droplevel(1)
 
 # SAVE REGIONAL UPTAKES FILE
-flipPVCOutput(data_csv).to_csv(region_csv)
+flipPVCOutput(data_csv,lut_file).to_csv(region_csv)
 uptake_prior_df.to_csv(region_bilateral_csv)
 
 # # SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
@@ -508,16 +749,17 @@ comp_df.sort_values('varperc', ascending=False, inplace=True)
 comp_df.to_csv(comp_output_file)
 
 # Create top ten region lists for each factor
+top_n = 25
 toppos_df = pd.DataFrame()
 topneg_df = pd.DataFrame()
 for col in nsfa_load_df.columns:
     factor_row = nsfa_load_df[col]
-    top_neg = factor_row.sort_values().head(10)
+    top_neg = factor_row.sort_values().head(top_n)
     top_neg = pd.DataFrame(top_neg[top_neg<0])
     top_neg.index.name = '%s_REGIONS' % col
     top_neg.reset_index(inplace=True)
     topneg_df = topneg_df.merge(top_neg, left_index=True, right_index=True, how='outer')
-    top_pos = factor_row.sort_values(ascending=False).head(10)
+    top_pos = factor_row.sort_values(ascending=False).head(top_n)
     top_pos = pd.DataFrame(top_pos[top_pos>0])
     top_pos.index.name = '%s_REGIONS' % col
     top_pos.reset_index(inplace=True)
@@ -526,23 +768,6 @@ toppos_df.index = ['POS_%s' % (i+1) for i in toppos_df.index]
 topneg_df.index = ['NEG_%s' % (i+1) for i in topneg_df.index]
 topregions_df = pd.concat((toppos_df,topneg_df))
 topregions_df.to_csv(topregions_output_file)
-
-
-# Create IGMM patterns df
-if model_file is not None:
-    model = cPickle.load(open(model_file, 'rb'))
-    means = model.means_
-    bl_patterns_only, scaler = scaleRawInput(pattern_prior_df, scale_type='original')
-    proba_df_bl = pd.DataFrame(model.predict_proba(bl_patterns_only)).set_index(bl_patterns_only.index)
-    col_probs = proba_df_bl.sum(axis=0)
-    valid_groups = list(col_probs[col_probs>0.001].index)
-    igmm_load_df = pd.DataFrame({i:means[i] for i in valid_groups})
-    igmm_load_df.index = pattern_col_order
-    igmm_prob_df = proba_df_bl[valid_groups]
-    igmm_prob_df.columns = ['IGMM_%s' % _ for _ in igmm_prob_df.columns]
-    igmm_prob_df.index = igmm_prob_df.index.droplevel(1)
-else:
-    igmm_prob_df = pd.DataFrame()
 
 # Get master data
 if master_csv is not None:
@@ -615,12 +840,8 @@ result_df['positive_post'] = (result_df['CORTICAL_SUMMARY_post'] >= threshold).a
 result_df['ad_prior'] = (result_df['diag_prior'] == 'AD').astype(int)
 result_df['ad_post'] = (result_df['diag_post'] == 'AD').astype(int)
 
-# Combine result_df, igmm_prob_df, nsfa_act_df, scores_df, and other_df
-if len(igmm_prob_df.index) > 0:
-    combined_df = igmm_prob_df.merge(nsfa_act_df,left_index=True,right_index=True)
-else:
-    combined_df = nsfa_act_df
-
+# Combine result_df, nsfa_act_df, scores_df, and other_df
+combined_df = nsfa_act_df
 combined_df = combined_df.merge(result_df,left_index=True,right_index=True,how='left')
 combined_df = combined_df.merge(other_df,left_index=True,right_index=True,how='left')
 combined_df = combined_df.merge(scores_df,left_index=True,right_index=True,how='left')
@@ -631,6 +852,6 @@ else:
 
 combined_df.to_csv(output_file,index=True)
 
-# Save loading patterns
-savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)
-# savePatternAsAparc(igmm_load_df, lut_file, bilateral, igmm_output_template)
+
+# save aparc patterns
+# savePatternAsAparc(nsfa_load_df, lut_file, bilateral, nsfa_output_template)

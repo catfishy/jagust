@@ -3,7 +3,7 @@ import csv
 import os
 import errno
 from collections import defaultdict, Counter
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import matplotlib.pyplot as plt
 import itertools
 import numpy as np
@@ -90,6 +90,12 @@ LOBES = {'FRONTAL': FRONTAL_LOBE,
          'MIDDLEFR': LEFT_MIDDLEFR+RIGHT_MIDDLEFR,
          'PARSFR': LEFT_PARSFR+RIGHT_PARSFR}
 
+##### AV45 EARLY ACCUMULATION ROI #####
+# 'CTX_LH_PRECUNEUS','CTX_RH_PRECUNEUS',
+# 'CTX_LH_SUPERIORPARIETAL','CTX_RH_SUPERIORPARIETAL',
+# 'CTX_LH_INFERIORPARIETAL','CTX_RH_INFERIORPARIETAL'
+AV45_EARLYACCUM = [1025, 2025, 1029, 2029, 1008, 2008]
+AV45_EARLYACCUM_MORE = [1025, 2025, 2029, 1029, 2008, 1008, 1028, 1003, 2028, 1023, 2023, 2027, 2015, 2031, 2012, 1027, 1031]
 
 # BLACKLISTED REGIONS
 REGION_BLACKLIST = [0,30,62,80,81,82,77,251,252,253,254,255,1000,2000,1004,2004,85,24,14,15,72,4,43,75,76]
@@ -149,7 +155,7 @@ def parseSubjectGroups(df, extraction_fn):
         df.index.name = 'SID'
     index_name = df.index.name
     reset_df = df.reset_index()
-    parsed_df = pd.concat((extraction_fn(i,_) for i,_ in reset_df.groupby(index_name)),axis=0)
+    parsed_df = pd.concat((extraction_fn(int(i),_) for i,_ in reset_df.groupby(index_name)),axis=0)
     return parsed_df
 
 def groupLongPivot(group_rows, index_column, val_column, key_prefix):
@@ -1984,6 +1990,161 @@ def importUCSFFreesurfer(in_file, mprage_file, version='', include_failed=False,
     df = parseOrFindDate(df, 'EXAMDATE', registry=None)
     df.dropna(subset=['EXAMDATE'],inplace=True)
 
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+def importDTI(dti_file, registry=None, as_df=True):
+    df = pd.read_csv(dti_file)
+    df.set_index('SCRNO',inplace=True)
+    fa_col = [_ for _ in df.columns if _.startswith('FA_')]
+    all_cols = ['VISCODE','EXAMDATE'] + fa_col
+    df = df[all_cols]
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+def importTBIAGE(tbiage_file, registry=None, as_df=True):
+    df = pd.read_csv(tbiage_file)
+    df.set_index('SCRNO',inplace=True)
+    df = df[['VISCODE','TBINJAGE','TBINJYEAR']]
+    # get examdate
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    if as_df:
+        return df
+    else:
+        return convertToSubjDict(df,sort_by='EXAMDATE')
+
+def importSleepQuality(sleep_file, registry=None, as_df=True):
+    df = pd.read_csv(sleep_file)
+    df = df.replace(-1,np.nan)
+    df['PSQ5J'] = df['PSQ5J'].fillna(0)
+
+    def calcComp1(row):
+        qual_code = row['PSQ6']
+        if qual_code == 4:
+            return 0
+        elif qual_code == 3:
+            return 1
+        elif qual_code == 2:
+            return 2
+        elif qual_code == 1:
+            return 3
+        else:
+            return np.nan
+
+    def calcComp2(row):
+        q2 = row['PSQ2']
+        q5a = row['PSQ5A']
+        if isnan(q2) or isnan(q5a):
+            return np.nan
+        if q2 <= 15:
+            score = 0
+        elif q2 <= 30:
+            score = 1
+        elif q2 <= 60:
+            score = 2
+        else:
+            score = 3
+        score += q5a
+        if score == 0:
+            return 0
+        elif score <= 2:
+            return 1
+        elif score <= 4:
+            return 2
+        elif score <= 6:
+            return 3
+
+    def calcComp3(row):
+        q4a = row['PSQ4A']
+        q4b = row['PSQ4B']
+        if isnan(q4a) or isnan(q4b):
+            return np.nan
+        q4 = float(q4a) + (float(q4b)/60.0)
+        if q4 > 7:
+            return 0
+        elif q4 >= 6:
+            return 1
+        elif q4 >= 5:
+            return 2
+        else:
+            return 3
+
+    def calcComp4(row):
+        q4a = row['PSQ4A']
+        q4b = row['PSQ4B']
+        q1a = row['PSQ1A']
+        q1b = row['PSQ1B']
+        q1c = row['PSQ1C']
+        q3a = row['PSQ3A']
+        q3b = row['PSQ3B']
+        q3c = row['PSQ3C']
+        if any(map(isnan,[q4a,q4b,q1a,q1b,q1c,q3a,q3b,q3c])):
+            return np.nan
+        hr_sleep = float(q4a) + (float(q4b)/60.0)
+        bedtime = float(q1a) + 12*(float(q1c)-1) + (float(q1b)/60.0)
+        waketime = float(q3a) + 12*(float(q3c)-1) + (float(q3b)/60.0)
+        if bedtime >= waketime:
+            hr_inbed = waketime + (24.0 - bedtime)
+        else:
+            hr_inbed = waketime - bedtime
+        percent = 100.0*(hr_sleep/hr_inbed)
+        if percent > 85:
+            return 0
+        elif percent >= 75:
+            return 1
+        elif percent >= 65:
+            return 2
+        else:
+            return 3
+
+    def calcComp5(row):
+        cols = ['PSQ5B','PSQ5C','PSQ5D','PSQ5E','PSQ5F','PSQ5G','PSQ5H','PSQ5I','PSQ5J']
+        if any([isnan(row[_]) for _ in cols]):
+            return np.nan
+        total = sum([row[_]-1 for _ in cols])
+        if total == 0:
+            return 0
+        elif total <= 9:
+            return 1
+        elif total <= 18:
+            return 2
+        else:
+            return 3
+
+    def calcComp7(row):
+        trouble = row['PSQ8']
+        enthuse = row['PSQ9']
+        if isnan(trouble) or isnan(enthuse):
+            return np.nan
+        total = (trouble-1) + (enthuse-1)
+        if total == 0:
+            return 0
+        elif total <= 2:
+            return 1
+        elif total <= 4:
+            return 2
+        else:
+            return 3
+
+    # calculate component scores
+    df['COMP1'] = df.apply(calcComp1,axis=1)
+    df['COMP2'] = df.apply(calcComp2,axis=1)
+    df['COMP3'] = df.apply(calcComp3,axis=1)
+    df['COMP4'] = df.apply(calcComp4,axis=1)
+    df['COMP5'] = df.apply(calcComp5,axis=1)
+    df['COMP6'] = df['PSQ7'] - 1
+    df['COMP7'] = df.apply(calcComp7,axis=1)
+    # calculate global score
+    comps = ['COMP1','COMP2','COMP3','COMP4','COMP5','COMP6','COMP7']
+    df['GLOBAL'] = df[comps].sum(axis=1,skipna=False)
+    all_cols = ['SCRNO','VISCODE','EXAMDATE','GLOBAL'] + comps
+    df = df[all_cols].set_index('SCRNO')
+    df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
     if as_df:
         return df
     else:

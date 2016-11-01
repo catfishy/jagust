@@ -253,6 +253,84 @@ def syncFAQData(master_df, faq_file, registry):
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
     return master_df
 
+def syncDTI(master_df, dti_file, registry):
+    df = importDTI(dti_file, registry=registry, as_df=True)
+    timepoints = max(Counter(df.index).values())
+    fa_cols = [u'FA_CST_L', u'FA_CST_R', u'FA_ICP_L',
+               u'FA_ICP_R', u'FA_ML_L', u'FA_ML_R', u'FA_SCP_L', u'FA_SCP_R',
+               u'FA_CP_L', u'FA_CP_R', u'FA_ALIC_L', u'FA_ALIC_R', u'FA_PLIC_L',
+               u'FA_PLIC_R', u'FA_PTR_L', u'FA_PTR_R', u'FA_ACR_L', u'FA_ACR_R',
+               u'FA_SCR_L', u'FA_SCR_R', u'FA_PCR_L', u'FA_PCR_R', u'FA_CGC_L',
+               u'FA_CGC_R', u'FA_CGH_L', u'FA_CGH_R', u'FA_FX_ST_L', u'FA_FX_ST_R',
+               u'FA_SLF_L', u'FA_SLF_R', u'FA_SFO_L', u'FA_SFO_R', u'FA_SS_L',
+               u'FA_SS_R', u'FA_EC_L', u'FA_EC_R', u'FA_UNC_L', u'FA_UNC_R', u'FA_FX',
+               u'FA_GCC', u'FA_BCC', u'FA_SCC', u'FA_RLIC_L', u'FA_RLIC_R']
+    headers = ['FA_DATE_%s' % (i+1,) for i in range(timepoints)]
+    for fa_col in fa_cols:
+        headers += ['%s_%s' % (fa_col,i+1) for i in range(timepoints)]
+
+    def extraction_fn(scrno, subj_rows):
+        # average rows together if same viscode/EXAMDATE
+        subj_rows = subj_rows.groupby(['VISCODE','EXAMDATE']).aggregate(np.mean)
+        subj_rows = subj_rows.reset_index().sort_values('EXAMDATE')
+        subj_rows['SCRNO'] = scrno
+        data_df = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','FA_DATE_')
+        for fa_col in fa_cols:
+            cur_long_df = groupLongPivot(subj_rows, 'SCRNO',fa_col,'%s_' % (fa_col,))
+            data_df = data_df.merge(cur_long_df,left_index=True,right_index=True)
+        return data_df
+
+    parsed_df = parseSubjectGroups(df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
+
+def syncTBIAGE(master_df, tbiage_file, registry):
+    df = importTBIAGE(tbiage_file, registry=registry, as_df=True)
+    headers = ['TBINJAGE']
+
+    def extraction_fn(scrno, subj_rows):
+        subj_rows['SCRNO'] = scrno
+        cur_df = subj_rows.head(1)
+        cur_df.set_index('SCRNO',inplace=True)
+        cur_df = cur_df[['TBINJAGE']]
+        return cur_df
+
+    parsed_df = parseSubjectGroups(df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
+
+def syncSleep(master_df, sleep_file, registry):
+    df = importSleepQuality(sleep_file, registry=registry, as_df=True)
+    timepoints = max(Counter(df.index).values())
+    headers = ['PSQI.GLOBAL_%s' % (i+1,) for i in range(timepoints)]
+    headers += ['PSQI.DATE_%s' % (i+1,) for i in range(timepoints)]
+    headers += ['PSQI.GLOBAL_closest_AV45_BL','PSQI.GLOBAL_closest_AV45_Scan2',
+                'PSQI.GLOBAL_closest_AV1451_BL','PSQI.GLOBAL_closest_AV1451_Scan2']
+
+    def extraction_fn(scrno, subj_rows):
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        av1451_date1, av1451_date2 = getAV1451Dates(scrno, master_df)
+        # get longitudinal measurements
+        subj_rows['SCRNO'] = scrno
+        psqi_long = groupLongPivot(subj_rows, 'SCRNO','GLOBAL','PSQI.GLOBAL_')
+        psqi_date = groupLongPivot(subj_rows, 'SCRNO','EXAMDATE','PSQI.DATE_')
+        data_df = psqi_long.merge(psqi_date,left_index=True,right_index=True)
+        # get closest av45
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'GLOBAL', [av45_date1, av45_date2], day_limit=365)
+        print "%s Dates: %s, %s" % (scrno,(av45_date1,av45_date2),(av1451_date1,av1451_date2))
+        # print closest_vals
+        data_df.loc[scrno,'PSQI.GLOBAL_closest_AV45_BL'] = closest_vals[0]
+        data_df.loc[scrno,'PSQI.GLOBAL_closest_AV45_Scan2'] = closest_vals[1]
+        # get closest av1451
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'GLOBAL', [av1451_date1, av1451_date2], day_limit=365)
+        data_df.loc[scrno,'PSQI.GLOBAL_closest_AV1451_BL'] = closest_vals[0]
+        data_df.loc[scrno,'PSQI.GLOBAL_closest_AV1451_Scan2'] = closest_vals[1]
+        return data_df
+
+    parsed_df = parseSubjectGroups(df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
+    return master_df
+
 def syncASIData(master_df, asi_file, registry):
     asi_df = importASI(asi_file, registry, as_df=True)
 
@@ -705,7 +783,7 @@ def parseAV45SubjectRows(scrno, subj_rows):
     left_ventrical_keys = []
     right_ventrical_keys = []
 
-    data = {'SCRNO': scrno}
+    data = {'SCRNO': int(scrno)}
     subj_rows.sort_values(by='EXAMDATE', inplace=True)
 
     for i, (idx, point) in enumerate(subj_rows.iterrows()):
@@ -781,9 +859,20 @@ def parseAV45SubjectRows(scrno, subj_rows):
 
     return pd.DataFrame([data]).set_index('SCRNO')
 
+def getAV1451Dates(scrno, master_df):
+    bl_av1451 = av1451_2 = np.nan
+    try:
+        row = master_df.loc[scrno]
+        bl_av1451 = row.get('AV1451_1_DATE')
+        av1451_2 = row.get('AV1451_2_DATE')
+    except Exception as e:
+        pass
+    return (bl_av1451, av1451_2)
+
 
 def getAV45Dates(scrno, master_df):
     bl_av45 = av45_2 = np.nan
+    # print master_df.index
     try:
         row = master_df.loc[scrno]
         bl_av45 = row.get('AV45_1_EXAMDATE')
@@ -817,6 +906,12 @@ def runPipeline():
     master_df = syncAV1451RoussetData(master_df, av1451_pvc_file)
     print "\nSYNCING DIAG\n"
     master_df = syncDiagData(master_df, diag_file)
+    print "\nSYNCING DTI\n"
+    master_df = syncDTI(master_df, dti_file, registry)
+    print "\nSYNCING TBIAGE\n"
+    master_df = syncTBIAGE(master_df, tbiage_file, registry)
+    print "\nSYNCING SLEEP QUALITY\n"
+    master_df = syncSleep(master_df, sleep_file, registry)
     print "\nSYNCING ANTIDEP\n"
     master_df = syncAntidepData(master_df, backmeds_file, registry)
     print "\nSYNCING APOE\n"
@@ -863,13 +958,13 @@ if __name__ == '__main__':
     # ADNI master file
     av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
     # AV45 file
-    av45_file = '../output/10-04-2016/UCBERKELEYAV45_DOD_10-04-2016_regular_nontp.csv'
+    av45_file = '../output/10-14-2016/UCBERKELEYAV45_DOD_10-14-2016_regular_nontp.csv'
     # AV1451 file
-    av1451_file = '../output/10-04-2016/UCBERKELEYAV1451_DOD_10-04-2016_regular_tp.csv'
+    av1451_file = '../output/10-14-2016/UCBERKELEYAV1451_DOD_10-14-2016_regular_tp.csv'
     # AV1451 Max file
-    av1451_max_file = '../output/10-04-2016/UCBERKELEYAV1451_DOD_MAX_10-04-2016_regular_tp.csv'
+    av1451_max_file = '../output/10-14-2016/UCBERKELEYAV1451_DOD_MAX_10-14-2016_regular_tp.csv'
     # AV1451 PVC file
-    av1451_pvc_file = '../datasets/pvc_dod_av1451/tauskullregions_output.csv'
+    av1451_pvc_file = '../pvc/pvc_dod_av1451/tauskullregions_output.csv'
 
     # Registry file
     registry_file = "../docs/DOD/REGISTRY.csv"
@@ -906,5 +1001,11 @@ if __name__ == '__main__':
     diag_file = "../docs/DOD/DXSUM.csv"
     # antidep file
     backmeds_file = '../docs/DOD/BACKMEDS.csv'
+    # DTI file
+    dti_file = '../docs/DOD/THOMPSONDTI.csv'
+    # TBI age file
+    tbiage_file = '../docs/DOD/RECTBIINJ.csv'
+    # Sleep quality file
+    sleep_file = '../docs/DOD/PSQI.csv'
 
     runPipeline()

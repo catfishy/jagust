@@ -909,12 +909,12 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
     exam_times = list(subj_rows['EXAMDATE'])
     exam_timedeltas = [(_-exam_times[0]).days / 365.0 for _ in exam_times]
 
-    wm70_composite_keys = ['AV45_%s_WM70/composite' % (i+1,) for i in range(timepoints)]
-    wm70_cerebg_keys = ['AV45_%s_WM70/cerebg' % (i+1,) for i in range(timepoints)]
-    wm70_wcereb_keys = ['AV45_%s_WM70/wcereb' % (i+1,) for i in range(timepoints)]
-    unilateral_keys = ['AV45_LeftPutamen/WM70','AV45_RightPutamen/WM70',
-                       'AV45_LeftCaudate/WM70','AV45_RightCaudate/WM70',
-                       'AV45_LeftPallidum/WM70','AV45_RightPallidum/WM70']
+    # wm70_composite_keys = ['AV45_%s_WM70/composite' % (i+1,) for i in range(timepoints)]
+    # wm70_cerebg_keys = ['AV45_%s_WM70/cerebg' % (i+1,) for i in range(timepoints)]
+    # wm70_wcereb_keys = ['AV45_%s_WM70/wcereb' % (i+1,) for i in range(timepoints)]
+    # unilateral_keys = ['AV45_LeftPutamen/WM70','AV45_RightPutamen/WM70',
+    #                    'AV45_LeftCaudate/WM70','AV45_RightCaudate/WM70',
+    #                    'AV45_LeftPallidum/WM70','AV45_RightPallidum/WM70']
     bigref_keys = ['AV45_%s_BigRef' % (i+1,) for i in range(timepoints)]
     wm70_keys = ['AV45_%s_WM70' % (i+1,) for i in range(timepoints)]
     cerebg_keys = ['AV45_%s_cerebg' % (i+1,) for i in range(timepoints)]
@@ -925,30 +925,32 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
     cingulate_bigref_keys = ['AV45_%s_Cingulate/BigRef' % (i+1,) for i in range(timepoints)]
     parietal_bigref_keys = ['AV45_%s_Parietal/BigRef' % (i+1,) for i in range(timepoints)]
     temporal_bigref_keys = ['AV45_%s_Temporal/BigRef' % (i+1,) for i in range(timepoints)]
+    earlyaccum_bigref_keys = ['AV45_%s_EarlyAccum/BigRef' % (i+1,) for i in range(timepoints)]
+    earlyaccum_wmratio_keys = ['AV45_%s_EarlyAccum/WMratio' % (i+1,) for i in range(timepoints)]
 
     # generate additional keys and arrange into header list
-    all_wm70_composite_keys = wm70_composite_keys + \
-                         ["%s_pchange" % _ for _ in wm70_composite_keys[1:]] + \
-                         ["%s_pchange_ABS" % _ for _ in wm70_composite_keys[1:]] + \
-                         ["%s_diff" % _ for _ in wm70_composite_keys[1:]] + \
-                         ["%s_diff_ABS" % _ for _ in wm70_composite_keys[1:]] + \
-                         ['AV45_WM70/composite_Slope_2pts', 'AV45_WM70/composite_Slope_3pts', 'AV45_WM70/composite_Slope_4pts'] + \
-                         ['AV45_WM70/composite_Slope_1and3', 'AV45_WM70/composite_Slope_2and3']
-    all_wm70_cerebg_keys = wm70_cerebg_keys + \
-                           ["%s_pchange" % _ for _ in wm70_cerebg_keys[1:]] + \
-                           ["%s_pchange_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
-                           ["%s_diff" % _ for _ in wm70_cerebg_keys[1:]] + \
-                           ["%s_diff_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
-                           ['AV45_WM70/cerebg_Slope_2pts', 'AV45_WM70/cerebg_Slope_3pts', 'AV45_WM70/cerebg_Slope_4pts'] + \
-                           ['AV45_WM70/cerebg_Slope_1and3', 'AV45_WM70/cerebg_Slope_2and3']
-    all_wm70_wcereb_keys = wm70_wcereb_keys + \
-                           ["%s_pchange" % _ for _ in wm70_wcereb_keys[1:]] + \
-                           ["%s_pchange_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
-                           ["%s_diff" % _ for _ in wm70_wcereb_keys[1:]] + \
-                           ["%s_diff_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
-                           ['AV45_WM70/wcereb_Slope_2pts', 'AV45_WM70/wcereb_Slope_3pts', 'AV45_WM70/wcereb_Slope_4pts'] + \
-                           ['AV45_WM70/wcereb_Slope_1and3', 'AV45_WM70/wcereb_Slope_2and3']
-    all_unilateral_keys = unilateral_keys
+    # all_wm70_composite_keys = wm70_composite_keys + \
+    #                      ["%s_pchange" % _ for _ in wm70_composite_keys[1:]] + \
+    #                      ["%s_pchange_ABS" % _ for _ in wm70_composite_keys[1:]] + \
+    #                      ["%s_diff" % _ for _ in wm70_composite_keys[1:]] + \
+    #                      ["%s_diff_ABS" % _ for _ in wm70_composite_keys[1:]] + \
+    #                      ['AV45_WM70/composite_Slope_2pts', 'AV45_WM70/composite_Slope_3pts', 'AV45_WM70/composite_Slope_4pts'] + \
+    #                      ['AV45_WM70/composite_Slope_1and3', 'AV45_WM70/composite_Slope_2and3']
+    # all_wm70_cerebg_keys = wm70_cerebg_keys + \
+    #                        ["%s_pchange" % _ for _ in wm70_cerebg_keys[1:]] + \
+    #                        ["%s_pchange_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
+    #                        ["%s_diff" % _ for _ in wm70_cerebg_keys[1:]] + \
+    #                        ["%s_diff_ABS" % _ for _ in wm70_cerebg_keys[1:]] + \
+    #                        ['AV45_WM70/cerebg_Slope_2pts', 'AV45_WM70/cerebg_Slope_3pts', 'AV45_WM70/cerebg_Slope_4pts'] + \
+    #                        ['AV45_WM70/cerebg_Slope_1and3', 'AV45_WM70/cerebg_Slope_2and3']
+    # all_wm70_wcereb_keys = wm70_wcereb_keys + \
+    #                        ["%s_pchange" % _ for _ in wm70_wcereb_keys[1:]] + \
+    #                        ["%s_pchange_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
+    #                        ["%s_diff" % _ for _ in wm70_wcereb_keys[1:]] + \
+    #                        ["%s_diff_ABS" % _ for _ in wm70_wcereb_keys[1:]] + \
+    #                        ['AV45_WM70/wcereb_Slope_2pts', 'AV45_WM70/wcereb_Slope_3pts', 'AV45_WM70/wcereb_Slope_4pts'] + \
+    #                        ['AV45_WM70/wcereb_Slope_1and3', 'AV45_WM70/wcereb_Slope_2and3']
+    # all_unilateral_keys = unilateral_keys
     all_bigref_keys = bigref_keys + \
                       ["%s_pchange" % _ for _ in bigref_keys[1:]] + \
                       ["%s_pchange_ABS" % _ for _ in bigref_keys[1:]] + \
@@ -1016,11 +1018,17 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                       ["%s_diff" % _ for _ in temporal_bigref_keys[1:]] + \
                       ['AV45_Temporal/BigRef_Slope_2pts', 'AV45_Temporal/BigRef_Slope_3pts', 'AV45_Temporal/BigRef_Slope_4pts'] + \
                       ['AV45_Temporal/BigRef_Slope_1and3', 'AV45_Temporal/BigRef_Slope_2and3']
-    all_av45_key_lists = [all_wm70_composite_keys,
-                          all_wm70_cerebg_keys,
-                          all_wm70_wcereb_keys,
-                          all_unilateral_keys,
-                          all_bigref_keys,
+    all_earlyaccum_bigref_keys = earlyaccum_bigref_keys + \
+                      ['AV45_EarlyAccum/BigRef_Slope_2pts', 'AV45_EarlyAccum/BigRef_Slope_3pts', 'AV45_EarlyAccum/BigRef_Slope_4pts'] + \
+                      ['AV45_EarlyAccum/BigRef_Slope_1and3', 'AV45_EarlyAccum/BigRef_Slope_2and3']
+    all_earlyaccum_wmratio_keys = earlyaccum_wmratio_keys + \
+                      ['AV45_EarlyAccum/WMratio_Slope_2pts', 'AV45_EarlyAccum/WMratio_Slope_3pts', 'AV45_EarlyAccum/WMratio_Slope_4pts'] + \
+                      ['AV45_EarlyAccum/WMratio_Slope_1and3', 'AV45_EarlyAccum/WMratio_Slope_2and3']
+    all_av45_key_lists = [all_bigref_keys,
+                        #   all_wm70_composite_keys,
+                        #   all_wm70_cerebg_keys,
+                        #   all_wm70_wcereb_keys,
+                        #   all_unilateral_keys,
                           all_wm70_keys,
                           all_cerebg_keys,
                           all_wcereb_keys,
@@ -1029,29 +1037,31 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                           all_frontal_bigref_keys,
                           all_cingulate_bigref_keys,
                           all_parietal_bigref_keys,
-                          all_temporal_bigref_keys]
-    pchange_diff_lists = [all_wm70_composite_keys,
-                          all_wm70_cerebg_keys,
-                          all_wm70_wcereb_keys,
-                          all_bigref_keys,
-                          all_wm70_keys,
-                          all_cerebg_keys,
-                          all_wcereb_keys,
-                        #   all_brainstem_keys,
-                          all_wmratio_keys,
-                          all_frontal_bigref_keys,
-                          all_cingulate_bigref_keys,
-                          all_parietal_bigref_keys,
-                          all_temporal_bigref_keys]
-    abs_lists = [all_wm70_composite_keys,
-                 all_wm70_cerebg_keys,
-                 all_wm70_wcereb_keys,
-                 all_bigref_keys,
-                 all_wm70_keys,
-                 all_cerebg_keys,
-                 all_wcereb_keys,
-                #  all_brainstem_keys,
-                 all_wmratio_keys]
+                          all_temporal_bigref_keys,
+                          all_earlyaccum_bigref_keys,
+                          all_earlyaccum_wmratio_keys]
+    pchange_diff_lists = [bigref_keys,
+                          wm70_keys,
+                        #   wm70_composite_keys,
+                        #   wm70_cerebg_keys,
+                        #   wm70_wcereb_keys,
+                          cerebg_keys,
+                          wcereb_keys,
+                        #   brainstem_keys,
+                          wmratio_keys,
+                          frontal_bigref_keys,
+                          cingulate_bigref_keys,
+                          parietal_bigref_keys,
+                          temporal_bigref_keys]
+    abs_lists = [bigref_keys,
+                 wm70_keys,
+                #  wm70_composite_keys,
+                #  wm70_cerebg_keys,
+                #  wm70_wcereb_keys,
+                 cerebg_keys,
+                 wcereb_keys,
+                #  brainstem_keys,
+                 wmratio_keys]
     all_av45_keys = [_ for l in all_av45_key_lists for _ in l]
 
     data = {k:None for k in all_av45_keys}
@@ -1076,11 +1086,12 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
         rightcaudate = float(point['RIGHT_CAUDATE'])
         leftpallidum = float(point['LEFT_PALLIDUM'])
         rightpallidum = float(point['RIGHT_PALLIDUM'])
+        earlyaccum = float(point['EARLYACCUM'])
 
         # fill in basic keys
-        data[wm70_composite_keys[i]] = wm70/compositeroi
-        data[wm70_cerebg_keys[i]] = wm70/cerebg
-        data[wm70_wcereb_keys[i]] = wm70/wcereb
+        # data[wm70_composite_keys[i]] = wm70/compositeroi
+        # data[wm70_cerebg_keys[i]] = wm70/cerebg
+        # data[wm70_wcereb_keys[i]] = wm70/wcereb
         data[bigref_keys[i]] = compositeroi/bigref
         data[wm70_keys[i]] = compositeroi/wm70
         data[cerebg_keys[i]] = compositeroi/cerebg
@@ -1090,26 +1101,28 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
         data[cingulate_bigref_keys[i]] = cingulate/bigref
         data[parietal_bigref_keys[i]] = parietal/bigref
         data[temporal_bigref_keys[i]] = temporal/bigref
+        data[earlyaccum_bigref_keys[i]] = earlyaccum/bigref
         data["%s_BIN.79" % bigref_keys[i]] = 1 if (compositeroi/bigref) > 0.79 else 0
         data["%s_BIN.62" % wm70_keys[i]] = 1 if (compositeroi/wm70) > 0.62 else 0
         data["%s_BIN1.26" % cerebg_keys[i]] = 1 if (compositeroi/cerebg) > 1.26 else 0
         data["%s_BIN1.11" % wcereb_keys[i]] = 1 if (compositeroi/wcereb) > 1.11 else 0
         # data["%s_BIN.79" % brainstem_keys[i]] = 1 if (compositeroi/brainstem) > 0.79 else 0
 
-
         # fill in derivative keys
         if i == 0:
             # fill in unilateral
-            data['AV45_LeftPutamen/WM70'] = leftputamen/wm70
-            data['AV45_RightPutamen/WM70'] = rightputamen/wm70
-            data['AV45_LeftCaudate/WM70'] = leftcaudate/wm70
-            data['AV45_RightCaudate/WM70'] = rightcaudate/wm70
-            data['AV45_LeftPallidum/WM70'] = leftpallidum/wm70
-            data['AV45_RightPallidum/WM70'] = rightpallidum/wm70
-            data[wmratio_keys[i]] = (compositeroi/wcereb)
+            # data['AV45_LeftPutamen/WM70'] = leftputamen/wm70
+            # data['AV45_RightPutamen/WM70'] = rightputamen/wm70
+            # data['AV45_LeftCaudate/WM70'] = leftcaudate/wm70
+            # data['AV45_RightCaudate/WM70'] = rightcaudate/wm70
+            # data['AV45_LeftPallidum/WM70'] = leftpallidum/wm70
+            # data['AV45_RightPallidum/WM70'] = rightpallidum/wm70
+            data[wmratio_keys[i]] = compositeroi/wcereb
+            data[earlyaccum_wmratio_keys[i]] = earlyaccum/wcereb
             wm70_0 = wm70
         else:
             data[wmratio_keys[i]] = (compositeroi/wcereb) / (wm70/wm70_0)
+            data[earlyaccum_wmratio_keys[i]] = (earlyaccum/wcereb) / (wm70/wm70_0)
             for pl in pchange_diff_lists:
                 diff = (data[pl[i]] - data[pl[0]]) / exam_timedeltas[i] # annualized
                 data["%s_pchange" % pl[i]] = diff / data[pl[0]]
@@ -1124,14 +1137,16 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_cerebg_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[:2]])))
                 data['AV45_wcereb_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[:2]])))
                 # data['AV45_brainstem_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:2]])))
-                data['AV45_WM70/composite_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:2]])))
-                data['AV45_WM70/cerebg_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:2]])))
-                data['AV45_WM70/wcereb_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:2]])))
+                # data['AV45_WM70/composite_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:2]])))
+                # data['AV45_WM70/cerebg_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:2]])))
+                # data['AV45_WM70/wcereb_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:2]])))
                 data['AV45_WMratio_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in wmratio_keys[:2]])))
                 data['AV45_Frontal/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in frontal_bigref_keys[:2]])))
                 data['AV45_Cingulate/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[:2]])))
                 data['AV45_Parietal/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[:2]])))
                 data['AV45_Temporal/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[:2]])))
+                data['AV45_EarlyAccum/BigRef_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in earlyaccum_bigref_keys[:2]])))
+                data['AV45_EarlyAccum/WMratio_Slope_2pts'] = slope(list(zip(times,[data[_] for _ in earlyaccum_wmratio_keys[:2]])))
             elif i == 2:
                 # using all 3 timepoints
                 times = exam_timedeltas[:3]
@@ -1140,14 +1155,16 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_cerebg_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[:3]])))
                 data['AV45_wcereb_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[:3]])))
                 # data['AV45_brainstem_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:3]])))
-                data['AV45_WM70/composite_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:3]])))
-                data['AV45_WM70/cerebg_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:3]])))
-                data['AV45_WM70/wcereb_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:3]])))
+                # data['AV45_WM70/composite_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:3]])))
+                # data['AV45_WM70/cerebg_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:3]])))
+                # data['AV45_WM70/wcereb_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:3]])))
                 data['AV45_WMratio_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in wmratio_keys[:3]])))
                 data['AV45_Frontal/BigRef_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in frontal_bigref_keys[:3]])))
                 data['AV45_Cingulate/BigRef_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[:3]])))
                 data['AV45_Parietal/BigRef_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[:3]])))
                 data['AV45_Temporal/BigRef_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[:3]])))
+                data['AV45_EarlyAccum/BigRef_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in earlyaccum_bigref_keys[:3]])))
+                data['AV45_EarlyAccum/WMratio_Slope_3pts'] = slope(list(zip(times,[data[_] for _ in earlyaccum_wmratio_keys[:3]])))
                 # using second and third timepoints
                 times = exam_timedeltas[1:3]
                 data['AV45_BigRef_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in bigref_keys[1:3]])))
@@ -1155,14 +1172,16 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_cerebg_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[1:3]])))
                 data['AV45_wcereb_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[1:3]])))
                 # data['AV45_brainstem_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[1:3]])))
-                data['AV45_WM70/composite_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[1:3]])))
-                data['AV45_WM70/cerebg_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[1:3]])))
-                data['AV45_WM70/wcereb_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[1:3]])))
+                # data['AV45_WM70/composite_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[1:3]])))
+                # data['AV45_WM70/cerebg_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[1:3]])))
+                # data['AV45_WM70/wcereb_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[1:3]])))
                 data['AV45_WMratio_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in wmratio_keys[1:3]])))
                 data['AV45_Frontal/BigRef_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in frontal_bigref_keys[1:3]])))
                 data['AV45_Cingulate/BigRef_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[1:3]])))
                 data['AV45_Parietal/BigRef_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[1:3]])))
                 data['AV45_Temporal/BigRef_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[1:3]])))
+                data['AV45_EarlyAccum/BigRef_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in earlyaccum_bigref_keys[1:3]])))
+                data['AV45_EarlyAccum/WMratio_Slope_2and3'] = slope(list(zip(times,[data[_] for _ in earlyaccum_wmratio_keys[1:3]])))
                 # using first and third timepoints
                 times = exam_timedeltas[0::2]
                 data['AV45_BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in bigref_keys[0::2]])))
@@ -1170,14 +1189,16 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_cerebg_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[0::2]])))
                 data['AV45_wcereb_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[0::2]])))
                 # data['AV45_brainstem_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[0::2]])))
-                data['AV45_WM70/composite_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[0::2]])))
-                data['AV45_WM70/cerebg_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[0::2]])))
-                data['AV45_WM70/wcereb_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[0::2]])))
+                # data['AV45_WM70/composite_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[0::2]])))
+                # data['AV45_WM70/cerebg_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[0::2]])))
+                # data['AV45_WM70/wcereb_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[0::2]])))
                 data['AV45_WMratio_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in wmratio_keys[0::2]])))
                 data['AV45_Frontal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in frontal_bigref_keys[0::2]])))
                 data['AV45_Cingulate/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[0::2]])))
                 data['AV45_Parietal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[0::2]])))
                 data['AV45_Temporal/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[0::2]])))
+                data['AV45_EarlyAccum/BigRef_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in earlyaccum_bigref_keys[0::2]])))
+                data['AV45_EarlyAccum/WMratio_Slope_1and3'] = slope(list(zip(times,[data[_] for _ in earlyaccum_wmratio_keys[0::2]])))
             elif i == 3:
                 times = exam_timedeltas[:4]
                 data['AV45_BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in bigref_keys[:4]])))
@@ -1185,15 +1206,16 @@ def parseAV45Entries(rid, subj_rows, suffix=None):
                 data['AV45_cerebg_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in cerebg_keys[:4]])))
                 data['AV45_wcereb_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wcereb_keys[:4]])))
                 # data['AV45_brainstem_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in brainstem_keys[:4]])))
-                data['AV45_WM70/composite_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:4]])))
-                data['AV45_WM70/cerebg_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:4]])))
-                data['AV45_WM70/wcereb_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:4]])))
+                # data['AV45_WM70/composite_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_composite_keys[:4]])))
+                # data['AV45_WM70/cerebg_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_cerebg_keys[:4]])))
+                # data['AV45_WM70/wcereb_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wm70_wcereb_keys[:4]])))
                 data['AV45_WMratio_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in wmratio_keys[:4]])))
                 data['AV45_Frontal/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in frontal_bigref_keys[:4]])))
                 data['AV45_Cingulate/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in cingulate_bigref_keys[:4]])))
                 data['AV45_Parietal/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in parietal_bigref_keys[:4]])))
                 data['AV45_Temporal/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in temporal_bigref_keys[:4]])))
-
+                data['AV45_EarlyAccum/BigRef_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in earlyaccum_bigref_keys[:4]])))
+                data['AV45_EarlyAccum/WMratio_Slope_4pts'] = slope(list(zip(times,[data[_] for _ in earlyaccum_wmratio_keys[:4]])))
 
     if suffix is not None:
         new_keys = []
@@ -1914,11 +1936,11 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/10-10-2016/UCBERKELEYAV45_10-10-2016_regular_tp.csv"
-    av45_nontp_file = "../output/10-10-2016/UCBERKELEYAV45_10-10-2016_regular_nontp.csv"
-    av1451_tp_file = "../output/10-10-2016/UCBERKELEYAV1451_10-10-2016_regular_tp.csv"
-    av45_rousset_csv = "../datasets/pvc_adni_av45/aggregions_output.csv"
-    av1451_rousset_csv = "../datasets/pvc_adni_av1451/tauskullregions_output.csv"
+    av45_tp_file = "../output/10-14-2016/UCBERKELEYAV45_10-14-2016_regular_tp.csv"
+    av45_nontp_file = "../output/10-14-2016/UCBERKELEYAV45_10-14-2016_regular_nontp.csv"
+    av1451_tp_file = "../output/10-14-2016/UCBERKELEYAV1451_10-14-2016_regular_tp.csv"
+    av45_rousset_csv = "../pvc/pvc_adni_av45/aggregions_output.csv"
+    av1451_rousset_csv = "../pvc/pvc_adni_av1451/tauskullregions_output.csv"
 
     # Cog files
     mmse_file = "../docs/ADNI/MMSE.csv"
@@ -1930,14 +1952,14 @@ if __name__ == '__main__':
     cdr_file = '../docs/ADNI/CDR.csv'
 
     # MR files
-    tbm_file = '../docs/ADNI/MAYOADIRL_MRI_TBMSYN_12_08_15.csv'
+    tbm_file = '../docs/ADNI/MAYOADIRL_MRI_TBMSYN_09_15_16.csv'
     ucsf_long_files = [('4.4','../docs/ADNI/UCSFFSL_02_01_16.csv'),
                        ('5.1','../docs/ADNI/UCSFFSL51ALL_08_01_16.csv')]
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_08_01_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
-    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_10-07-2016.csv'
-    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_10-07-2016.csv'
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_10-13-2016.csv'
+    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_10-13-2016.csv'
 
     # Run pipeline
     runPipeline()
