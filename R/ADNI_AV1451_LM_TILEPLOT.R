@@ -42,7 +42,7 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 
 # IMPORT
 df_av1451 = read.csv('nsfa/av1451skull_pattern_dataset.csv')
-df_regions = read.csv('datasets/pvc_adni_av1451/tauskullregions_uptake_bilateral.csv')
+df_regions = read.csv('pvc/pvc_adni_av1451/tauskullregions_uptake_bilateral.csv')
 df_regions = rename(df_regions,c("subject"="RID"))
 df_regions$RID = as.factor(df_regions$RID)
 all_regions = colnames(df_regions)

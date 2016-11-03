@@ -26,7 +26,6 @@ import jellyfish
 #plt.style.use('ggplot')
 #pd.options.display.mpl_style = 'default'
 
-
 # DEFINITIONS FOR THE COMPOSITE REGION OF INTEREST
 FRONTAL=[1003,1012,1014,1018,1019,1020,1027,1028,1032,2003,2012,2014,2018,2019,2020,2027,2028,2032]
 PARIETAL=[1008,1025,1029,1031,2008,2025,2029,2031]
@@ -803,11 +802,22 @@ def flipPVCOutput(pvc_output_file, lut_file, remove_size=True):
         pivot_df = pivot_df[columns]
     return pivot_df
 
-def importRoussetCSV(rousset_csv, ref_key='WHOLECEREB', as_df=False):
+def importRoussetCSV(rousset_csv, lut_file=None, ref_key='WHOLECEREB', as_df=False):
     '''
     If include_threshold, translates to the new PVC threshold
     '''
     df = pd.read_csv(rousset_csv)
+
+    # translate regions
+    if lut_file is not None:
+        ind_df = df[['ind','name']].drop_duplicates()
+        lut = importFreesurferLookup(lut_file, flip=False)
+        translate = {}
+        for i, row in ind_df.iterrows():
+            group_idx = [int(_) for _ in row['ind'].split(';')]
+            if len(group_idx) == 1 and group_idx[0] in lut:
+                translate[row['name']] = lut[group_idx[0]]
+        df['name'] = df['name'].apply(lambda x: translate.get(x,x))
 
     slope_points = []
     if as_df:

@@ -152,6 +152,10 @@ def parseRawDataset(data_csv, master_csv, pattern_keys, lobe_keys, lut_file,
                 diag_keys = {'BL': 'Diag_closest_AV45_BL',
                              'Scan2': 'Diag_closest_AV45_2',
                              'Scan3': ''}
+            elif tracer == 'AV1451':
+                diag_keys = {'BL': 'Diag_closest_AV1451_BL',
+                             'Scan2': 'Diag_closest_AV1451_2',
+                             'Scan3': ''}
             else:
                 raise Exception("Diag keys for tracer %s not specified" % tracer)
         else:
@@ -441,7 +445,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 
 # FOR ADNI AV45
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
-# data_csv = '../datasets/pvc_adni_av45/mostregions_output.csv'
+# data_csv = '../pvc/pvc_adni_av45/mostregions_output.csv'
 # pattern_mat = '../av45_pattern_bl.mat'
 # pattern_mat_2 = '../av45_pattern_scan2.mat'
 # pattern_mat_3 = '../av45_pattern_scan3.mat'
@@ -466,7 +470,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 
 # FOR ADNI AV1451
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
-# data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+# data_csv = '../pvc/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451_pattern_bl.mat'
 # pattern_mat_2 = None
 # pattern_mat_3 = None
@@ -490,7 +494,7 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 
 # FOR ADNI AV1451 UNILATERAL
 # master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
-# data_csv = '../datasets/pvc_adni_av1451/mostregions_output.csv'
+# data_csv = '../pvc/pvc_adni_av1451/mostregions_output.csv'
 # pattern_mat = '../av1451uni_pattern_bl.mat'
 # pattern_mat_2 = None
 # pattern_mat_3 = None
@@ -513,36 +517,36 @@ def savePatternAsAparc(df, lut_file, bilateral, out_template):
 # trim_sid=True
 
 # FOR ADNI AV1451 SKULL
-master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
-data_csv = '../datasets/pvc_adni_av1451/tauskullregions_output.csv'
-region_csv = '../datasets/pvc_adni_av1451/tauskullregions_uptake.csv'
-region_bilateral_csv = '../datasets/pvc_adni_av1451/tauskullregions_suvr_bilateral.csv'
-pattern_mat = '../av1451skull_pattern_bl.mat'
-pattern_mat_2 = None
-pattern_mat_3 = None
-nsfa_activation_csv = '../nsfa/av1451skull_factor_activations.csv'
-nsfa_activation_csv_2 = None
-nsfa_activation_csv_3 = None
-nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
-nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
-output_file = '../nsfa/av1451skull_pattern_dataset.csv'
-topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
-comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
-comm_output_file = '../nsfa/av1451skull_communality.csv'
-nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451skull_factor_loading_%s"
-igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451skull_pattern_loading_%s"
-dod = False
-bilateral = True
-sep_frontal = False
-ref = 'CEREBGM'
-tracer = 'AV1451'
-trim_sid=True
+# master_csv = '../FDG_AV45_COGdata/FDG_AV45_COGdata_10_20_16.csv'
+# data_csv = '../pvc/pvc_adni_av1451/tauskullregions_output.csv'
+# region_csv = '../pvc/pvc_adni_av1451/tauskullregions_uptake.csv'
+# region_bilateral_csv = '../pvc/pvc_adni_av1451/tauskullregions_suvr_bilateral.csv'
+# pattern_mat = '../av1451skull_pattern_bl.mat'
+# pattern_mat_2 = None
+# pattern_mat_3 = None
+# nsfa_activation_csv = '../nsfa/av1451skull_factor_activations.csv'
+# nsfa_activation_csv_2 = None
+# nsfa_activation_csv_3 = None
+# nsfa_loading_csv = '../nsfa/av1451skull_factor_loadings.csv'
+# nsfa_lambdag_csv = '../nsfa/av1451skull_lambdag.csv'
+# output_file = '../nsfa/av1451skull_pattern_dataset.csv'
+# topregions_output_file = '../nsfa/av1451skull_top_regions.csv'
+# comp_output_file = '../nsfa/av1451skull_roi_comparisons.csv'
+# comm_output_file = '../nsfa/av1451skull_communality.csv'
+# nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451skull_factor_loading_%s"
+# igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451skull_pattern_loading_%s"
+# dod = False
+# bilateral = True
+# sep_frontal = False
+# ref = 'CEREBGM'
+# tracer = 'AV1451'
+# trim_sid=True
 
 # FOR BACS AV1451 SKULL
 # master_csv = None
-# data_csv = '../datasets/pvc_bacs_av1451/tauskullregions_output.csv'
-# region_csv = '../datasets/pvc_bacs_av1451/tauskullregions_uptake.csv'
-# region_bilateral_csv = '../datasets/pvc_bacs_av1451/tauskullregions_suvr_bilateral.csv'
+# data_csv = '../pvc/pvc_bacs_av1451/tauskullregions_output.csv'
+# region_csv = '../pvc/pvc_bacs_av1451/tauskullregions_uptake.csv'
+# region_bilateral_csv = '../pvc/pvc_bacs_av1451/tauskullregions_suvr_bilateral.csv'
 # pattern_mat = '../av1451bacs_pattern_bl.mat'
 # pattern_mat_2 = None
 # pattern_mat_3 = None
@@ -564,10 +568,35 @@ trim_sid=True
 # tracer = 'AV1451'
 # trim_sid = False
 
+# FOR DOD AV1451 SKULL
+master_csv = '../DOD_DATA/DOD_DATA_11_02_16.csv'
+data_csv = '../pvc/pvc_dod_av1451/tauskullregions_output.csv'
+region_csv = '../pvc/pvc_dod_av1451/tauskullregions_uptake.csv'
+region_bilateral_csv = '../pvc/pvc_dod_av1451/tauskullregions_suvr_bilateral.csv'
+pattern_mat = '../av1451dodskull_pattern_bl.mat'
+pattern_mat_2 = None
+pattern_mat_3 = None
+nsfa_activation_csv = '../nsfa/av1451dodskull_factor_activations.csv'
+nsfa_activation_csv_2 = None
+nsfa_activation_csv_3 = None
+nsfa_loading_csv = '../nsfa/av1451dodskull_factor_loadings.csv'
+nsfa_lambdag_csv = '../nsfa/av1451dodskull_lambdag.csv'
+output_file = '../nsfa/av1451dodskull_pattern_dataset.csv'
+topregions_output_file = '../nsfa/av1451dodskull_top_regions.csv'
+comp_output_file = '../nsfa/av1451dodskull_roi_comparisons.csv'
+comm_output_file = '../nsfa/av1451dodskull_communality.csv'
+nsfa_output_template = "../output/fake_aparc_inputs/nsfa/av1451dodskull_factor_loading_%s"
+igmm_output_template = "../output/fake_aparc_inputs/igmm/av1451dodskull_pattern_loading_%s"
+dod = True
+bilateral = True
+sep_frontal = False
+ref = 'CEREBGM'
+tracer = 'AV1451'
+trim_sid=True
 
 # FOR DOD AV45
-# master_csv = '../DOD_DATA/DOD_DATA_05_06_16.csv'
-# data_csv = '../datasets/pvc_dod_av45/mostregions_output.csv'
+# master_csv = '../DOD_DATA/DOD_DATA_11_02_16.csv'
+# data_csv = '../pvc/pvc_dod_av45/mostregions_output.csv'
 # pattern_mat = '../dod_av45_pattern_bl.mat'
 # pattern_mat_2 = '../dod_av45_pattern_bl.mat'
 # nsfa_activation_csv = '../nsfa/dod_av45_factor_activations.csv'
@@ -672,6 +701,7 @@ if pattern_scan3_df.index.nlevels > 1:
 # SAVE REGIONAL UPTAKES FILE
 flipPVCOutput(data_csv,lut_file).to_csv(region_csv)
 uptake_prior_df.to_csv(region_bilateral_csv)
+sys.exit(1)
 
 # # SAVE PATTERN MAT FILE (FOR INPUT INTO NSFA)
 # savePatternAsMat(pattern_bl_df, pattern_mat)

@@ -26,10 +26,10 @@ def getAV45Dates(rid, master_df):
     bl_av45 = av45_2 = av45_3 = av45_4 = np.nan
     try:
         row = master_df.loc[rid]
-        bl_av45 = row.get('AV45_Date')
-        av45_2 = row.get('AV45_2_Date')
-        av45_3 = row.get('AV45_3_Date')
-        av45_4 = row.get('AV45_4_Date')
+        bl_av45 = row.get('AV45_Date',np.nan)
+        av45_2 = row.get('AV45_2_Date',np.nan)
+        av45_3 = row.get('AV45_3_Date',np.nan)
+        av45_4 = row.get('AV45_4_Date',np.nan)
     except Exception as e:
         pass
     return (bl_av45, av45_2, av45_3, av45_4)
@@ -38,9 +38,9 @@ def getAV1451Dates(rid, master_df):
     bl_av1451 = av1451_2 = av1451_3 = np.nan
     try:
         row = master_df.loc[rid]
-        bl_av1451 = row.get('AV1451_Date')
-        av1451_2 = row.get('AV1451_2_Date')
-        av1451_3 = row.get('AV1451_3_Date')
+        bl_av1451 = row.get('AV1451_Date',np.nan)
+        av1451_2 = row.get('AV1451_2_Date',np.nan)
+        av1451_3 = row.get('AV1451_3_Date',np.nan)
     except Exception as e:
         pass
     return (bl_av1451, av1451_2, av1451_3)
@@ -606,25 +606,26 @@ def syncAVLTData(master_df, neuro_battery_file, registry):
         av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
 
         # Get long measurements
+        buffer_days = 183
         subj_rows['RID'] = rid
         avlt_long = groupLongPivot(subj_rows,'RID','TOTS','AVLT.')
         date_long = groupLongPivot(subj_rows,'RID','EXAMDATE','AVLT_timePostAV45.')
-        date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.25 if not isnan(av45_date1) else np.nan)
-        date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -90/365.0) else np.nan)
+        date_long = date_long.applymap(lambda x: (x-av45_date1).days/365.0 if not isnan(av45_date1) else np.nan)
+        date_long = date_long.applymap(lambda x: x if (not isnan(x) and x >= -(buffer_days/365.0)) else np.nan)
         all_df = pd.concat((avlt_long,date_long),axis=1)
 
         avlt_slope = df_slope(all_df, date_long.columns, avlt_long.columns, take_diff=False, exact=False)
         all_df['AVLT_slope_postAV45'] = avlt_slope[rid]
         last_date = subj_rows.iloc[-1]['EXAMDATE']
-        all_df['AVLT_post_AV45_followuptime'] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
+        all_df['AVLT_post_AV45_followuptime'] = (last_date - av45_date1).days/365 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
 
         # Retroactive slope from first AV1451 scan
         if not isnan(av1451_date1):
             all_df['AVLT_retroslope_AV1451_BL'] = retro_slope(subj_rows,
                                                               'EXAMDATE',
                                                               'TOTS',
-                                                              av45_date1-timedelta(days=90),
-                                                              av1451_date1+timedelta(days=90),
+                                                              av45_date1-timedelta(days=buffer_days),
+                                                              av1451_date1+timedelta(days=buffer_days),
                                                               exact=False)
 
         # Get closest av45 measurements

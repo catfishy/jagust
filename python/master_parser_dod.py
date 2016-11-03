@@ -433,10 +433,12 @@ def syncAVLTData(master_df, avlt_file, registry):
     headers += ['AVLT_%s' % i for i in row_indices]
     headers += ['AVLT_DATE_%s' % i for i in row_indices]
     headers += ['AVLT_postAV45_%s' % i for i in row_indices]
-    headers += ['AVLT_postAV45_SLOPE', 'AVLT_closest_AV45_BL', 'AVLT_closest_AV45_2']
+    headers += ['AVLT_postAV45_SLOPE', 'AVLT_closest_AV45_BL', 'AVLT_closest_AV45_2',
+                'AVLT_closest_AV1451_BL', 'AVLT_closest_AV1451_2']
 
     def extraction_fn(scrno, subj_rows):
         av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        av1451_date1, av1451_date2 = getAV1451Dates(scrno, master_df)
         subj_rows['yrDiff'] = subj_rows['EXAMDATE'].apply(lambda x: yrDiff(x,av45_date1))
         # get longitudinal measurements
         subj_rows['SCRNO'] = scrno
@@ -451,6 +453,9 @@ def syncAVLTData(master_df, avlt_file, registry):
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av45_date1, av45_date2], day_limit=365/2)
         data_df.loc[scrno,'AVLT_closest_AV45_BL'] = closest_vals[0]
         data_df.loc[scrno,'AVLT_closest_AV45_2'] = closest_vals[1]
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av1451_date1, av1451_date2], day_limit=365/2)
+        data_df.loc[scrno,'AVLT_closest_AV1451_BL'] = closest_vals[0]
+        data_df.loc[scrno,'AVLT_closest_AV1451_BL_2'] = closest_vals[1]
         return data_df
 
     parsed_df = parseSubjectGroups(avlt_df, extraction_fn)
@@ -510,6 +515,8 @@ def syncDiagData(master_df, diag_file):
     headers = ['Diag_%s' % (_+1,) for _ in range(timepoints)]
     headers += ["Diag_Date_%s" % (_+1,) for _ in range(timepoints)]
     headers += [comp_key, 'Diag_closest_AV45_BL', 'Diag_closest_AV45_2']
+    headers += ['Diag_closest_AV1451_BL', 'Diag_closest_AV1451_2']
+    headers += ['AV45_1_2_Diff','AV1451_1_2_Diff']
 
     # extraction fn
     def extraction_fn(scrno, subj_rows):
@@ -525,6 +532,15 @@ def syncDiagData(master_df, diag_file):
         closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av45_date1, av45_date2], day_limit=365/2)
         merge_df.loc[scrno,'Diag_closest_AV45_BL'] = closest_vals[0]
         merge_df.loc[scrno,'Diag_closest_AV45_2'] = closest_vals[1]
+
+        av1451_date1, av1451_date2 = getAV1451Dates(scrno, master_df)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'diag', [av1451_date1, av1451_date2], day_limit=365/2)
+        merge_df.loc[scrno,'Diag_closest_AV1451_BL'] = closest_vals[0]
+        merge_df.loc[scrno,'Diag_closest_AV1451_2'] = closest_vals[1]
+
+        merge_df.loc[scrno,'AV1451_1_2_Diff'] = yrDiff(av1451_date2,av1451_date1)
+        merge_df.loc[scrno,'AV45_1_2_Diff'] = yrDiff(av45_date2,av45_date1)
+
         return merge_df
 
     parsed_df = parseSubjectGroups(diag_df, extraction_fn)
@@ -579,11 +595,13 @@ def syncStudyData(master_df, elig_file):
     master_df.loc[adni_subj,'GroupNum_TBI'] = 5
     return master_df
 
-def syncAV1451RoussetData(master_df, av1451_pvc_file):
+def syncAV1451RoussetData(master_df, av1451_pvc_file, lut_file):
     timepoints = ['BL','Scan2']
-    av1451_df, _ = importRoussetCSV(av1451_pvc_file, as_df=True)
+    av1451_df, _ = importRoussetCSV(av1451_pvc_file, lut_file=lut_file, as_df=True)
 
     av1451_df['BRAAKALL'] = df_mean(av1451_df, ['BRAAK1_SIZE','BRAAK2_SIZE','BRAAK3_SIZE','BRAAK4_SIZE','BRAAK5_SIZE','BRAAK6_SIZE'], ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6'])
+    av1451_df['AMYGDALA'] = df_mean(av1451_df, ['Right-Amygdala_SIZE','Left-Amygdala_SIZE'], ['Right-Amygdala','Left-Amygdala'])
+    av1451_df['HIPPOCAMPUS'] = df_mean(av1451_df, ['Right-Hippocampus_SIZE','Left-Hippocampus_SIZE'], ['Right-Hippocampus','Left-Hippocampus'])
     column_translations = {'BRAAK1': 'AV1451_PVC_Braak1_%s_%s',
                            'BRAAK2': 'AV1451_PVC_Braak2_%s_%s',
                            'BRAAK3': 'AV1451_PVC_Braak3_%s_%s',
@@ -593,9 +611,11 @@ def syncAV1451RoussetData(master_df, av1451_pvc_file):
                            'BRAAK12': 'AV1451_PVC_Braak12_%s_%s',
                            'BRAAK34': 'AV1451_PVC_Braak34_%s_%s',
                            'BRAAK56': 'AV1451_PVC_Braak56_%s_%s',
+                           'HIPPOCAMPUS': 'AV1451_PVC_HIPPOCAMPUS_%s_%s',
+                           'AMYGDALA': 'AV1451_PVC_AMYGDALA_%s_%s',
                            'BRAAKALL': 'AV1451_PVC_BraakAll_%s_%s'}
     column_order = ['BRAAK1','BRAAK2','BRAAK3','BRAAK4','BRAAK5','BRAAK6',
-                    'BRAAK12','BRAAK34','BRAAK56','BRAAKALL']
+                    'BRAAK12','BRAAK34','BRAAK56','BRAAKALL','AMYGDALA','HIPPOCAMPUS']
     ref_region_translations = {'CEREBGM': 'CerebGray',
                                'WHOLECEREB': 'WholeCereb'}
     to_merge = []
@@ -664,12 +684,17 @@ def syncAV1451Data(master_df, av1451_file):
     headers += ['AV1451_%s_RIGHT_CAUDATE_CerebGray' % i for i in row_indices]
     headers += ['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
     headers += ['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_AMYGDALA_CerebGray' % i for i in row_indices]
+    headers += ['AV1451_%s_HIPPOCAMPUS_CerebGray' % i for i in row_indices]
     headers += ['AV1451_%s_CEREBELLUMGREYMATTER' % i for i in row_indices]
     headers += ['AV1451_%s_BRAIN_STEM' % i for i in row_indices]
     headers += ['AV1451_%s_WHOLECEREBELLUM' % i for i in row_indices]
+    headers += ['AV1451_%s_closest_AV45_interval' % i for i in row_indices]
+    headers += ['AV1451_%s_closest_AV45_wcereb' % i for i in row_indices]
 
     # create extraction function
     def extraction_fn(scrno, subj_rows):
+        av45_dates = [_ for _ in getAV45Dates(scrno, master_df) if not isnan(_)]
         new_data = {'SCRNO': scrno}
         subj_rows.sort_values(by='EXAMDATE', inplace=True)
 
@@ -691,6 +716,7 @@ def syncAV1451Data(master_df, av1451_file):
             cerebg = weightedMean(weights_values)
             new_data['AV1451_%s_CEREBELLUMGREYMATTER' % row_i] = cerebg
 
+            # weighted averages
             braak1 = (row['BRAAK1_SIZE'],row['BRAAK1'])
             braak2 = (row['BRAAK2_SIZE'],row['BRAAK2'])
             braak3 = (row['BRAAK3_SIZE'],row['BRAAK3'])
@@ -700,17 +726,35 @@ def syncAV1451Data(master_df, av1451_file):
             braak12 = weightedMean([braak1,braak2]) / cerebg
             braak34 = weightedMean([braak3,braak4]) / cerebg
             braak56 = weightedMean([braak5,braak6]) / cerebg
+            left_amyg = (row['LEFT_AMYGDALA_SIZE'],row['LEFT_AMYGDALA'])
+            right_amyg = (row['RIGHT_AMYGDALA_SIZE'],row['RIGHT_AMYGDALA'])
+            left_hippo = (row['LEFT_HIPPOCAMPUS_SIZE'],row['LEFT_HIPPOCAMPUS'])
+            right_hippo = (row['RIGHT_HIPPOCAMPUS_SIZE'],row['RIGHT_HIPPOCAMPUS'])
+            amygdala = weightedMean([left_amyg,right_amyg]) / cerebg
+            hippocampus = weightedMean([left_hippo,right_hippo]) / cerebg
 
             # region suvrs
             new_data['AV1451_%s_Braak12_CerebGray' % row_i] = braak12
             new_data['AV1451_%s_Braak34_CerebGray' % row_i] = braak34
             new_data['AV1451_%s_Braak56_CerebGray' % row_i] = braak56
+            new_data['AV1451_%s_AMYGDALA_CerebGray' % row_i] = amygdala
+            new_data['AV1451_%s_HIPPOCAMPUS_CerebGray' % row_i] = hippocampus
             new_data['AV1451_%s_LEFT_CAUDATE_CerebGray' % row_i] = float(row['LEFT_CAUDATE'])/cerebg
             new_data['AV1451_%s_RIGHT_CAUDATE_CerebGray' % row_i] = float(row['RIGHT_CAUDATE'])/cerebg
             new_data['AV1451_%s_LEFT_PUTAMEN_CerebGray' % row_i] = float(row['LEFT_PUTAMEN'])/cerebg
             new_data['AV1451_%s_RIGHT_PUTAMEN_CerebGray' % row_i] = float(row['RIGHT_PUTAMEN'])/cerebg
             new_data['AV1451_%s_LEFT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['LEFT_CHOROID_PLEXUS'])/cerebg
             new_data['AV1451_%s_RIGHT_CHOROID_PLEXUS_CerebGray' % row_i] = float(row['RIGHT_CHOROID_PLEXUS'])/cerebg
+
+            # get closest AV45 data
+            scan_date = row['EXAMDATE']
+            if len(av45_dates) > 0:
+                av45_idx, av45_date = sorted(enumerate(av45_dates),key=lambda x: abs(x[1]-scan_date).days)[0]
+                av45_interval = (av45_date-scan_date).days
+                if abs(av45_interval) <= 730:
+                    # add in closest AV45 fields
+                    new_data['AV1451_%s_closest_AV45_interval' % row_i] = av45_interval
+                    new_data['AV1451_%s_closest_AV45_wcereb' % row_i] = master_df.loc[scrno,'AV45_%s_comp/wcerb' % (av45_idx+1,)]
 
         return pd.DataFrame([new_data]).set_index('SCRNO')
 
@@ -863,8 +907,8 @@ def getAV1451Dates(scrno, master_df):
     bl_av1451 = av1451_2 = np.nan
     try:
         row = master_df.loc[scrno]
-        bl_av1451 = row.get('AV1451_1_DATE')
-        av1451_2 = row.get('AV1451_2_DATE')
+        bl_av1451 = row.get('AV1451_1_DATE',np.nan)
+        av1451_2 = row.get('AV1451_2_DATE',np.nan)
     except Exception as e:
         pass
     return (bl_av1451, av1451_2)
@@ -875,8 +919,8 @@ def getAV45Dates(scrno, master_df):
     # print master_df.index
     try:
         row = master_df.loc[scrno]
-        bl_av45 = row.get('AV45_1_EXAMDATE')
-        av45_2 = row.get('AV45_2_EXAMDATE')
+        bl_av45 = row.get('AV45_1_EXAMDATE',np.nan)
+        av45_2 = row.get('AV45_2_EXAMDATE',np.nan)
     except Exception as e:
         pass
     return (bl_av45, av45_2)
@@ -903,7 +947,7 @@ def runPipeline():
     print "\nSYNCING AV1451 MAX\n"
     master_df = syncAV1451MaxData(master_df, av1451_max_file)
     print "\nSYNCING AV1451 Rousset\n"
-    master_df = syncAV1451RoussetData(master_df, av1451_pvc_file)
+    master_df = syncAV1451RoussetData(master_df, av1451_pvc_file, lut_file)
     print "\nSYNCING DIAG\n"
     master_df = syncDiagData(master_df, diag_file)
     print "\nSYNCING DTI\n"
@@ -955,6 +999,8 @@ if __name__ == '__main__':
     master_file = "" # not used
     output_file = "../DOD_DATA_%s.csv" % (now.strftime("%m_%d_%y"))
 
+    # Lookup file
+    lut_file = '../FreeSurferColorLUT.txt'
     # ADNI master file
     av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
     # AV45 file
