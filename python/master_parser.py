@@ -1243,7 +1243,7 @@ def syncFDGData(master_df, fdg_file, registry):
     headers += ['FDG_PONS_AV45_1', 'FDG_PONS_AV45_1_DATE',
                 'FDG_PONS_AV45_2', 'FDG_PONS_AV45_2_DATE',
                 'FDG_PONS_AV45_3', 'FDG_PONS_AV45_3_DATE',
-                'FDG_PONS_AV1451_1','FDG_PONS_AV1451_1_DATE',
+                'FDG_PONS_AV1451_1','FDG_PONS_AV1451_1_DATE','FDG_PONS_AV1451_1_INTERVAL',
                 'FDG_PONS_AV1451_2','FDG_PONS_AV1451_2_DATE',
                 'FDG_PONS_AV1451_3','FDG_PONS_AV1451_3_DATE',]
 
@@ -1274,10 +1274,14 @@ def syncFDGData(master_df, fdg_file, registry):
         all_df['FDG_PONS_AV45_3_DATE'] = pd.to_datetime(all_df['FDG_PONS_AV45_3_DATE'])
 
         # Get closest AV1451 measurements
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
-        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=365/2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'MEAN', [av1451_date1,av1451_date2,av1451_date3],day_limit=None)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2,av1451_date3],day_limit=None)
         all_df['FDG_PONS_AV1451_1'] = closest_vals[0]
         all_df['FDG_PONS_AV1451_1_DATE'] = closest_dates[0]
+        try:
+            all_df['FDG_PONS_AV1451_1_INTERVAL'] = (av1451_date1 - closest_dates[0]).days / 365.0
+        except:
+            all_df['FDG_PONS_AV1451_1_INTERVAL'] = np.nan
         all_df['FDG_PONS_AV1451_2'] = closest_vals[1]
         all_df['FDG_PONS_AV1451_2_DATE'] = closest_dates[1]
         all_df['FDG_PONS_AV1451_3'] = closest_vals[2]
@@ -1915,6 +1919,8 @@ if __name__ == '__main__':
     now = datetime.now()
     pd.options.mode.chained_assignment = None
 
+    run_date = "10-14-2016"
+
     # IO files
     master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv"
     output_file = "../FDG_AV45_COGdata_%s.csv" % (now.strftime("%m_%d_%y"))
@@ -1937,9 +1943,9 @@ if __name__ == '__main__':
     npi_file = '../docs/ADNI/NPI.csv'
 
     # Output files
-    av45_tp_file = "../output/10-14-2016/UCBERKELEYAV45_10-14-2016_regular_tp.csv"
-    av45_nontp_file = "../output/10-14-2016/UCBERKELEYAV45_10-14-2016_regular_nontp.csv"
-    av1451_tp_file = "../output/10-14-2016/UCBERKELEYAV1451_10-14-2016_regular_tp.csv"
+    av45_tp_file = "../output/%s/UCBERKELEYAV45_%s_regular_tp.csv" % (run_date,run_date)
+    av45_nontp_file = "../output/%s/UCBERKELEYAV45_%s_regular_nontp.csv" % (run_date,run_date)
+    av1451_tp_file = "../output/%s/UCBERKELEYAV1451_%s_regular_tp.csv" % (run_date,run_date)
     av45_rousset_csv = "../pvc/pvc_adni_av45/aggregions_output.csv"
     av1451_rousset_csv = "../pvc/pvc_adni_av1451/tauskullregions_output.csv"
 

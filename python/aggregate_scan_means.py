@@ -466,10 +466,10 @@ if __name__ == "__main__":
     dep_meta_pet = "../docs/DEP/AV45META.csv"
     dep_meta_tau = "../docs/DEP/TAUMETA.csv"
 
-    timestamp = '10-14-2016'
+    timestamp = '11-03-2016'
 
     # preprocess output folders
-    preprocess_folder = '../docs/preprocess_output/%s/' % timestamp
+    preprocess_folder = '../output/preprocess_output/%s/' % timestamp
     adni_av45_preprocess_folder = '%sadni_av45' % preprocess_folder
     dod_av45_preprocess_folder = '%sdod_adni' % preprocess_folder
     dep_av45_preprocess_folder = '%sdep_adni_av45' % preprocess_folder
@@ -478,10 +478,10 @@ if __name__ == "__main__":
     dep_tau_preprocess_folder = '%sdep_adni_av1451' % preprocess_folder
 
     # PVC output files
-    adni_av45_pvc_output = '/usr/local/jagust/datasets/pvc_adni_av45/mostregions_output.csv'
-    adni_av1451_pvc_output = '/usr/local/jagust/datasets/pvc_adni_av1451/tauskullregions_output.csv'
-    dod_av45_pvc_output = '/usr/local/jagust/datasets/pvc_dod_av45/mostregions_output.csv'
-    dod_av1451_pvc_output = '/usr/local/jagust/datasets/pvc_dod_av1451/tauskullregions_output.csv'
+    adni_av45_pvc_output = '../pvc/pvc_adni_av45/mostregions_output.csv'
+    adni_av1451_pvc_output = '../pvc/pvc_adni_av1451/tauskullregions_output.csv'
+    dod_av45_pvc_output = '../pvc/pvc_dod_av45/mostregions_output.csv'
+    dod_av1451_pvc_output = '../pvc/pvc_dod_av1451/tauskullregions_output.csv'
 
     # create output folder
     output_folder = '../output/%s' % timestamp

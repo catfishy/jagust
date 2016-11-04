@@ -995,6 +995,8 @@ if __name__ == '__main__':
     now = datetime.now()
     pd.options.mode.chained_assignment = None
 
+    run_date = "11-03-2016"
+
     # IO files
     master_file = "" # not used
     output_file = "../DOD_DATA_%s.csv" % (now.strftime("%m_%d_%y"))
@@ -1004,11 +1006,11 @@ if __name__ == '__main__':
     # ADNI master file
     av45_master_file = '../FDG_AV45_COGdata/FDG_AV45_COGdata_09_19_16.csv'
     # AV45 file
-    av45_file = '../output/10-14-2016/UCBERKELEYAV45_DOD_10-14-2016_regular_nontp.csv'
+    av45_file = '../output/%s/UCBERKELEYAV45_DOD_%s_regular_nontp.csv' % (run_date,run_date)
     # AV1451 file
-    av1451_file = '../output/10-14-2016/UCBERKELEYAV1451_DOD_10-14-2016_regular_tp.csv'
+    av1451_file = '../output/%s/UCBERKELEYAV1451_DOD_%s_regular_tp.csv' % (run_date,run_date)
     # AV1451 Max file
-    av1451_max_file = '../output/10-14-2016/UCBERKELEYAV1451_DOD_MAX_10-14-2016_regular_tp.csv'
+    av1451_max_file = '../output/%s/UCBERKELEYAV1451_DOD_MAX_%s_regular_tp.csv' % (run_date,run_date)
     # AV1451 PVC file
     av1451_pvc_file = '../pvc/pvc_dod_av1451/tauskullregions_output.csv'
 

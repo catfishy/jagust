@@ -182,7 +182,7 @@ def groupSlope(group_rows, date_key, val_key, cutoff_date=None):
         grp_slope = np.nan
     return grp_slope
 
-def groupClosest(group_rows, date_key, val_key, comp_dates, day_limit=365):
+def groupClosest(group_rows, date_key, val_key, comp_dates, day_limit=None):
     df = group_rows.copy()
     results = []
     for i,cd in enumerate(comp_dates):
@@ -192,7 +192,10 @@ def groupClosest(group_rows, date_key, val_key, comp_dates, day_limit=365):
             closest_key = 'closest_%s' % i
             df[closest_key] = df[date_key].apply(lambda x: abs(x-cd).days)
             closest_row = df.sort_values(by=closest_key).iloc[0]
-            closest_val = closest_row[val_key] if closest_row[closest_key] <= day_limit else np.nan
+            if day_limit is not None:
+                closest_val = closest_row[val_key] if closest_row[closest_key] <= day_limit else np.nan
+            else:
+                closest_val = closest_row[val_key]
             results.append(closest_val)
     return results
 
