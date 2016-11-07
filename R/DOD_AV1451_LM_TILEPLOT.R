@@ -34,7 +34,7 @@ valid_diags = c('N','SMC','EMCI','LMCI','AD')
 demog_columns = c('SCRNO','Sex','Age','Edu')
 
 # IMPORT
-df_av1451 = read.csv('DOD_DATA/DOD_DATA_11_03_16.csv')
+df_av1451 = read.csv('DOD_DATA/DOD_DATA_11_04_16.csv')
 df_regions = read.csv('pvc/pvc_dod_av1451/tauskullregions_suvr_bilateral.csv')
 df_regions = rename(df_regions,c("subject"="SCRNO"))
 all_regions = colnames(df_regions)
@@ -115,13 +115,17 @@ for (dep in dep_variables) {
 # create tile plots
 base_size = 12
 
+# ,
+# breaks=c(1,1e-1,1e-2,1e-3),
+# labels=c("1","1e-1","1e-2","1e-3"),
+# trans = "log"
+
 ggplot(results_uncorrected, aes(indep, dep)) + 
   geom_tile(aes(fill = tstat_pvalue), 
             colour='grey50') + 
   scale_fill_distiller(palette = "Spectral",
-                       trans = "log",
-                       breaks=c(1e-1,1e-4,1e-7,1e-10),
-                       labels=c("1e-1","1e-4","1e-7","1e-10")) + 
+                       breaks=c(1.0,0.75,0.5,0.25,0.0),
+                       labels=c("1.0","0.75","0.5","0.25","0.0")) + 
   labs(x="",y="") + 
   ggtitle("Pr(>|t|), uncorrected") + 
   theme_bw() + 
@@ -139,14 +143,14 @@ ggplot(results_uncorrected, aes(indep, dep)) +
   geom_tile(aes(fill = fstat_pvalue), 
             colour='grey50') + 
   scale_fill_distiller(palette = "Spectral",
-                       trans = "log",
-                       breaks=c(1e-1,1e-4,1e-7,1e-10),
-                       labels=c("1e-1","1e-4","1e-7","1e-10")) + 
+                       breaks=c(1.0,0.75,0.5,0.25,0.0),
+                       labels=c("1.0","0.75","0.5","0.25","0.0")) + 
   labs(x="",y="") + 
   ggtitle("F-statistic p-value, uncorrected") + 
   theme_bw() + 
   scale_x_discrete(expand = c(0, 0)) + 
   scale_y_discrete(expand = c(0, 0)) + 
+  
   coord_fixed(ratio=1) + 
   theme(panel.border=element_blank(),
         axis.ticks = element_blank(),

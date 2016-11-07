@@ -466,7 +466,7 @@ if __name__ == "__main__":
     dep_meta_pet = "../docs/DEP/AV45META.csv"
     dep_meta_tau = "../docs/DEP/TAUMETA.csv"
 
-    timestamp = '11-03-2016'
+    timestamp = '11-05-2016'
 
     # preprocess output folders
     preprocess_folder = '../output/preprocess_output/%s/' % timestamp

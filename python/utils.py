@@ -2158,6 +2158,7 @@ def importSleepQuality(sleep_file, registry=None, as_df=True):
     all_cols = ['SCRNO','VISCODE','EXAMDATE','GLOBAL'] + comps
     df = df[all_cols].set_index('SCRNO')
     df = parseOrFindDate(df, 'EXAMDATE', registry=registry)
+    df.dropna(subset=['EXAMDATE'],inplace=True)
     if as_df:
         return df
     else:

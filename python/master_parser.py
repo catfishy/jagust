@@ -30,6 +30,14 @@ def getAV45Dates(rid, master_df):
         av45_2 = row.get('AV45_2_Date',np.nan)
         av45_3 = row.get('AV45_3_Date',np.nan)
         av45_4 = row.get('AV45_4_Date',np.nan)
+        if isnan(bl_av45):
+            bl_av45 = np.nan
+        if isnan(av45_2):
+            av45_2 = np.nan
+        if isnan(av45_3):
+            av45_3 = np.nan
+        if isnan(av45_4):
+            av45_4 = np.nan
     except Exception as e:
         pass
     return (bl_av45, av45_2, av45_3, av45_4)
@@ -41,6 +49,12 @@ def getAV1451Dates(rid, master_df):
         bl_av1451 = row.get('AV1451_Date',np.nan)
         av1451_2 = row.get('AV1451_2_Date',np.nan)
         av1451_3 = row.get('AV1451_3_Date',np.nan)
+        if isnan(bl_av1451):
+            bl_av1451 = np.nan
+        if isnan(av1451_2):
+            av1451_2 = np.nan
+        if isnan(av1451_3):
+            av1451_3 = np.nan
     except Exception as e:
         pass
     return (bl_av1451, av1451_2, av1451_3)
@@ -1919,7 +1933,10 @@ if __name__ == '__main__':
     now = datetime.now()
     pd.options.mode.chained_assignment = None
 
-    run_date = "10-14-2016"
+    # manually update the following
+    run_date = "11-05-2016"
+    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_11-05-2016.csv'
+    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_11-05-2016.csv'
 
     # IO files
     master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv"
@@ -1965,8 +1982,6 @@ if __name__ == '__main__':
     ucsf_cross_files = [('4.3','../docs/ADNI/UCSFFSX_11_02_15.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_08_01_16.csv'),
                         ('5.1','../docs/ADNI/UCSFFSX51_ADNI1_3T_02_01_16.csv')]
-    ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_10-13-2016.csv'
-    ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_10-13-2016.csv'
 
     # Run pipeline
     runPipeline()

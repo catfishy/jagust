@@ -331,6 +331,59 @@ def syncSleep(master_df, sleep_file, registry):
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None, restrict=True)
     return master_df
 
+def syncUCBFreesurferAV1451VolData(master_df, ucb_fs_volumes):
+    fs_df = importFSVolumes(ucb_fs_volumes, as_df=True)
+    tmpts = max(Counter(fs_df.index).values())
+
+    headers = ['UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_2',
+               'UCB_FS_ICV_AV1451_1','UCB_FS_ICV_AV1451_2',
+               'UCB_FS_HC_AV1451_1','UCB_FS_HC_AV1451_2',]
+
+    def extraction_fn(scrno, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2 = getAV45Dates(scrno, master_df)
+        av1451_date1, av1451_date2 = getAV1451Dates(scrno, master_df)
+
+        # Calculate HC/ICV
+        bl_icv = subj_rows.iloc[0]['ICV']
+        avg_icv = np.mean(subj_rows['ICV'])
+        subj_rows['HC/ICV_BL'] = subj_rows['HCV'] / bl_icv
+        subj_rows['HC/ICV_AVG'] = subj_rows['HCV'] / avg_icv
+
+        # Get closest av45 ICV measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'ICV', [av1451_date1,av1451_date2],day_limit=365*2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*2)
+        all_df['UCB_FS_ICV_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_ICV_AV1451_2'] = closest_vals[1]
+
+        # Get closest av1451 HC/ICV measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2],day_limit=365*2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*2)
+        all_df['UCB_FS_HC/ICV_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_HC/ICV_AV1451_2'] = closest_vals[1]
+
+        # Get closest av1451 HC measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HCV', [av1451_date1,av1451_date2],day_limit=365*2)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*2)
+        all_df['UCB_FS_HC_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_HC_AV1451_1_2'] = closest_vals[1]
+
+        return all_df
+
+    parsed_df = parseSubjectGroups(fs_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+
+    # convert some columns to strings because we need to keep sigfigs
+    to_convert = ['UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope',
+                  'UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV45_2',
+                  'UCB_FS_HC/ICV_AV45_3']
+    to_convert += ['UCB_FS_HC/ICV_%s' % (i+1) for i in range(tmpts)]
+    for col in to_convert:
+        master_df[col] = master_df[col].apply(lambda x: '%.6f' % x)
+
+    return master_df
+
+
 def syncASIData(master_df, asi_file, registry):
     asi_df = importASI(asi_file, registry, as_df=True)
 
@@ -450,10 +503,10 @@ def syncAVLTData(master_df, avlt_file, registry):
         # get slope
         data_df.loc[scrno,'AVLT_postAV45_SLOPE'] = groupSlope(subj_rows,'EXAMDATE','TOTS',cutoff_date=av45_date1-timedelta(days=90)) if not isnan(av45_date1) else np.nan
         # get closest
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av45_date1, av45_date2], day_limit=365/2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av45_date1, av45_date2], day_limit=365*2)
         data_df.loc[scrno,'AVLT_closest_AV45_BL'] = closest_vals[0]
         data_df.loc[scrno,'AVLT_closest_AV45_2'] = closest_vals[1]
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av1451_date1, av1451_date2], day_limit=365/2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'TOTS', [av1451_date1, av1451_date2], day_limit=365*2)
         data_df.loc[scrno,'AVLT_closest_AV1451_BL'] = closest_vals[0]
         data_df.loc[scrno,'AVLT_closest_AV1451_BL_2'] = closest_vals[1]
         return data_df
@@ -909,6 +962,10 @@ def getAV1451Dates(scrno, master_df):
         row = master_df.loc[scrno]
         bl_av1451 = row.get('AV1451_1_DATE',np.nan)
         av1451_2 = row.get('AV1451_2_DATE',np.nan)
+        if isnan(bl_av1451):
+            bl_av1451 = np.nan
+        if isnan(av1451_2):
+            av1451_2 = np.nan
     except Exception as e:
         pass
     return (bl_av1451, av1451_2)
@@ -921,6 +978,10 @@ def getAV45Dates(scrno, master_df):
         row = master_df.loc[scrno]
         bl_av45 = row.get('AV45_1_EXAMDATE',np.nan)
         av45_2 = row.get('AV45_2_EXAMDATE',np.nan)
+        if isnan(bl_av45):
+            bl_av45 = np.nan
+        if isnan(av45_2):
+            av45_2 = np.nan
     except Exception as e:
         pass
     return (bl_av45, av45_2)
@@ -995,7 +1056,10 @@ if __name__ == '__main__':
     now = datetime.now()
     pd.options.mode.chained_assignment = None
 
-    run_date = "11-03-2016"
+    # manually update the following
+    run_date = "11-05-2016"
+    ucb_fs_volumes = '../docs/DOD/dod_adni_av45_fs_volumes_11-05-2016.csv'
+    ucb_fs_surfs = '../docs/DOD/dod_adni_av45_fs_surfs_11-05-2016.csv'
 
     # IO files
     master_file = "" # not used
