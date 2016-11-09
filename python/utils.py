@@ -1948,18 +1948,22 @@ def importFSSurfs(surf_file, as_df=False):
     else:
         return convertToSubjDict(df,sort_by=None)
 
-def importFSVolumes(vol_file, as_df=False):
+def importFSVolumes(vol_file, dod=False, as_df=False):
     df = pd.read_csv(vol_file)
     df.loc[:,'EXAMDATE'] = df.loc[:,'Date'].apply(parseDate)
-    df.loc[:,'RID'] = df.loc[:,'Subject'].apply(lambda x: int(x.split('-')[-1]))
     df['HCV'] = df['Left-Hippocampus'] + df['Right-Hippocampus']
     df['ICV'] = df['EstimatedTotalIntraCranialVol']
     df['HC/ICV'] = df['HCV'] / df['ICV']
+    if dod:
+        df.loc[:,'SCRNO'] = df.loc[:,'Subject']
+        df = df[['SCRNO','EXAMDATE','HCV','ICV','HC/ICV']]
+        df.set_index('SCRNO',inplace=True)
+    else:
+        df.loc[:,'RID'] = df.loc[:,'Subject'].apply(lambda x: int(x.split('-')[-1]))
+        df = df[['RID','EXAMDATE','HCV','ICV','HC/ICV']]
+        df.set_index('RID',inplace=True)
 
-    df = df[['RID','EXAMDATE','HCV','ICV','HC/ICV']]
     df.dropna(inplace=True)
-    df.set_index('RID',inplace=True)
-
     if as_df:
         return df
     else:

@@ -332,12 +332,13 @@ def syncSleep(master_df, sleep_file, registry):
     return master_df
 
 def syncUCBFreesurferAV1451VolData(master_df, ucb_fs_volumes):
-    fs_df = importFSVolumes(ucb_fs_volumes, as_df=True)
+    fs_df = importFSVolumes(ucb_fs_volumes, dod=True, as_df=True)
     tmpts = max(Counter(fs_df.index).values())
 
     headers = ['UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_2',
                'UCB_FS_ICV_AV1451_1','UCB_FS_ICV_AV1451_2',
-               'UCB_FS_HC_AV1451_1','UCB_FS_HC_AV1451_2',]
+               'UCB_FS_HC_AV1451_1','UCB_FS_HC_AV1451_2',
+               'UCB_FS_interval_AV1451_1','UCB_FS_interval_AV1451_2']
 
     def extraction_fn(scrno, subj_rows):
         subj_rows.sort_values('EXAMDATE',inplace=True)
@@ -350,21 +351,28 @@ def syncUCBFreesurferAV1451VolData(master_df, ucb_fs_volumes):
         subj_rows['HC/ICV_BL'] = subj_rows['HCV'] / bl_icv
         subj_rows['HC/ICV_AVG'] = subj_rows['HCV'] / avg_icv
 
-        # Get closest av45 ICV measurements
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'ICV', [av1451_date1,av1451_date2],day_limit=365*2)
-        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*2)
-        all_df['UCB_FS_ICV_AV1451_1'] = closest_vals[0]
-        all_df['UCB_FS_ICV_AV1451_2'] = closest_vals[1]
+        data = {'SCRNO': scrno}
+        all_df = pd.DataFrame([data]).set_index('SCRNO')
 
         # Get closest av1451 HC/ICV measurements
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2],day_limit=365*2)
-        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2],day_limit=365*3)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*3)
         all_df['UCB_FS_HC/ICV_AV1451_1'] = closest_vals[0]
         all_df['UCB_FS_HC/ICV_AV1451_2'] = closest_vals[1]
 
+        # Calculate closest intervals
+        all_df['UCB_FS_interval_AV1451_1'] = yrDiff(av1451_date1,closest_dates[0])
+        all_df['UCB_FS_interval_AV1451_2'] = yrDiff(av1451_date2,closest_dates[1])
+
+        # Get closest av45 ICV measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'ICV', [av1451_date1,av1451_date2],day_limit=365*3)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*3)
+        all_df['UCB_FS_ICV_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_ICV_AV1451_2'] = closest_vals[1]
+
         # Get closest av1451 HC measurements
-        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HCV', [av1451_date1,av1451_date2],day_limit=365*2)
-        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*2)
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HCV', [av1451_date1,av1451_date2],day_limit=365*3)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*3)
         all_df['UCB_FS_HC_AV1451_1'] = closest_vals[0]
         all_df['UCB_FS_HC_AV1451_1_2'] = closest_vals[1]
 
@@ -374,12 +382,15 @@ def syncUCBFreesurferAV1451VolData(master_df, ucb_fs_volumes):
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
 
     # convert some columns to strings because we need to keep sigfigs
-    to_convert = ['UCB_FS_HC/ICV_slope', 'UCB_FS_HC/ICVavg_slope',
-                  'UCB_FS_HC/ICV_AV45_1','UCB_FS_HC/ICV_AV45_2',
-                  'UCB_FS_HC/ICV_AV45_3']
-    to_convert += ['UCB_FS_HC/ICV_%s' % (i+1) for i in range(tmpts)]
+    def convert(x):
+        if isnan(x):
+            return ""
+        else:
+            return '%.6f' % x
+
+    to_convert = ['UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_2']
     for col in to_convert:
-        master_df[col] = master_df[col].apply(lambda x: '%.6f' % x)
+        master_df[col] = master_df[col].apply(convert)
 
     return master_df
 
@@ -1009,6 +1020,8 @@ def runPipeline():
     master_df = syncAV1451MaxData(master_df, av1451_max_file)
     print "\nSYNCING AV1451 Rousset\n"
     master_df = syncAV1451RoussetData(master_df, av1451_pvc_file, lut_file)
+    print "\nSYNCING AV1451 UCB FS VOLUMES\n"
+    master_df = syncUCBFreesurferAV1451VolData(master_df, ucb_fs_volumes)
     print "\nSYNCING DIAG\n"
     master_df = syncDiagData(master_df, diag_file)
     print "\nSYNCING DTI\n"
@@ -1058,8 +1071,7 @@ if __name__ == '__main__':
 
     # manually update the following
     run_date = "11-05-2016"
-    ucb_fs_volumes = '../docs/DOD/dod_adni_av45_fs_volumes_11-05-2016.csv'
-    ucb_fs_surfs = '../docs/DOD/dod_adni_av45_fs_surfs_11-05-2016.csv'
+    ucb_fs_volumes = '../docs/DOD/dod_adni_av1451_fs_volumes_11-05-2016.csv'
 
     # IO files
     master_file = "" # not used
@@ -1077,7 +1089,6 @@ if __name__ == '__main__':
     av1451_max_file = '../output/%s/UCBERKELEYAV1451_DOD_MAX_%s_regular_tp.csv' % (run_date,run_date)
     # AV1451 PVC file
     av1451_pvc_file = '../pvc/pvc_dod_av1451/tauskullregions_output.csv'
-
     # Registry file
     registry_file = "../docs/DOD/REGISTRY.csv"
     # ASI file

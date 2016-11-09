@@ -481,11 +481,15 @@ def syncADASCogData(master_df, adni1_adas_file, adnigo2_adas_file, registry):
         all_df['ADAS_post_AV45_followuptime'] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
 
         # Retroactive slope from first AV1451 scan
+        try:
+            start_date = av45_date1-timedelta(days=90)
+        except:
+            start_date = np.nan
         if not isnan(av1451_date1):
             all_df['ADAS_retroslope_AV1451_BL'] = retro_slope(subj_rows,
                                                               'EXAMDATE',
                                                               'TOTSCORE',
-                                                              av45_date1-timedelta(days=90),
+                                                              start_date,
                                                               av1451_date1+timedelta(days=90),
                                                               exact=False)
 
@@ -558,11 +562,15 @@ def syncMMSEData(master_df, mmse_file, registry):
         all_df['MMSE_post_AV45_followuptime'] = (last_date - av45_date1).days/365.25 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
 
         # Retroactive slope from first AV1451 scan
+        try:
+            start_date = av45_date1-timedelta(days=90)
+        except:
+            start_date = np.nan
         if not isnan(av1451_date1):
             all_df['MMSE_retroslope_AV1451_BL'] = retro_slope(subj_rows,
                                                               'EXAMDATE',
                                                               'MMSCORE',
-                                                              av45_date1-timedelta(days=90),
+                                                              start_date,
                                                               av1451_date1+timedelta(days=90),
                                                               exact=False)
 
@@ -634,11 +642,15 @@ def syncAVLTData(master_df, neuro_battery_file, registry):
         all_df['AVLT_post_AV45_followuptime'] = (last_date - av45_date1).days/365 if (not isnan(av45_date1) and last_date > av45_date1) else np.nan
 
         # Retroactive slope from first AV1451 scan
+        try:
+            start_date = av45_date1-timedelta(days=buffer_days)
+        except:
+            start_date = np.nan
         if not isnan(av1451_date1):
             all_df['AVLT_retroslope_AV1451_BL'] = retro_slope(subj_rows,
                                                               'EXAMDATE',
                                                               'TOTS',
-                                                              av45_date1-timedelta(days=buffer_days),
+                                                              start_date,
                                                               av1451_date1+timedelta(days=buffer_days),
                                                               exact=False)
 
@@ -1487,17 +1499,21 @@ def syncUWData(master_df, uw_file, registry):
         all_df = pd.concat((mem_long,ef_long,date_long),axis=1)
 
         # Retroactive slope from first AV1451 scan
+        try:
+            start_date = av45_date1 - timedelta(days=90)
+        except:
+            start_date = np.nan
         if not isnan(av1451_date1):
             all_df['UW_MEM_retroslope_AV1451_BL'] = retro_slope(subj_rows,
                                                                 'EXAMDATE',
                                                                 'ADNI_MEM',
-                                                                av45_date1-timedelta(days=90),
+                                                                start_date,
                                                                 av1451_date1+timedelta(days=90),
                                                                 exact=False)
             all_df['UW_EF_retroslope_AV1451_BL'] = retro_slope(subj_rows,
                                                                'EXAMDATE',
                                                                'ADNI_EF',
-                                                               av45_date1-timedelta(days=90),
+                                                               start_date,
                                                                av1451_date1+timedelta(days=90),
                                                                exact=False)
 
@@ -1569,6 +1585,69 @@ def syncUCBFreesurferAV45SurfData(master_df, ucb_av45_fs_surfs):
 
     parsed_df = parseSubjectGroups(fs_df, extraction_fn)
     master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+    return master_df
+
+def syncUCBFreesurferAV1451VolData(master_df, ucb_fs_volumes):
+    fs_df = importFSVolumes(ucb_fs_volumes, as_df=True)
+    tmpts = max(Counter(fs_df.index).values())
+
+    headers = ['UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_2',
+               'UCB_FS_ICV_AV1451_1','UCB_FS_ICV_AV1451_2',
+               'UCB_FS_HC_AV1451_1','UCB_FS_HC_AV1451_2',
+               'UCB_FS_interval_AV1451_1','UCB_FS_interval_AV1451_2']
+
+    def extraction_fn(rid, subj_rows):
+        subj_rows.sort_values('EXAMDATE',inplace=True)
+        av45_date1, av45_date2, av45_date3, av45_date4 = getAV45Dates(rid, master_df)
+        av1451_date1, av1451_date2, av1451_date3 = getAV1451Dates(rid, master_df)
+
+        # Calculate HC/ICV
+        bl_icv = subj_rows.iloc[0]['ICV']
+        avg_icv = np.mean(subj_rows['ICV'])
+        subj_rows['HC/ICV_BL'] = subj_rows['HCV'] / bl_icv
+        subj_rows['HC/ICV_AVG'] = subj_rows['HCV'] / avg_icv
+
+        data = {'RID': rid}
+        all_df = pd.DataFrame([data]).set_index('RID')
+
+        # Get closest av1451 HC/ICV measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HC/ICV_BL', [av1451_date1,av1451_date2],day_limit=365*3)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*3)
+        all_df['UCB_FS_HC/ICV_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_HC/ICV_AV1451_2'] = closest_vals[1]
+
+        # Calculate closest intervals
+        all_df['UCB_FS_interval_AV1451_1'] = yrDiff(av1451_date1,closest_dates[0])
+        all_df['UCB_FS_interval_AV1451_2'] = yrDiff(av1451_date2,closest_dates[1])
+
+        # Get closest av45 ICV measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'ICV', [av1451_date1,av1451_date2],day_limit=365*3)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*3)
+        all_df['UCB_FS_ICV_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_ICV_AV1451_2'] = closest_vals[1]
+
+        # Get closest av1451 HC measurements
+        closest_vals = groupClosest(subj_rows, 'EXAMDATE', 'HCV', [av1451_date1,av1451_date2],day_limit=365*3)
+        closest_dates = groupClosest(subj_rows, 'EXAMDATE', 'EXAMDATE', [av1451_date1,av1451_date2],day_limit=365*3)
+        all_df['UCB_FS_HC_AV1451_1'] = closest_vals[0]
+        all_df['UCB_FS_HC_AV1451_1_2'] = closest_vals[1]
+
+        return all_df
+
+    parsed_df = parseSubjectGroups(fs_df, extraction_fn)
+    master_df = updateDataFrame(master_df, parsed_df, headers=headers, after=None)
+
+    # convert some columns to strings because we need to keep sigfigs
+    def convert(x):
+        if isnan(x):
+            return ""
+        else:
+            return '%.6f' % x
+
+    to_convert = ['UCB_FS_HC/ICV_AV1451_1','UCB_FS_HC/ICV_AV1451_2']
+    for col in to_convert:
+        master_df[col] = master_df[col].apply(convert)
+
     return master_df
 
 
@@ -1904,9 +1983,11 @@ def runPipeline():
     master_df = syncUCBFreesurferAV45SurfData(master_df, ucb_fs_surfs)
     print "\nSYNCING UCB Freesurfer Vol\n"
     master_df = syncUCBFreesurferAV45VolData(master_df, ucb_fs_volumes)
+    print "\nSYNCING UCB Freesurfer AV1451 Vol\n"
+    master_df = syncUCBFreesurferAV1451VolData(master_df, ucb_fs_av1451_volumes)
     print "\nSYNCING UCSF LONG FreeSurfer\n"
     master_df = syncUCSFFreesurferData(master_df, ucsf_long_files, mprage_file, 'FSL')
-    print "\nSYNCING UCSF CROSS FreeSurfer"
+    print "\nSYNCING UCSF CROSS FreeSurfer\n"
     master_df = syncUCSFFreesurferData(master_df, ucsf_cross_files, mprage_file, 'FSX')
     print "\nSYNCING FDG\n"
     master_df = syncFDGData(master_df, fdg_file, registry)
@@ -1937,6 +2018,7 @@ if __name__ == '__main__':
     run_date = "11-05-2016"
     ucb_fs_volumes = '../docs/ADNI/adni_av45_fs_volumes_11-05-2016.csv'
     ucb_fs_surfs = '../docs/ADNI/adni_av45_fs_surfs_11-05-2016.csv'
+    ucb_fs_av1451_volumes = '../docs/ADNI/adni_av1451_fs_volumes_11-05-2016.csv'
 
     # IO files
     master_file = "../FDG_AV45_COGdata/FDG_AV45_COGdata_07_07_16.csv"
